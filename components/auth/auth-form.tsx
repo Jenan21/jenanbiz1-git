@@ -123,6 +123,29 @@ export function AuthForm({ mode, locale, labels }: AuthFormProps) {
         disabled={loading}
         icon={<Icon name="lock" />}
       />
+      {mode === "register" && (
+        <>
+          <Input
+            label={locale === "ar" ? "تأكيد كلمة المرور" : "Confirm password"}
+            name="confirmPassword"
+            type="password"
+            autoComplete="new-password"
+            required
+            minLength={12}
+            maxLength={128}
+            disabled={loading}
+            icon={<Icon name="lock" />}
+          />
+          <label className="checkbox auth-consent">
+            <input name="terms" type="checkbox" required disabled={loading} />
+            <span>
+              {locale === "ar"
+                ? "أوافق على الشروط والأحكام وسياسة الخصوصية"
+                : "I agree to the terms and privacy policy"}
+            </span>
+          </label>
+        </>
+      )}
       {mode === "login" && (
         <div className="auth-form__options">
           <label className="checkbox">

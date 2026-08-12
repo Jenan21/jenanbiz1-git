@@ -2,11 +2,12 @@ import { SystemRole } from "@/generated/prisma/client";
 import { requireSystemRole, requireUser } from "@/lib/auth/session";
 import { getRequestDictionary } from "@/lib/i18n/server";
 import { ModuleScreen } from "@/components/source/module-screen";
+import { BountyHuntersScreen } from "@/components/source/specialized-screens";
 import {
-  BountyHuntersScreen,
-  FundingEligibilityScreen,
-  RoboticsCatalogScreen,
-} from "@/components/source/specialized-screens";
+  RefinedFundingScreen,
+  RefinedRoboticsCatalog,
+  RobotDetailScreen,
+} from "@/components/source/refinement-screens";
 
 export async function ProtectedModulePage({ route }: { route: string }) {
   const [{ locale }, user] = await Promise.all([
@@ -43,7 +44,7 @@ export async function ProtectedFundingPage() {
     requireUser("/funding-eligibility"),
   ]);
   return (
-    <FundingEligibilityScreen
+    <RefinedFundingScreen
       locale={locale}
       userLabel={user.profile?.displayName ?? user.email}
     />
@@ -56,9 +57,24 @@ export async function ProtectedRoboticsPage() {
     requireUser("/software/robotics"),
   ]);
   return (
-    <RoboticsCatalogScreen
+    <RefinedRoboticsCatalog
       locale={locale}
       userLabel={user.profile?.displayName ?? user.email}
+    />
+  );
+}
+
+export async function ProtectedRobotDetailPage({ slug }: { slug: string }) {
+  const route = `/software/robotics/${slug}`;
+  const [{ locale }, user] = await Promise.all([
+    getRequestDictionary(),
+    requireUser(route),
+  ]);
+  return (
+    <RobotDetailScreen
+      locale={locale}
+      userLabel={user.profile?.displayName ?? user.email}
+      slug={slug}
     />
   );
 }

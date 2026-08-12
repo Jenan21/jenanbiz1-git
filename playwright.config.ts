@@ -38,7 +38,8 @@ export default defineConfig({
     },
     {
       name: "review-pack",
-      testMatch: /review-pack.*\.spec\.ts/,
+      testMatch:
+        /(review-pack.*|refinement-review|auth-contract-review)\.spec\.ts/,
       use: { viewport: { width: 1440, height: 1000 }, locale: "ar-SA" },
       metadata: { appLocale: "ar" },
     },

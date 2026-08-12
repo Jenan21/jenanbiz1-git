@@ -9,7 +9,7 @@ import {
   MarketUnavailable,
   WorldNetwork,
 } from "@/components/source/source-ui";
-import { Icon } from "@/components/ui/icons";
+import { Icon, type IconName } from "@/components/ui/icons";
 import { LanguageSwitcher } from "@/components/ui/language-switcher";
 import type { Locale } from "@/types/i18n";
 
@@ -27,6 +27,13 @@ interface AuthShellProps {
 
 export function AuthShell(props: AuthShellProps) {
   const ar = props.locale === "ar";
+  const loginActive = props.alternateHref === "/register";
+  const activityItems: Array<[IconName, string]> = [
+    ["globe", ar ? "الدول المتصلة" : "Connected countries"],
+    ["people", ar ? "المشاريع النشطة" : "Active projects"],
+    ["briefcase", ar ? "الشركات المسجلة" : "Registered companies"],
+  ];
+
   return (
     <main className="auth-page source-app">
       <div className="shell auth-shell">
@@ -44,7 +51,14 @@ export function AuthShell(props: AuthShellProps) {
           <WorldNetwork />
         </div>
         <section className="auth-stage">
-          <AuthServiceCarousel locale={props.locale} />
+          <div className="auth-services-panel glass">
+            <h2>
+              {ar
+                ? "جميع خدماتك في منصة واحدة"
+                : "All your services in one platform"}
+            </h2>
+            <AuthServiceCarousel locale={props.locale} />
+          </div>
           <div className="auth-card glass">
             <div className="auth-brand">
               <span className="eyebrow">
@@ -54,6 +68,23 @@ export function AuthShell(props: AuthShellProps) {
               <h1>{props.title}</h1>
               <p>{props.subtitle}</p>
             </div>
+            <nav
+              className="auth-tabs"
+              aria-label={ar ? "الدخول والتسجيل" : "Sign in and registration"}
+            >
+              <Link
+                className={`auth-tab ${loginActive ? "active" : ""}`}
+                href="/login"
+              >
+                {ar ? "تسجيل الدخول" : "Sign in"}
+              </Link>
+              <Link
+                className={`auth-tab ${!loginActive ? "active" : ""}`}
+                href="/register"
+              >
+                {ar ? "إنشاء حساب" : "Create account"}
+              </Link>
+            </nav>
             {props.children}
             <p className="auth-alternate">
               {props.alternateText}{" "}
@@ -61,20 +92,38 @@ export function AuthShell(props: AuthShellProps) {
             </p>
           </div>
           <aside className="activity-panel glass card">
-            <div className="card-title">
-              {ar ? "خريطة النشاط العالمي" : "Global activity map"}
+            <div className="auth-panel-heading">
+              <div className="card-title">
+                {ar ? "نشاط عالمي مباشر" : "Live global activity"}
+              </div>
+              <span className="availability-dot">
+                {ar ? "غير متاح" : "Unavailable"}
+              </span>
             </div>
             <div className="mini-map">
               <WorldNetwork />
             </div>
-            <div className="notice">
-              <strong>
-                {ar ? "غير متاح حاليًا" : "Currently unavailable"}
-              </strong>
-              <br />
-              {ar
-                ? "تظهر البيانات بعد ربط مزود التحليلات الحقيقي."
-                : "Data appears after a real analytics provider is connected."}
+            <div className="activity-locations">
+              {[
+                ar ? "نيويورك" : "New York",
+                ar ? "الرياض" : "Riyadh",
+                ar ? "لندن" : "London",
+                ar ? "طوكيو" : "Tokyo",
+              ].map((city) => (
+                <div key={city}>
+                  <b>{city}</b>
+                  <span>{ar ? "غير متاح" : "Unavailable"}</span>
+                </div>
+              ))}
+            </div>
+            <div className="activity-empty-grid">
+              {activityItems.map(([icon, label]) => (
+                <div key={label}>
+                  <Icon name={icon} />
+                  <span>{label}</span>
+                  <strong>—</strong>
+                </div>
+              ))}
             </div>
           </aside>
         </section>

@@ -7,24 +7,21 @@ import { Icon, type IconName } from "@/components/ui/icons";
 import { LanguageSwitcher } from "@/components/ui/language-switcher";
 import type { Locale } from "@/types/i18n";
 
-export function JenanLogo({ compact = false }: { compact?: boolean }) {
+export function JenanLogo({ compact = false }: { compact?: boolean } = {}) {
   return (
-    <Link href="/dashboard" className="logo-wrap" aria-label="Jenan BIZ">
+    <Link
+      href="/dashboard"
+      className="logo-wrap"
+      aria-label="Jenan BIZ"
+      data-compact={compact || undefined}
+    >
       <Image
-        src="/assets/jenan-biz-logo.png"
+        src="/assets/jenan-biz-logo-transparent.png"
         alt="Jenan BIZ"
         width={152}
         height={96}
         priority
       />
-      {!compact && (
-        <div>
-          <div className="logo-text">
-            JENAN <span>BIZ</span>
-          </div>
-          <div className="logo-sub">GLOBAL BUSINESS HUB</div>
-        </div>
-      )}
     </Link>
   );
 }
