@@ -4,5 +4,17 @@
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
   "private": true,
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "test": "vitest"
+  },
+  "files": ["dist"]
+}
+{
+  "name": "@jenan/visual-dna",
+  "version": "0.1.0",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "private": true,
   "files": ["dist"]
 }
