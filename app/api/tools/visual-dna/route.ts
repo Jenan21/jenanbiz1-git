@@ -72,14 +72,13 @@ export async function POST(req: Request) {
     let palette: string[] = [];
     try {
       palette = await timeoutPromise(extractPaletteFromBase64(imageData), EXTRACT_TIMEOUT_MS);
-    } catch (e) {
+    } catch {
       return NextResponse.json({ error: 'processing_failed' }, { status: 500 });
     }
 
     return NextResponse.json({ palette });
-  } catch (err) {
+  } catch {
     // Do not leak internal error details to clients
-    // eslint-disable-next-line no-console
     console.error('visual-dna POST error (internal)');
     return NextResponse.json({ error: 'internal' }, { status: 500 });
   }

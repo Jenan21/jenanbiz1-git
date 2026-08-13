@@ -2,4 +2,5 @@ export function parseXlsx() {
   throw new Error('Not implemented: parseXlsx');
 }
 
-export default { parseXlsx };
+const sheetsEngine = { parseXlsx };
+export default sheetsEngine;

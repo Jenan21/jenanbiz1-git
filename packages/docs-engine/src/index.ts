@@ -2,4 +2,5 @@ export function parseDocx() {
   throw new Error('Not implemented: parseDocx');
 }
 
-export default { parseDocx };
+const docsEngine = { parseDocx };
+export default docsEngine;

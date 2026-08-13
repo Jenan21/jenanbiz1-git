@@ -1,4 +1,4 @@
-/* eslint-disable @typescript-eslint/no-explicit-any, @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access */
+/* eslint-disable @typescript-eslint/no-explicit-any */
 // Buffer is global in Node; no need to import as type-only
 
 export async function extractPaletteFromBase64(imageData: string, maxColors = 6): Promise<string[]> {
@@ -22,7 +22,6 @@ export async function extractPaletteFromBase64(imageData: string, maxColors = 6)
           // Use runtime checks; types are dynamic across bundlers
           const s: unknown = shape;
           if (s && typeof (s as any).from === 'function') {
-            // eslint-disable-next-line @typescript-eslint/no-unsafe-call
             palette = await (s as any).from(buffer).maxColorCount(maxColors).getPalette();
             break;
           }
@@ -81,4 +80,5 @@ export async function extractPaletteFromBase64(imageData: string, maxColors = 6)
   }
 }
 
-export default { extractPaletteFromBase64 };
+const visualDNAEngine = { extractPaletteFromBase64 };
+export default visualDNAEngine;

@@ -6,4 +6,5 @@ export function splitPdf() {
   throw new Error('Not implemented: splitPdf');
 }
 
-export default { mergePdfs, splitPdf };
+const pdfEngine = { mergePdfs, splitPdf };
+export default pdfEngine;

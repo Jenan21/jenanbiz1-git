@@ -17,7 +17,7 @@ function quantizeColor(r: number, g: number, b: number, step = 24) {
 }
 
 export function Visualizer() {
-  const [imageSrc, setImageSrc] = useState<string | null>(null);
+  // imageSrc preview removed to avoid unused variable; keep canvas preview only
   const [palette, setPalette] = useState<string[]>([]);
   const [info, setInfo] = useState<string | null>(null);
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
@@ -26,7 +26,6 @@ export function Visualizer() {
     const file = e.target.files?.[0];
     if (!file) return;
     const url = URL.createObjectURL(file);
-    setImageSrc(url);
     setInfo(`File: ${file.name} — ${Math.round(file.size / 1024)} KB`);
     await extractPalette(url);
   }
