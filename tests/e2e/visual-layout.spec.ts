@@ -1,9 +1,11 @@
 import { expect, test } from "@playwright/test";
 
+const baseURL = process.env.PLAYWRIGHT_BASE_URL ?? "http://127.0.0.1:3101";
+
 test.beforeEach(async ({ context }, testInfo) => {
   const locale = String(testInfo.project.metadata.appLocale);
   await context.addCookies([
-    { name: "locale", value: locale, url: "http://127.0.0.1:3101" },
+    { name: "locale", value: locale, url: baseURL },
   ]);
 });
 
@@ -19,6 +21,9 @@ for (const path of ["/login", "/register"] as const) {
       locale === "ar" ? "rtl" : "ltr",
     );
     await expect(page.locator("main")).toBeVisible();
+    if (path === "/login") {
+      await page.getByTestId("jenan-entry-gateway").click();
+    }
     await expect(page.locator("form")).toBeVisible();
 
     const layout = await page.evaluate(() => {

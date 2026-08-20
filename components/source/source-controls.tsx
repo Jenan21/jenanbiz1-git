@@ -3,7 +3,13 @@
 import { useEffect, useState } from "react";
 import { Icon } from "@/components/ui/icons";
 
-export function ThemeToggle({ label }: { label: string }) {
+export function ThemeToggle({
+  label,
+  switchStyle = false,
+}: {
+  label: string;
+  switchStyle?: boolean;
+}) {
   const [theme, setTheme] = useState<"balanced-dark" | "light">(
     "balanced-dark",
   );
@@ -19,6 +25,22 @@ export function ThemeToggle({ label }: { label: string }) {
     setTheme(next);
     localStorage.setItem("jenan-theme", next);
     document.documentElement.dataset.theme = next;
+  }
+  if (switchStyle) {
+    return (
+      <button
+        className="theme-switch"
+        type="button"
+        onClick={toggle}
+        aria-label={label}
+        aria-pressed={theme === "light"}
+      >
+        <Icon name="sun" />
+        <span className="theme-switch__track" aria-hidden="true">
+          <i />
+        </span>
+      </button>
+    );
   }
   return (
     <button className="btn small ghost" type="button" onClick={toggle}>

@@ -105,6 +105,7 @@ export function AuthForm({ mode, locale, labels }: AuthFormProps) {
       )}
       <Input
         label={labels.email}
+        placeholder={labels.email}
         name="email"
         type="email"
         autoComplete="email"
@@ -114,6 +115,7 @@ export function AuthForm({ mode, locale, labels }: AuthFormProps) {
       />
       <Input
         label={labels.password}
+        placeholder={labels.password}
         name="password"
         type="password"
         autoComplete={mode === "login" ? "current-password" : "new-password"}

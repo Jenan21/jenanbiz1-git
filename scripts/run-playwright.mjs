@@ -9,10 +9,12 @@ const playwrightBin = new URL(
   "../node_modules/@playwright/test/cli.js",
   import.meta.url,
 );
+const serverPort = process.env.PLAYWRIGHT_PORT ?? "3101";
+const serverUrl = `http://127.0.0.1:${serverPort}`;
 
 const server = spawn(
   nodeBin,
-  [fileURLToPath(nextBin), "dev", "--hostname", "127.0.0.1", "--port", "3101"],
+  [fileURLToPath(nextBin), "dev", "--hostname", "127.0.0.1", "--port", serverPort],
   {
     cwd: projectRoot,
     env: { ...process.env, NODE_ENV: "development" },
@@ -29,7 +31,7 @@ async function waitUntilReady() {
         "The Playwright application server exited before readiness",
       );
     try {
-      const response = await fetch("http://127.0.0.1:3101/login");
+      const response = await fetch(`${serverUrl}/login`);
       if (response.ok) return;
     } catch {
       // The server is still starting.
@@ -73,7 +75,7 @@ try {
     [fileURLToPath(playwrightBin), "test", ...process.argv.slice(2)],
     {
       cwd: projectRoot,
-      env: process.env,
+      env: { ...process.env, PLAYWRIGHT_BASE_URL: serverUrl },
       stdio: ["inherit", "pipe", "pipe"],
     },
   );

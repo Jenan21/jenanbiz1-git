@@ -21,6 +21,7 @@
     "test:integration": "node --env-file=.env ./node_modules/vitest/vitest.mjs run tests/integration",
     "test:e2e": "node --env-file=.env scripts/run-playwright.mjs",
     "test:e2e:visual": "node --env-file=.env scripts/run-playwright.mjs tests/e2e/visual-layout.spec.ts",
+    "visual:compare": "node scripts/visual-compare.mjs",
     "auth:bootstrap-super-admin": "node --env-file=.env scripts/bootstrap-super-admin.mjs"
   },
   "dependencies": {
@@ -36,13 +37,17 @@
     "@playwright/test": "^1.62.1",
     "@tailwindcss/postcss": "4.3.3",
     "@types/node": "^24.0.0",
+    "@types/pngjs": "^6.0.5",
     "@types/react": "^19.0.0",
     "@types/react-dom": "^19.0.0",
     "eslint": "^9.0.0",
     "eslint-config-next": "16.3.0",
+    "pixelmatch": "^7.2.0",
+    "pngjs": "^7.0.0",
     "prettier": "^3.0.0",
     "prettier-plugin-tailwindcss": "^0.7.0",
     "prisma": "7.9.1",
+    "sharp": "^0.35.3",
     "tailwindcss": "4.3.3",
     "typescript": "^5.9.0",
     "vitest": "^3.2.0"

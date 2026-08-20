@@ -8,9 +8,11 @@ import type { Locale } from "@/types/i18n";
 export function LanguageSwitcher({
   locale,
   label,
+  showChevron = false,
 }: {
   locale: Locale;
   label: string;
+  showChevron?: boolean;
 }) {
   const router = useRouter();
   function switchLanguage() {
@@ -26,6 +28,7 @@ export function LanguageSwitcher({
     >
       <Icon name="globe" />
       <span>{locale === "ar" ? "EN" : "ع"}</span>
+      {showChevron && <Icon name="chevron" />}
     </IconButton>
   );
 }

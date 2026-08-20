@@ -3,8 +3,10 @@ import type { SVGProps } from "react";
 export type IconName =
   | "activity"
   | "arrow"
+  | "barChart"
   | "bell"
   | "briefcase"
+  | "building"
   | "check"
   | "chevron"
   | "dashboard"
@@ -16,11 +18,17 @@ export type IconName =
   | "mail"
   | "menu"
   | "moon"
+  | "pieChart"
   | "people"
   | "plus"
   | "search"
   | "settings"
   | "shield"
+  | "sun"
+  | "trend"
+  | "graduation"
+  | "cart"
+  | "rocket"
   | "sparkles"
   | "user"
   | "wallet"
@@ -30,6 +38,12 @@ const paths: Record<IconName, React.ReactNode> = {
   activity: (
     <>
       <path d="M3 12h4l2.5-7 5 14 2.5-7h4" />
+    </>
+  ),
+  barChart: (
+    <>
+      <path d="M4 20V10h4v10M10 20V5h4v15M16 20v-7h4v7M3 20h18" />
+      <path d="m4 8 5-4 4 3 7-5" />
     </>
   ),
   arrow: (
@@ -46,6 +60,11 @@ const paths: Record<IconName, React.ReactNode> = {
     <>
       <rect x="3" y="7" width="18" height="13" rx="2" />
       <path d="M8 7V5a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2M3 12h18M10 12v2h4v-2" />
+    </>
+  ),
+  building: (
+    <>
+      <path d="M4 21V8l8-5 8 5v13M8 21v-4h8v4M8 9h2M14 9h2M8 13h2M14 13h2" />
     </>
   ),
   check: <path d="m5 12 4 4L19 6" />,
@@ -94,6 +113,12 @@ const paths: Record<IconName, React.ReactNode> = {
   ),
   menu: <path d="M4 7h16M4 12h16M4 17h16" />,
   moon: <path d="M20 15.5A8.5 8.5 0 0 1 8.5 4 9 9 0 1 0 20 15.5" />,
+  pieChart: (
+    <>
+      <path d="M11 3a9 9 0 1 0 10 10h-10V3Z" />
+      <path d="M14 3.5A8 8 0 0 1 20.5 10H14V3.5Z" />
+    </>
+  ),
   people: (
     <>
       <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2M9 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8M22 21v-2a4 4 0 0 0-3-3.9M16 3.1a4 4 0 0 1 0 7.8" />
@@ -116,6 +141,32 @@ const paths: Record<IconName, React.ReactNode> = {
     <>
       <path d="M12 3 4 6v5c0 5 3.5 8.5 8 10 4.5-1.5 8-5 8-10V6l-8-3Z" />
       <path d="m9 12 2 2 4-4" />
+    </>
+  ),
+  sun: (
+    <>
+      <circle cx="12" cy="12" r="4" />
+      <path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4" />
+    </>
+  ),
+  trend: <path d="m3 17 6-6 4 4 8-9M15 6h6v6" />,
+  graduation: (
+    <>
+      <path d="m2 9 10-5 10 5-10 5L2 9Z" />
+      <path d="M6 11.5V16c3 2.4 9 2.4 12 0v-4.5M22 9v6" />
+    </>
+  ),
+  cart: (
+    <>
+      <path d="M3 4h2l2.3 10.2a2 2 0 0 0 2 1.6h7.8a2 2 0 0 0 1.9-1.4L21 8H7" />
+      <circle cx="10" cy="20" r="1" />
+      <circle cx="18" cy="20" r="1" />
+    </>
+  ),
+  rocket: (
+    <>
+      <path d="M14 4c3-2 6-2 6-2s0 3-2 6l-5 5-4-4 5-5Z" />
+      <path d="m9 9-4 1-3 3 6 1M13 13l-1 4-3 3-1-6M15 7l2 2" />
     </>
   ),
   sparkles: (
