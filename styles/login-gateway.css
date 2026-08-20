@@ -1680,6 +1680,7 @@ html[data-theme=light] .login-gateway{color:#09203e;background:#dceafa}html[data
 .login-gateway__analytics[data-market-state=stale] .login-gateway__provider-note{color:#e7cf75;box-shadow:inset 0 0 16px rgba(231,207,117,.07)}
 .login-gateway__analytics[data-market-state=error] .login-gateway__provider-note{color:#efb36d}
 .login-gateway__analytics[data-market-state=disconnected] .login-gateway__provider-note{color:#75bdc8}
+.login-gateway__analytics[data-market-state=demo] .login-gateway__provider-note{color:#e8d28f;box-shadow:inset 0 0 18px rgba(232,210,143,.08),0 0 13px rgba(69,218,211,.06)}
 
 /* Login review: the map entry is the only sign-in trigger. */
 .login-gateway--reference .login-gateway__header {
@@ -1841,3 +1842,207 @@ html[data-theme=light] .login-gateway{color:#09203e;background:#dceafa}html[data
 .login-gateway__map-data-state strong { color: #e8d28f; font-size: 9px; font-weight: 600; }
 .login-gateway__map-data-state small { color: #8ca8b4; font-size: 7px; }
 html[lang=en] .login-gateway__map-data-state { direction: ltr; }
+
+.login-gateway--reference .login-gateway__entry-button[data-active=true] {
+  border-color: rgba(232, 201, 120, .82);
+  background: linear-gradient(180deg, rgba(40, 145, 180, .94), rgba(13, 76, 104, .96));
+  box-shadow:
+    inset 0 1px rgba(255, 255, 255, .22),
+    0 0 7px rgba(79, 213, 241, .82),
+    0 0 20px rgba(92, 224, 151, .24),
+    0 0 28px rgba(232, 201, 120, .16);
+}
+
+/* Professional market masthead: one open luminous surface, without a framed card. */
+.login-gateway--reference .login-gateway__header {
+  height: 112px;
+  padding: 7px 38px 9px;
+  grid-template-columns: 250px minmax(640px, 1fr) 130px;
+  grid-template-rows: 96px;
+  gap: 34px;
+}
+
+.login-gateway--reference .login-gateway__brand {
+  grid-row: 1;
+  width: 218px;
+  height: 150px;
+  margin: -5px 0 0;
+  z-index: 2;
+}
+
+.login-gateway--reference .login-gateway__brand img {
+  filter:
+    drop-shadow(0 0 4px rgba(224, 247, 255, .88))
+    drop-shadow(0 0 13px rgba(72, 210, 244, .68))
+    drop-shadow(0 0 25px rgba(78, 220, 151, .18));
+}
+
+.login-gateway--reference .login-gateway__status {
+  grid-row: 1;
+  height: 76px;
+  padding: 7px 20px 8px;
+  gap: 2px;
+  overflow: visible;
+  border: 0;
+  border-radius: 0;
+  background:
+    radial-gradient(ellipse at 72% 50%, rgba(58, 200, 219, .09), transparent 54%),
+    linear-gradient(90deg, transparent, rgba(3, 21, 34, .76) 11%, rgba(4, 24, 34, .88) 50%, rgba(4, 20, 31, .70) 89%, transparent);
+  box-shadow: none;
+}
+
+.login-gateway--reference .login-gateway__status::before {
+  content: "";
+  position: absolute;
+  inset: auto 7% 0 7%;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, var(--gateway-blue), var(--gateway-green) 62%, var(--gateway-gold), transparent);
+  box-shadow: 0 0 7px rgba(86, 218, 230, .66);
+}
+
+.login-gateway--reference .login-gateway__status::after {
+  content: "";
+  position: absolute;
+  inset: auto 22% -2px auto;
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: var(--gateway-gold);
+  box-shadow: 0 0 5px #fff1b6, 0 0 13px rgba(232, 201, 120, .82);
+  animation: mastheadSignal 2.8s ease-in-out infinite;
+}
+
+.login-gateway--reference .login-gateway__news-line {
+  min-height: 29px;
+  padding: 3px 12px;
+  grid-template-columns: minmax(0, 1fr) 74px 148px;
+  gap: 12px;
+  border: 0;
+  background: transparent;
+}
+
+.login-gateway--reference .login-gateway__news-line--secondary {
+  border-top: 1px solid rgba(105, 219, 212, .13);
+}
+
+.login-gateway--reference .login-gateway__news-line span {
+  color: #e2f1f6;
+  font-size: 13px;
+  font-weight: 520;
+  letter-spacing: .01em;
+  text-shadow: 0 1px 3px rgba(0, 0, 0, .78);
+}
+
+.login-gateway--reference .login-gateway__news-line strong {
+  font-size: 16px;
+  font-variant-numeric: tabular-nums;
+  text-shadow: 0 0 9px currentColor;
+}
+
+.login-gateway--reference .login-gateway__news-line em {
+  position: relative;
+  padding-inline-start: 14px;
+  font-size: 10px;
+  font-weight: 650;
+  letter-spacing: .03em;
+}
+
+.login-gateway--reference .login-gateway__news-line em::before {
+  content: "";
+  position: absolute;
+  inset-inline-start: 0;
+  top: 50%;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: currentColor;
+  box-shadow: 0 0 9px currentColor;
+  transform: translateY(-50%);
+}
+
+.login-gateway--reference .login-gateway__tools {
+  grid-row: 1;
+}
+
+@keyframes mastheadSignal {
+  0%, 100% { opacity: .45; transform: scale(.82); }
+  50% { opacity: 1; transform: scale(1.18); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .login-gateway--reference .login-gateway__status::after { animation: none; }
+}
+
+/* Open data composition: map and indicators share the same circuit surface. */
+.login-gateway--reference .login-gateway__opportunities {
+  grid-template-rows: minmax(0, 1fr) 84px;
+}
+
+.login-gateway--reference .login-gateway__opportunity-map {
+  min-height: 0;
+}
+
+.login-gateway--reference .login-gateway__analytics {
+  padding: 5px 0 4px 15px;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+}
+
+.login-gateway--reference .login-gateway__analytics::before {
+  content: "";
+  position: absolute;
+  inset: 56px 4px 47px 10px;
+  pointer-events: none;
+  background:
+    radial-gradient(circle at 24% 27%, rgba(76, 213, 239, .08), transparent 28%),
+    radial-gradient(circle at 76% 70%, rgba(225, 194, 118, .06), transparent 25%);
+}
+
+.login-gateway--reference .login-gateway__analytics-grid {
+  gap: 8px 12px;
+}
+
+.login-gateway--reference .login-gateway__chart-card,
+.login-gateway--reference .login-gateway__chart-card:nth-child(odd),
+.login-gateway--reference .login-gateway__chart-card:nth-child(-n+2),
+.login-gateway--reference .login-gateway__chart-card:hover,
+.login-gateway--reference .login-gateway__chart-card:focus-visible,
+.login-gateway--reference .login-gateway__chart-card[data-active=true] {
+  border: 0 !important;
+  border-radius: 0;
+  background: transparent !important;
+  box-shadow: none;
+}
+
+.login-gateway--reference .login-gateway__chart-card {
+  position: relative;
+}
+
+.login-gateway--reference .login-gateway__chart-card::after {
+  content: "";
+  position: absolute;
+  inset: auto 18% 2px;
+  height: 1px;
+  opacity: 0;
+  background: linear-gradient(90deg, transparent, var(--gateway-blue), var(--gateway-green), transparent);
+  box-shadow: 0 0 7px rgba(89, 220, 221, .55);
+  transform: scaleX(.55);
+  transition: opacity .2s ease, transform .2s ease;
+}
+
+.login-gateway--reference .login-gateway__chart-card:hover::after,
+.login-gateway--reference .login-gateway__chart-card:focus-visible::after,
+.login-gateway--reference .login-gateway__chart-card[data-active=true]::after {
+  opacity: .72;
+  transform: scaleX(1);
+}
+
+.login-gateway--reference .login-gateway__provider-note {
+  margin-inline: 12px 4px;
+  padding-inline: 4px;
+  border: 0;
+  background: transparent;
+  box-shadow: none !important;
+}

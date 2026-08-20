@@ -57,6 +57,13 @@ interface LiveMarketPayload {
   instruments: LiveMarketInstrument[];
 }
 
+const demoMarketInstruments: LiveMarketInstrument[] = [
+  { symbol: "XAU/USD", price: 2431.2, percentChange: 0.8, series: [2398, 2405, 2412, 2408, 2420, 2431.2], datetime: null },
+  { symbol: "WTI/USD", price: 78.4, percentChange: 0.35, series: [76.8, 77.2, 76.9, 77.8, 78.1, 78.4], datetime: null },
+  { symbol: "BTC/USD", price: 61220, percentChange: 1.1, series: [59800, 60200, 60700, 60500, 61000, 61220], datetime: null },
+  { symbol: "DXY", price: 102.7, percentChange: -0.2, series: [103.2, 103, 102.9, 103.1, 102.8, 102.7], datetime: null },
+];
+
 const analyticsColors = ["#28d9dc", "#3b9fc9", "#dbc06b", "#62ce96", "#8c9da0"] as const;
 
 function linePoints(values: readonly number[]) {
@@ -255,22 +262,24 @@ export function LoginGateway({ locale, languageLabel, labels }: LoginGatewayProp
     }
   }, [state]);
 
-  const unavailable = ar ? "غير متاح" : "Unavailable";
-  const disconnected = ar ? "مزود غير متصل" : "Provider disconnected";
   const connected = market?.state === "live" || market?.state === "stale";
+  const demo = !connected;
+  const displayInstruments = connected ? market.instruments : demoMarketInstruments;
+  const displayState = connected ? market.state : "demo";
   const liveStatus = market?.state === "live"
     ? (ar ? "مباشر" : "Live")
     : market?.state === "stale"
       ? (ar ? "بيانات متأخرة" : "Stale data")
-      : market?.state === "error"
-        ? (ar ? "خطأ في المصدر" : "Provider error")
-        : disconnected;
-  const series = market?.instruments.map((instrument) => instrument.series) ?? [];
+      : (ar ? "بيانات تجريبية" : "Demo data");
+  const series = displayInstruments.map((instrument) => instrument.series);
   const primarySeries = series[activeMetric] ?? [];
   const comparisonSeries = series[(activeMetric + 1) % Math.max(series.length, 1)] ?? [];
-  const changes = market?.instruments.map((instrument) => Math.abs(instrument.percentChange ?? 0) + 0.1) ?? [];
-  const prices = market?.instruments.map((instrument) => instrument.price) ?? [];
+  const changes = displayInstruments.map((instrument) => Math.abs(instrument.percentChange ?? 0) + 0.1);
+  const prices = displayInstruments.map((instrument) => instrument.price);
   const formatPrice = (value: number) => new Intl.NumberFormat(locale === "ar" ? "ar-SA" : "en-US", { maximumFractionDigits: 2 }).format(value);
+  const formatPercentChange = (value: number | null | undefined, digits = 2) => value == null
+    ? "—"
+    : `${value >= 0 ? "+" : ""}${value.toFixed(digits)}%`;
 
   return (
     <main className="login-gateway login-gateway--reference">
@@ -334,17 +343,18 @@ export function LoginGateway({ locale, languageLabel, labels }: LoginGatewayProp
 
           <section
             className="login-gateway__status gateway-glass"
+            data-market-state={displayState}
             aria-label={ar ? "موجز الأسواق" : "Market brief"}
           >
             <div className="login-gateway__news-line">
-              <span>{ar ? "آخر أخبار الأعمال والاستثمار" : "Latest business and investment news"}</span>
-              <strong>—</strong>
+              <span>{ar ? "نبض الأسواق العالمية" : "Global market pulse"}</span>
+              <strong>{formatPercentChange(displayInstruments[2]?.percentChange)}</strong>
               <em>{liveStatus}</em>
             </div>
             <div className="login-gateway__news-line login-gateway__news-line--secondary">
               <span>{ar ? "مؤشر الأسواق المحلية" : "Local market ticker"}</span>
-              <strong>{market?.instruments[0]?.percentChange == null ? "—" : `${market.instruments[0].percentChange >= 0 ? "+" : ""}${market.instruments[0].percentChange.toFixed(2)}%`}</strong>
-              <em>{connected ? market?.instruments[0]?.symbol : unavailable}</em>
+              <strong>{formatPercentChange(displayInstruments[0]?.percentChange)}</strong>
+              <em>{demo ? (ar ? "تجريبي" : "Demo") : displayInstruments[0]?.symbol}</em>
             </div>
           </section>
 
@@ -360,10 +370,6 @@ export function LoginGateway({ locale, languageLabel, labels }: LoginGatewayProp
 
           <div className="login-gateway__monitor-grid">
             <section className="login-gateway__opportunities">
-              <header>
-                <h1>{ar ? "فرص الأعمال العالمية" : "Global Business Opportunities"}</h1>
-                <p>{ar ? "مصادر الفرص المباشرة غير متصلة" : "Live opportunity providers are disconnected"}</p>
-              </header>
               <div className="login-gateway__opportunity-map">
                 <Image
                   src="/assets/world-network-map-transparent-2560x1440.png"
@@ -380,13 +386,13 @@ export function LoginGateway({ locale, languageLabel, labels }: LoginGatewayProp
                 <div className="login-gateway__map-data-state" data-testid="map-activity-state">
                   <Icon name="activity" />
                   <span>
-                    <strong>{ar ? "تصور بصري فقط" : "Visual concept only"}</strong>
-                    <small>{ar ? "لا توجد بيانات نشاط جغرافي متصلة" : "No geographic activity data connected"}</small>
+                    <strong>{demo ? (ar ? "مؤشرات جغرافية تجريبية" : "Demo geographic indicators") : (ar ? "مؤشرات جغرافية مباشرة" : "Live geographic indicators")}</strong>
+                    <small>{demo ? (ar ? "ليست بيانات نشاط حقيقية" : "Not real activity data") : (ar ? "مصدر البيانات متصل" : "Data provider connected")}</small>
                   </span>
                 </div>
                 <div className="login-gateway__map-unavailable">
                   <Icon name="globe" />
-                  <span>{unavailable}</span>
+                  <span>{demo ? (ar ? "تجريبي" : "Demo") : (ar ? "مباشر" : "Live")}</span>
                 </div>
               </div>
 
@@ -394,50 +400,62 @@ export function LoginGateway({ locale, languageLabel, labels }: LoginGatewayProp
                 ref={gatewayRef}
                 type="button"
                 className="login-gateway__entry-button"
-                onClick={() => setState("login")}
+                onClick={() => setState((current) => current === "login" ? "initial" : "login")}
+                aria-controls="login-gateway-panel"
+                aria-expanded={state === "login"}
+                aria-label={state === "login"
+                  ? (ar ? "إخفاء شاشة تسجيل الدخول" : "Hide the sign-in screen")
+                  : (ar ? "إظهار شاشة تسجيل الدخول" : "Show the sign-in screen")}
+                data-active={state === "login"}
                 data-testid="jenan-entry-gateway"
               >
                 <Icon name="user" />
-                <span><strong>{ar ? "اضغط لفتح شاشة الدخول" : "Open the sign-in screen"}</strong><small>{ar ? "دخول آمن" : "Secure access"}</small></span>
+                <span>
+                  <strong>{state === "login"
+                    ? (ar ? "اضغط لإخفاء شاشة الدخول" : "Hide the sign-in screen")
+                    : (ar ? "اضغط لفتح شاشة الدخول" : "Open the sign-in screen")}</strong>
+                  <small>{ar ? "دخول آمن" : "Secure access"}</small>
+                </span>
               </button>
             </section>
 
-            <aside className="login-gateway__activity login-gateway__analytics gateway-glass" data-market-state={market?.state ?? "disconnected"}>
+            <aside className="login-gateway__activity login-gateway__analytics gateway-glass" data-market-state={displayState}>
               <header>
                 <h2>{ar ? "مؤشرات الأعمال العالمية" : "Global Business Indicators"}</h2>
-                <p>{ar ? "مصادر البيانات المباشرة" : "Live data sources"}</p>
+                <p>{demo ? (ar ? "بيانات تجريبية حتى ربط API" : "Demo data until API connection") : (ar ? "مصادر البيانات المباشرة" : "Live data sources")}</p>
               </header>
               <div className="login-gateway__analytics-grid">
                 <article className="login-gateway__chart-card" data-active={activeMetric === 0} tabIndex={0} role="button" aria-pressed={activeMetric === 0} onFocus={() => setActiveMetric(0)} onMouseEnter={() => setActiveMetric(0)} onClick={() => setActiveMetric(0)}>
                   <h3>{ar ? "الإيرادات" : "Revenue"}</h3>
                   <RevenueGraphic locale={locale} values={changes} label={`${ar ? "مزيج حركة السوق" : "Market movement mix"}: ${liveStatus}`} />
-                  <small>{connected ? liveStatus : unavailable}</small>
+                  <small>{liveStatus}</small>
                 </article>
                 <article className="login-gateway__chart-card" data-active={activeMetric === 1} tabIndex={0} role="button" aria-pressed={activeMetric === 1} onFocus={() => setActiveMetric(1)} onMouseEnter={() => setActiveMetric(1)} onClick={() => setActiveMetric(1)}>
                   <h3>{ar ? "اتجاه الأداء" : "Performance trend"}</h3>
                   <TrendGraphic values={primarySeries} comparison={comparisonSeries} label={`${ar ? "اتجاه الأداء" : "Performance trend"}: ${liveStatus}`} />
-                  <small>{connected ? market?.instruments[activeMetric]?.symbol : unavailable}</small>
+                  <small>{displayInstruments[activeMetric]?.symbol} · {demo ? (ar ? "تجريبي" : "Demo") : liveStatus}</small>
                 </article>
                 <article className="login-gateway__chart-card" data-active={activeMetric === 2} tabIndex={0} role="button" aria-pressed={activeMetric === 2} onFocus={() => setActiveMetric(2)} onMouseEnter={() => setActiveMetric(2)} onClick={() => setActiveMetric(2)}>
                   <h3>{ar ? "نمو الأعمال" : "Business growth"}</h3>
                   <GrowthGraphic values={primarySeries} label={`${ar ? "زخم السوق" : "Market momentum"}: ${liveStatus}`} />
-                  <small>{connected ? liveStatus : unavailable}</small>
+                  <small>{liveStatus}</small>
                 </article>
                 <article className="login-gateway__chart-card" data-active={activeMetric === 3} tabIndex={0} role="button" aria-pressed={activeMetric === 3} onFocus={() => setActiveMetric(3)} onMouseEnter={() => setActiveMetric(3)} onClick={() => setActiveMetric(3)}>
                   <h3>{ar ? "موقع السوق" : "Market position"}</h3>
                   <MarketGraphic values={prices} comparison={changes} label={`${ar ? "موقع السوق" : "Market position"}: ${liveStatus}`} />
-                  <small>{connected ? liveStatus : unavailable}</small>
+                  <small>{liveStatus}</small>
                 </article>
               </div>
               <div className="login-gateway__provider-note">
                 <Icon name="activity" />
-                <span><strong>{market?.state === "live" ? (ar ? "البيانات المباشرة متصلة" : "Live data connected") : market?.state === "stale" ? (ar ? "آخر بيانات موثوقة" : "Last trusted snapshot") : (ar ? "البيانات المباشرة غير متاحة" : "Live data unavailable")}</strong><small>{market?.updatedAt ? `${liveStatus} · ${new Date(market.updatedAt).toLocaleTimeString(locale === "ar" ? "ar-SA" : "en-US")}` : liveStatus}</small></span>
+                <span><strong>{market?.state === "live" ? (ar ? "البيانات المباشرة متصلة" : "Live data connected") : market?.state === "stale" ? (ar ? "آخر بيانات موثوقة" : "Last trusted snapshot") : (ar ? "جميع الأرقام والمؤشرات تجريبية" : "All figures and indicators are demo data")}</strong><small>{market?.updatedAt && connected ? `${liveStatus} · ${new Date(market.updatedAt).toLocaleTimeString(locale === "ar" ? "ar-SA" : "en-US")}` : (ar ? "سيتم استبدالها تلقائيًا بعد ربط API" : "They will be replaced automatically after API connection")}</small></span>
               </div>
             </aside>
           </div>
 
           {state === "login" && (
             <section
+              id="login-gateway-panel"
               ref={loginPanelRef}
               className="login-gateway__login-panel gateway-glass"
               role="dialog"
@@ -470,10 +488,10 @@ export function LoginGateway({ locale, languageLabel, labels }: LoginGatewayProp
           </div>
           {marketItems.map(([arabic, english], index) => (
             <div className="login-gateway__ticker-item" key={english}>
-              <span className="login-gateway__ticker-orb">{market?.instruments[index]?.percentChange == null ? "—" : `${market.instruments[index].percentChange >= 0 ? "+" : ""}${market.instruments[index].percentChange.toFixed(1)}%`}</span>
+              <span className="login-gateway__ticker-orb">{formatPercentChange(displayInstruments[index]?.percentChange, 1)}</span>
               <b>{ar ? arabic : english}</b>
-              <strong data-value={market?.instruments[index]?.price ?? undefined}>{market?.instruments[index] ? formatPrice(market.instruments[index].price) : "—"}</strong>
-              <small>{connected ? market?.instruments[index]?.symbol : unavailable}</small>
+              <strong data-value={displayInstruments[index]?.price ?? undefined}>{displayInstruments[index] ? formatPrice(displayInstruments[index].price) : "—"}</strong>
+              <small>{displayInstruments[index]?.symbol} · {demo ? (ar ? "تجريبي" : "Demo") : liveStatus}</small>
             </div>
           ))}
         </footer>

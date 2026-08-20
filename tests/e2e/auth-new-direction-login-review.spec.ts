@@ -38,17 +38,22 @@ test("captures the initial gateway and expanded login state", async ({ page }) =
   await expect(page.locator(".login-gateway__activity")).toBeVisible();
   await expect(page.locator(".login-gateway__services")).toHaveCount(0);
   await expect(page.locator(".login-gateway__opportunities")).toBeVisible();
+  await expect(page.getByText("فرص الأعمال العالمية")).toHaveCount(0);
   await expect(page.locator(".login-gateway__opportunities")).toHaveCSS("border-top-width", "0px");
   await expect(page.locator(".login-gateway__opportunity-map")).toHaveCSS("border-top-width", "0px");
-  await expect(page.getByTestId("map-activity-state")).toContainText("تصور بصري فقط");
-  await expect(page.getByTestId("map-activity-state")).toContainText("لا توجد بيانات نشاط جغرافي متصلة");
+  await expect(page.getByTestId("map-activity-state")).toContainText("مؤشرات جغرافية تجريبية");
+  await expect(page.getByTestId("map-activity-state")).toContainText("ليست بيانات نشاط حقيقية");
   await expect(page.locator(".login-gateway__analytics")).toBeVisible();
+  await expect(page.locator(".login-gateway__analytics")).toHaveCSS("border-top-width", "0px");
+  await expect(page.locator(".login-gateway__analytics")).toHaveAttribute("data-market-state", "demo");
+  await expect(page.locator(".login-gateway__provider-note")).toContainText("جميع الأرقام والمؤشرات تجريبية");
   await expect(page.locator(".login-gateway__analytics img")).toHaveCount(0);
   await expect(page.locator(".login-gateway__analytics .login-gateway__chart-card")).toHaveCount(4);
   await expect(page.locator(".login-gateway__analytics-svg")).toHaveCount(4);
-  await expect(page.locator(".login-gateway__analytics-svg .analytics-svg__series")).toHaveCount(0);
-  await expect(page.locator(".login-gateway__analytics-svg .analytics-svg__bars rect")).toHaveCount(0);
-  await expect(page.locator(".login-gateway__analytics-svg polygon")).toHaveCount(0);
+  await expect(page.locator(".login-gateway__analytics-svg .analytics-svg__series")).toHaveCount(2);
+  await expect(page.locator(".login-gateway__analytics-svg .analytics-svg__bars rect")).toHaveCount(5);
+  await expect(page.locator(".login-gateway__analytics-svg polygon")).toHaveCount(2);
+  await expect(page.locator(".login-gateway__ticker-item strong").first()).toHaveAttribute("data-value", "2431.2");
   await expect(page.locator(".login-gateway__circuit-board")).toBeVisible();
   const metricCards = page.locator(".login-gateway__chart-card");
   await expect(metricCards.nth(0)).toHaveAttribute("data-active", "true");
@@ -82,6 +87,7 @@ test("captures the initial gateway and expanded login state", async ({ page }) =
 
   await page.getByTestId("jenan-entry-gateway").press("Enter");
   await expect(page.getByTestId("login-expanded")).toBeVisible();
+  await expect(page.getByTestId("jenan-entry-gateway")).toHaveAttribute("aria-expanded", "true");
   await expect(page.locator('input[name="email"]')).toBeFocused();
   await page.getByTestId("login-expanded").evaluate(async (element) => {
     await Promise.all(element.getAnimations().map((animation) => animation.finished));
@@ -93,6 +99,12 @@ test("captures the initial gateway and expanded login state", async ({ page }) =
 
   await page.getByTestId("close-login").click();
   await expect(page.getByTestId("jenan-entry-gateway")).toBeVisible();
+  await expect(page.getByTestId("jenan-entry-gateway")).toHaveAttribute("aria-expanded", "false");
+
+  await page.getByTestId("jenan-entry-gateway").click();
+  await expect(page.getByTestId("login-expanded")).toBeVisible();
+  await page.getByTestId("jenan-entry-gateway").click();
+  await expect(page.getByTestId("login-expanded")).toHaveCount(0);
   await expect(page).toHaveURL(/\/login$/);
 });
 
