@@ -64,8 +64,6 @@ const demoMarketInstruments: LiveMarketInstrument[] = [
   { symbol: "DXY", price: 102.7, percentChange: -0.2, series: [103.2, 103, 102.9, 103.1, 102.8, 102.7], datetime: null },
 ];
 
-const analyticsColors = ["#28d9dc", "#3b9fc9", "#dbc06b", "#62ce96", "#8c9da0"] as const;
-
 function linePoints(values: readonly number[]) {
   if (!values.length) return "";
   const maximum = Math.max(...values, 1);
@@ -78,59 +76,21 @@ function linePoints(values: readonly number[]) {
     .join(" ");
 }
 
-function radarPoints(values: readonly number[]) {
-  if (values.length < 3) return "";
-  const maximum = Math.max(...values, 1);
-  return values
-    .map((value, index) => {
-      const angle = -Math.PI / 2 + (Math.PI * 2 * index) / values.length;
-      const radius = 50 * (value / maximum);
-      return `${(110 + Math.cos(angle) * radius).toFixed(1)},${(72 + Math.sin(angle) * radius).toFixed(1)}`;
-    })
-    .join(" ");
-}
-
-function RevenueGraphic({ label, values, locale = "ar" }: AnalyticsGraphicProps) {
-  const radius = 44;
-  const circumference = Math.PI * 2 * radius;
-  const total = values?.reduce((sum, value) => sum + Math.max(value, 0), 0) ?? 0;
-  let segmentOffset = 0;
+function RevenueGraphic({ label, values }: AnalyticsGraphicProps) {
+  const points = values ? linePoints(values) : "";
+  const areaPoints = points ? `30,116 ${points} 207,116` : "";
   return (
     <svg className="login-gateway__analytics-svg" viewBox="0 0 220 145" role="img" aria-label={label}>
       <defs>
-        <filter id="revenue-glow" x="-40%" y="-40%" width="180%" height="180%">
-          <feGaussianBlur stdDeviation="2.6" result="blur" />
-          <feMerge><feMergeNode in="blur" /><feMergeNode in="SourceGraphic" /></feMerge>
-        </filter>
+        <linearGradient id="distribution-fill" x1="0" y1="0" x2="0" y2="1"><stop stopColor="#48cce8" stopOpacity=".22" /><stop offset="1" stopColor="#48cce8" stopOpacity="0" /></linearGradient>
       </defs>
-      <g transform="translate(72 72) rotate(-90)" fill="none" strokeWidth="12">
-        <circle r="44" stroke="rgba(123,166,178,.2)" />
-        {total > 0 && values?.map((value, index) => {
-          const length = (Math.max(value, 0) / total) * circumference;
-          const dashOffset = -segmentOffset;
-          segmentOffset += length;
-          return (
-            <circle
-              key={`${index}-${value}`}
-              r={radius}
-              stroke={analyticsColors[index % analyticsColors.length]}
-              strokeDasharray={`${Math.max(length - 3, 0)} ${circumference}`}
-              strokeDashoffset={dashOffset}
-              filter={index === 0 ? "url(#revenue-glow)" : undefined}
-            />
-          );
-        })}
+      <g className="analytics-svg__grid">
+        <path d="M28 22H208M28 52H208M28 82H208M28 112H208" />
+        <path d="M28 18V116H210" className="analytics-svg__axis" />
       </g>
-      <circle cx="72" cy="72" r="28" fill="#0b1b24" stroke="rgba(134,194,207,.35)" />
-      {total === 0 && <text x="72" y="78" textAnchor="middle" className="analytics-svg__empty">—</text>}
-      {total > 0 && (
-        <g className="analytics-svg__legend" transform="translate(140 34)">
-          <circle cx="0" cy="0" r="4" fill="#28d9dc" /><text x="12" y="4">{locale === "ar" ? "الإيرادات" : "Revenue"}</text>
-          <circle cx="0" cy="24" r="4" fill="#dbc06b" /><text x="12" y="28">{locale === "ar" ? "الهدف" : "Target"}</text>
-          <circle cx="0" cy="48" r="4" fill="#62ce96" /><text x="12" y="52">{locale === "ar" ? "النمو" : "Growth"}</text>
-          <circle cx="0" cy="72" r="4" fill="#3b9fc9" /><text x="12" y="76">{locale === "ar" ? "السوق" : "Market"}</text>
-        </g>
-      )}
+      {areaPoints && <polygon points={areaPoints} fill="url(#distribution-fill)" stroke="none" />}
+      {points && <polyline points={points} className="analytics-svg__series analytics-svg__series--cyan" />}
+      {!points && <text x="118" y="74" textAnchor="middle" className="analytics-svg__empty">—</text>}
     </svg>
   );
 }
@@ -197,19 +157,17 @@ function GrowthGraphic({ label, values }: AnalyticsGraphicProps) {
 }
 
 function MarketGraphic({ label, values, comparison }: AnalyticsGraphicProps) {
-  const primaryPolygon = values ? radarPoints(values) : "";
-  const comparisonPolygon = comparison ? radarPoints(comparison) : "";
+  const primaryPoints = values ? linePoints(values) : "";
+  const comparisonPoints = comparison ? linePoints(comparison) : "";
   return (
     <svg className="login-gateway__analytics-svg" viewBox="0 0 220 145" role="img" aria-label={label}>
-      <g transform="translate(110 72)" fill="none">
-        <circle r="52" stroke="rgba(91,193,212,.24)" />
-        <circle r="35" stroke="rgba(91,193,212,.24)" />
-        <circle r="18" stroke="rgba(218,186,98,.26)" />
-        <path d="M0-57V57M-57 0H57M-40-40L40 40M40-40L-40 40" stroke="rgba(112,181,198,.28)" />
+      <g className="analytics-svg__grid">
+        <path d="M28 22H208M28 52H208M28 82H208M28 112H208" />
+        <path d="M28 18V116H210" className="analytics-svg__axis" />
       </g>
-      {primaryPolygon && <polygon points={primaryPolygon} fill="rgba(47,167,197,.16)" stroke="#45bed4" strokeWidth="2" />}
-      {comparisonPolygon && <polygon points={comparisonPolygon} fill="rgba(220,188,99,.14)" stroke="#d8bc67" strokeWidth="1.5" />}
-      {!primaryPolygon && !comparisonPolygon && (
+      {primaryPoints && <polyline points={primaryPoints} className="analytics-svg__series analytics-svg__series--cyan" />}
+      {comparisonPoints && <polyline points={comparisonPoints} className="analytics-svg__series analytics-svg__series--gold" />}
+      {!primaryPoints && !comparisonPoints && (
         <><rect x="82" y="54" width="56" height="34" rx="8" className="analytics-svg__empty-box" /><text x="110" y="77" textAnchor="middle" className="analytics-svg__empty">—</text></>
       )}
     </svg>
@@ -426,24 +384,24 @@ export function LoginGateway({ locale, languageLabel, labels }: LoginGatewayProp
               </header>
               <div className="login-gateway__analytics-grid">
                 <article className="login-gateway__chart-card" data-active={activeMetric === 0} tabIndex={0} role="button" aria-pressed={activeMetric === 0} onFocus={() => setActiveMetric(0)} onMouseEnter={() => setActiveMetric(0)} onClick={() => setActiveMetric(0)}>
-                  <h3>{ar ? "الإيرادات" : "Revenue"}</h3>
-                  <RevenueGraphic locale={locale} values={changes} label={`${ar ? "مزيج حركة السوق" : "Market movement mix"}: ${liveStatus}`} />
-                  <small>{liveStatus}</small>
+                  <div className="login-gateway__metric-heading"><h3>{ar ? "توزيع الحركة" : "Movement mix"}</h3><span><strong>{formatPrice(displayInstruments[0]?.price ?? 0)}</strong><em>{formatPercentChange(displayInstruments[0]?.percentChange)}</em></span></div>
+                  <RevenueGraphic values={changes} label={`${ar ? "مزيج حركة السوق" : "Market movement mix"}: ${liveStatus}`} />
+                  <small>{displayInstruments[0]?.symbol} · {liveStatus}</small>
                 </article>
                 <article className="login-gateway__chart-card" data-active={activeMetric === 1} tabIndex={0} role="button" aria-pressed={activeMetric === 1} onFocus={() => setActiveMetric(1)} onMouseEnter={() => setActiveMetric(1)} onClick={() => setActiveMetric(1)}>
-                  <h3>{ar ? "اتجاه الأداء" : "Performance trend"}</h3>
+                  <div className="login-gateway__metric-heading"><h3>{ar ? "اتجاه الأداء" : "Performance trend"}</h3><span><strong>{formatPrice(displayInstruments[activeMetric]?.price ?? 0)}</strong><em>{formatPercentChange(displayInstruments[activeMetric]?.percentChange)}</em></span></div>
                   <TrendGraphic values={primarySeries} comparison={comparisonSeries} label={`${ar ? "اتجاه الأداء" : "Performance trend"}: ${liveStatus}`} />
                   <small>{displayInstruments[activeMetric]?.symbol} · {demo ? (ar ? "تجريبي" : "Demo") : liveStatus}</small>
                 </article>
                 <article className="login-gateway__chart-card" data-active={activeMetric === 2} tabIndex={0} role="button" aria-pressed={activeMetric === 2} onFocus={() => setActiveMetric(2)} onMouseEnter={() => setActiveMetric(2)} onClick={() => setActiveMetric(2)}>
-                  <h3>{ar ? "نمو الأعمال" : "Business growth"}</h3>
+                  <div className="login-gateway__metric-heading"><h3>{ar ? "زخم الأصول" : "Asset momentum"}</h3><span><strong>{formatPrice(displayInstruments[2]?.price ?? 0)}</strong><em>{formatPercentChange(displayInstruments[2]?.percentChange)}</em></span></div>
                   <GrowthGraphic values={primarySeries} label={`${ar ? "زخم السوق" : "Market momentum"}: ${liveStatus}`} />
-                  <small>{liveStatus}</small>
+                  <small>{displayInstruments[2]?.symbol} · {liveStatus}</small>
                 </article>
                 <article className="login-gateway__chart-card" data-active={activeMetric === 3} tabIndex={0} role="button" aria-pressed={activeMetric === 3} onFocus={() => setActiveMetric(3)} onMouseEnter={() => setActiveMetric(3)} onClick={() => setActiveMetric(3)}>
-                  <h3>{ar ? "موقع السوق" : "Market position"}</h3>
+                  <div className="login-gateway__metric-heading"><h3>{ar ? "توازن السوق" : "Market balance"}</h3><span><strong>{formatPrice(displayInstruments[3]?.price ?? 0)}</strong><em>{formatPercentChange(displayInstruments[3]?.percentChange)}</em></span></div>
                   <MarketGraphic values={prices} comparison={changes} label={`${ar ? "موقع السوق" : "Market position"}: ${liveStatus}`} />
-                  <small>{liveStatus}</small>
+                  <small>{displayInstruments[3]?.symbol} · {liveStatus}</small>
                 </article>
               </div>
               <div className="login-gateway__provider-note">

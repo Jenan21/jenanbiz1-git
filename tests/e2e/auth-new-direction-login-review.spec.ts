@@ -50,9 +50,9 @@ test("captures the initial gateway and expanded login state", async ({ page }) =
   await expect(page.locator(".login-gateway__analytics img")).toHaveCount(0);
   await expect(page.locator(".login-gateway__analytics .login-gateway__chart-card")).toHaveCount(4);
   await expect(page.locator(".login-gateway__analytics-svg")).toHaveCount(4);
-  await expect(page.locator(".login-gateway__analytics-svg .analytics-svg__series")).toHaveCount(2);
+  await expect(page.locator(".login-gateway__analytics-svg .analytics-svg__series")).toHaveCount(5);
   await expect(page.locator(".login-gateway__analytics-svg .analytics-svg__bars rect")).toHaveCount(5);
-  await expect(page.locator(".login-gateway__analytics-svg polygon")).toHaveCount(2);
+  await expect(page.locator(".login-gateway__analytics-svg polygon")).toHaveCount(1);
   await expect(page.locator(".login-gateway__ticker-item strong").first()).toHaveAttribute("data-value", "2431.2");
   await expect(page.locator(".login-gateway__circuit-board")).toBeVisible();
   const metricCards = page.locator(".login-gateway__chart-card");
@@ -155,9 +155,9 @@ test("renders a live provider snapshot without production fallback data", async 
   await page.goto("/login");
   await expect(page.locator(".login-gateway__analytics")).toHaveAttribute("data-market-state", "live");
   await expect(page.locator(".login-gateway__provider-note")).toContainText("البيانات المباشرة متصلة");
-  await expect(page.locator(".analytics-svg__series")).toHaveCount(2);
+  await expect(page.locator(".analytics-svg__series")).toHaveCount(5);
   await expect(page.locator(".analytics-svg__bars rect")).toHaveCount(5);
-  await expect(page.locator(".login-gateway__analytics-svg polygon")).toHaveCount(2);
+  await expect(page.locator(".login-gateway__analytics-svg polygon")).toHaveCount(1);
   await expect(page.locator(".login-gateway__ticker-item strong").first()).toHaveAttribute("data-value", "2431.2");
 });
 
