@@ -3,6 +3,7 @@ import { cookies, headers } from "next/headers";
 import type { ReactNode } from "react";
 import { getDirection, resolveLocale } from "@/lib/i18n";
 import "@/styles/globals.css";
+import "@/styles/internal-workspace.css";
 
 export const metadata: Metadata = {
   title: { default: "Jenan BIZ", template: "%s | Jenan BIZ" },

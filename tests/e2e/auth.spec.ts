@@ -49,6 +49,7 @@ test.describe.serial("real authentication and server-side RBAC", () => {
       "/software/robotics",
       "/software/robotics/j-restro-bot",
       "/funding-eligibility",
+      "/programs",
       "/marketing",
       "/account",
       "/pricing",

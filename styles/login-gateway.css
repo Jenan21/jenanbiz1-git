@@ -534,6 +534,16 @@ html[data-theme=light] .login-gateway{color:#09203e;background:#dceafa}html[data
   margin-top: -7px;
 }
 
+.login-gateway--reference .login-gateway__brand::after,
+.login-gateway--reference .login-gateway__brand img {
+  transform: translateX(-38px);
+}
+
+.login-gateway--reference .login-gateway__brand::after {
+  opacity: .72;
+  background: linear-gradient(145deg, #a7f7f3 4%, #61ddd9 38%, #45b9cb 70%, #67cf98 100%);
+}
+
 .login-gateway--reference .login-gateway__brand img {
   filter:
     grayscale(0.1)
@@ -863,6 +873,82 @@ html[data-theme=light] .login-gateway{color:#09203e;background:#dceafa}html[data
   inset: auto;
   transform: none;
   align-self: center;
+}
+
+/* Original-reference live routes and performance graphics. */
+.login-gateway--reference .login-gateway__map-network {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  overflow: visible;
+}
+
+.login-gateway--reference .map-route {
+  stroke: url(#map-route-cyan);
+  stroke-width: 1.45;
+  stroke-linecap: round;
+  stroke-dasharray: 7 8;
+  opacity: .58;
+  animation: mapRouteFlow 8s linear infinite;
+}
+
+.login-gateway--reference .map-route--green {
+  stroke: #63d79c;
+  opacity: .42;
+  animation-duration: 10s;
+}
+
+.login-gateway--reference .map-route--gold {
+  stroke: url(#map-route-gold);
+  opacity: .58;
+  animation-duration: 12s;
+}
+
+.login-gateway--reference .map-route--long {
+  stroke-width: 1.1;
+  stroke-dasharray: 4 11;
+  opacity: .38;
+}
+
+.login-gateway--reference .analytics-svg__series--green {
+  stroke: var(--gateway-green);
+  fill: none;
+  filter: drop-shadow(0 0 3px rgba(98, 213, 150, .44));
+}
+
+.login-gateway--reference .analytics-svg__endpoint {
+  stroke: rgba(236, 255, 255, .85);
+  stroke-width: 1.1;
+}
+
+.login-gateway--reference .analytics-svg__endpoint--cyan {
+  fill: var(--gateway-blue-bright);
+  filter: drop-shadow(0 0 5px rgba(120, 230, 255, .78));
+}
+
+.login-gateway--reference .analytics-svg__endpoint--green {
+  fill: var(--gateway-green);
+  filter: drop-shadow(0 0 5px rgba(98, 213, 150, .72));
+}
+
+.login-gateway--reference .login-gateway__analytics-svg polygon[stroke="#45bed4"] {
+  filter: drop-shadow(0 0 3px rgba(69, 190, 212, .34));
+}
+
+.login-gateway--reference .login-gateway__chart-card[data-active=true] .login-gateway__analytics-svg {
+  opacity: 1;
+  filter: saturate(.98) contrast(1.08) drop-shadow(0 0 4px rgba(80, 201, 225, .08));
+}
+
+@keyframes mapRouteFlow {
+  to { stroke-dashoffset: -120; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .login-gateway--reference .map-route { animation: none; }
 }
 
 .login-gateway--reference .login-gateway__entry-button {
@@ -1218,6 +1304,303 @@ html[data-theme=light] .login-gateway{color:#09203e;background:#dceafa}html[data
     width: 50px;
     height: 50px;
   }
+}
+
+/* Contextual access control requested for the map: login on the right,
+   account creation on the left, integrated below Africa. */
+.login-gateway--reference .login-gateway__access-switch {
+  position: absolute;
+  z-index: 12;
+  left: 49%;
+  bottom: 57px;
+  width: min(410px, 66%);
+  height: 58px;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  direction: rtl;
+  overflow: hidden;
+  border: 1px solid rgba(139, 224, 228, .62);
+  border-radius: 13px;
+  background:
+    radial-gradient(circle at 50% 0, rgba(83, 221, 218, .18), transparent 60%),
+    linear-gradient(180deg, rgba(23, 72, 87, .90), rgba(7, 35, 51, .94));
+  box-shadow:
+    inset 0 1px rgba(234, 255, 255, .16),
+    inset 0 0 24px rgba(61, 202, 210, .07),
+    0 8px 22px rgba(0, 8, 18, .40),
+    0 0 16px rgba(53, 207, 218, .18);
+  backdrop-filter: blur(7px);
+  transform: translateX(-50%);
+}
+
+.login-gateway--reference .login-gateway__access-switch::before {
+  content: "";
+  position: absolute;
+  z-index: 2;
+  top: 9px;
+  bottom: 9px;
+  left: 50%;
+  width: 1px;
+  pointer-events: none;
+  background: linear-gradient(transparent, rgba(226, 199, 111, .72), transparent);
+  box-shadow: 0 0 8px rgba(226, 199, 111, .35);
+}
+
+.login-gateway--reference .login-gateway__access-button {
+  position: relative;
+  min-width: 0;
+  border: 0;
+  color: #e9f8f7;
+  background: transparent;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  font: inherit;
+  font-size: 17px;
+  font-weight: 680;
+  letter-spacing: .01em;
+  cursor: pointer;
+  text-shadow: 0 1px 3px rgba(0, 0, 0, .72);
+  transition: color 160ms ease, background 160ms ease, box-shadow 160ms ease;
+}
+
+.login-gateway--reference .login-gateway__access-button > .icon {
+  width: 21px;
+  height: 21px;
+  color: #79e3df;
+  filter: drop-shadow(0 0 5px rgba(71, 220, 219, .46));
+}
+
+.login-gateway--reference .login-gateway__access-button--register > .icon {
+  color: #e3c873;
+  filter: drop-shadow(0 0 5px rgba(226, 199, 111, .42));
+}
+
+.login-gateway--reference .login-gateway__access-button:hover,
+.login-gateway--reference .login-gateway__access-button:focus-visible,
+.login-gateway--reference .login-gateway__access-button[data-active="true"] {
+  color: #fff;
+  outline: 0;
+  background:
+    radial-gradient(circle at 50% 0, rgba(110, 232, 226, .25), transparent 64%),
+    linear-gradient(180deg, rgba(44, 133, 151, .45), rgba(16, 74, 91, .32));
+  box-shadow: inset 0 -2px rgba(104, 224, 221, .66), inset 0 0 20px rgba(58, 209, 212, .12);
+}
+
+.login-gateway--reference .login-gateway__access-button--register:hover,
+.login-gateway--reference .login-gateway__access-button--register:focus-visible,
+.login-gateway--reference .login-gateway__access-button--register[data-active="true"] {
+  box-shadow: inset 0 -2px rgba(226, 199, 111, .76), inset 0 0 20px rgba(226, 199, 111, .10);
+}
+
+.login-gateway--reference .login-gateway__login-panel[data-auth-mode="register"] {
+  top: 50%;
+  height: min(700px, calc(100% - 20px));
+  padding-top: 13px;
+  padding-bottom: 13px;
+  overflow-y: auto;
+}
+
+.login-gateway--reference .login-gateway__login-panel[data-auth-mode="register"] .login-gateway__login-logo {
+  width: 105px;
+  height: 66px;
+}
+
+.login-gateway--reference .login-gateway__login-panel[data-auth-mode="register"] > h2 {
+  font-size: 21px;
+}
+
+.login-gateway--reference .login-gateway__login-panel[data-auth-mode="register"] .auth-form {
+  margin-top: 9px;
+  gap: 8px;
+}
+
+.login-gateway--reference .login-gateway__login-panel[data-auth-mode="register"] .field__control {
+  height: 42px;
+}
+
+/* Market cockpit: three price-responsive gauges plus a truthful liquidity ring. */
+.login-gateway--reference .login-gateway__analytics-grid {
+  grid-template-columns: 1fr 1fr;
+  grid-template-rows: 1fr 1fr;
+  direction: ltr;
+}
+
+.login-gateway--reference .login-gateway__chart-card--liquidity { grid-column: 1; grid-row: 1; }
+.login-gateway--reference .login-gateway__chart-card--metals { grid-column: 2; grid-row: 1; }
+.login-gateway--reference .login-gateway__chart-card--local { grid-column: 1; grid-row: 2; }
+.login-gateway--reference .login-gateway__chart-card--crypto { grid-column: 2; grid-row: 2; }
+
+.login-gateway--reference .login-gateway__chart-card,
+.login-gateway--reference .login-gateway__chart-card:nth-child(2),
+.login-gateway--reference .login-gateway__chart-card:nth-child(3),
+.login-gateway--reference .login-gateway__chart-card:nth-child(4) {
+  transform: none;
+  direction: rtl;
+  grid-template-rows: 40px minmax(0, 1fr) 18px;
+}
+
+.login-gateway--reference .login-gateway__chart-card:first-child .login-gateway__metric-heading,
+.login-gateway--reference .login-gateway__chart-card:not(:first-child) .login-gateway__metric-heading {
+  width: 100%;
+  min-height: 0;
+  display: flex;
+  direction: rtl;
+}
+
+.login-gateway--reference .login-gateway__chart-card .login-gateway__metric-heading h3 {
+  margin-top: 1px;
+  font-size: 16px;
+  line-height: 1.15;
+}
+
+.login-gateway--reference .login-gateway__chart-card .login-gateway__metric-heading strong {
+  font-size: 15px;
+}
+
+.login-gateway--reference .login-gateway__chart-card .login-gateway__metric-heading em {
+  font-size: 10px;
+}
+
+.login-gateway--reference .login-gateway__chart-card .login-gateway__analytics-svg,
+.login-gateway--reference .login-gateway__chart-card:first-child .login-gateway__analytics-svg {
+  width: 100%;
+  height: 100%;
+  transform: none;
+  overflow: visible;
+}
+
+.login-gateway--reference .market-gauge__face {
+  stroke: rgba(146, 207, 218, .20);
+  stroke-width: 1;
+}
+
+.login-gateway--reference .market-gauge__track,
+.login-gateway--reference .market-gauge__value {
+  fill: none;
+  stroke-width: 9;
+  stroke-linecap: round;
+}
+
+.login-gateway--reference .market-gauge__track {
+  stroke: rgba(91, 133, 147, .23);
+}
+
+.login-gateway--reference .market-gauge__ticks line {
+  stroke: rgba(202, 237, 238, .62);
+  stroke-width: 1.4;
+}
+
+.login-gateway--reference .market-gauge__ticks line:first-child,
+.login-gateway--reference .market-gauge__ticks line:last-child {
+  stroke: #e2c66e;
+  stroke-width: 2;
+}
+
+.login-gateway--reference .market-gauge__needle {
+  transform-origin: 110px 106px;
+  transform-box: view-box;
+  filter: drop-shadow(0 0 5px rgba(102, 230, 225, .72));
+  transition: transform 700ms cubic-bezier(.22, .8, .22, 1);
+}
+
+.login-gateway--reference .market-gauge__hub {
+  fill: #0a2635;
+  stroke: rgba(201, 241, 241, .64);
+  stroke-width: 1.5;
+  filter: drop-shadow(0 0 5px rgba(65, 202, 214, .48));
+}
+
+.login-gateway--reference .market-gauge__scale {
+  fill: #6f8f99;
+  font-size: 7px;
+  letter-spacing: .04em;
+}
+
+.login-gateway--reference .market-gauge__score {
+  fill: #dceff0;
+  font-size: 11px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  text-shadow: 0 0 8px rgba(72, 213, 219, .42);
+}
+
+.login-gateway--reference .liquidity-ring__core {
+  fill: rgba(4, 22, 34, .94);
+  stroke: rgba(143, 207, 218, .28);
+  stroke-width: 1.2;
+}
+
+.login-gateway--reference .liquidity-ring__segment {
+  transition: stroke-dasharray 700ms cubic-bezier(.22, .8, .22, 1);
+}
+
+.login-gateway--reference .liquidity-ring__leaders polyline {
+  fill: none;
+  stroke-width: 1;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  opacity: .9;
+  filter: drop-shadow(0 0 2px rgba(121, 218, 221, .42));
+}
+
+.login-gateway--reference .liquidity-ring__leaders text {
+  fill: #dce9e9;
+  font-size: 7.5px;
+  font-weight: 650;
+  font-variant-numeric: tabular-nums;
+  paint-order: stroke;
+  stroke: rgba(7, 28, 41, .88);
+  stroke-width: 1.8px;
+}
+
+.login-gateway--reference .liquidity-ring__total {
+  fill: #eef9f8;
+  font-size: 14px;
+  font-weight: 720;
+}
+
+.login-gateway--reference .liquidity-ring__caption {
+  fill: #7595a0;
+  font-size: 6px;
+  letter-spacing: .12em;
+}
+
+.login-gateway--reference .liquidity-ring__legend text {
+  fill: #d5e5e6;
+  font-size: 8px;
+}
+
+.login-gateway--reference .liquidity-ring__legend .liquidity-ring__percent {
+  fill: #70dca9;
+  font-size: 9px;
+  font-weight: 700;
+}
+
+.login-gateway--reference .login-gateway__chart-card > small {
+  width: 100%;
+  overflow: hidden;
+  color: #819ca5;
+  font-size: 8px;
+  line-height: 1;
+  text-align: center;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .login-gateway--reference .market-gauge__needle,
+  .login-gateway--reference .liquidity-ring__segment {
+    transition: none;
+  }
+}
+
+.login-gateway--reference .login-gateway__brand {
+  width: 168px;
+  height: 108px;
+  margin: 0 12px;
+  align-self: center;
 }
 
 /* Keep the approved 1672x941 composition fully visible at every viewport size. */
@@ -1804,6 +2187,16 @@ html[data-theme=light] .login-gateway{color:#09203e;background:#dceafa}html[data
 .login-gateway--reference .login-gateway__analytics > header h2 {
   text-shadow: 0 0 12px rgba(101, 216, 153, .22);
 }
+
+.login-gateway--reference .login-gateway__analytics > header {
+  width: 100%;
+  grid-template-columns: 1fr;
+  justify-items: center;
+  justify-content: stretch;
+  align-items: center;
+  text-align: center;
+  direction: ltr;
+}
 .login-gateway--reference .login-gateway__ticker {
   border-top-color: rgba(75, 204, 238, .42);
   box-shadow: inset 0 1px rgba(98, 219, 155, .10), 0 -1px rgba(227, 196, 117, .08);
@@ -2032,6 +2425,14 @@ html[lang=en] .login-gateway__map-data-state { direction: ltr; }
   direction: rtl;
 }
 
+.login-gateway--reference .login-gateway__chart-card:first-child .login-gateway__metric-heading {
+  display: none;
+}
+
+.login-gateway--reference .login-gateway__chart-card:not(:first-child) .login-gateway__metric-heading {
+  direction: ltr;
+}
+
 .login-gateway--reference .login-gateway__metric-heading h3 {
   margin: 3px 0 0;
   color: #dcecf2;
@@ -2099,4 +2500,2766 @@ html[lang=en] .login-gateway__map-data-state { direction: ltr; }
   border: 0;
   background: transparent;
   box-shadow: none !important;
+}
+
+/* Final monitor reference: three professional framed zones over one circuit board. */
+.login-gateway--reference .login-gateway__status {
+  border: 1px solid rgba(119, 177, 205, .25);
+  border-radius: 13px;
+  background: linear-gradient(180deg, rgba(20, 43, 61, .92), rgba(6, 24, 39, .94));
+  box-shadow: inset 0 1px rgba(190, 234, 246, .08), 0 8px 22px rgba(0, 4, 12, .34);
+}
+
+.login-gateway--reference .login-gateway__monitor-grid,
+.login-gateway--reference .login-gateway__monitor-grid[dir] {
+  grid-template-columns: 214px minmax(0, 1fr) 445px;
+  gap: 16px;
+  direction: ltr;
+}
+
+.login-gateway--reference .login-gateway__services,
+.login-gateway--reference .login-gateway__opportunities,
+.login-gateway--reference .login-gateway__analytics {
+  min-width: 0;
+  border: 1px solid rgba(145, 205, 218, .42);
+  border-radius: 15px;
+  background:
+    radial-gradient(circle at 50% 0, rgba(68, 146, 169, .11), transparent 36%),
+    linear-gradient(150deg, rgba(20, 49, 68, .88), rgba(5, 24, 39, .92));
+  box-shadow:
+    inset 0 1px rgba(218, 247, 250, .08),
+    inset 0 0 30px rgba(48, 141, 174, .055),
+    0 10px 28px rgba(0, 5, 14, .30),
+    0 0 13px rgba(64, 193, 222, .06);
+  overflow: hidden;
+  direction: rtl;
+}
+
+.login-gateway--reference .login-gateway__services {
+  grid-column: 1;
+  display: grid;
+  grid-template-rows: 58px minmax(0, 1fr);
+  padding: 13px 10px 11px;
+}
+
+.login-gateway--reference .login-gateway__services header {
+  text-align: center;
+}
+
+.login-gateway--reference .login-gateway__services header h2 {
+  margin: 0;
+  color: #edf6f7;
+  font-size: 18px;
+  font-weight: 700;
+  text-shadow: 0 0 10px rgba(102, 221, 239, .28);
+}
+
+.login-gateway--reference .login-gateway__services header p {
+  margin: 2px 0 0;
+  color: #93aeb9;
+  font-size: 9px;
+}
+
+.login-gateway--reference .login-gateway__service-list {
+  margin: 0;
+  display: grid;
+  grid-template-rows: repeat(4, 1fr);
+  gap: 9px;
+  min-height: 0;
+}
+
+.login-gateway--reference .login-gateway__service {
+  min-height: 0;
+  padding: 8px;
+  display: grid;
+  grid-template-columns: 55px minmax(0, 1fr);
+  grid-template-areas: "icon title" "values values";
+  gap: 5px 9px;
+  align-items: center;
+  border: 1px solid rgba(134, 200, 215, .22);
+  border-radius: 11px;
+  background: linear-gradient(145deg, rgba(31, 68, 86, .48), rgba(7, 31, 47, .62));
+  box-shadow: inset 0 1px rgba(214, 246, 249, .045);
+}
+
+.login-gateway--reference .login-gateway__service-icon {
+  grid-area: icon;
+  width: 51px;
+  height: 51px;
+  border: 1px solid rgba(151, 225, 235, .62);
+  border-radius: 50%;
+  color: #d9f5f4;
+  background: radial-gradient(circle, rgba(61, 156, 181, .25), rgba(5, 27, 43, .88) 72%);
+  box-shadow: inset 0 0 16px rgba(92, 215, 225, .14), 0 0 10px rgba(78, 205, 226, .12);
+}
+
+.login-gateway--reference .login-gateway__service-icon .icon {
+  width: 28px;
+  height: 28px;
+}
+
+.login-gateway--reference .login-gateway__service-copy {
+  grid-area: title;
+  display: grid;
+  gap: 2px;
+  text-align: start;
+}
+
+.login-gateway--reference .login-gateway__service-copy strong {
+  color: #edf5f6;
+  font-size: 11px;
+}
+
+.login-gateway--reference .login-gateway__service-copy small {
+  color: #8099a6;
+  font-size: 7px;
+}
+
+.login-gateway--reference .login-gateway__service-values {
+  padding-top: 5px;
+  gap: 9px;
+  border-top: 1px solid rgba(124, 190, 204, .12);
+}
+
+.login-gateway--reference .login-gateway__service-values i {
+  color: #78d7a2;
+  font-size: 7px;
+  font-variant-numeric: tabular-nums;
+}
+
+.login-gateway--reference .login-gateway__opportunities {
+  grid-column: 2;
+  padding: 12px 14px 11px;
+  grid-template-rows: 58px minmax(0, 1fr) 76px;
+}
+
+.login-gateway--reference .login-gateway__opportunities > header {
+  position: relative;
+  z-index: 3;
+  align-self: center;
+  text-align: center;
+}
+
+.login-gateway--reference .login-gateway__opportunities h1 {
+  margin: 0;
+  color: #edf5f6;
+  font-size: 23px;
+  text-shadow: 0 1px 2px #000, 0 0 12px rgba(89, 211, 231, .23);
+}
+
+.login-gateway--reference .login-gateway__opportunities > header p {
+  margin: 2px 0 0;
+  color: #a4b8c2;
+  font-size: 10px;
+}
+
+.login-gateway--reference .login-gateway__opportunity-map {
+  margin: 0;
+  border: 1px solid rgba(143, 205, 218, .26);
+  border-radius: 12px;
+  overflow: hidden;
+  background: radial-gradient(ellipse at 50% 50%, rgba(34, 102, 133, .18), rgba(5, 25, 41, .40));
+  box-shadow: inset 0 0 36px rgba(48, 143, 174, .08);
+}
+
+.login-gateway--reference .login-gateway__opportunity-map img {
+  opacity: .94;
+  mask-image: none;
+  filter: saturate(.86) contrast(1.02) brightness(1.09) drop-shadow(0 0 6px rgba(95, 205, 233, .34));
+}
+
+.login-gateway--reference .login-gateway__entry-button {
+  width: min(480px, 80%);
+  height: 58px;
+  margin-top: 8px;
+  border-radius: 13px;
+}
+
+.login-gateway--reference .login-gateway__analytics {
+  grid-column: 3;
+  padding: 13px 12px 10px;
+  grid-template-rows: 58px minmax(0, 1fr) 47px;
+}
+
+.login-gateway--reference .login-gateway__analytics::before {
+  display: none;
+}
+
+.login-gateway--reference .login-gateway__analytics > header {
+  text-align: center;
+}
+
+.login-gateway--reference .login-gateway__analytics > header h2 {
+  margin: 0;
+  color: #edf5f6;
+  font-size: 20px;
+  text-shadow: 0 0 12px rgba(91, 212, 232, .24);
+}
+
+.login-gateway--reference .login-gateway__analytics > header p {
+  margin: 2px 0 0;
+  color: #91aab6;
+  font-size: 8px;
+}
+
+.login-gateway--reference .login-gateway__analytics-grid {
+  gap: 0;
+}
+
+.login-gateway--reference .login-gateway__chart-card,
+.login-gateway--reference .login-gateway__chart-card:hover,
+.login-gateway--reference .login-gateway__chart-card:focus-visible,
+.login-gateway--reference .login-gateway__chart-card[data-active=true] {
+  padding: 8px;
+  border: 0 !important;
+  border-radius: 0;
+  background: transparent !important;
+  box-shadow: none;
+}
+
+.login-gateway--reference .login-gateway__chart-card:nth-child(odd) {
+  border-inline-end: 1px solid rgba(137, 198, 210, .13) !important;
+}
+
+.login-gateway--reference .login-gateway__chart-card:nth-child(-n+2) {
+  border-bottom: 1px solid rgba(137, 198, 210, .13) !important;
+}
+
+.login-gateway--reference .login-gateway__chart-card::after {
+  display: none;
+}
+
+.login-gateway--reference .login-gateway__provider-note {
+  margin: 0;
+  padding: 7px 10px;
+  border-top: 1px solid rgba(132, 197, 210, .14);
+  background: rgba(4, 22, 36, .42);
+}
+
+@media (max-width: 1380px) {
+  .login-gateway--reference .login-gateway__monitor-grid {
+    grid-template-columns: 214px minmax(0, 1fr) 445px;
+    gap: 16px;
+  }
+}
+
+/* The logo is the circuit-board origin, matching the approved reference. */
+.login-gateway--reference .login-gateway__brand {
+  position: relative;
+  isolation: isolate;
+  overflow: visible;
+}
+
+.login-gateway--reference .login-gateway__brand::before {
+  content: "";
+  position: absolute;
+  inset: 7% -27% 4% -17%;
+  z-index: -1;
+  pointer-events: none;
+  background:
+    radial-gradient(circle at 38% 46%, rgba(84, 222, 236, .24), transparent 42%),
+    radial-gradient(circle at 55% 61%, rgba(92, 218, 151, .10), transparent 38%),
+    radial-gradient(circle at 48% 76%, rgba(232, 201, 120, .08), transparent 30%);
+  filter: blur(8px);
+}
+
+.login-gateway--reference .login-gateway__brand::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: 4;
+  pointer-events: none;
+  background: linear-gradient(145deg, #e3ffff 5%, #73ece7 34%, #43bdd5 67%, #6bd69c 100%);
+  -webkit-mask: url("/assets/jenan-biz-logo-transparent.png") center / contain no-repeat;
+  mask: url("/assets/jenan-biz-logo-transparent.png") center / contain no-repeat;
+  filter:
+    drop-shadow(0 0 3px rgba(226, 255, 255, .92))
+    drop-shadow(0 0 10px rgba(71, 215, 235, .72))
+    drop-shadow(0 0 18px rgba(92, 218, 151, .24));
+}
+
+.login-gateway--reference .login-gateway__brand img {
+  position: relative;
+  z-index: 3;
+  opacity: .26;
+  filter:
+    saturate(1.34)
+    hue-rotate(5deg)
+    brightness(1.08)
+    drop-shadow(0 0 3px rgba(223, 251, 255, .92))
+    drop-shadow(0 0 11px rgba(72, 214, 238, .76))
+    drop-shadow(0 0 20px rgba(92, 218, 151, .20));
+}
+
+.login-gateway--reference .login-gateway__brand-circuit {
+  position: absolute;
+  z-index: 1;
+  left: 34%;
+  top: 50%;
+  width: 360px;
+  height: 130px;
+  overflow: visible;
+  pointer-events: none;
+  transform: translateY(-50%);
+  filter: drop-shadow(0 0 3px rgba(70, 210, 237, .30));
+}
+
+.login-gateway--reference .brand-trace {
+  stroke-width: 1.55;
+  opacity: .78;
+}
+
+.login-gateway--reference .brand-trace--cyan { stroke: var(--gateway-blue-bright); }
+.login-gateway--reference .brand-trace--green { stroke: var(--gateway-green); }
+.login-gateway--reference .brand-trace--gold { stroke: var(--gateway-gold); }
+
+.login-gateway--reference .brand-node {
+  stroke-width: 1;
+  stroke: rgba(236, 255, 255, .85);
+  animation: brandNodeSignal 2.7s ease-in-out infinite;
+}
+
+.login-gateway--reference .brand-node:nth-child(2) { animation-delay: -.55s; }
+.login-gateway--reference .brand-node:nth-child(3) { animation-delay: -1.1s; }
+.login-gateway--reference .brand-node:nth-child(4) { animation-delay: -1.65s; }
+.login-gateway--reference .brand-node:nth-child(5) { animation-delay: -2.2s; }
+.login-gateway--reference .brand-node--cyan { fill: var(--gateway-blue-bright); }
+.login-gateway--reference .brand-node--green { fill: var(--gateway-green); }
+.login-gateway--reference .brand-node--gold { fill: var(--gateway-gold); }
+
+@keyframes brandNodeSignal {
+  0%, 100% { opacity: .52; filter: drop-shadow(0 0 2px currentColor); }
+  50% { opacity: 1; filter: drop-shadow(0 0 7px currentColor); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .login-gateway--reference .brand-node { animation: none; }
+}
+
+/* Approved reference composition — final Login surface. */
+.login-gateway--reference {
+  --reference-cyan: #5edce9;
+  --reference-cyan-bright: #a3f6fb;
+  --reference-green: #67d7a1;
+  --reference-gold: #e1c579;
+}
+
+.login-gateway--reference .login-gateway__canvas {
+  padding: 0 24px;
+  min-height: 941px;
+  background:
+    radial-gradient(ellipse at 43% 43%, rgba(25, 94, 126, .32), transparent 49%),
+    radial-gradient(circle at 75% 67%, rgba(42, 112, 105, .10), transparent 34%),
+    linear-gradient(150deg, #061421 0%, #0a2838 45%, #071723 100%);
+}
+
+.login-gateway--reference .login-gateway__circuit-board {
+  opacity: .92;
+  filter: drop-shadow(0 0 4px rgba(87, 220, 232, .38));
+}
+
+.login-gateway--reference .circuit-paths path { stroke-width: 1.55; }
+.login-gateway--reference .circuit-paths--blue path { stroke: rgba(94, 220, 233, .82); }
+.login-gateway--reference .circuit-paths--green path { stroke: rgba(103, 215, 161, .72); }
+.login-gateway--reference .circuit-paths--gold path { stroke: rgba(225, 197, 121, .76); }
+
+.login-gateway--reference .login-gateway__header {
+  height: 132px;
+  margin-inline: -24px;
+  padding: 8px 28px 10px;
+  grid-template-columns: 250px minmax(0, 1fr) 84px;
+  grid-template-rows: 114px;
+  gap: 22px;
+  align-items: center;
+  border: 0;
+  background: linear-gradient(180deg, rgba(4, 17, 28, .18), transparent);
+  box-shadow: none;
+}
+
+.login-gateway--reference .login-gateway__brand {
+  grid-column: 1;
+  grid-row: 1;
+  width: 190px;
+  height: 120px;
+  margin: 0 0 0 18px;
+  align-self: center;
+  justify-self: start;
+}
+
+.login-gateway--reference .login-gateway__brand::after {
+  background: linear-gradient(145deg, #dffeff 2%, #75eee8 34%, #46c3d7 65%, #73dca7 100%);
+}
+
+.login-gateway--reference .login-gateway__brand img { opacity: .20; }
+
+.login-gateway--reference .login-gateway__brand-circuit {
+  left: 36%;
+  width: 340px;
+  opacity: .82;
+}
+
+.login-gateway--reference .login-gateway__status {
+  grid-column: 2;
+  grid-row: 1;
+  width: 100%;
+  height: 76px;
+  margin: 4px 0 0;
+  padding: 7px 18px;
+  gap: 0;
+  border: 1px solid rgba(132, 191, 206, .20);
+  border-radius: 12px;
+  background: linear-gradient(180deg, rgba(21, 44, 59, .80), rgba(5, 23, 37, .88));
+  box-shadow: inset 0 1px rgba(218, 250, 252, .05), 0 8px 20px rgba(0, 5, 14, .24);
+  overflow: hidden;
+}
+
+.login-gateway--reference .login-gateway__status::before {
+  inset: auto 4% 0;
+  background: linear-gradient(90deg, transparent, var(--reference-cyan), var(--reference-green) 60%, var(--reference-gold), transparent);
+}
+
+.login-gateway--reference .login-gateway__news-line {
+  min-height: 30px;
+  padding: 4px 12px;
+  grid-template-columns: minmax(0, 1fr) 74px 112px;
+  gap: 10px;
+}
+
+.login-gateway--reference .login-gateway__news-line span { font-size: 12px; }
+.login-gateway--reference .login-gateway__news-line strong { font-size: 15px; }
+.login-gateway--reference .login-gateway__news-line em { font-size: 9px; }
+
+.login-gateway--reference .login-gateway__tools {
+  grid-column: 3;
+  grid-row: 1;
+  justify-self: center;
+}
+
+.login-gateway--reference .login-gateway__tools .language-switcher {
+  width: 62px;
+  min-width: 62px;
+  height: 38px;
+  border-radius: 8px;
+  border-color: rgba(149, 208, 216, .38);
+  background: rgba(10, 28, 40, .82);
+}
+
+.login-gateway--reference .login-gateway__environment {
+  height: 726px;
+  margin: 0;
+  overflow: visible;
+}
+
+.login-gateway--reference .login-gateway__monitor-grid,
+.login-gateway--reference .login-gateway__monitor-grid[dir] {
+  height: 100%;
+  grid-template-columns: 218px minmax(0, 1fr) 540px;
+  gap: 16px;
+  direction: ltr;
+}
+
+.login-gateway--reference .login-gateway__services,
+.login-gateway--reference .login-gateway__analytics {
+  border: 1px solid rgba(157, 211, 220, .34);
+  border-radius: 14px;
+  background:
+    radial-gradient(circle at 50% 0, rgba(70, 151, 170, .13), transparent 34%),
+    linear-gradient(155deg, rgba(24, 53, 68, .87), rgba(6, 27, 42, .91));
+  box-shadow:
+    inset 0 1px rgba(224, 249, 250, .07),
+    inset 0 0 34px rgba(56, 153, 180, .055),
+    0 10px 28px rgba(0, 5, 13, .28);
+  overflow: hidden;
+}
+
+.login-gateway--reference .login-gateway__services {
+  grid-column: 1;
+  padding: 13px 10px 11px;
+  display: grid;
+  grid-template-rows: 56px minmax(0, 1fr);
+}
+
+.login-gateway--reference .login-gateway__services header h2 {
+  font-size: 18px;
+  letter-spacing: -.015em;
+}
+
+.login-gateway--reference .login-gateway__services header p {
+  margin-top: 2px;
+  color: #9bb1b9;
+  font-size: 9px;
+}
+
+.login-gateway--reference .login-gateway__service-list {
+  margin: 0;
+  display: grid;
+  grid-template-rows: repeat(4, 1fr);
+  gap: 8px;
+  min-height: 0;
+}
+
+.login-gateway--reference .login-gateway__service {
+  min-height: 0;
+  padding: 8px 7px;
+  grid-template-columns: 56px minmax(0, 1fr);
+  grid-template-areas: "icon title" "icon values";
+  gap: 3px 8px;
+  border: 1px solid rgba(134, 199, 210, .18);
+  border-radius: 10px;
+  background:
+    linear-gradient(90deg, rgba(42, 76, 89, .46), rgba(9, 34, 48, .54)),
+    radial-gradient(circle at 20% 50%, rgba(91, 206, 219, .08), transparent 40%);
+  box-shadow: inset 0 1px rgba(226, 249, 249, .035);
+}
+
+.login-gateway--reference .login-gateway__service::before {
+  content: "";
+  position: absolute;
+  inset: 12px 14px auto 68px;
+  height: 1px;
+  opacity: .5;
+  background: linear-gradient(90deg, var(--reference-cyan), transparent);
+}
+
+.login-gateway--reference .login-gateway__service-icon {
+  grid-area: icon;
+  width: 52px;
+  height: 52px;
+  align-self: center;
+  border: 1px solid rgba(193, 240, 242, .66);
+  background:
+    radial-gradient(circle at 35% 28%, rgba(221, 255, 255, .22), transparent 25%),
+    radial-gradient(circle, rgba(63, 143, 164, .34), rgba(5, 27, 42, .94) 70%);
+  box-shadow:
+    inset 0 0 0 3px rgba(5, 20, 31, .68),
+    inset 0 0 15px rgba(97, 218, 225, .14),
+    0 0 10px rgba(81, 204, 220, .13);
+}
+
+.login-gateway--reference .login-gateway__service-icon .icon {
+  width: 28px;
+  height: 28px;
+  stroke-width: 1.55;
+  filter: drop-shadow(0 0 3px rgba(180, 247, 247, .30));
+}
+
+.login-gateway--reference .login-gateway__service-copy {
+  grid-area: title;
+  align-self: end;
+  gap: 1px;
+}
+
+.login-gateway--reference .login-gateway__service-copy strong { font-size: 11px; }
+.login-gateway--reference .login-gateway__service-copy small { font-size: 7px; }
+
+.login-gateway--reference .login-gateway__service-values {
+  grid-area: values;
+  padding: 2px 0 0;
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 3px;
+  border: 0;
+}
+
+.login-gateway--reference .login-gateway__service-values i {
+  color: var(--reference-green);
+  font-size: 8px;
+  text-align: center;
+}
+
+.login-gateway--reference .login-gateway__opportunities {
+  grid-column: 2;
+  padding: 10px 9px 8px;
+  display: grid;
+  grid-template-rows: minmax(0, 1fr) 78px;
+  gap: 4px;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+  overflow: visible;
+}
+
+.login-gateway--reference .login-gateway__opportunity-map {
+  min-height: 0;
+  margin: 0;
+  border: 0;
+  border-radius: 0;
+  overflow: visible;
+  background:
+    radial-gradient(ellipse at 50% 50%, rgba(34, 103, 132, .19), rgba(7, 29, 44, .08) 60%, transparent 78%);
+  box-shadow: none;
+}
+
+.login-gateway--reference .login-gateway__opportunity-map::before {
+  inset: 5% 3%;
+  background: radial-gradient(ellipse, rgba(66, 155, 179, .11), transparent 70%);
+}
+
+.login-gateway--reference .login-gateway__opportunity-map img {
+  object-fit: contain;
+  opacity: .95;
+  transform: scale(1.03);
+  clip-path: none;
+  mask-image: radial-gradient(ellipse 72% 66% at center, #000 44%, rgba(0, 0, 0, .97) 72%, transparent 99%);
+  filter:
+    saturate(.78)
+    hue-rotate(5deg)
+    contrast(.96)
+    brightness(1.03)
+    drop-shadow(0 0 6px rgba(89, 204, 231, .38));
+}
+
+.login-gateway--reference .login-gateway__map-network {
+  inset: 5% 3%;
+  width: 94%;
+  height: 90%;
+  opacity: .67;
+}
+
+.login-gateway--reference .login-gateway__map-node {
+  z-index: 3;
+  width: 12px;
+  height: 12px;
+}
+
+.login-gateway--reference .login-gateway__map-node.node-f { left: 31%; top: 36%; }
+.login-gateway--reference .login-gateway__map-node.node-g { left: 63%; top: 37%; }
+.login-gateway--reference .login-gateway__map-node.node-h { left: 76%; top: 55%; }
+.login-gateway--reference .login-gateway__map-node.node-f,
+.login-gateway--reference .login-gateway__map-node.node-h {
+  border-color: #fff0ad;
+  background: var(--reference-gold);
+  box-shadow: 0 0 6px #fff, 0 0 17px rgba(239, 215, 127, .92);
+}
+
+.login-gateway--reference .login-gateway__map-node.node-g {
+  border-color: #d9f7ff;
+  background: var(--reference-cyan);
+  box-shadow: 0 0 6px #eafaff, 0 0 17px rgba(71, 201, 239, .82);
+}
+
+.login-gateway--reference .login-gateway__map-data-state,
+.login-gateway--reference .login-gateway__map-unavailable { display: none; }
+
+.login-gateway--reference .login-gateway__map-pager {
+  position: absolute;
+  z-index: 5;
+  left: 50%;
+  bottom: 13px;
+  width: 126px;
+  height: 25px;
+  padding: 0 14px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  border: 1px solid rgba(143, 204, 218, .34);
+  border-radius: 999px;
+  background: linear-gradient(180deg, rgba(27, 60, 78, .78), rgba(8, 29, 45, .82));
+  box-shadow: inset 0 1px rgba(222, 248, 249, .08), 0 4px 12px rgba(0, 5, 14, .28);
+  transform: translateX(-50%);
+}
+
+.login-gateway--reference .login-gateway__map-pager i {
+  width: 4px;
+  height: 4px;
+  border-radius: 50%;
+  background: #718d99;
+  box-shadow: 0 0 4px rgba(128, 193, 204, .30);
+}
+
+.login-gateway--reference .login-gateway__map-pager i.active {
+  width: 6px;
+  height: 6px;
+  background: #dffcff;
+  box-shadow: 0 0 7px var(--reference-cyan);
+}
+
+.login-gateway--reference .login-gateway__entry-button {
+  z-index: 4;
+  width: min(480px, 78%);
+  height: 62px;
+  margin: 7px auto 0;
+  border: 1px solid rgba(185, 245, 244, .75);
+  border-radius: 14px;
+  background:
+    linear-gradient(180deg, rgba(68, 190, 198, .91), rgba(19, 102, 117, .94));
+  box-shadow:
+    inset 0 1px rgba(255, 255, 255, .26),
+    inset 0 -8px 20px rgba(4, 39, 54, .24),
+    0 0 7px rgba(145, 242, 240, .72),
+    0 0 23px rgba(65, 214, 219, .25);
+}
+
+.login-gateway--reference .login-gateway__entry-button strong {
+  font-size: 20px;
+  text-shadow: 0 2px 3px rgba(2, 29, 37, .82);
+}
+
+.login-gateway--reference .login-gateway__entry-button small { color: #d5f6f4; }
+
+.login-gateway--reference .login-gateway__analytics {
+  grid-column: 3;
+  padding: 13px 12px 10px;
+  display: grid;
+  grid-template-rows: 60px minmax(0, 1fr) 48px;
+  direction: rtl;
+}
+
+.login-gateway--reference .login-gateway__analytics::before { display: none; }
+
+.login-gateway--reference .login-gateway__analytics > header {
+  display: grid;
+  place-items: center;
+  align-self: center;
+  text-align: center;
+}
+
+.login-gateway--reference .login-gateway__analytics > header h2 {
+  margin: 0;
+  color: #edf7f7;
+  font-size: 21px;
+  text-shadow: 0 1px 2px #000, 0 0 11px rgba(92, 216, 232, .25);
+}
+
+.login-gateway--reference .login-gateway__analytics > header p {
+  margin: 2px 0 0;
+  color: #9ab0b8;
+  font-size: 9px;
+}
+
+.login-gateway--reference .login-gateway__analytics-grid {
+  grid-template-columns: 1fr 1fr;
+  grid-template-rows: 1fr 1fr;
+  gap: 0;
+}
+
+.login-gateway--reference .login-gateway__chart-card,
+.login-gateway--reference .login-gateway__chart-card:hover,
+.login-gateway--reference .login-gateway__chart-card:focus-visible,
+.login-gateway--reference .login-gateway__chart-card[data-active=true] {
+  padding: 9px 10px 7px;
+  border: 0 !important;
+  border-radius: 0;
+  background: transparent !important;
+  box-shadow: none;
+}
+
+.login-gateway--reference .login-gateway__chart-card:nth-child(odd) {
+  border-inline-end: 1px solid rgba(137, 199, 211, .14) !important;
+}
+
+.login-gateway--reference .login-gateway__chart-card:nth-child(-n+2) {
+  border-bottom: 1px solid rgba(137, 199, 211, .14) !important;
+}
+
+.login-gateway--reference .login-gateway__metric-heading { min-height: 39px; }
+.login-gateway--reference .login-gateway__metric-heading h3 { font-size: 12px; }
+.login-gateway--reference .login-gateway__metric-heading strong { font-size: 14px; }
+.login-gateway--reference .login-gateway__analytics-svg {
+  width: 100%;
+  height: 100%;
+  opacity: .95;
+  filter: saturate(.93) contrast(1.07) drop-shadow(0 0 3px rgba(72, 203, 225, .10));
+}
+
+.login-gateway--reference .login-gateway__chart-card > small {
+  color: #829da7;
+  font-size: 8px;
+}
+
+.login-gateway--reference .login-gateway__provider-note {
+  margin: 0;
+  padding: 7px 11px;
+  border: 0;
+  border-top: 1px solid rgba(134, 198, 210, .14);
+  border-radius: 0;
+  background: rgba(4, 23, 36, .38);
+}
+
+.login-gateway--reference .login-gateway__ticker {
+  height: 71px;
+  margin: 8px -24px 0;
+  padding: 5px 24px;
+  grid-template-columns: 190px repeat(5, minmax(0, 1fr));
+  border-width: 1px 0 0;
+  border-radius: 0;
+  border-color: rgba(143, 205, 215, .24);
+  background: rgba(4, 21, 33, .86);
+  box-shadow: inset 0 1px rgba(225, 248, 250, .025);
+}
+
+.login-gateway--reference .login-gateway__ticker-label,
+.login-gateway--reference .login-gateway__ticker-item {
+  min-width: 0;
+  padding: 4px 11px;
+}
+
+.login-gateway--reference .login-gateway__ticker-orb {
+  width: 31px;
+  height: 31px;
+  font-size: 11px;
+}
+
+.login-gateway--reference .login-gateway__ticker-item b { font-size: 11px; }
+.login-gateway--reference .login-gateway__ticker-item strong { font-size: 14px; }
+.login-gateway--reference .login-gateway__ticker-item small { font-size: 7px; }
+
+.login-gateway--reference .login-gateway__ticker-label,
+.login-gateway--reference .login-gateway__ticker-item {
+  gap: 8px;
+}
+
+.login-gateway--reference .login-gateway__ticker-orb {
+  width: auto;
+  height: auto;
+  min-width: 47px;
+  border: 0;
+  border-radius: 0;
+  color: var(--reference-green);
+  background: transparent;
+  box-shadow: none;
+  font-size: 14px;
+  text-shadow: 0 0 8px currentColor;
+}
+
+.login-gateway--reference .login-gateway__login-panel {
+  top: 48%;
+  width: 460px;
+  height: 500px;
+  padding: 16px 34px 16px;
+  border: 1px solid rgba(202, 248, 248, .92);
+  border-radius: 22px;
+  background:
+    radial-gradient(circle at 50% 0, rgba(58, 104, 116, .32), transparent 34%),
+    linear-gradient(150deg, rgba(28, 52, 62, .985), rgba(5, 21, 31, .992));
+  box-shadow:
+    inset 0 0 0 4px rgba(4, 17, 24, .92),
+    inset 0 0 0 5px rgba(141, 220, 223, .45),
+    inset 0 0 34px rgba(89, 199, 202, .08),
+    0 0 5px rgba(224, 255, 255, .94),
+    0 0 25px rgba(93, 224, 229, .42),
+    0 28px 70px rgba(0, 0, 0, .72);
+  backdrop-filter: blur(4px);
+}
+
+.login-gateway--reference .login-gateway__login-panel::before {
+  display: block;
+  inset: 10px;
+  border-color: rgba(153, 226, 227, .30);
+  border-radius: 18px;
+}
+
+.login-gateway--reference .login-gateway__analytics-grid {
+  background: rgba(6, 19, 27, .08);
+}
+
+.login-gateway--reference .login-gateway__login-logo {
+  width: 126px;
+  height: 80px;
+  filter:
+    saturate(1.15)
+    brightness(1.18)
+    drop-shadow(0 0 4px rgba(222, 255, 255, .92))
+    drop-shadow(0 0 12px rgba(79, 218, 231, .58));
+}
+
+.login-gateway--reference .login-gateway__login-panel > h2 { font-size: 23px; }
+.login-gateway--reference .login-gateway__login-panel .auth-form { margin-top: 14px; }
+.login-gateway--reference .login-gateway__login-panel .field__control { height: 45px; }
+.login-gateway--reference .login-gateway__login-panel .auth-form > .button { margin-top: 5px; }
+
+@media (max-width: 1380px) {
+  .login-gateway--reference .login-gateway__monitor-grid {
+    grid-template-columns: 218px minmax(0, 1fr) 540px;
+    gap: 16px;
+  }
+}
+
+/* Reference stage 1: logo and two-level market masthead. */
+.login-gateway--reference .login-gateway__header {
+  height: 170px;
+  padding: 8px 28px 12px;
+  grid-template-columns: 276px minmax(0, 1fr) 84px;
+  grid-template-rows: 150px;
+  gap: 20px;
+  align-items: center;
+  background: transparent;
+}
+
+.login-gateway--reference .login-gateway__environment { height: 688px; }
+
+.login-gateway--reference .login-gateway__brand {
+  width: 224px;
+  height: 150px;
+  margin: -1px 0 0 22px;
+}
+
+.login-gateway--reference .login-gateway__brand::after {
+  background: linear-gradient(145deg, #8df3ec 0%, #61e1df 35%, #47bfd5 68%, #6bd79f 100%);
+  filter:
+    drop-shadow(0 0 2px rgba(222, 255, 255, .82))
+    drop-shadow(0 0 10px rgba(69, 216, 232, .76))
+    drop-shadow(0 0 18px rgba(92, 218, 151, .26));
+}
+
+.login-gateway--reference .login-gateway__brand img { opacity: .08; }
+
+.login-gateway--reference .login-gateway__brand::before {
+  inset: 4% -32% 2% -15%;
+  background:
+    radial-gradient(circle at 38% 46%, rgba(84, 222, 236, .28), transparent 44%),
+    radial-gradient(circle at 58% 62%, rgba(92, 218, 151, .12), transparent 40%),
+    radial-gradient(circle at 49% 78%, rgba(232, 201, 120, .10), transparent 32%);
+}
+
+.login-gateway--reference .login-gateway__brand-circuit {
+  left: 34%;
+  width: 410px;
+  height: 150px;
+  opacity: .90;
+  filter: drop-shadow(0 0 4px rgba(70, 210, 237, .34));
+}
+
+.login-gateway--reference .brand-trace { stroke-width: 1.65; }
+
+.login-gateway--reference .login-gateway__status {
+  align-self: center;
+  height: 116px;
+  margin: 5px 0 0;
+  padding: 0;
+  display: grid;
+  grid-template-rows: 42px 58px;
+  gap: 8px;
+  overflow: visible;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+}
+
+.login-gateway--reference .login-gateway__status::before,
+.login-gateway--reference .login-gateway__status::after { display: none; }
+
+.login-gateway--reference .login-gateway__news-line {
+  min-height: 42px;
+  padding: 5px 18px;
+  grid-template-columns: minmax(0, 1fr) 76px 112px;
+  gap: 12px;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+}
+
+.login-gateway--reference .login-gateway__news-line:first-child {
+  position: relative;
+  padding-inline-end: 22px;
+}
+
+.login-gateway--reference .login-gateway__news-line:first-child::after {
+  content: "";
+  position: absolute;
+  inset: auto 11% 1px 5%;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, var(--reference-cyan), var(--reference-green) 68%, transparent);
+  box-shadow: 0 0 7px rgba(96, 222, 229, .55);
+}
+
+.login-gateway--reference .login-gateway__news-line--secondary {
+  min-height: 58px;
+  padding: 8px 18px;
+  border: 1px solid rgba(139, 190, 205, .25);
+  border-radius: 13px;
+  background:
+    radial-gradient(ellipse at 65% 50%, rgba(64, 157, 174, .09), transparent 56%),
+    linear-gradient(180deg, rgba(29, 51, 65, .92), rgba(7, 26, 40, .94));
+  box-shadow:
+    inset 0 1px rgba(221, 247, 249, .07),
+    0 7px 17px rgba(0, 5, 13, .30),
+    0 0 11px rgba(74, 201, 222, .06);
+}
+
+.login-gateway--reference .login-gateway__news-line span {
+  color: #edf6f7;
+  font-size: 13px;
+  font-weight: 540;
+}
+
+.login-gateway--reference .login-gateway__news-line strong { font-size: 16px; }
+.login-gateway--reference .login-gateway__news-line em { font-size: 10px; }
+
+.login-gateway--reference .login-gateway__tools {
+  align-self: end;
+  margin-bottom: 26px;
+}
+
+/* Reference stage 2: compact metallic active-service instruments. */
+.login-gateway--reference .login-gateway__services {
+  padding: 12px 10px 11px;
+  grid-template-rows: 59px minmax(0, 1fr);
+  border-color: rgba(169, 217, 223, .40);
+  background:
+    radial-gradient(circle at 50% 0, rgba(81, 160, 176, .15), transparent 34%),
+    linear-gradient(160deg, rgba(30, 58, 70, .90), rgba(7, 27, 40, .94));
+}
+
+.login-gateway--reference .login-gateway__services header {
+  position: relative;
+  z-index: 2;
+}
+
+.login-gateway--reference .login-gateway__services header::after {
+  content: "";
+  position: absolute;
+  inset: auto 18% 3px;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, rgba(101, 222, 225, .55), transparent);
+}
+
+.login-gateway--reference .login-gateway__service-list {
+  gap: 8px;
+}
+
+.login-gateway--reference .login-gateway__service {
+  position: relative;
+  padding: 10px 8px 7px;
+  display: grid;
+  grid-template-columns: 62px minmax(0, 1fr);
+  grid-template-rows: minmax(0, 1fr) 30px;
+  grid-template-areas: "icon values" "copy copy";
+  gap: 5px 8px;
+  border: 1px solid rgba(150, 205, 214, .23);
+  border-radius: 11px;
+  background:
+    linear-gradient(145deg, rgba(37, 67, 79, .62), rgba(7, 31, 44, .72));
+  box-shadow:
+    inset 0 1px rgba(226, 249, 249, .05),
+    inset 0 0 20px rgba(76, 174, 190, .035),
+    0 5px 12px rgba(0, 7, 14, .16);
+  overflow: hidden;
+}
+
+.login-gateway--reference .login-gateway__service::before {
+  inset: 12px auto auto 72px;
+  width: 58%;
+  background: linear-gradient(90deg, rgba(100, 222, 226, .42), transparent);
+}
+
+.login-gateway--reference .login-gateway__service::after {
+  content: "";
+  position: absolute;
+  top: 9px;
+  right: 10px;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--reference-green);
+  box-shadow: 0 0 4px #dffff1, 0 0 10px rgba(103, 215, 161, .72);
+  animation: serviceSignal 2.6s ease-in-out infinite;
+}
+
+.login-gateway--reference .login-gateway__service:nth-child(2)::after { animation-delay: -.65s; }
+.login-gateway--reference .login-gateway__service:nth-child(3)::after { animation-delay: -1.3s; }
+.login-gateway--reference .login-gateway__service:nth-child(4)::after { animation-delay: -1.95s; }
+
+.login-gateway--reference .login-gateway__service-icon {
+  grid-area: icon;
+  width: 58px;
+  height: 58px;
+  align-self: center;
+  justify-self: center;
+  color: #d9f5f4;
+  border: 1px solid rgba(204, 244, 244, .72);
+  background:
+    radial-gradient(circle at 34% 26%, rgba(236, 255, 255, .22), transparent 22%),
+    radial-gradient(circle, rgba(55, 137, 159, .36), rgba(5, 25, 39, .96) 69%);
+  box-shadow:
+    inset 0 0 0 3px rgba(4, 19, 29, .72),
+    inset 0 0 15px rgba(94, 213, 222, .16),
+    0 0 5px rgba(226, 255, 255, .22),
+    0 0 12px rgba(76, 204, 220, .18);
+}
+
+.login-gateway--reference .login-gateway__service:nth-child(2) .login-gateway__service-icon {
+  color: #f0dc9d;
+  border-color: rgba(232, 210, 145, .72);
+  background:
+    radial-gradient(circle at 34% 26%, rgba(255, 249, 218, .22), transparent 22%),
+    radial-gradient(circle, rgba(143, 119, 63, .30), rgba(6, 25, 37, .96) 69%);
+  box-shadow: inset 0 0 0 3px rgba(4, 19, 29, .72), inset 0 0 15px rgba(226, 195, 115, .13), 0 0 10px rgba(226, 195, 115, .17);
+}
+
+.login-gateway--reference .login-gateway__service:nth-child(3) .login-gateway__service-icon {
+  color: #baf1d2;
+  border-color: rgba(141, 224, 178, .67);
+  background:
+    radial-gradient(circle at 34% 26%, rgba(231, 255, 241, .20), transparent 22%),
+    radial-gradient(circle, rgba(56, 133, 103, .31), rgba(5, 25, 38, .96) 69%);
+  box-shadow: inset 0 0 0 3px rgba(4, 19, 29, .72), inset 0 0 15px rgba(103, 215, 161, .13), 0 0 10px rgba(103, 215, 161, .16);
+}
+
+.login-gateway--reference .login-gateway__service-icon .icon {
+  width: 31px;
+  height: 31px;
+  stroke-width: 1.55;
+}
+
+.login-gateway--reference .login-gateway__service-values {
+  grid-area: values;
+  align-self: center;
+  padding: 10px 3px 1px;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-template-rows: repeat(3, 1fr);
+  gap: 5px 8px;
+}
+
+.login-gateway--reference .login-gateway__service-values i {
+  color: #aabcc2;
+  font-size: 7px;
+  line-height: 1;
+  text-align: center;
+  font-variant-numeric: tabular-nums;
+}
+
+.login-gateway--reference .login-gateway__service-values i:nth-child(2n) { color: var(--reference-green); }
+.login-gateway--reference .login-gateway__service-values i:nth-child(3n) { color: var(--reference-gold); }
+
+.login-gateway--reference .login-gateway__service-copy {
+  grid-area: copy;
+  min-width: 0;
+  padding-top: 5px;
+  display: flex;
+  align-items: baseline;
+  justify-content: center;
+  gap: 6px;
+  border-top: 1px solid rgba(140, 199, 209, .12);
+  text-align: center;
+}
+
+.login-gateway--reference .login-gateway__service-copy strong {
+  color: #edf6f6;
+  font-size: 11px;
+  font-weight: 650;
+}
+
+.login-gateway--reference .login-gateway__service-copy small {
+  color: #8fa5ad;
+  font-size: 7px;
+}
+
+@keyframes serviceSignal {
+  0%, 100% { opacity: .48; transform: scale(.78); }
+  50% { opacity: 1; transform: scale(1.12); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .login-gateway--reference .login-gateway__service::after { animation: none; }
+}
+
+/* Active-services correction from direct reference comparison. */
+.login-gateway--reference .login-gateway__service {
+  direction: ltr;
+  grid-template-columns: 70px minmax(0, 1fr);
+  grid-template-rows: minmax(0, 1fr) 30px;
+  grid-template-areas: "icon values" "copy copy";
+  padding: 7px 8px 0;
+  gap: 3px 7px;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+  overflow: visible;
+}
+
+.login-gateway--reference .login-gateway__service::before {
+  content: "";
+  position: absolute;
+  inset: 0 0 31px;
+  z-index: 0;
+  width: auto;
+  height: auto;
+  border: 1px solid rgba(151, 207, 216, .24);
+  border-radius: 11px;
+  background:
+    radial-gradient(circle at 19% 50%, rgba(85, 188, 205, .10), transparent 35%),
+    linear-gradient(145deg, rgba(38, 67, 79, .67), rgba(7, 31, 44, .74));
+  box-shadow: inset 0 1px rgba(229, 249, 250, .05), inset 0 0 18px rgba(78, 176, 190, .035);
+}
+
+.login-gateway--reference .login-gateway__service::after {
+  z-index: 3;
+  top: 8px;
+  right: 9px;
+}
+
+.login-gateway--reference .login-gateway__service-icon,
+.login-gateway--reference .login-gateway__service-values,
+.login-gateway--reference .login-gateway__service-copy {
+  position: relative;
+  z-index: 2;
+}
+
+.login-gateway--reference .login-gateway__service-icon {
+  width: 62px;
+  height: 62px;
+  color: #dff8f7;
+  box-shadow:
+    inset 0 0 0 3px rgba(4, 18, 28, .76),
+    inset 0 0 0 5px rgba(149, 219, 223, .13),
+    inset 0 0 17px rgba(93, 213, 222, .18),
+    0 0 4px rgba(229, 255, 255, .30),
+    0 0 13px rgba(77, 205, 220, .20);
+}
+
+.login-gateway--reference .login-gateway__service:nth-child(2) .login-gateway__service-icon {
+  color: #f0d98f;
+}
+
+.login-gateway--reference .login-gateway__service:nth-child(3) .login-gateway__service-icon {
+  color: #b7efd0;
+}
+
+.login-gateway--reference .login-gateway__service:nth-child(4) .login-gateway__service-icon {
+  color: #cceff0;
+}
+
+.login-gateway--reference .login-gateway__service-graphic {
+  width: 38px;
+  height: 38px;
+  overflow: visible;
+  filter: drop-shadow(0 0 4px currentColor);
+}
+
+.login-gateway--reference .login-gateway__service-values {
+  direction: ltr;
+  padding: 13px 5px 7px;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-template-rows: repeat(3, 1fr);
+  gap: 6px 9px;
+}
+
+.login-gateway--reference .login-gateway__service-values i {
+  font-size: 8px;
+  color: #a9bec4;
+}
+
+.login-gateway--reference .login-gateway__service-copy {
+  direction: ltr;
+  padding: 3px 1px 0;
+  display: flex;
+  align-items: baseline;
+  justify-content: center;
+  gap: 7px;
+  border: 0;
+}
+
+.login-gateway--reference .login-gateway__service-copy strong {
+  color: #edf6f6;
+  font-size: 13px;
+  font-weight: 560;
+  letter-spacing: -.01em;
+}
+
+.login-gateway--reference .login-gateway__service-copy small {
+  color: #839ba4;
+  font-size: 7px;
+  direction: rtl;
+}
+
+/* Exact-reference restart: masthead and active services only. */
+.login-gateway--reference .login-gateway__header {
+  height: 230px;
+  padding: 8px 30px 12px;
+  grid-template-columns: 286px minmax(0, 1fr) 80px;
+  grid-template-rows: 210px;
+  gap: 18px;
+}
+
+.login-gateway--reference .login-gateway__environment { height: 628px; }
+
+.login-gateway--reference .login-gateway__brand {
+  width: 258px;
+  height: 202px;
+  margin: -3px 0 0 8px;
+}
+
+.login-gateway--reference .login-gateway__brand::before {
+  inset: 2% -38% 0 -12%;
+  filter: blur(9px);
+}
+
+.login-gateway--reference .login-gateway__brand-circuit {
+  left: 31%;
+  top: 50%;
+  width: 465px;
+  height: 190px;
+  opacity: .96;
+}
+
+.login-gateway--reference .brand-trace { stroke-width: 1.8; }
+
+.login-gateway--reference .login-gateway__status {
+  height: 148px;
+  margin: 7px 0 0;
+  grid-template-rows: 58px 72px;
+  gap: 10px;
+}
+
+.login-gateway--reference .login-gateway__news-line {
+  min-height: 58px;
+  padding: 9px 20px;
+  display: block;
+  direction: rtl;
+  text-align: right;
+  white-space: nowrap;
+}
+
+.login-gateway--reference .login-gateway__news-line:first-child {
+  padding: 13px 24px 8px;
+}
+
+.login-gateway--reference .login-gateway__news-line:first-child::after {
+  inset: auto 8% 0 4%;
+}
+
+.login-gateway--reference .login-gateway__news-line--secondary {
+  min-height: 72px;
+  padding: 17px 22px;
+  border-radius: 14px;
+}
+
+.login-gateway--reference .login-gateway__news-line span {
+  display: block;
+  overflow: hidden;
+  color: #e8f2f4;
+  font-size: 14px;
+  line-height: 1.55;
+  text-overflow: ellipsis;
+}
+
+.login-gateway--reference .login-gateway__news-line b {
+  color: var(--reference-green);
+  font-size: 14px;
+  font-weight: 650;
+  text-shadow: 0 0 8px rgba(103, 215, 161, .42);
+  font-variant-numeric: tabular-nums;
+}
+
+.login-gateway--reference .login-gateway__news-line:first-child b:nth-of-type(2) {
+  color: var(--reference-gold);
+  text-shadow: 0 0 8px rgba(225, 197, 121, .36);
+}
+
+.login-gateway--reference .login-gateway__news-line i {
+  display: inline-block;
+  margin-inline-start: 15px;
+  color: var(--reference-green);
+  font-size: 9px;
+  font-style: normal;
+}
+
+.login-gateway--reference .login-gateway__tools {
+  align-self: end;
+  margin-bottom: 37px;
+}
+
+.login-gateway--reference .login-gateway__monitor-grid,
+.login-gateway--reference .login-gateway__monitor-grid[dir] {
+  grid-template-columns: 240px minmax(0, 1fr) 540px;
+  gap: 16px;
+}
+
+.login-gateway--reference .login-gateway__services {
+  width: 240px;
+  height: 584px;
+  align-self: start;
+  padding: 12px 10px 10px;
+  grid-template-rows: 70px minmax(0, 1fr);
+  border-radius: 16px;
+  border-color: rgba(178, 222, 226, .43);
+  background:
+    radial-gradient(circle at 50% 0, rgba(101, 173, 184, .16), transparent 34%),
+    linear-gradient(160deg, rgba(35, 62, 73, .92), rgba(9, 29, 41, .95));
+}
+
+.login-gateway--reference .login-gateway__services header h2 {
+  font-size: 20px;
+  text-shadow: 0 1px 2px #000, 0 0 9px rgba(100, 220, 224, .25);
+}
+
+.login-gateway--reference .login-gateway__services header p {
+  margin-top: 3px;
+  font-size: 11px;
+}
+
+.login-gateway--reference .login-gateway__service-list { gap: 6px; }
+
+.login-gateway--reference .login-gateway__service {
+  grid-template-columns: 76px minmax(0, 1fr);
+  grid-template-rows: minmax(0, 1fr) 28px;
+  grid-template-areas: "icon values" "copy copy";
+  padding: 5px 8px 0;
+  gap: 2px 7px;
+}
+
+.login-gateway--reference .login-gateway__service::before {
+  inset: 0 0 29px;
+  border-color: rgba(165, 213, 219, .26);
+  border-radius: 10px;
+  background:
+    radial-gradient(circle at 20% 50%, rgba(92, 186, 199, .10), transparent 38%),
+    linear-gradient(145deg, rgba(46, 73, 83, .72), rgba(11, 34, 46, .79));
+}
+
+.login-gateway--reference .login-gateway__service::after {
+  top: 7px;
+  right: 8px;
+  background: var(--reference-green);
+}
+
+.login-gateway--reference .login-gateway__service:nth-child(odd)::after {
+  background: var(--reference-gold);
+  box-shadow: 0 0 4px #fff4bc, 0 0 10px rgba(225, 197, 121, .72);
+}
+
+.login-gateway--reference .login-gateway__service-icon,
+.login-gateway--reference .login-gateway__service:nth-child(2) .login-gateway__service-icon,
+.login-gateway--reference .login-gateway__service:nth-child(3) .login-gateway__service-icon,
+.login-gateway--reference .login-gateway__service:nth-child(4) .login-gateway__service-icon {
+  width: 64px;
+  height: 64px;
+  color: #d8f0f3;
+  border-color: rgba(203, 239, 241, .70);
+  background:
+    radial-gradient(circle at 34% 25%, rgba(244, 255, 255, .24), transparent 22%),
+    radial-gradient(circle, rgba(72, 137, 151, .38), rgba(5, 23, 34, .97) 69%);
+  box-shadow:
+    inset 0 0 0 3px rgba(3, 16, 25, .80),
+    inset 0 0 0 5px rgba(168, 217, 220, .14),
+    inset 0 0 18px rgba(111, 211, 217, .16),
+    0 0 4px rgba(236, 255, 255, .32),
+    0 0 12px rgba(77, 195, 207, .18);
+}
+
+.login-gateway--reference .login-gateway__service-graphic {
+  width: 40px;
+  height: 40px;
+  filter: drop-shadow(0 0 3px rgba(203, 244, 246, .56));
+}
+
+.login-gateway--reference .login-gateway__service-values {
+  padding: 12px 6px 7px;
+  gap: 5px 8px;
+}
+
+.login-gateway--reference .login-gateway__service-values i {
+  color: #b4c4c8;
+  font-size: 8px;
+}
+
+.login-gateway--reference .login-gateway__service-values i:nth-child(2n) { color: var(--reference-green); }
+.login-gateway--reference .login-gateway__service-values i:nth-child(3n) { color: #d1dadd; }
+
+.login-gateway--reference .login-gateway__service-copy {
+  padding: 2px 0 0;
+}
+
+.login-gateway--reference .login-gateway__service-copy strong {
+  font-size: 14px;
+  font-weight: 520;
+}
+
+.login-gateway--reference .login-gateway__service-copy small { display: none; }
+
+@media (max-width: 1380px) {
+  .login-gateway--reference .login-gateway__monitor-grid {
+    grid-template-columns: 240px minmax(0, 1fr) 540px;
+  }
+}
+
+/* Original-reference calibration: masthead and active-services rail. */
+.login-gateway--reference .login-gateway__canvas {
+  padding-inline: 40px;
+}
+
+.login-gateway--reference .login-gateway__header {
+  margin-inline: -40px;
+  grid-template-columns: 430px minmax(0, 1fr) 80px;
+}
+
+.login-gateway--reference .login-gateway__brand {
+  width: 272px;
+  height: 214px;
+  margin: -4px 0 0 2px;
+}
+
+.login-gateway--reference .login-gateway__brand::before {
+  inset: -2% -54% -1% -17%;
+  background:
+    radial-gradient(circle at 31% 47%, rgba(103, 235, 239, .31), transparent 35%),
+    radial-gradient(circle at 58% 58%, rgba(87, 213, 153, .13), transparent 42%),
+    radial-gradient(circle at 67% 72%, rgba(232, 201, 120, .10), transparent 34%);
+}
+
+.login-gateway--reference .login-gateway__brand::after {
+  background: linear-gradient(145deg, #dfffff 4%, #67e8e4 38%, #55c7d8 70%, #73d69f 100%);
+  filter:
+    drop-shadow(0 0 2px rgba(232, 255, 255, .96))
+    drop-shadow(0 0 9px rgba(72, 214, 238, .82))
+    drop-shadow(0 0 20px rgba(92, 218, 151, .28));
+}
+
+.login-gateway--reference .login-gateway__brand-circuit {
+  left: 28%;
+  width: 520px;
+  height: 205px;
+  filter: drop-shadow(0 0 4px rgba(70, 210, 237, .44));
+}
+
+.login-gateway--reference .brand-trace { stroke-width: 2; opacity: .92; }
+
+.login-gateway--reference .login-gateway__status {
+  align-self: center;
+  height: 154px;
+  margin-top: 2px;
+  grid-template-rows: 64px 76px;
+  gap: 8px;
+  background: transparent;
+  box-shadow: none;
+  -webkit-backdrop-filter: none;
+  backdrop-filter: none;
+}
+
+.login-gateway--reference .login-gateway__news-line,
+.login-gateway--reference .login-gateway__news-line:first-child {
+  min-height: 64px;
+  padding: 14px 18px 10px;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+}
+
+.login-gateway--reference .login-gateway__news-line:first-child > span,
+.login-gateway--reference .login-gateway__news-line:first-child b {
+  font-size: 24px;
+  line-height: 1.4;
+}
+
+.login-gateway--reference .login-gateway__news-line:first-child::before,
+.login-gateway--reference .login-gateway__news-line:first-child::after {
+  display: none;
+}
+
+.login-gateway--reference .login-gateway__news-line--secondary {
+  min-height: 76px;
+  padding: 7px 20px 8px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 1px;
+  position: relative;
+  border: 1px solid rgba(159, 202, 217, .20);
+  border-radius: 14px;
+  background:
+    linear-gradient(180deg, rgba(45, 69, 84, .92), rgba(24, 48, 65, .94));
+  box-shadow:
+    inset 0 1px rgba(220, 248, 250, .06),
+    0 7px 18px rgba(0, 0, 0, .28),
+    0 0 16px rgba(69, 189, 211, .07);
+}
+
+.login-gateway--reference .login-gateway__news-line span {
+  font-size: 18px;
+  font-weight: 520;
+  line-height: 1.48;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, .82);
+}
+
+.login-gateway--reference .login-gateway__news-line--secondary > span {
+  width: 100%;
+  font-size: 14px;
+  line-height: 1.45;
+  text-overflow: ellipsis;
+}
+
+.login-gateway--reference .login-gateway__news-arabic {
+  direction: rtl;
+  text-align: right;
+}
+
+.login-gateway--reference .login-gateway__news-english {
+  direction: ltr;
+  text-align: left;
+}
+
+.login-gateway--reference .login-gateway__news-line--secondary > i {
+  position: absolute;
+  inset: 7px auto auto 12px;
+  margin: 0;
+  padding: 2px 7px;
+  border: 1px solid rgba(103, 215, 161, .24);
+  border-radius: 999px;
+  background: rgba(3, 25, 34, .76);
+  line-height: 1;
+}
+
+.login-gateway--reference .login-gateway__news-line b {
+  font-size: 18px;
+  font-weight: 640;
+}
+
+.login-gateway--reference .login-gateway__news-line i {
+  margin-inline-start: 18px;
+  font-size: 10px;
+}
+
+.login-gateway--reference .login-gateway__tools {
+  margin-bottom: 34px;
+}
+
+.login-gateway--reference .login-gateway__services {
+  border-color: rgba(193, 225, 232, .46);
+  background:
+    radial-gradient(circle at 50% 0, rgba(129, 190, 206, .18), transparent 35%),
+    linear-gradient(165deg, rgba(48, 75, 94, .96), rgba(25, 48, 66, .97));
+  box-shadow:
+    inset 0 1px rgba(235, 252, 255, .10),
+    inset 0 0 34px rgba(95, 174, 193, .07),
+    0 12px 30px rgba(0, 0, 0, .24);
+}
+
+.login-gateway--reference .login-gateway__services header h2 {
+  color: #f2f7f8;
+  font-size: 21px;
+  font-weight: 680;
+}
+
+.login-gateway--reference .login-gateway__services header p {
+  color: #c7d4da;
+  font-size: 12px;
+}
+
+.login-gateway--reference .login-gateway__service::before {
+  border-color: rgba(189, 220, 229, .25);
+  background:
+    radial-gradient(circle at 20% 46%, rgba(136, 205, 218, .13), transparent 39%),
+    linear-gradient(145deg, rgba(56, 81, 98, .86), rgba(24, 49, 67, .91));
+  box-shadow:
+    inset 0 1px rgba(230, 250, 252, .06),
+    inset 0 0 18px rgba(91, 169, 185, .05);
+}
+
+.login-gateway--reference .login-gateway__service-icon,
+.login-gateway--reference .login-gateway__service:nth-child(2) .login-gateway__service-icon,
+.login-gateway--reference .login-gateway__service:nth-child(3) .login-gateway__service-icon,
+.login-gateway--reference .login-gateway__service:nth-child(4) .login-gateway__service-icon {
+  width: 66px;
+  height: 66px;
+  border: 1px solid rgba(229, 247, 249, .78);
+  color: #e5f5f6;
+  background:
+    radial-gradient(circle at 34% 24%, rgba(255, 255, 255, .38), transparent 18%),
+    radial-gradient(circle at 48% 45%, rgba(107, 168, 184, .52), rgba(8, 29, 43, .98) 70%);
+  box-shadow:
+    inset 0 0 0 3px rgba(4, 18, 29, .88),
+    inset 0 0 0 5px rgba(198, 226, 231, .20),
+    inset 0 0 18px rgba(148, 220, 225, .20),
+    0 0 0 1px rgba(8, 20, 29, .85),
+    0 0 7px rgba(234, 255, 255, .32),
+    0 0 16px rgba(76, 190, 207, .23);
+}
+
+.login-gateway--reference .login-gateway__service-graphic {
+  width: 43px;
+  height: 43px;
+  filter: drop-shadow(0 1px 1px rgba(0, 0, 0, .82)) drop-shadow(0 0 4px rgba(211, 248, 250, .62));
+}
+
+.login-gateway--reference .login-gateway__service-values i {
+  color: #c4d0d5;
+  font-size: 8.5px;
+  font-variant-numeric: tabular-nums;
+}
+
+.login-gateway--reference .login-gateway__service-values i:nth-child(2n) { color: #70dba5; }
+.login-gateway--reference .login-gateway__service-values i:nth-child(3n) { color: #e2e8e9; }
+
+.login-gateway--reference .login-gateway__service-copy strong {
+  color: #f4f7f8;
+  font-size: 14px;
+  font-weight: 560;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, .82);
+}
+
+/* Approved rectified reference: exact 1672x941 geometry for masthead and services. */
+.login-gateway--reference .login-gateway__canvas {
+  min-height: 941px;
+  padding-inline: 31px;
+  background:
+    radial-gradient(ellipse at 43% 43%, rgba(19, 91, 139, .28), transparent 49%),
+    radial-gradient(circle at 75% 67%, rgba(36, 111, 110, .08), transparent 34%),
+    linear-gradient(150deg, #03101d 0%, #05263f 45%, #041525 100%);
+}
+
+.login-gateway--reference .login-gateway__header {
+  height: 254px;
+  margin-inline: -31px;
+  padding: 7px 64px 7px 30px;
+  grid-template-columns: 369px minmax(0, 1fr);
+  grid-template-rows: 240px;
+  gap: 18px;
+  position: relative;
+}
+
+.login-gateway--reference .login-gateway__environment {
+  height: 628px;
+}
+
+.login-gateway--reference .login-gateway__brand {
+  grid-column: 1;
+  width: 360px;
+  height: 240px;
+  margin: -3px 0 0 -10px;
+  align-self: start;
+}
+
+.login-gateway--reference .login-gateway__brand-circuit {
+  left: 25%;
+  width: 520px;
+  height: 205px;
+}
+
+.login-gateway--reference .login-gateway__status {
+  grid-column: 2;
+  width: 100%;
+  height: 190px;
+  margin: 11px 0 0;
+  align-self: start;
+  grid-template-rows: 76px 97px;
+  gap: 17px;
+}
+
+.login-gateway--reference .login-gateway__news-line,
+.login-gateway--reference .login-gateway__news-line:first-child {
+  min-height: 76px;
+  height: 76px;
+  padding: 13px 18px 10px;
+}
+
+.login-gateway--reference .login-gateway__news-line:first-child {
+  padding-right: 110px;
+}
+
+.login-gateway--reference .login-gateway__news-line--secondary {
+  min-height: 97px;
+  height: 97px;
+  padding: 9px 20px 10px;
+  background: linear-gradient(180deg, rgba(45, 69, 84, .92), rgba(24, 48, 65, .94));
+}
+
+.login-gateway--reference .login-gateway__news-line--secondary > span {
+  font-size: 20px;
+  line-height: 1.38;
+}
+
+.login-gateway--reference .login-gateway__tools {
+  position: absolute;
+  z-index: 30;
+  inset: 25px 64px auto auto;
+  width: 80px;
+  height: 48px;
+  margin: 0;
+  align-self: auto;
+}
+
+.login-gateway--reference .login-gateway__tools .language-switcher {
+  width: 80px;
+  height: 48px;
+  padding: 0 12px;
+  justify-content: center;
+  gap: 8px;
+  border-radius: 10px;
+}
+
+.login-gateway--reference .login-gateway__tools .language-switcher > span {
+  display: none;
+}
+
+.login-gateway--reference .login-gateway__tools .language-switcher .icon:first-child {
+  width: 23px;
+  height: 23px;
+}
+
+.login-gateway--reference .login-gateway__tools .language-switcher .icon:last-child {
+  width: 13px;
+  height: 13px;
+  transform: rotate(90deg);
+}
+
+.login-gateway--reference .login-gateway__monitor-grid,
+.login-gateway--reference .login-gateway__monitor-grid[dir] {
+  grid-template-columns: 206px minmax(0, 1fr) 540px;
+  gap: 16px;
+}
+
+.login-gateway--reference .login-gateway__services {
+  width: 206px;
+  height: 568px;
+  margin-top: 9px;
+  padding: 12px 8px 10px;
+  grid-template-rows: 74px minmax(0, 1fr);
+  background:
+    radial-gradient(circle at 50% 0, rgba(129, 190, 206, .18), transparent 35%),
+    linear-gradient(165deg, rgba(48, 75, 94, .96), rgba(25, 48, 66, .97));
+}
+
+.login-gateway--reference .login-gateway__services header h2 {
+  font-size: 24px;
+}
+
+.login-gateway--reference .login-gateway__services header p {
+  font-size: 16px;
+}
+
+.login-gateway--reference .login-gateway__service {
+  grid-template-columns: 68px minmax(0, 1fr);
+  padding-inline: 4px;
+  gap: 2px 5px;
+}
+
+.login-gateway--reference .login-gateway__service::before {
+  background:
+    radial-gradient(circle at 20% 46%, rgba(136, 205, 218, .13), transparent 39%),
+    linear-gradient(145deg, rgba(56, 81, 98, .86), rgba(24, 49, 67, .91));
+}
+
+.login-gateway--reference .login-gateway__service-icon,
+.login-gateway--reference .login-gateway__service-values {
+  transform: translateY(-6px);
+}
+
+.login-gateway--reference .login-gateway__service-copy {
+  transform: translateY(-8px);
+}
+
+.login-gateway--reference .login-gateway__service-icon,
+.login-gateway--reference .login-gateway__service:nth-child(2) .login-gateway__service-icon,
+.login-gateway--reference .login-gateway__service:nth-child(3) .login-gateway__service-icon,
+.login-gateway--reference .login-gateway__service:nth-child(4) .login-gateway__service-icon {
+  width: 64px;
+  height: 64px;
+}
+
+.login-gateway--reference .login-gateway__service-values {
+  padding: 12px 1px 7px;
+  gap: 5px 4px;
+}
+
+.login-gateway--reference .login-gateway__service-values i {
+  font-size: 7.5px;
+}
+
+.login-gateway--reference .login-gateway__service-copy strong {
+  font-size: 13px;
+}
+
+.login-gateway--reference .login-gateway__ticker {
+  height: 51px;
+  margin: 8px -31px 0;
+  padding-block: 4px;
+}
+
+@media (max-width: 1380px) {
+  .login-gateway--reference .login-gateway__header {
+    grid-template-columns: 300px minmax(0, 1fr);
+  }
+
+  .login-gateway--reference .login-gateway__brand {
+    width: 300px;
+  }
+}
+
+/* Header circuit engraving matched to the approved Login reference. */
+.login-gateway--reference .login-gateway__brand-circuit {
+  filter: drop-shadow(0 0 2px rgba(94, 220, 233, .34));
+}
+
+.login-gateway--reference .brand-trace {
+  stroke-width: 1.15;
+  opacity: .86;
+}
+
+.login-gateway--reference .brand-trace--soft {
+  stroke-width: .78;
+  opacity: .48;
+}
+
+.login-gateway--reference .brand-trace--cyan { stroke: #65dce9; }
+.login-gateway--reference .brand-trace--green { stroke: #62d69c; }
+.login-gateway--reference .brand-trace--gold { stroke: #dec47a; }
+
+.login-gateway--reference .brand-node {
+  stroke-width: .7;
+  filter: drop-shadow(0 0 3px currentColor);
+}
+
+/* Right-side analytics calibrated to the approved 1672 x 941 reference. */
+.login-gateway--reference .login-gateway__monitor-grid,
+.login-gateway--reference .login-gateway__monitor-grid[dir] {
+  grid-template-columns: 206px minmax(0, 1fr) 670px;
+  gap: 16px;
+  padding-inline-end: 42px;
+}
+
+.login-gateway--reference .login-gateway__analytics {
+  width: 670px;
+  height: 600px;
+  align-self: start;
+  padding: 14px 14px 10px;
+  grid-template-rows: 68px minmax(0, 1fr) 34px;
+  border-color: rgba(156, 208, 219, .42);
+  border-radius: 16px;
+  background:
+    radial-gradient(circle at 50% 2%, rgba(121, 190, 208, .12), transparent 32%),
+    linear-gradient(155deg, rgba(39, 66, 82, .94), rgba(14, 38, 55, .96) 48%, rgba(10, 30, 45, .97));
+  box-shadow:
+    inset 0 1px rgba(226, 250, 252, .10),
+    inset 0 0 36px rgba(71, 158, 180, .055),
+    0 10px 30px rgba(0, 5, 14, .34),
+    0 0 14px rgba(66, 188, 216, .08);
+}
+
+.login-gateway--reference .login-gateway__analytics > header h2 {
+  font-size: 32px;
+  font-weight: 720;
+  line-height: 1.05;
+  letter-spacing: -.02em;
+}
+
+.login-gateway--reference .login-gateway__analytics > header p {
+  margin-top: 4px;
+  font-size: 17px;
+  line-height: 1.15;
+  color: #b4c6cb;
+}
+
+.login-gateway--reference .login-gateway__chart-card,
+.login-gateway--reference .login-gateway__chart-card:hover,
+.login-gateway--reference .login-gateway__chart-card:focus-visible,
+.login-gateway--reference .login-gateway__chart-card[data-active=true] {
+  padding: 8px 13px 6px;
+}
+
+.login-gateway--reference .login-gateway__metric-heading {
+  width: 100%;
+  min-height: 42px;
+  align-items: flex-start;
+}
+
+.login-gateway--reference .login-gateway__metric-heading h3 {
+  margin-top: 1px;
+  font-size: 18px;
+  font-weight: 650;
+}
+
+.login-gateway--reference .login-gateway__metric-heading strong {
+  font-size: 17px;
+  font-weight: 620;
+}
+
+.login-gateway--reference .login-gateway__metric-heading em {
+  margin-top: 2px;
+  font-size: 11px;
+}
+
+.login-gateway--reference .login-gateway__analytics-svg {
+  width: 100%;
+  height: 100%;
+  max-width: none;
+  max-height: none;
+  opacity: .96;
+  filter: saturate(1.02) contrast(1.08) drop-shadow(0 0 4px rgba(72, 203, 225, .13));
+}
+
+.login-gateway--reference .analytics-svg__series {
+  stroke-width: 2.3;
+}
+
+.login-gateway--reference .analytics-svg__legend text {
+  fill: #c0ced1;
+  font-size: 10px;
+}
+
+.login-gateway--reference .analytics-svg__summary-legend text {
+  fill: #d3dcde;
+  font-size: 8px;
+}
+
+.login-gateway--reference .analytics-svg__annotations path {
+  fill: none;
+  stroke: rgba(215, 231, 232, .68);
+  stroke-width: .8;
+}
+
+.login-gateway--reference .analytics-svg__annotations text,
+.login-gateway--reference .analytics-svg__ticks text,
+.login-gateway--reference .analytics-svg__radar-labels text {
+  fill: #b9c9cc;
+  font-size: 7px;
+  font-weight: 560;
+  font-variant-numeric: tabular-nums;
+}
+
+.login-gateway--reference .analytics-svg__radar-labels text {
+  fill: #9fb6bb;
+  font-size: 6px;
+  letter-spacing: .05em;
+}
+
+.login-gateway--reference .login-gateway__chart-card > small {
+  display: none;
+}
+
+.login-gateway--reference .login-gateway__provider-note {
+  min-height: 34px;
+  padding: 3px 14px;
+}
+
+.login-gateway--reference .login-gateway__provider-note strong {
+  font-size: 10px;
+}
+
+.login-gateway--reference .login-gateway__provider-note small {
+  font-size: 7px;
+}
+
+@media (max-width: 1380px) {
+  .login-gateway--reference .login-gateway__monitor-grid,
+  .login-gateway--reference .login-gateway__monitor-grid[dir] {
+    grid-template-columns: 206px minmax(0, 1fr) 540px;
+    padding-inline-end: 0;
+  }
+
+  .login-gateway--reference .login-gateway__analytics {
+    width: 540px;
+  }
+}
+
+/* Final approved-reference fidelity pass (1672 x 941).
+   Keep the Login interaction and truthful provider state live while matching
+   the supplied visual reference as closely as production DOM can. */
+.login-gateway--reference {
+  font-family: Tahoma, "Segoe UI", Arial, sans-serif;
+}
+
+.login-gateway--reference .login-gateway__canvas {
+  background:
+    radial-gradient(ellipse at 36% 55%, rgba(27, 96, 135, .38), transparent 43%),
+    radial-gradient(ellipse at 76% 48%, rgba(57, 111, 130, .13), transparent 38%),
+    radial-gradient(circle at 43% 61%, rgba(218, 187, 102, .045), transparent 24%),
+    linear-gradient(150deg, #03101c 0%, #082c47 47%, #041524 100%);
+}
+
+.login-gateway--reference .login-gateway__brand::after,
+.login-gateway--reference .login-gateway__brand img {
+  transform: translate(-27px, 11px) scale(.96);
+  transform-origin: center;
+}
+
+.login-gateway--reference .login-gateway__brand::after {
+  opacity: .88;
+  background: linear-gradient(145deg, #e8ffff 3%, #74eee9 34%, #4ac8dc 67%, #72d9a3 100%);
+  filter:
+    drop-shadow(0 0 2px rgba(236, 255, 255, .98))
+    drop-shadow(0 0 8px rgba(72, 218, 239, .82))
+    drop-shadow(0 0 17px rgba(85, 211, 158, .30));
+}
+
+.login-gateway--reference .login-gateway__brand img {
+  opacity: .14;
+  filter:
+    saturate(1.28)
+    hue-rotate(4deg)
+    brightness(1.12)
+    drop-shadow(0 0 3px rgba(228, 255, 255, .92))
+    drop-shadow(0 0 9px rgba(72, 214, 238, .68));
+}
+
+.login-gateway--reference .login-gateway__brand-circuit {
+  opacity: .78;
+}
+
+.login-gateway--reference .login-gateway__news-line:first-child > span,
+.login-gateway--reference .login-gateway__news-line:first-child b {
+  font-size: 21px;
+  line-height: 1.36;
+}
+
+.login-gateway--reference .login-gateway__news-line:first-child {
+  padding-right: 172px;
+}
+
+.login-gateway--reference .login-gateway__news-line--secondary > span,
+.login-gateway--reference .login-gateway__news-line--secondary b {
+  font-size: 18px;
+  line-height: 1.42;
+}
+
+.login-gateway--reference .login-gateway__news-line--secondary {
+  border-color: rgba(174, 210, 221, .26);
+  background:
+    linear-gradient(180deg, rgba(48, 72, 87, .94), rgba(27, 50, 67, .95));
+  box-shadow:
+    inset 0 1px rgba(225, 250, 252, .075),
+    0 7px 18px rgba(0, 0, 0, .25),
+    0 0 18px rgba(65, 188, 211, .09);
+}
+
+.login-gateway--reference .login-gateway__service-copy strong {
+  font-size: 15px;
+  font-weight: 540;
+}
+
+.login-gateway--reference .login-gateway__opportunity-map {
+  background:
+    radial-gradient(ellipse at 50% 49%, rgba(52, 123, 150, .25), rgba(11, 39, 56, .14) 61%, transparent 82%);
+}
+
+.login-gateway--reference .login-gateway__opportunity-map::before {
+  inset: 3% -2%;
+  background:
+    radial-gradient(ellipse at 50% 52%, rgba(83, 166, 185, .18), transparent 68%);
+}
+
+.login-gateway--reference .login-gateway__opportunity-map img {
+  opacity: 1;
+  transform: translate(-5.5%, 15px) scaleX(1.15) scaleY(1.15);
+  mask-image: radial-gradient(ellipse 78% 70% at center, #000 48%, rgba(0, 0, 0, .98) 75%, transparent 100%);
+  filter:
+    saturate(.82)
+    hue-rotate(4deg)
+    contrast(.98)
+    brightness(1.44)
+    drop-shadow(0 0 7px rgba(91, 211, 234, .44));
+}
+
+.login-gateway--reference .login-gateway__map-network {
+  opacity: .28;
+}
+
+.login-gateway--reference .login-gateway__map-pager {
+  left: 45%;
+  bottom: 12px;
+  width: 230px;
+  height: 31px;
+  gap: 13px;
+  border-color: rgba(150, 207, 220, .38);
+}
+
+.login-gateway--reference .login-gateway__map-pager i {
+  width: 5px;
+  height: 5px;
+}
+
+.login-gateway--reference .login-gateway__map-pager i.active {
+  width: 7px;
+  height: 7px;
+}
+
+/* The approved review removed the large banner; the same button remains as a
+   compact sign-in icon and still toggles the panel in both directions. */
+.login-gateway--reference .login-gateway__entry-button,
+.login-gateway--reference .login-gateway__entry-button:hover,
+.login-gateway--reference .login-gateway__entry-button:focus-visible,
+.login-gateway--reference .login-gateway__entry-button[data-active=true] {
+  position: fixed;
+  z-index: 34;
+  top: 25px;
+  right: 150px;
+  width: 48px;
+  height: 48px;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  place-items: center;
+  border: 1px solid rgba(154, 231, 235, .68);
+  border-radius: 10px;
+  color: #dff8f8;
+  background:
+    radial-gradient(circle at 50% 22%, rgba(92, 220, 221, .22), transparent 48%),
+    linear-gradient(180deg, rgba(38, 83, 96, .96), rgba(15, 45, 61, .98));
+  box-shadow:
+    inset 0 1px rgba(234, 253, 255, .18),
+    0 4px 13px rgba(0, 5, 13, .28),
+    0 0 12px rgba(71, 210, 219, .28);
+}
+
+.login-gateway--reference .login-gateway__monitor-grid {
+  z-index: 4;
+}
+
+.login-gateway--reference .login-gateway__header,
+.login-gateway--reference .login-gateway__status,
+.login-gateway--reference .login-gateway__news-line {
+  pointer-events: none;
+}
+
+.login-gateway--reference .login-gateway__tools,
+.login-gateway--reference .login-gateway__tools * {
+  pointer-events: auto;
+}
+
+.login-gateway--reference .login-gateway__entry-button > .icon {
+  width: 23px;
+  height: 23px;
+  margin: 0;
+}
+
+.login-gateway--reference .login-gateway__entry-button > span {
+  display: none;
+}
+
+.login-gateway--reference .login-gateway__entry-button::before,
+.login-gateway--reference .login-gateway__entry-button::after {
+  display: none;
+}
+
+.login-gateway--reference .login-gateway__entry-button:focus,
+.login-gateway--reference .login-gateway__entry-button:focus-visible {
+  outline: 0;
+}
+
+.login-gateway--reference .login-gateway__analytics {
+  border-color: rgba(179, 217, 224, .48);
+  border-radius: 18px;
+  background:
+    radial-gradient(circle at 48% 3%, rgba(145, 204, 216, .16), transparent 34%),
+    linear-gradient(155deg, rgba(52, 79, 94, .96), rgba(23, 49, 66, .97) 49%, rgba(15, 38, 54, .98));
+  box-shadow:
+    inset 0 1px rgba(235, 253, 255, .13),
+    inset 0 0 40px rgba(82, 168, 187, .06),
+    0 11px 31px rgba(0, 5, 14, .32),
+    0 0 16px rgba(69, 194, 218, .10);
+}
+
+.login-gateway--reference .login-gateway__analytics > header h2 {
+  color: #f0f6f6;
+  font-size: 31px;
+  font-weight: 700;
+  text-shadow: 0 2px 3px rgba(0, 0, 0, .62), 0 0 12px rgba(91, 208, 225, .18);
+}
+
+.login-gateway--reference .login-gateway__analytics > header p {
+  color: #c3cfd2;
+  font-size: 17px;
+}
+
+.login-gateway--reference .login-gateway__chart-card:nth-child(odd) {
+  border-inline-end-color: rgba(160, 207, 216, .075) !important;
+}
+
+.login-gateway--reference .login-gateway__chart-card:nth-child(-n+2) {
+  border-bottom-color: rgba(160, 207, 216, .075) !important;
+}
+
+.login-gateway--reference .login-gateway__metric-heading h3 {
+  color: #f1f5f4;
+  font-size: 19px;
+  font-weight: 610;
+}
+
+.login-gateway--reference .login-gateway__metric-heading strong,
+.login-gateway--reference .login-gateway__metric-heading em {
+  color: #67d79f;
+  text-shadow: 0 0 8px rgba(70, 205, 145, .22);
+}
+
+.login-gateway--reference .analytics-svg__grid line {
+  stroke: rgba(131, 192, 204, .14);
+}
+
+.login-gateway--reference .analytics-svg__series--gold {
+  stroke: #e3c66f;
+}
+
+.login-gateway--reference .analytics-svg__series--primary {
+  stroke: #54d4d5;
+}
+
+.login-gateway--reference .analytics-svg__series--green {
+  stroke: #52d4d4;
+}
+
+.login-gateway--reference .login-gateway__chart-card:first-child .login-gateway__analytics-svg {
+  transform: translateY(9px) scale(.94);
+}
+
+.login-gateway--reference .login-gateway__chart-card:nth-child(2) {
+  transform: translateY(-9px);
+}
+
+.login-gateway--reference .login-gateway__chart-card:nth-child(3),
+.login-gateway--reference .login-gateway__chart-card:nth-child(4) {
+  transform: translateY(8px);
+}
+
+.login-gateway--reference .login-gateway__provider-note {
+  border-top-color: rgba(150, 200, 210, .10);
+  background: rgba(5, 27, 41, .28);
+}
+
+.login-gateway--reference .login-gateway__ticker-label .icon,
+.login-gateway--reference .login-gateway__ticker-orb {
+  display: none;
+}
+
+.login-gateway--reference .login-gateway__ticker-label span {
+  font-size: 15px;
+}
+
+.login-gateway--reference .login-gateway__ticker-item b,
+.login-gateway--reference .login-gateway__ticker-item strong {
+  font-size: 15px;
+  font-weight: 560;
+}
+
+.login-gateway--reference .login-gateway__ticker-label,
+.login-gateway--reference .login-gateway__ticker-item {
+  gap: 7px;
+  padding-inline: 12px;
+}
+
+@media (max-width: 1380px) {
+  .login-gateway--reference .login-gateway__entry-button,
+  .login-gateway--reference .login-gateway__entry-button:hover,
+  .login-gateway--reference .login-gateway__entry-button:focus-visible,
+  .login-gateway--reference .login-gateway__entry-button[data-active=true] {
+    top: 18px;
+    right: 152px;
+    width: 80px;
+    height: 60px;
+  }
+
+  .login-gateway--reference .login-gateway__entry-button > .icon {
+    width: 31px;
+    height: 31px;
+  }
+}
+
+/* Keep the taller embedded registration form above the earlier Login sizing. */
+.login-gateway--reference .login-gateway__login-panel[data-auth-mode="register"] {
+  top: 50%;
+  height: min(700px, calc(100% - 20px));
+  padding-top: 13px;
+  padding-bottom: 13px;
+  overflow-y: auto;
+}
+
+.login-gateway--reference .login-gateway__login-panel[data-auth-mode="register"] .login-gateway__login-logo {
+  width: 105px;
+  height: 66px;
+}
+
+.login-gateway--reference .login-gateway__login-panel[data-auth-mode="register"] > h2 {
+  font-size: 21px;
+}
+
+.login-gateway--reference .login-gateway__login-panel[data-auth-mode="register"] .auth-form {
+  margin-top: 9px;
+  gap: 8px;
+}
+
+.login-gateway--reference .login-gateway__login-panel[data-auth-mode="register"] .field__control {
+  height: 42px;
+}
+
+/* Final cascade authority for the live market cockpit. */
+.login-gateway--reference .login-gateway__analytics-grid {
+  grid-template-columns: 1fr 1fr;
+  grid-template-rows: 1fr 1fr;
+  gap: 0;
+  direction: ltr;
+}
+
+.login-gateway--reference .login-gateway__chart-card,
+.login-gateway--reference .login-gateway__chart-card:nth-child(2),
+.login-gateway--reference .login-gateway__chart-card:nth-child(3),
+.login-gateway--reference .login-gateway__chart-card:nth-child(4) {
+  transform: none;
+  grid-template-rows: 42px minmax(0, 1fr) 18px;
+}
+
+.login-gateway--reference .login-gateway__chart-card--liquidity { grid-column: 1; grid-row: 1; }
+.login-gateway--reference .login-gateway__chart-card--metals { grid-column: 2; grid-row: 1; }
+.login-gateway--reference .login-gateway__chart-card--local { grid-column: 1; grid-row: 2; }
+.login-gateway--reference .login-gateway__chart-card--crypto { grid-column: 2; grid-row: 2; }
+
+.login-gateway--reference .login-gateway__chart-card:first-child .login-gateway__metric-heading,
+.login-gateway--reference .login-gateway__chart-card:not(:first-child) .login-gateway__metric-heading {
+  width: 100%;
+  min-height: 0;
+  display: flex;
+}
+
+.login-gateway--reference .login-gateway__chart-card .login-gateway__analytics-svg,
+.login-gateway--reference .login-gateway__chart-card:first-child .login-gateway__analytics-svg {
+  width: 100%;
+  height: 100%;
+  max-width: none;
+  max-height: none;
+  transform: none;
+  overflow: visible;
+}
+
+.login-gateway--reference .login-gateway__chart-card--liquidity .liquidity-ring {
+  transform: scale(1.06);
+}
+
+/* Locale integrity: every Login control and market label follows the active
+   document language while the requested physical panel layout stays intact. */
+.login-gateway--reference[data-locale="ar"] .login-gateway__chart-card,
+.login-gateway--reference[data-locale="ar"] .login-gateway__metric-heading {
+  direction: rtl;
+}
+
+.login-gateway--reference[data-locale="en"] .login-gateway__chart-card,
+.login-gateway--reference[data-locale="en"] .login-gateway__metric-heading {
+  direction: ltr;
+}
+
+.login-gateway--reference .login-gateway__tools .language-switcher {
+  width: auto;
+  min-width: 112px;
+  padding-inline: 12px;
+}
+
+.login-gateway--reference .login-gateway__tools .language-switcher > span {
+  display: inline;
+  font-size: 13px;
+  font-weight: 650;
+  line-height: 1;
+}
+
+.login-gateway--reference .login-gateway__tools .language-switcher > span::after {
+  content: none;
+}
+
+html[lang] .login-gateway--reference .login-gateway__tools .language-switcher > span::after {
+  content: none;
+}
+
+.login-gateway--reference[data-locale="ar"] .login-gateway__news-line {
+  direction: rtl;
+  text-align: right;
+}
+
+.login-gateway--reference[data-locale="en"] .login-gateway__news-line {
+  direction: ltr;
+  text-align: left;
+}
+
+.login-gateway--reference[data-locale="en"] .login-gateway__chart-card--local h3 {
+  font-size: 16px;
+}
+
+/* 80% fidelity pass: preserve the open, borderless map while using the
+   approved map artwork at its measured 1672 x 941 position. */
+.login-gateway--reference .login-gateway__opportunity-map img {
+  inset: 76px 0 auto !important;
+  width: 100% !important;
+  height: 410px !important;
+  object-fit: fill;
+  opacity: 1;
+  transform: none;
+  mask-image: none;
+  filter: none;
+  box-shadow: 0 0 28px 14px rgba(18, 52, 72, .68);
+}
+
+.login-gateway--reference .login-gateway__opportunity-map {
+  background:
+    radial-gradient(ellipse 78% 76% at 50% 53%, rgba(35, 78, 98, .76), rgba(13, 45, 66, .52) 62%, rgba(5, 28, 45, .12) 86%, transparent 100%);
+}
+
+.login-gateway--reference .login-gateway__map-node {
+  opacity: 0;
+}
+
+.login-gateway--reference .login-gateway__map-network {
+  opacity: 0;
+}
+
+/* 85% fidelity pass: exact static masthead artwork and reference typography.
+   Market gauge SVG geometry remains untouched. */
+.login-gateway--reference .login-gateway__header::before {
+  content: "";
+  position: absolute;
+  z-index: 0;
+  inset: 0 auto auto 0;
+  width: 417px;
+  height: 254px;
+  opacity: 1;
+  pointer-events: none;
+  background: url("/assets/login-reference-header-art-1672x941.png") 0 0 / 417px 254px no-repeat;
+}
+
+.login-gateway--reference .login-gateway__header > * {
+  z-index: 1;
+}
+
+.login-gateway--reference .login-gateway__brand {
+  opacity: 0;
+}
+
+.login-gateway--reference .login-gateway__news-line:first-child {
+  padding-right: 110px;
+}
+
+.login-gateway--reference .login-gateway__tools .language-switcher {
+  width: 80px;
+  min-width: 80px;
+  padding-inline: 10px;
+}
+
+.login-gateway--reference .login-gateway__tools .language-switcher > span {
+  display: none;
+}
+
+.login-gateway--reference .login-gateway__tools {
+  position: absolute;
+  z-index: 30;
+  inset: 25px 64px auto auto;
+}
+
+/* Language menu: the header control opens an explicit two-language selector
+   without changing the approved masthead artwork or its physical placement. */
+.login-gateway--reference .language-switcher__root {
+  position: relative;
+  z-index: 36;
+  display: inline-flex;
+}
+
+.login-gateway--reference .language-switcher__menu {
+  position: absolute;
+  z-index: 40;
+  top: calc(100% + 9px);
+  right: 0;
+  width: 188px;
+  padding: 7px;
+  display: grid;
+  gap: 5px;
+  border: 1px solid rgba(108, 214, 226, .38);
+  border-radius: 12px;
+  background:
+    linear-gradient(145deg, rgba(15, 46, 61, .98), rgba(4, 20, 33, .99));
+  box-shadow:
+    inset 0 0 18px rgba(78, 208, 211, .055),
+    0 0 0 1px rgba(221, 194, 112, .09),
+    0 13px 30px rgba(0, 4, 13, .68),
+    0 0 24px rgba(45, 198, 219, .13);
+  transform-origin: top right;
+  animation: language-menu-enter 150ms ease-out both;
+}
+
+.login-gateway--reference .language-switcher__menu::before {
+  content: "";
+  position: absolute;
+  top: -5px;
+  right: 27px;
+  width: 9px;
+  height: 9px;
+  border-top: 1px solid rgba(108, 214, 226, .38);
+  border-left: 1px solid rgba(108, 214, 226, .38);
+  background: #0d2b3a;
+  transform: rotate(45deg);
+}
+
+.login-gateway--reference .language-switcher__option {
+  width: 100%;
+  min-height: 43px;
+  padding: 0 10px;
+  display: grid;
+  grid-template-columns: 30px minmax(0, 1fr) 16px;
+  align-items: center;
+  gap: 9px;
+  border: 1px solid transparent;
+  border-radius: 8px;
+  color: #dceff3;
+  background: transparent;
+  font: inherit;
+  cursor: pointer;
+  transition: border-color 140ms ease, background-color 140ms ease, color 140ms ease;
+}
+
+.login-gateway--reference .language-switcher__option:hover,
+.login-gateway--reference .language-switcher__option:focus-visible {
+  outline: none;
+  border-color: rgba(84, 216, 224, .32);
+  color: #f2ffff;
+  background: linear-gradient(90deg, rgba(43, 184, 202, .16), rgba(76, 210, 165, .08));
+}
+
+.login-gateway--reference .language-switcher__option[aria-checked="true"] {
+  border-color: rgba(221, 194, 112, .34);
+  background: linear-gradient(90deg, rgba(48, 201, 211, .19), rgba(88, 211, 162, .11));
+}
+
+.login-gateway--reference .language-switcher__option strong {
+  font-size: 14px;
+  font-weight: 700;
+  text-align: start;
+}
+
+.login-gateway--reference .language-switcher__code {
+  color: #69d8de;
+  font-family: Arial, sans-serif;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: .08em;
+}
+
+.login-gateway--reference .language-switcher__option i {
+  color: #e4c774;
+  font-size: 12px;
+  font-style: normal;
+  opacity: 0;
+}
+
+.login-gateway--reference .language-switcher__option[aria-checked="true"] i {
+  opacity: 1;
+}
+
+.login-gateway--reference .language-switcher[data-open="true"] .icon:last-child {
+  transform: rotate(-90deg);
+}
+
+@keyframes language-menu-enter {
+  from { opacity: 0; transform: translateY(-5px) scale(.98); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .login-gateway--reference .language-switcher__menu { animation: none; }
+}
+
+/* Service instruments use the approved reference artwork while their live
+   labels and values remain DOM content and continue to follow the locale. */
+.login-gateway--reference .login-gateway__service {
+  grid-template-columns: 76px minmax(0, 1fr);
+}
+
+.login-gateway--reference .login-gateway__service-icon,
+.login-gateway--reference .login-gateway__service:nth-child(2) .login-gateway__service-icon,
+.login-gateway--reference .login-gateway__service:nth-child(3) .login-gateway__service-icon,
+.login-gateway--reference .login-gateway__service:nth-child(4) .login-gateway__service-icon {
+  width: 74px;
+  height: 74px;
+  overflow: hidden;
+  border: 0;
+  border-radius: 50%;
+  background-color: transparent;
+  background-position: center;
+  background-repeat: no-repeat;
+  background-size: cover;
+  box-shadow: none;
+  transform: translateY(-8px);
+}
+
+.login-gateway--reference .login-gateway__service:nth-child(1) .login-gateway__service-icon {
+  background-image: url("/assets/service-reference-market.png");
+}
+
+.login-gateway--reference .login-gateway__service:nth-child(2) .login-gateway__service-icon {
+  background-image: url("/assets/service-reference-recruitment.png");
+}
+
+.login-gateway--reference .login-gateway__service:nth-child(3) .login-gateway__service-icon {
+  background-image: url("/assets/service-reference-programs.png");
+}
+
+.login-gateway--reference .login-gateway__service:nth-child(4) .login-gateway__service-icon {
+  background-image: url("/assets/service-reference-partnerships.png");
+}
+
+.login-gateway--reference .login-gateway__service-icon .login-gateway__service-graphic {
+  opacity: 0;
+}
+
+.login-gateway--reference .login-gateway__service-copy strong {
+  font-size: 15px;
+  font-weight: 540;
+  line-height: 1.2;
+}
+
+.login-gateway--reference .login-gateway__service-copy small {
+  font-size: 7px;
+  line-height: 1.25;
+}
+
+.login-gateway--reference .login-gateway__ticker-label span,
+.login-gateway--reference .login-gateway__ticker-item b,
+.login-gateway--reference .login-gateway__ticker-item strong {
+  font-size: 15px;
+  line-height: 1.2;
+}
+
+/* Agreed Login composition: final physical proportions at the reference
+   1672 x 941 review viewport. Indicator SVG shapes remain unchanged. */
+.login-gateway--reference .login-gateway__monitor-grid,
+.login-gateway--reference .login-gateway__monitor-grid[dir] {
+  grid-template-columns: 244px minmax(0, 1fr) 610px;
+  gap: 16px;
+  padding-inline-end: 0;
+}
+
+.login-gateway--reference .login-gateway__services {
+  width: 244px;
+}
+
+.login-gateway--reference .login-gateway__analytics {
+  width: 610px;
+}
+
+.login-gateway--reference .login-gateway__opportunity-map img {
+  inset: 9px 0 auto !important;
+  height: 510px !important;
+  -webkit-mask-image: radial-gradient(ellipse 99% 96% at 50% 50%, #000 0 72%, rgba(0, 0, 0, .94) 80%, rgba(0, 0, 0, .38) 92%, transparent 100%);
+  mask-image: radial-gradient(ellipse 99% 96% at 50% 50%, #000 0 72%, rgba(0, 0, 0, .94) 80%, rgba(0, 0, 0, .38) 92%, transparent 100%);
+  box-shadow: none;
+}
+
+.login-gateway--reference .login-gateway__opportunity-map {
+  background:
+    radial-gradient(ellipse 88% 79% at 50% 52%, rgba(36, 80, 101, .64), rgba(12, 43, 65, .42) 66%, rgba(4, 25, 42, .08) 88%, transparent 100%);
+}
+
+.login-gateway--reference[data-locale="en"] .login-gateway__services > header h2 {
+  font-size: 22px;
+  line-height: 1.08;
+  white-space: nowrap;
+}
+
+.login-gateway--reference .login-gateway__chart-card--local h3 {
+  font-size: 16px;
+  white-space: nowrap;
+}
+
+@media (max-width: 1380px) {
+  .login-gateway--reference .login-gateway__monitor-grid,
+  .login-gateway--reference .login-gateway__monitor-grid[dir] {
+    grid-template-columns: 206px minmax(0, 1fr) 540px;
+  }
+
+  .login-gateway--reference .login-gateway__services { width: 206px; }
+  .login-gateway--reference .login-gateway__analytics { width: 540px; }
+}
+
+/* Keep the map unobstructed: the split access control belongs in the reserved
+   space immediately below the map, not over Africa or the market artwork. */
+.login-gateway--reference .login-gateway__access-switch {
+  top: calc(100% + 12px);
+  bottom: auto;
 }

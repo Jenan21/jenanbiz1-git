@@ -67,22 +67,22 @@ export function WorldNetwork() {
 }
 
 const platformNav = [
-  ["/dashboard", "الرئيسية", "Home"],
-  ["/projects", "المشاريع", "Projects"],
-  ["/academy", "الأكاديمية", "Academy"],
-  ["/market", "السوق", "Market"],
-  ["/software", "البرمجيات", "Software"],
-  ["/talent", "المواهب", "Talent"],
-  ["/marketing", "التسويق", "Marketing"],
-  ["/funding-eligibility", "أهلية التمويل", "Funding"],
-] as const;
+  ["/dashboard", "الرئيسية", "Home", "dashboard"],
+  ["/projects", "المشاريع", "Projects", "briefcase"],
+  ["/academy", "أكاديمية جنان", "Jenan Academy", "graduation"],
+  ["/talent", "التوظيف", "Recruitment", "people"],
+  ["/software", "البرمجيات", "Software", "settings"],
+  ["/programs", "البرامج", "Programs", "grid"],
+  ["/marketing", "الإعلان والتسويق", "Advertising & Marketing", "trend"],
+  ["/market", "سوق جنان", "Jenan Market", "cart"],
+] as const satisfies ReadonlyArray<readonly [string, string, string, IconName]>;
 const adminNav = [
-  ["/admin", "القيادة", "Command"],
-  ["/admin/data-center", "مركز البيانات", "Data Center"],
-  ["/admin/global-health", "الصحة العالمية", "Global Health"],
-  ["/admin/bounty-hunters", "صائدو الجوائز", "Bounty Hunters"],
-  ["/admin/social-growth", "النمو الاجتماعي", "Social Growth"],
-] as const;
+  ["/admin", "مركز القيادة", "Command Center", "shield"],
+  ["/admin/data-center", "مركز البيانات", "Data Center", "grid"],
+  ["/admin/global-health", "الصحة العالمية", "Global Health", "activity"],
+  ["/admin/bounty-hunters", "صائدو الجوائز", "Bounty Hunters", "sparkles"],
+  ["/admin/social-growth", "الانتشار المراقب", "Governed Outreach", "globe"],
+] as const satisfies ReadonlyArray<readonly [string, string, string, IconName]>;
 
 export function PlatformShell({
   locale,
@@ -99,42 +99,85 @@ export function PlatformShell({
 }) {
   const ar = locale === "ar";
   const navigation = admin ? adminNav : platformNav;
+  const current = navigation.find(([href]) => href === activeRoute);
   return (
     <div className="source-app">
-      <div className="shell">
-        <header className="platform-header glass">
-          <JenanLogo />
-          <nav
-            className="main-nav"
-            aria-label={ar ? "التنقل الرئيسي" : "Main navigation"}
-          >
-            {navigation.map(([href, arabic, english]) => (
-              <Link
-                href={href}
-                key={href}
-                className={`nav-link ${activeRoute === href ? "active" : ""}`}
-              >
-                {ar ? arabic : english}
-              </Link>
-            ))}
-          </nav>
-          <div className="top-tools">
-            <ThemeToggle label={ar ? "المظهر" : "Theme"} />
-            <LanguageSwitcher
-              locale={locale}
-              label={ar ? "Switch to English" : "التبديل إلى العربية"}
-            />
-            <span className="user-chip">{userLabel}</span>
-            <LogoutButton label={ar ? "خروج" : "Logout"} />
+      <div className="shell shell--platform">
+        <div className="platform-layout">
+          <aside className="platform-sidebar glass">
+            <div className="platform-sidebar__brand">
+              <JenanLogo />
+            </div>
+            <div className="platform-sidebar__mode">
+              <span>{admin ? "ADMIN CONTROL" : "JENAN WORKSPACE"}</span>
+              <strong>
+                {admin
+                  ? ar
+                    ? "مركز إدارة المنصة"
+                    : "Platform administration"
+                  : ar
+                    ? "منظومة الأعمال"
+                    : "Business ecosystem"}
+              </strong>
+            </div>
+            <nav
+              className="platform-nav"
+              aria-label={ar ? "التنقل الرئيسي" : "Main navigation"}
+            >
+              {navigation.map(([href, arabic, english, icon]) => (
+                <Link
+                  href={href}
+                  key={href}
+                  className={`platform-nav__link ${activeRoute === href ? "active" : ""}`}
+                >
+                  <span className="platform-nav__icon">
+                    <Icon name={icon} />
+                  </span>
+                  <span>{ar ? arabic : english}</span>
+                  <i aria-hidden="true" />
+                </Link>
+              ))}
+            </nav>
+            <div className="platform-sidebar__footer">
+              <span className="platform-sidebar__status">
+                <i />
+                {ar ? "واجهة تصميمية — غير تشغيلية" : "Design shell — inactive"}
+              </span>
+              {admin && (
+                <Link href="/dashboard" className="platform-sidebar__switch">
+                  <Icon name="arrow" />
+                  {ar ? "العودة إلى المنصة" : "Return to platform"}
+                </Link>
+              )}
+            </div>
+          </aside>
+          <div className="platform-workspace">
+            <header className="platform-header glass">
+              <div className="platform-context">
+                <span>{admin ? "JENAN ADMIN" : "JENAN BIZ"}</span>
+                <strong>
+                  {current ? (ar ? current[1] : current[2]) : "Jenan BIZ"}
+                </strong>
+              </div>
+              <div className="top-tools">
+                <ThemeToggle label={ar ? "المظهر" : "Theme"} />
+                <LanguageSwitcher
+                  locale={locale}
+                  label={ar ? "Switch to English" : "التبديل إلى العربية"}
+                />
+                <span className="user-chip">{userLabel}</span>
+                <LogoutButton label={ar ? "خروج" : "Logout"} />
+              </div>
+            </header>
+            <main className="platform-body">{children}</main>
+            <MarketUnavailable locale={locale} />
+            <p className="footer-note">
+              {ar
+                ? "Jenan BIZ — لا تُعرض أرقام تشغيلية إلا من مصادر حقيقية"
+                : "Jenan BIZ — operational metrics require real sources"}
+            </p>
           </div>
-        </header>
-        <main className="platform-body">{children}</main>
-        <MarketUnavailable locale={locale} />
-        <p className="footer-note">
-          {ar
-            ? "Jenan BIZ — لا تُعرض أرقام تشغيلية إلا من مصادر حقيقية"
-            : "Jenan BIZ — operational metrics require real sources"}
-        </p>
+        </div>
       </div>
     </div>
   );

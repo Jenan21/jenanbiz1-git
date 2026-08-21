@@ -1,4 +1,4 @@
-import type { MarketProvider, MarketSnapshot } from "@/lib/market/contracts";
+import type { MarketProvider, MarketRequestContext, MarketSnapshot } from "@/lib/market/contracts";
 import { getRegisteredMarketProvider } from "@/lib/market/provider-registry";
 
 const freshForMs = 30_000;
@@ -19,13 +19,22 @@ const pending = globalForMarket.jenanMarketPending ?? new Map<string, Promise<Ma
 globalForMarket.jenanMarketCache = cache;
 globalForMarket.jenanMarketPending = pending;
 
-function disconnectedSnapshot(): MarketSnapshot {
-  return { state: "disconnected", provider: null, updatedAt: null, staleAt: null, instruments: [] };
+const defaultContext: MarketRequestContext = {
+  countryCode: null,
+  countrySource: "unavailable",
+};
+
+function cacheKey(provider: MarketProvider, context: MarketRequestContext) {
+  return `${provider.id}:${context.countryCode ?? "global"}`;
 }
 
-async function refresh(provider: MarketProvider, now: number): Promise<MarketSnapshot> {
+function disconnectedSnapshot(context: MarketRequestContext): MarketSnapshot {
+  return { state: "disconnected", provider: null, updatedAt: null, staleAt: null, instruments: [], audience: context };
+}
+
+async function refresh(provider: MarketProvider, now: number, context: MarketRequestContext, key: string): Promise<MarketSnapshot> {
   try {
-    const instruments = await provider.fetchSnapshot();
+    const instruments = await provider.fetchSnapshot(context);
     const updatedAt = new Date(now).toISOString();
     const snapshot: MarketSnapshot = {
       state: "live",
@@ -33,11 +42,12 @@ async function refresh(provider: MarketProvider, now: number): Promise<MarketSna
       updatedAt,
       staleAt: null,
       instruments,
+      audience: context,
     };
-    cache.set(provider.id, { fetchedAt: now, snapshot });
+    cache.set(key, { fetchedAt: now, snapshot });
     return snapshot;
   } catch {
-    const cached = cache.get(provider.id);
+    const cached = cache.get(key);
     if (cached && now - cached.fetchedAt <= staleForMs) {
       return {
         ...cached.snapshot,
@@ -45,21 +55,23 @@ async function refresh(provider: MarketProvider, now: number): Promise<MarketSna
         staleAt: new Date(now).toISOString(),
       };
     }
-    return { state: "error", provider: provider.id, updatedAt: null, staleAt: null, instruments: [] };
+    return { state: "error", provider: provider.id, updatedAt: null, staleAt: null, instruments: [], audience: context };
   }
 }
 
 export async function getMarketSnapshot(
   provider: MarketProvider | null = getRegisteredMarketProvider(),
   now = Date.now(),
+  context: MarketRequestContext = defaultContext,
 ): Promise<MarketSnapshot> {
-  if (!provider || !provider.isConfigured()) return disconnectedSnapshot();
-  const cached = cache.get(provider.id);
+  if (!provider || !provider.isConfigured()) return disconnectedSnapshot(context);
+  const key = cacheKey(provider, context);
+  const cached = cache.get(key);
   if (cached && now - cached.fetchedAt <= freshForMs) return cached.snapshot;
 
-  const existing = pending.get(provider.id);
+  const existing = pending.get(key);
   if (existing) return existing;
-  const request = refresh(provider, now).finally(() => pending.delete(provider.id));
-  pending.set(provider.id, request);
+  const request = refresh(provider, now, context, key).finally(() => pending.delete(key));
+  pending.set(key, request);
   return request;
 }

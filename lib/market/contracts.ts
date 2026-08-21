@@ -1,4 +1,11 @@
 export type MarketDataState = "live" | "stale" | "disconnected" | "error";
+export type MarketCategory = "metals" | "local-equities" | "crypto" | "macro";
+export type MarketCountrySource = "vercel" | "unavailable";
+
+export interface MarketRequestContext {
+  countryCode: string | null;
+  countrySource: MarketCountrySource;
+}
 
 export interface MarketInstrument {
   symbol: string;
@@ -6,6 +13,8 @@ export interface MarketInstrument {
   percentChange: number | null;
   series: number[];
   datetime: string | null;
+  category?: MarketCategory;
+  liquidityShare?: number | null;
 }
 
 export interface MarketSnapshot {
@@ -14,10 +23,11 @@ export interface MarketSnapshot {
   updatedAt: string | null;
   staleAt: string | null;
   instruments: MarketInstrument[];
+  audience: MarketRequestContext;
 }
 
 export interface MarketProvider {
   readonly id: string;
   isConfigured(): boolean;
-  fetchSnapshot(): Promise<MarketInstrument[]>;
+  fetchSnapshot(context?: MarketRequestContext): Promise<MarketInstrument[]>;
 }

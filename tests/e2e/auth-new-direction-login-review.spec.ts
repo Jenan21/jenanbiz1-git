@@ -27,16 +27,51 @@ async function prepare(page: import("@playwright/test").Page) {
   await page.addStyleTag({ content: "nextjs-portal{display:none!important}" });
 }
 
+async function expectEnglishGatewayCopy(page: import("@playwright/test").Page) {
+  await expect(page.locator("html")).toHaveAttribute("lang", "en");
+  await expect(page.locator("html")).toHaveAttribute("dir", "ltr");
+  await expect(page.locator(".login-gateway")).toHaveAttribute("data-locale", "en");
+  await expect(page.getByTestId("jenan-entry-gateway")).toContainText("Sign in");
+  await expect(page.getByTestId("jenan-register-gateway")).toContainText("Create account");
+  await expect(page.getByTestId("jenan-entry-gateway").locator(".icon")).toHaveCount(1);
+  await expect(page.getByTestId("jenan-register-gateway").locator(".icon")).toHaveCount(1);
+  await expect(page.locator(".login-gateway__news-arabic")).toHaveCount(0);
+  await expect(page.locator(".login-gateway__news-english")).toBeVisible();
+  await expect(page.locator(".login-gateway__news-line").first()).toHaveCSS("direction", "ltr");
+  await expect(page.locator(".login-gateway__services > header h2")).toHaveText("Your Active Services");
+  await expect(page.locator(".login-gateway__services > header p")).toHaveText("Integrated global services");
+  await expect(page.locator(".login-gateway__service-copy strong")).toHaveText([
+    "Jenan Market",
+    "AI Recruitment",
+    "Business Programs",
+    "Partnerships",
+  ]);
+  await expect(page.locator(".login-gateway__analytics > header h2")).toHaveText("Smart Market Indicators");
+  await expect(page.locator(".login-gateway__chart-card--liquidity h3")).toHaveText("Liquidity Share");
+  await expect(page.locator(".login-gateway__chart-card--metals h3")).toHaveText("Metals Gauge");
+  await expect(page.locator(".login-gateway__chart-card--local h3")).toHaveText("Saudi Arabia Equities");
+  await expect(page.locator(".login-gateway__chart-card--crypto h3")).toHaveText("Digital Assets");
+  await expect(page.locator(".liquidity-ring__legend")).toContainText("Metals");
+  await expect(page.locator(".liquidity-ring__legend")).toContainText("Local");
+  await expect(page.locator(".liquidity-ring__legend")).toContainText("Crypto");
+  await expect(page.locator(".liquidity-ring__caption")).toHaveText("LIQUIDITY");
+  await expect(page.locator(".login-gateway__chart-card--metals")).toHaveCSS("direction", "ltr");
+  expect(await page.locator("main").innerText()).not.toMatch(/[\u0600-\u06ff]/);
+}
+
 test("captures the initial gateway and expanded login state", async ({ page }) => {
   await prepare(page);
   await expect(page.locator("html")).toHaveAttribute("dir", "rtl");
   await expect(page.getByTestId("jenan-entry-gateway")).toBeVisible();
+  await expect(page.getByTestId("jenan-register-gateway")).toBeVisible();
   await expect(page.locator(".login-gateway__hero-entry")).toHaveCount(0);
   await expect(page.getByTestId("login-expanded")).toHaveCount(0);
   await expect(page.locator(".login-gateway__status")).toBeVisible();
   await expect(page.locator(".login-gateway__ticker")).toBeVisible();
   await expect(page.locator(".login-gateway__activity")).toBeVisible();
-  await expect(page.locator(".login-gateway__services")).toHaveCount(0);
+  await expect(page.locator(".login-gateway__services")).toBeVisible();
+  await expect(page.locator(".login-gateway__service")).toHaveCount(4);
+  await expect(page.locator(".login-gateway__service-values i")).toHaveCount(24);
   await expect(page.locator(".login-gateway__opportunities")).toBeVisible();
   await expect(page.getByText("فرص الأعمال العالمية")).toHaveCount(0);
   await expect(page.locator(".login-gateway__opportunities")).toHaveCSS("border-top-width", "0px");
@@ -44,22 +79,27 @@ test("captures the initial gateway and expanded login state", async ({ page }) =
   await expect(page.getByTestId("map-activity-state")).toContainText("مؤشرات جغرافية تجريبية");
   await expect(page.getByTestId("map-activity-state")).toContainText("ليست بيانات نشاط حقيقية");
   await expect(page.locator(".login-gateway__analytics")).toBeVisible();
-  await expect(page.locator(".login-gateway__analytics")).toHaveCSS("border-top-width", "0px");
+  await expect(page.locator(".login-gateway__analytics")).toHaveCSS("border-top-width", "1px");
   await expect(page.locator(".login-gateway__analytics")).toHaveAttribute("data-market-state", "demo");
   await expect(page.locator(".login-gateway__provider-note")).toContainText("جميع الأرقام والمؤشرات تجريبية");
   await expect(page.locator(".login-gateway__analytics img")).toHaveCount(0);
   await expect(page.locator(".login-gateway__analytics .login-gateway__chart-card")).toHaveCount(4);
   await expect(page.locator(".login-gateway__analytics-svg")).toHaveCount(4);
-  await expect(page.locator(".login-gateway__analytics-svg .analytics-svg__series")).toHaveCount(5);
-  await expect(page.locator(".login-gateway__analytics-svg .analytics-svg__bars rect")).toHaveCount(5);
-  await expect(page.locator(".login-gateway__analytics-svg polygon")).toHaveCount(1);
+  await expect(page.locator(".market-gauge")).toHaveCount(3);
+  await expect(page.locator('.market-gauge[data-gauge-value="unavailable"]')).toHaveCount(0);
+  await expect(page.locator(".liquidity-ring")).toHaveCount(1);
+  await expect(page.locator(".liquidity-ring__segment")).toHaveCount(3);
+  await expect(page.locator(".login-gateway__chart-card--local")).toContainText("السعودية");
+  await expect(page.locator(".login-gateway__map-network .map-route")).toHaveCount(6);
+  await expect(page.locator(".login-gateway__map-node")).toHaveCount(8);
   await expect(page.locator(".login-gateway__ticker-item strong").first()).toHaveAttribute("data-value", "2431.2");
   await expect(page.locator(".login-gateway__circuit-board")).toBeVisible();
+  await expect(page.locator(".login-gateway__brand-circuit .brand-trace")).toHaveCount(12);
   const metricCards = page.locator(".login-gateway__chart-card");
-  await expect(metricCards.nth(0)).toHaveAttribute("data-active", "true");
+  await expect(metricCards.nth(1)).toHaveAttribute("data-active", "true");
   await metricCards.nth(2).focus();
   await expect(metricCards.nth(2)).toHaveAttribute("data-active", "true");
-  await expect(metricCards.nth(0)).toHaveAttribute("data-active", "false");
+  await expect(metricCards.nth(1)).toHaveAttribute("data-active", "false");
 
   const initialLayout = await page.evaluate(() => ({
     scrollWidth: document.documentElement.scrollWidth,
@@ -74,14 +114,14 @@ test("captures the initial gateway and expanded login state", async ({ page }) =
     fullPage: false,
   });
 
-  await page.getByTestId("jenan-entry-gateway").evaluate((element) => {
+  await page.locator(".login-gateway__access-switch").evaluate((element) => {
     (element as HTMLElement).style.visibility = "hidden";
   });
   await page.screenshot({
     path: path.join(output, "initial-gateway-comparison-1672x941.png"),
     fullPage: false,
   });
-  await page.getByTestId("jenan-entry-gateway").evaluate((element) => {
+  await page.locator(".login-gateway__access-switch").evaluate((element) => {
     (element as HTMLElement).style.visibility = "";
   });
 
@@ -103,8 +143,16 @@ test("captures the initial gateway and expanded login state", async ({ page }) =
 
   await page.getByTestId("jenan-entry-gateway").click();
   await expect(page.getByTestId("login-expanded")).toBeVisible();
-  await page.getByTestId("jenan-entry-gateway").click();
+  await page.getByTestId("close-login").click();
   await expect(page.getByTestId("login-expanded")).toHaveCount(0);
+
+  await page.getByTestId("jenan-register-gateway").click();
+  await expect(page.getByTestId("login-expanded")).toHaveAttribute("data-auth-mode", "register");
+  await expect(page.locator('input[name="name"]')).toBeFocused();
+  await expect(page.locator('input[name="countryCode"]')).toBeVisible();
+  await expect(page.getByTestId("login-expanded").getByRole("button", { name: "إنشاء الحساب", exact: true })).toBeVisible();
+  await page.getByTestId("close-login").click();
+  await expect(page.getByTestId("jenan-register-gateway")).toBeFocused();
   await expect(page).toHaveURL(/\/login$/);
 });
 
@@ -117,7 +165,7 @@ test("reduced motion keeps the gateway flow usable", async ({ page }) => {
   await expect(page.getByTestId("jenan-entry-gateway")).toBeVisible();
 });
 
-test("English LTR gateway keeps the same Login-only flow", async ({ page }) => {
+test("English LTR gateway keeps the same access flow", async ({ page }) => {
   await page.setViewportSize({ width: 1672, height: 941 });
   await page.context().clearCookies();
   await page.context().addCookies([
@@ -125,12 +173,54 @@ test("English LTR gateway keeps the same Login-only flow", async ({ page }) => {
   ]);
   await page.goto("/login");
 
-  await expect(page.locator("html")).toHaveAttribute("dir", "ltr");
-  await expect(page.getByTestId("jenan-entry-gateway")).toContainText("Open the sign-in screen");
+  await expectEnglishGatewayCopy(page);
+  const englishLayout = await page.evaluate(() => ({
+    scrollWidth: document.documentElement.scrollWidth,
+    width: window.innerWidth,
+  }));
+  expect(englishLayout.scrollWidth).toBeLessThanOrEqual(englishLayout.width + 1);
+  await page.screenshot({
+    path: path.join(output, "initial-gateway-en-1672x941.png"),
+    fullPage: false,
+  });
   await page.getByTestId("jenan-entry-gateway").click();
   await expect(page.locator('input[name="email"]')).toBeFocused();
+  await expect(page.getByTestId("login-expanded")).toContainText("Enter your secure business environment");
   await page.keyboard.press("Escape");
-  await expect(page.getByTestId("jenan-entry-gateway")).toBeVisible();
+  await page.getByTestId("jenan-register-gateway").click();
+  await expect(page.getByTestId("login-expanded")).toContainText("Create your secure business workspace");
+  await expect(page.getByTestId("login-expanded").getByRole("button", { name: "Create account", exact: true })).toBeVisible();
+});
+
+test("language menu switches the complete Login gateway in both directions", async ({ page }) => {
+  await prepare(page);
+  await expect(page.locator(".liquidity-ring__caption")).toHaveText("السيولة");
+
+  const arabicLanguageButton = page.getByRole("button", { name: "اختيار اللغة" });
+  await expect(arabicLanguageButton).toHaveAttribute("aria-expanded", "false");
+  await arabicLanguageButton.click();
+  await expect(arabicLanguageButton).toHaveAttribute("aria-expanded", "true");
+  await expect(page.getByRole("menu", { name: "اختر اللغة" })).toBeVisible();
+  await expect(page.getByRole("menuitemradio")).toHaveCount(2);
+  await expect(page.getByRole("menuitemradio").filter({ hasText: "العربية" })).toHaveAttribute("aria-checked", "true");
+  await page.screenshot({
+    path: path.join(output, "language-menu-ar-1672x941.png"),
+    fullPage: false,
+  });
+
+  await page.getByRole("menuitemradio").filter({ hasText: "English" }).click();
+
+  await expectEnglishGatewayCopy(page);
+  const englishLanguageButton = page.getByRole("button", { name: "Choose language" });
+  await englishLanguageButton.click();
+  await expect(page.getByRole("menu", { name: "Choose language" })).toBeVisible();
+  await expect(page.getByRole("menuitemradio").filter({ hasText: "English" })).toHaveAttribute("aria-checked", "true");
+  await page.getByRole("menuitemradio").filter({ hasText: "العربية" }).click();
+
+  await expect(page.locator("html")).toHaveAttribute("lang", "ar");
+  await expect(page.locator("html")).toHaveAttribute("dir", "rtl");
+  await expect(page.getByTestId("jenan-entry-gateway")).toContainText("تسجيل الدخول");
+  await expect(page.getByTestId("jenan-register-gateway")).toContainText("إنشاء حساب");
 });
 
 test("renders a live provider snapshot without production fallback data", async ({ page }) => {
@@ -143,10 +233,11 @@ test("renders a live provider snapshot without production fallback data", async 
         provider: "contract-test",
         updatedAt: "2026-08-13T16:00:00.000Z",
         staleAt: null,
+        audience: { countryCode: "SA", countrySource: "vercel" },
         instruments: [
-          { symbol: "XAU/USD", price: 2431.2, percentChange: 0.8, series: [2398, 2405, 2412, 2408, 2420, 2431.2], datetime: "2026-08-13" },
-          { symbol: "WTI/USD", price: 78.4, percentChange: 0.35, series: [76.8, 77.2, 76.9, 77.8, 78.1, 78.4], datetime: "2026-08-13" },
-          { symbol: "BTC/USD", price: 61220, percentChange: 1.1, series: [59800, 60200, 60700, 60500, 61000, 61220], datetime: "2026-08-13" },
+          { symbol: "XAU/USD", price: 2431.2, percentChange: 0.8, series: [2398, 2405, 2412, 2408, 2420, 2431.2], datetime: "2026-08-13", category: "metals", liquidityShare: 31 },
+          { symbol: "TASI", price: 12174.4, percentChange: 0.35, series: [12018, 12062, 12040, 12102, 12138, 12174.4], datetime: "2026-08-13", category: "local-equities", liquidityShare: 44 },
+          { symbol: "BTC/USD", price: 61220, percentChange: 1.1, series: [59800, 60200, 60700, 60500, 61000, 61220], datetime: "2026-08-13", category: "crypto", liquidityShare: 25 },
           { symbol: "DXY", price: 102.7, percentChange: -0.2, series: [103.2, 103, 102.9, 103.1, 102.8, 102.7], datetime: "2026-08-13" },
         ],
       }),
@@ -155,9 +246,9 @@ test("renders a live provider snapshot without production fallback data", async 
   await page.goto("/login");
   await expect(page.locator(".login-gateway__analytics")).toHaveAttribute("data-market-state", "live");
   await expect(page.locator(".login-gateway__provider-note")).toContainText("البيانات المباشرة متصلة");
-  await expect(page.locator(".analytics-svg__series")).toHaveCount(5);
-  await expect(page.locator(".analytics-svg__bars rect")).toHaveCount(5);
-  await expect(page.locator(".login-gateway__analytics-svg polygon")).toHaveCount(1);
+  await expect(page.locator(".market-gauge")).toHaveCount(3);
+  await expect(page.locator(".liquidity-ring__segment")).toHaveCount(3);
+  await expect(page.locator(".login-gateway__chart-card--local")).toContainText("السعودية");
   await expect(page.locator(".login-gateway__ticker-item strong").first()).toHaveAttribute("data-value", "2431.2");
 });
 

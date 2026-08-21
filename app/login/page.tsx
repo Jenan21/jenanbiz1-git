@@ -8,7 +8,7 @@ export default async function LoginPage() {
   return (
     <LoginGateway
       locale={locale}
-      languageLabel={ar ? "التبديل إلى الإنجليزية" : "Switch to Arabic"}
+      languageLabel={ar ? "اختيار اللغة" : "Choose language"}
       labels={{
         name: "",
         countryCode: "",

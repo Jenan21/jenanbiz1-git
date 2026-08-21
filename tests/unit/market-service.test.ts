@@ -24,6 +24,7 @@ describe("market server cache and truthful state", () => {
       updatedAt: null,
       staleAt: null,
       instruments: [],
+      audience: { countryCode: null, countrySource: "unavailable" },
     });
   });
 
@@ -40,6 +41,18 @@ describe("market server cache and truthful state", () => {
     expect(first.state).toBe("live");
     expect(second).toEqual(first);
     expect(source.fetchSnapshot).toHaveBeenCalledTimes(1);
+  });
+
+  it("keeps server cache entries isolated by the visitor country", async () => {
+    const source = provider("country-cache");
+    const sa = { countryCode: "SA", countrySource: "vercel" as const };
+    const us = { countryCode: "US", countrySource: "vercel" as const };
+    await getMarketSnapshot(source, 10_000, sa);
+    await getMarketSnapshot(source, 20_000, sa);
+    await getMarketSnapshot(source, 20_000, us);
+    expect(source.fetchSnapshot).toHaveBeenCalledTimes(2);
+    expect(source.fetchSnapshot).toHaveBeenNthCalledWith(1, sa);
+    expect(source.fetchSnapshot).toHaveBeenNthCalledWith(2, us);
   });
 
   it("returns the last trusted snapshot as stale when refresh fails", async () => {
