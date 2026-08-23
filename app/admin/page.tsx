@@ -1,4 +1,10 @@
-import { ProtectedAdminPage } from "@/components/source/protected-module-page";
+import { AdminShell } from "@/components/admin/admin-shell";
+import { AdminOverviewDashboard } from "@/components/dashboard/admin-overview-dashboard";
+
 export default function Page() {
-  return <ProtectedAdminPage route="/admin" />;
+  return (
+    <AdminShell>
+      <AdminOverviewDashboard />
+    </AdminShell>
+  );
 }

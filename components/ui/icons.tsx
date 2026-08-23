@@ -4,6 +4,7 @@ export type IconName =
   | "activity"
   | "arrow"
   | "bell"
+  | "brain"
   | "briefcase"
   | "check"
   | "chevron"
@@ -40,6 +41,12 @@ const paths: Record<IconName, React.ReactNode> = {
   bell: (
     <>
       <path d="M18 8a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9M10 21h4" />
+    </>
+  ),
+  brain: (
+    <>
+      <path d="M9 3a4 4 0 0 0-4 4v1a3 3 0 0 0 1 2.2V10a4 4 0 0 0 1.3 3l.7.6V14a3 3 0 0 0 3 3h1a3 3 0 0 0 3-3v-.4l.7-.6A4 4 0 0 0 18 10V8.2A3 3 0 0 0 19 6V5a4 4 0 0 0-4-4h-1a3 3 0 0 0-3 3v1a3 3 0 0 0-3-3H9Zm3 7a2 2 0 0 1 2 2v1h1a2 2 0 0 1 2 2v1a2 2 0 0 1-2 2h-1.5A2.5 2.5 0 0 1 11 18H9a2 2 0 0 1-2-2v-1a2 2 0 0 1 2-2h1v-1a2 2 0 0 1 2-2Z" />
+      <path d="M12 6v2M9 9h6" />
     </>
   ),
   briefcase: (

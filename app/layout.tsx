@@ -5,8 +5,29 @@ import { getDirection, resolveLocale } from "@/lib/i18n";
 import "@/styles/globals.css";
 
 export const metadata: Metadata = {
-  title: { default: "Jenan BIZ", template: "%s | Jenan BIZ" },
-  description: "Jenan BIZ business platform",
+  metadataBase: new URL("https://jenanbiz.com"),
+  applicationName: "Jenan BIZ",
+  title: {
+    default: "Jenan BIZ | Global Business Platform",
+    template: "%s | Jenan BIZ",
+  },
+  description:
+    "Jenan BIZ is a global business platform for operations, data intelligence, smart workflows, and scalable collaboration across teams and regions.",
+  keywords: [
+    "business platform",
+    "global operations",
+    "workflow automation",
+    "smart enterprise",
+    "digital business",
+    "Jenan BIZ",
+  ],
+  openGraph: {
+    title: "Jenan BIZ | Global Business Platform",
+    description:
+      "Modern operations, intelligent workflows, and a unified digital foundation for global teams.",
+    siteName: "Jenan BIZ",
+    type: "website",
+  },
 };
 
 export default async function RootLayout({
@@ -24,7 +45,7 @@ export default async function RootLayout({
       data-theme="balanced-dark"
       suppressHydrationWarning
     >
-      <body>{children}</body>
+      <body className="app-shell">{children}</body>
     </html>
   );
 }

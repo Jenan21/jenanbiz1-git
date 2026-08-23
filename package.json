@@ -23,6 +23,7 @@
     "verify:phase0-foundation": "node scripts/verify-phase0-foundation.mjs",
     "test": "node --env-file=.env ./node_modules/vitest/vitest.mjs run",
     "test:integration": "node --env-file=.env ./node_modules/vitest/vitest.mjs run tests/integration",
+    "test:live-acceptance": "node --env-file=.env ./node_modules/vitest/vitest.mjs run tests/integration/live-acceptance-001.integration.test.ts",
     "test:e2e": "node --env-file=.env scripts/run-playwright.mjs",
     "test:e2e:visual": "node --env-file=.env scripts/run-playwright.mjs tests/e2e/visual-layout.spec.ts",
     "auth:bootstrap-super-admin": "node --env-file=.env scripts/bootstrap-super-admin.mjs"
