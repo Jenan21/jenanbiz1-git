@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { PlatformShell, WorldNetwork } from "@/components/source/source-ui";
+import { WorkspaceDivisions } from "@/components/source/workspace-divisions";
 import { Icon, type IconName } from "@/components/ui/icons";
 import type { Locale } from "@/types/i18n";
 
@@ -566,6 +567,8 @@ export function ModuleWorkspace({
           ))}
         </div>
       </section>
+
+      <WorkspaceDivisions locale={locale} route={route} />
 
       <section className="module-bottom-grid">
         <article className="card module-activity">

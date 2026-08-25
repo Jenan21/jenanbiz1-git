@@ -4,6 +4,11 @@ import type { ReactNode } from "react";
 import { getDirection, resolveLocale } from "@/lib/i18n";
 import "@/styles/globals.css";
 import "@/styles/internal-workspace.css";
+import "@/styles/data-center.css";
+import "@/styles/global-health.css";
+import "@/styles/social-growth.css";
+import "@/styles/admin-light-theme.css";
+import "@/styles/world-class-workspaces.css";
 
 export const metadata: Metadata = {
   title: { default: "Jenan BIZ", template: "%s | Jenan BIZ" },

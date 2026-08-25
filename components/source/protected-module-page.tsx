@@ -4,6 +4,9 @@ import { getRequestDictionary } from "@/lib/i18n/server";
 import { ModuleScreen } from "@/components/source/module-screen";
 import { ModuleWorkspace } from "@/components/source/module-workspace";
 import { AdminCommandCenter } from "@/components/source/admin-command-center";
+import { AdminDataCenter } from "@/components/source/admin-data-center";
+import { AdminGlobalHealth } from "@/components/source/admin-global-health";
+import { AdminSocialGrowth } from "@/components/source/admin-social-growth";
 import { BountyHuntersScreen } from "@/components/source/specialized-screens";
 import {
   RefinedFundingScreen,
@@ -33,6 +36,30 @@ export async function ProtectedAdminPage({ route }: { route: string }) {
   if (route === "/admin") {
     return (
       <AdminCommandCenter
+        locale={locale}
+        userLabel={user.profile?.displayName ?? user.email}
+      />
+    );
+  }
+  if (route === "/admin/data-center") {
+    return (
+      <AdminDataCenter
+        locale={locale}
+        userLabel={user.profile?.displayName ?? user.email}
+      />
+    );
+  }
+  if (route === "/admin/global-health") {
+    return (
+      <AdminGlobalHealth
+        locale={locale}
+        userLabel={user.profile?.displayName ?? user.email}
+      />
+    );
+  }
+  if (route === "/admin/social-growth") {
+    return (
+      <AdminSocialGrowth
         locale={locale}
         userLabel={user.profile?.displayName ?? user.email}
       />
