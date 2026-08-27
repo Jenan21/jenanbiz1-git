@@ -16,7 +16,7 @@ export default defineConfig({
   retries: process.env.CI ? 1 : 0,
   reporter: [["list"]],
   use: {
-    baseURL: "http://127.0.0.1:3101",
+    baseURL: process.env.PLAYWRIGHT_BASE_URL ?? "http://localhost:3101",
     trace: "retain-on-failure",
     screenshot: "only-on-failure",
     video: "off",
@@ -38,7 +38,8 @@ export default defineConfig({
     },
     {
       name: "review-pack",
-      testMatch: /review-pack.*\.spec\.ts/,
+      testMatch:
+        /(review-pack.*|refinement-review|auth-contract-review|auth-new-direction-login-review|projects-interactions)\.spec\.ts/,
       use: { viewport: { width: 1440, height: 1000 }, locale: "ar-SA" },
       metadata: { appLocale: "ar" },
     },

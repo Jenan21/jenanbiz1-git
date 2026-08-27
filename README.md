@@ -56,6 +56,17 @@ Integration tests use the real local PostgreSQL database and clean up their reco
 npm run test:integration
 ```
 
+## Jenan Digital Workforce
+
+`/admin/academy` is backed by the Academy registry, universal skill graph, academic profiles, certification gates, retraining queue, workforce demand and gaps, candidate batches, cohorts, curriculum versions, geography foundation, runtime allocation, and shared agent-genome packs. Seed the initial registry with:
+
+```bash
+npm run academy:seed
+npm run test:academy
+```
+
+Labs that require a live model provider are explicitly marked `Awaiting AI Provider`; they do not simulate production AI outcomes. `LIVE-ACCEPTANCE-001` remains an external provider/billing blocker and is intentionally deferred. See `docs/academy-workforce-requirement-matrix.md` for the V1 requirement matrix and deferred integrations.
+
 ## Browser QA and E2E
 
 Playwright runs real browser tests against the local application and PostgreSQL. The visual-layout suite covers Desktop, Laptop, Tablet, and Mobile in Arabic RTL and English LTR. It checks document direction, horizontal overflow, and horizontal viewport containment for essential page elements. It intentionally contains no golden screenshot assertions or approved baselines yet; those will be created only after the Figma source of truth is approved.

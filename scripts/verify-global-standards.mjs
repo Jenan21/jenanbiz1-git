@@ -57,6 +57,7 @@ const requiredScripts = [
   "test:e2e:visual",
   "verify:connections",
   "verify:architecture",
+  "verify:phase0-foundation",
 ];
 
 for (const scriptName of requiredScripts) {
@@ -78,6 +79,7 @@ const requiredTests = [
   "tests/e2e/auth.spec.ts",
   "tests/unit/rate-limit.test.ts",
   "tests/integration/auth.integration.test.ts",
+  "tests/unit/ui-foundation.test.ts",
 ];
 for (const testFile of requiredTests) requireFile(testFile);
 

@@ -1,0 +1,299 @@
+html[data-theme="light"] .source-app {
+  --admin-ink: #0a2940;
+  --admin-copy: #4f6b7a;
+  --admin-muted: #718b98;
+  --admin-cyan: #087f98;
+  --admin-gold: #9b7416;
+  --admin-line: rgba(28, 119, 148, 0.2);
+  --admin-panel: rgba(248, 252, 255, 0.88);
+}
+
+html[data-theme="light"] .platform-sidebar {
+  background:
+    radial-gradient(circle at 50% 0, rgba(14, 154, 177, 0.14), transparent 34%),
+    linear-gradient(
+      165deg,
+      rgba(250, 253, 255, 0.98),
+      rgba(224, 240, 249, 0.97)
+    );
+  border-color: rgba(38, 127, 153, 0.25);
+  box-shadow:
+    inset 0 1px rgba(255, 255, 255, 0.9),
+    0 18px 42px rgba(47, 91, 115, 0.16);
+}
+
+html[data-theme="light"] .platform-sidebar::before {
+  opacity: 0.22;
+  background-image:
+    linear-gradient(rgba(19, 135, 158, 0.14) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(19, 135, 158, 0.14) 1px, transparent 1px);
+}
+
+html[data-theme="light"] .platform-sidebar__brand {
+  border-color: rgba(31, 123, 148, 0.17);
+}
+
+html[data-theme="light"] .platform-sidebar__brand .logo-wrap img {
+  filter: drop-shadow(0 0 12px rgba(10, 132, 157, 0.18));
+}
+
+html[data-theme="light"] .platform-sidebar__mode span,
+html[data-theme="light"] .platform-context span {
+  color: var(--admin-cyan);
+}
+
+html[data-theme="light"] .platform-sidebar__mode strong,
+html[data-theme="light"] .platform-context strong {
+  color: var(--admin-ink);
+}
+
+html[data-theme="light"] .platform-nav__link {
+  color: #466675;
+}
+
+html[data-theme="light"] .platform-nav__link:hover,
+html[data-theme="light"] .platform-nav__link:focus-visible {
+  color: #092a41;
+  border-color: rgba(21, 139, 160, 0.24);
+  background: rgba(31, 154, 174, 0.08);
+}
+
+html[data-theme="light"] .platform-nav__link.active {
+  color: #08283f;
+  border-color: rgba(15, 139, 163, 0.36);
+  background: linear-gradient(
+    90deg,
+    rgba(26, 158, 180, 0.16),
+    rgba(65, 178, 125, 0.08)
+  );
+  box-shadow:
+    inset 0 0 20px rgba(29, 145, 169, 0.05),
+    0 8px 22px rgba(40, 112, 139, 0.08);
+}
+
+html[data-theme="light"] .platform-nav__icon {
+  color: #087f98;
+  border-color: rgba(24, 135, 158, 0.2);
+  background: rgba(244, 251, 253, 0.82);
+}
+
+html[data-theme="light"] .platform-nav__link.active .platform-nav__icon {
+  color: #947018;
+  border-color: rgba(166, 127, 28, 0.3);
+  background: rgba(255, 252, 240, 0.9);
+}
+
+html[data-theme="light"] .platform-sidebar__footer {
+  border-color: rgba(31, 123, 148, 0.15);
+}
+
+html[data-theme="light"] .platform-sidebar__status {
+  color: #617d8a;
+}
+
+html[data-theme="light"] .platform-sidebar__switch {
+  color: #204e62;
+  border-color: rgba(28, 130, 153, 0.22);
+  background: rgba(255, 255, 255, 0.54);
+}
+
+html[data-theme="light"] .platform-header {
+  background: rgba(248, 252, 255, 0.91);
+  border-color: rgba(34, 125, 151, 0.22);
+  box-shadow: 0 12px 28px rgba(49, 94, 118, 0.12);
+}
+
+html[data-theme="light"] .user-chip {
+  color: #31596b;
+  border-color: rgba(38, 124, 148, 0.2);
+  background: rgba(233, 246, 251, 0.82);
+}
+
+html[data-theme="light"] :is(.data-center-hero, .health-hero, .growth-hero) {
+  border-color: rgba(35, 133, 158, 0.24);
+  background:
+    radial-gradient(
+      circle at 76% 46%,
+      rgba(37, 177, 192, 0.14),
+      transparent 31%
+    ),
+    radial-gradient(circle at 16% 0, rgba(196, 154, 42, 0.1), transparent 28%),
+    linear-gradient(
+      145deg,
+      rgba(253, 255, 255, 0.97),
+      rgba(224, 241, 249, 0.96)
+    );
+  box-shadow: 0 18px 42px rgba(49, 96, 119, 0.12);
+}
+
+html[data-theme="light"] :is(.data-center-hero, .health-hero, .growth-hero) h1,
+html[data-theme="light"]
+  :is(.data-center-heading, .health-heading, .growth-heading)
+  h2,
+html[data-theme="light"]
+  :is(
+    .source-registry,
+    .data-trust-state,
+    .data-audit,
+    .regional-health,
+    .health-objectives,
+    .incident-desk,
+    .growth-approval,
+    .growth-campaigns,
+    .growth-guardrails
+  )
+  h2,
+html[data-theme="light"] :is(.data-layer, .health-system, .growth-channel) h3 {
+  color: var(--admin-ink);
+}
+
+html[data-theme="light"]
+  :is(.data-center-hero__copy, .health-hero__copy, .growth-hero__copy)
+  > p,
+html[data-theme="light"]
+  :is(.data-center-heading, .health-heading, .growth-heading)
+  p,
+html[data-theme="light"] :is(.data-layer, .health-system, .growth-channel) p {
+  color: var(--admin-copy);
+}
+
+html[data-theme="light"]
+  :is(.data-center-hero__badges, .health-hero__badges, .growth-hero__badges)
+  span {
+  color: #365d6d;
+  border-color: rgba(35, 132, 156, 0.2);
+  background: rgba(255, 255, 255, 0.72);
+}
+
+html[data-theme="light"] .source-app .card {
+  border-color: rgba(41, 127, 151, 0.2);
+  background: rgba(248, 252, 255, 0.9);
+  box-shadow: 0 10px 28px rgba(51, 95, 117, 0.08);
+}
+
+html[data-theme="light"] :is(.data-center-kpi, .health-kpi, .growth-kpi) > span,
+html[data-theme="light"]
+  :is(.data-layer, .health-system, .growth-channel)
+  > div,
+html[data-theme="light"]
+  :is(.source-registry__list, .data-trust-state__states, .regional-health__list)
+  small {
+  color: var(--admin-muted);
+}
+
+html[data-theme="light"]
+  :is(.data-center-kpi, .health-kpi, .growth-kpi)
+  > strong,
+html[data-theme="light"]
+  :is(
+    .source-registry__list,
+    .data-trust-state__states,
+    .regional-health__list,
+    .health-objectives,
+    .growth-approval__path,
+    .growth-guardrails
+  )
+  strong {
+  color: var(--admin-ink);
+}
+
+html[data-theme="light"]
+  :is(.data-center-kpi, .health-kpi, .growth-kpi)
+  > small,
+html[data-theme="light"]
+  :is(.data-layer, .health-system, .growth-channel)
+  header
+  b,
+html[data-theme="light"]
+  :is(.data-layer, .health-system, .growth-channel)
+  > div
+  strong,
+html[data-theme="light"] .source-registry__list b,
+html[data-theme="light"] .health-objectives small {
+  color: var(--admin-gold);
+}
+
+html[data-theme="light"]
+  :is(.data-layer, .health-system, .growth-channel)
+  header
+  > span,
+html[data-theme="light"] .source-registry__list > div > span,
+html[data-theme="light"] .growth-approval__path > div > span {
+  color: var(--admin-cyan);
+  border-color: rgba(24, 139, 161, 0.25);
+  background: rgba(232, 247, 251, 0.9);
+}
+
+html[data-theme="light"] .data-fabric::before {
+  background: linear-gradient(90deg, #1597ad, #4aa877, #bd9232);
+  box-shadow: 0 0 9px rgba(21, 151, 173, 0.25);
+}
+
+html[data-theme="light"] .data-fabric__node > span,
+html[data-theme="light"] .health-globe > span,
+html[data-theme="light"] .growth-radar > span {
+  color: #087f98;
+  border-color: rgba(18, 139, 162, 0.42);
+  background: rgba(250, 254, 255, 0.95);
+  box-shadow:
+    0 0 0 8px rgba(36, 148, 169, 0.07),
+    0 8px 24px rgba(43, 112, 139, 0.12);
+}
+
+html[data-theme="light"] .data-fabric__node:nth-child(4) > span,
+html[data-theme="light"] .growth-radar > span {
+  color: #987218;
+  border-color: rgba(161, 122, 26, 0.38);
+}
+
+html[data-theme="light"]
+  :is(
+    .source-registry__list > div,
+    .health-objectives > div > span,
+    .growth-guardrails > div > span
+  ) {
+  border-color: rgba(37, 126, 150, 0.14);
+}
+
+html[data-theme="light"]
+  :is(.data-trust-state__states > span, .regional-health__list > span) {
+  border-color: rgba(38, 128, 151, 0.15);
+  background: rgba(236, 247, 251, 0.76);
+}
+
+html[data-theme="light"]
+  :is(.data-trust-state, .health-objectives, .growth-guardrails)
+  > p {
+  color: #4e6977;
+  background: rgba(190, 148, 39, 0.08);
+}
+
+html[data-theme="light"]
+  :is(.data-audit, .incident-desk, .growth-campaigns)
+  > div
+  strong {
+  color: var(--admin-ink);
+}
+
+html[data-theme="light"]
+  :is(.data-audit, .incident-desk, .growth-campaigns)
+  > div
+  p {
+  color: var(--admin-muted);
+}
+
+html[data-theme="light"] .growth-radar,
+html[data-theme="light"] .growth-radar::before,
+html[data-theme="light"] .growth-radar::after,
+html[data-theme="light"] :is(.health-globe__orbit, .health-globe__orbit--two) {
+  border-color: rgba(26, 139, 162, 0.2);
+}
+
+html[data-theme="light"] .growth-radar > i {
+  color: #557582;
+}
+
+html[data-theme="light"] .bottom-ticker {
+  border-color: rgba(36, 126, 151, 0.2);
+  box-shadow: 0 8px 22px rgba(48, 93, 116, 0.08);
+}

@@ -3,6 +3,8 @@ export const featureFlags = {
   sharedEnginesEnforced: true,
   externalDataOnlyWhenNecessary: true,
   replaceableProvidersRequired: true,
+  academyWorkforceEnabled: true,
+  liveAiAcceptanceDeferred: true,
 } as const;
 
 export type FeatureFlags = typeof featureFlags;
