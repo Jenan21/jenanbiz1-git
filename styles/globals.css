@@ -3324,3 +3324,109 @@ html[data-theme="light"] .field__control {
     white-space: nowrap;
   }
 }
+
+.admin-nav-item:focus-visible,
+.admin-topbar button:focus-visible,
+.command-dashboard a:focus-visible,
+.command-dashboard button:focus-visible {
+  outline: 3px solid color-mix(in srgb, var(--brand) 75%, white);
+  outline-offset: 3px;
+}
+.dashboard-empty,
+.dashboard-error {
+  min-height: 120px;
+  display: grid;
+  place-items: center;
+  padding: 18px;
+  border: 1px dashed color-mix(in srgb, var(--border) 70%, transparent);
+  border-radius: 14px;
+  color: var(--muted);
+  text-align: center;
+}
+.dashboard-error {
+  border-color: color-mix(in srgb, var(--error) 55%, transparent);
+  color: var(--error);
+}
+@media (max-width: 900px) {
+  .admin-shell {
+    display: flex;
+    flex-direction: column;
+    padding: 10px;
+    gap: 10px;
+  }
+  .admin-sidebar {
+    position: static;
+    width: 100%;
+    height: auto;
+    padding: 10px;
+  }
+  .admin-brand {
+    padding: 4px 8px 10px;
+  }
+  .admin-nav {
+    display: flex;
+    gap: 6px;
+    overflow-x: auto;
+    padding-bottom: 3px;
+    scrollbar-width: thin;
+  }
+  .admin-nav-item {
+    flex: 0 0 auto;
+    min-height: 42px;
+    white-space: nowrap;
+  }
+  .admin-main {
+    width: 100%;
+  }
+  .admin-topbar {
+    align-items: flex-start;
+    flex-wrap: wrap;
+    padding: 14px;
+  }
+  .admin-topbar__actions {
+    width: 100%;
+    justify-content: flex-start;
+    flex-wrap: wrap;
+  }
+  .dashboard-hero,
+  .dashboard-grid,
+  .bottom-grid {
+    grid-template-columns: 1fr;
+  }
+  .kpi-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+@media (max-width: 520px) {
+  .shell {
+    padding: 12px 10px 22px;
+  }
+  .admin-topbar h2 {
+    font-size: 19px;
+  }
+  .admin-topbar__actions .pill {
+    margin-inline-end: auto;
+  }
+  .kpi-grid,
+  .summary-metrics {
+    grid-template-columns: 1fr;
+  }
+  .dashboard-hero,
+  .panel,
+  .metric-card {
+    padding: 15px;
+    border-radius: 16px;
+  }
+  .dashboard-hero__copy h1 {
+    font-size: 2rem;
+    letter-spacing: 0;
+  }
+  .chart-bars {
+    gap: 6px;
+    height: 160px;
+  }
+  .chart-labels {
+    gap: 3px;
+    font-size: 0.62rem;
+  }
+}

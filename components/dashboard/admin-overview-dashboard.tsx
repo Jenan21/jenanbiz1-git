@@ -14,26 +14,16 @@ type SummaryPayload = {
   leaders: Array<{ name: string; score: number; reward: string }>;
 };
 
-const fallbackSummary: SummaryPayload = {
-  totalRobots: 48,
-  visibleRobots: 23,
-  reviewRobots: 7,
-  hiddenRobots: 4,
-  averageIntelligence: 91,
-  committeeApprovalRate: 87,
-  leaders: [
-    { name: "Core Dev Prime", score: 98, reward: "Global Runner" },
-    { name: "Signal Forge", score: 96, reward: "Strategic Growth" },
-    { name: "Trust Pilot", score: 94, reward: "Ops Excellence" },
-  ],
-};
-
 export function AdminOverviewDashboard() {
-  const [lang] = useState<"ar" | "en">("ar");
-  const [summary, setSummary] = useState<SummaryPayload>(fallbackSummary);
+  const [lang, setLang] = useState<"ar" | "en">("ar");
+  const [summary, setSummary] = useState<SummaryPayload | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState(false);
 
-  useEffect(() => {
-    fetch("/api/admin/summary")
+  async function loadSummary() {
+    setIsLoading(true);
+    setError(false);
+    fetch("/api/admin/summary", { cache: "no-store" })
       .then((response) => response.json())
       .then((payload) => {
         if (payload?.success && payload.summary) {
@@ -46,34 +36,81 @@ export function AdminOverviewDashboard() {
             committeeApprovalRate: payload.summary.committeeApprovalRate,
             leaders: payload.summary.leaders,
           });
+        } else {
+          setError(true);
         }
       })
-      .catch(() => undefined);
+      .catch(() => setError(true))
+      .finally(() => setIsLoading(false));
+  }
+
+  useEffect(() => {
+    const locale = document.cookie.match(/(?:^|;\s*)locale=(ar|en)(?:;|$)/)?.[1];
+    const frame = window.requestAnimationFrame(() => setLang(locale === "en" ? "en" : "ar"));
+    let active = true;
+    fetch("/api/admin/summary", { cache: "no-store" })
+      .then((response) => response.json())
+      .then((payload) => {
+        if (!active) return;
+        if (payload?.success && payload.summary) {
+          setSummary({
+            totalRobots: payload.summary.totalRobots,
+            visibleRobots: payload.summary.visibleRobots,
+            reviewRobots: payload.summary.reviewRobots,
+            hiddenRobots: payload.summary.hiddenRobots,
+            averageIntelligence: payload.summary.averageIntelligence,
+            committeeApprovalRate: payload.summary.committeeApprovalRate,
+            leaders: payload.summary.leaders,
+          });
+        } else {
+          setError(true);
+        }
+      })
+      .catch(() => {
+        if (active) setError(true);
+      })
+      .finally(() => {
+        if (active) setIsLoading(false);
+      });
+    return () => {
+      window.cancelAnimationFrame(frame);
+      active = false;
+    };
   }, []);
+
+  const currentSummary = summary ?? {
+    totalRobots: 0,
+    visibleRobots: 0,
+    reviewRobots: 0,
+    hiddenRobots: 0,
+    averageIntelligence: 0,
+    committeeApprovalRate: 0,
+    leaders: [],
+  };
 
   const metrics = [
     {
       label: lang === "ar" ? "الروبوتات النشطة" : "Visible robots",
-      value: summary.visibleRobots,
-      delta: "+12%",
-      detail: lang === "ar" ? "مقارنة بالأسبوع الماضي" : "vs. last week",
+      value: currentSummary.visibleRobots,
+      delta: "DB",
+      detail: lang === "ar" ? "من قاعدة البيانات" : "from database",
     },
     {
       label: lang === "ar" ? "قيد المراجعة" : "Under review",
-      value: summary.reviewRobots,
-      delta: "+3",
-      detail: lang === "ar" ? "تحتاج تقييمًا سريعًا" : "needs quick review",
+      value: currentSummary.reviewRobots,
+      delta: "LIVE",
+      detail: lang === "ar" ? "تحتاج تقييماً" : "needs review",
     },
     {
       label: lang === "ar" ? "متوسط الذكاء" : "Avg. intelligence",
-      value: `${summary.averageIntelligence}%`,
-      delta: "+5.2%",
-      detail: lang === "ar" ? "مستوى الأداء العام" : "overall performance",
+      value: `${currentSummary.averageIntelligence}%`,
+      delta: "REAL",
+      detail: lang === "ar" ? "مؤشر فعلي" : "live metric",
     },
     {
       label: lang === "ar" ? "معدل الموافقة" : "Approval rate",
-      value: `${summary.committeeApprovalRate}%`,
-      delta: "+8.1%",
+      value: `${currentSummary.committeeApprovalRate}%`,
+      delta: "AUDIT",
       detail: lang === "ar" ? "كفاءة لجنة القرار" : "decision quality",
     },
   ];
@@ -119,7 +156,7 @@ export function AdminOverviewDashboard() {
               : "A unified operating layer to monitor performance, track execution, and guide decisions in real time."}
           </p>
           <div className="dashboard-actions">
-            <button type="button" className="button button--primary">
+            <button type="button" className="button button--primary" onClick={() => void loadSummary()} disabled={isLoading}>
               {lang === "ar" ? "تحديث البيانات" : "Refresh data"}
             </button>
             <Link href="/admin/reports" className="button button--secondary">
@@ -131,7 +168,7 @@ export function AdminOverviewDashboard() {
         <div className="dashboard-hero__summary">
           <div className="summary-ring">
             <div>
-              <strong>{summary.totalRobots}</strong>
+              <strong>{isLoading ? "..." : currentSummary.totalRobots}</strong>
               <small>{lang === "ar" ? "إجمالي الروبوتات" : "total robots"}</small>
             </div>
           </div>
@@ -169,7 +206,7 @@ export function AdminOverviewDashboard() {
             <span className="chip chip--success">{lang === "ar" ? "مستقر" : "steady"}</span>
           </div>
           <div className="chart-bars" aria-label="Performance chart">
-            {[32, 58, 44, 76, 62, 90, 82, 96, 88, 74, 92, 98].map((height, index) => (
+            {(currentSummary.totalRobots === 0 ? [] : [currentSummary.hiddenRobots, currentSummary.reviewRobots, currentSummary.visibleRobots, currentSummary.averageIntelligence, currentSummary.committeeApprovalRate]).map((height, index) => (
               <span key={`${height}-${index}`} style={{ height: `${height}%` }} />
             ))}
           </div>
@@ -197,7 +234,7 @@ export function AdminOverviewDashboard() {
             </div>
           </div>
           <div className="priority-list">
-            {priorities.map((item) => (
+            {currentSummary.totalRobots === 0 ? <p className="dashboard-empty">لا توجد مؤشرات تشغيلية بعد.</p> : priorities.map((item) => (
               <div key={item.title} className="priority-item">
                 <div className="priority-item__topline">
                   <strong>{item.title}</strong>
@@ -246,7 +283,7 @@ export function AdminOverviewDashboard() {
           </div>
 
           <div className="activity-feed">
-            {activities.map((entry) => (
+            {error ? <p className="dashboard-error" role="alert">تعذر تحميل سجل العمليات.</p> : activities.map((entry) => (
               <div key={`${entry.time}-${entry.item}`} className="activity-item">
                 <span className={`activity-dot activity-dot--${entry.tone}`} />
                 <div>
@@ -267,7 +304,7 @@ export function AdminOverviewDashboard() {
           </div>
 
           <div className="leader-list">
-            {summary.leaders.map((leader) => (
+            {currentSummary.leaders.length === 0 ? <p className="dashboard-empty">لا توجد قيادات مسجلة بعد.</p> : currentSummary.leaders.map((leader) => (
               <div key={leader.name} className="leader-row">
                 <div>
                   <strong>{leader.name}</strong>

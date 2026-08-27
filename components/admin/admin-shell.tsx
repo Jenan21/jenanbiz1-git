@@ -45,11 +45,15 @@ const texts = {
 
 export function AdminShell({ children }: { children: ReactNode }) {
   const pathname = usePathname();
-  const [lang, setLang] = useState<"ar" | "en">(() => {
-    if (typeof window === "undefined") return "ar";
+  const [lang, setLang] = useState<"ar" | "en">("ar");
+
+  useEffect(() => {
     const saved = localStorage.getItem("jenan-admin-lang");
-    return saved === "ar" || saved === "en" ? saved : "ar";
-  });
+    const locale = document.cookie.match(/(?:^|;\s*)locale=(ar|en)(?:;|$)/)?.[1];
+    const nextLanguage = saved === "ar" || saved === "en" ? saved : locale === "en" ? "en" : "ar";
+    const frame = window.requestAnimationFrame(() => setLang(nextLanguage));
+    return () => window.cancelAnimationFrame(frame);
+  }, []);
 
   useEffect(() => {
     localStorage.setItem("jenan-admin-lang", lang);
