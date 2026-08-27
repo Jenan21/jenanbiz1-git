@@ -772,81 +772,6 @@ html[data-theme="light"] .glass {
   gap: 18px;
 }
 
-.tool-grid {
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 18px;
-}
-
-.tool-list,
-.phase-stack {
-  display: grid;
-  gap: 12px;
-  margin-top: 10px;
-}
-
-.tool-row,
-.phase-item {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-  padding: 12px 14px;
-  border-radius: 12px;
-  background: rgba(255, 255, 255, 0.02);
-  border: 1px solid rgba(255, 255, 255, 0.05);
-}
-
-.tool-row strong,
-.phase-item span {
-  color: var(--text);
-}
-
-.tool-row span,
-.phase-item strong {
-  color: var(--brand);
-  font-size: 0.82rem;
-}
-
-.capability-grid {
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 18px;
-}
-
-.signal-card {
-  padding: 20px 18px;
-  border-radius: 20px;
-  background: linear-gradient(180deg, rgba(15, 27, 39, 0.88), rgba(10, 24, 35, 0.9));
-  border: 1px solid rgba(255, 255, 255, 0.06);
-}
-
-.signal-card__top {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-  margin-bottom: 12px;
-}
-
-.signal-card__top span {
-  color: var(--muted);
-  font-size: 0.76rem;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-}
-
-.signal-card__top strong {
-  color: var(--brand);
-  font-size: 1.3rem;
-}
-
-.signal-card p {
-  margin: 0;
-  color: var(--muted);
-  line-height: 1.7;
-}
-
 .metric-card {
   padding: 20px 18px;
   border-radius: 20px;
@@ -1014,48 +939,6 @@ html[data-theme="light"] .glass {
   font-size: 0.8rem;
 }
 
-.robot-generation-panel {
-  display: grid;
-  gap: 16px;
-}
-
-.robot-generation-form {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 14px;
-}
-
-.robot-generation-form label {
-  display: grid;
-  gap: 7px;
-  color: var(--muted);
-  font-size: 0.8rem;
-}
-
-.robot-generation-form input,
-.robot-generation-form textarea {
-  width: 100%;
-  border: 1px solid color-mix(in srgb, var(--border) 75%, transparent);
-  border-radius: 10px;
-  padding: 10px 12px;
-  background: color-mix(in srgb, var(--deep) 80%, transparent);
-  color: var(--text);
-  resize: vertical;
-}
-
-.robot-generation-form__mission {
-  grid-column: 1 / -1;
-}
-
-.robot-generation-form button {
-  justify-self: start;
-}
-
-.robot-generation-feedback {
-  margin: 0;
-  color: var(--success);
-}
-
 .activity-item {
   display: flex;
   align-items: flex-start;
@@ -1124,9 +1007,7 @@ html[data-theme="light"] .glass {
   .dashboard-hero,
   .dashboard-grid,
   .bottom-grid,
-  .kpi-grid,
-  .capability-grid,
-  .tool-grid {
+  .kpi-grid {
     grid-template-columns: 1fr;
     display: grid;
   }
@@ -1171,14 +1052,6 @@ html[data-theme="light"] .glass {
 
   .stat-grid {
     grid-template-columns: 1fr;
-  }
-
-  .robot-generation-form {
-    grid-template-columns: 1fr;
-  }
-
-  .robot-generation-form__mission {
-    grid-column: auto;
   }
 }
 .icon svg {

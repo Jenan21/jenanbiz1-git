@@ -1,0 +1,61 @@
+.projects-feasibility {
+  background:
+    radial-gradient(circle at 53% 50%, rgba(44, 147, 126, 0.19), transparent 29%),
+    radial-gradient(circle at 88% 8%, rgba(225, 197, 121, 0.055), transparent 28%),
+    linear-gradient(142deg, #020f18, #072b3a 54%, #03141d);
+}
+.projects-feasibility .projects-analysis__code,
+.projects-feasibility .projects-analysis__panel-title small { color: #77dfac; }
+.projects-feasibility .projects-analysis__header h1 {
+  color: transparent;
+  background: linear-gradient(90deg, #efffff, #79e0b0 62%, #e1c579);
+  background-clip: text;
+  -webkit-background-clip: text;
+}
+.feasibility-stage__core { width: 100%; height: 100%; overflow: visible; }
+.feasibility-stage__floor,
+.feasibility-stage__rings,
+.feasibility-stage__dial,
+.feasibility-stage__bars,
+.feasibility-stage__signals {
+  fill: none;
+  stroke: url("#feasibility-line");
+  stroke-width: 1.15;
+  vector-effect: non-scaling-stroke;
+}
+.feasibility-stage__floor { opacity: 0.2; }
+.feasibility-stage__rings {
+  opacity: 0.5;
+  transform-origin: 380px 292px;
+  animation: feasibility-orbit 34s linear infinite;
+}
+.feasibility-stage__dial {
+  opacity: 0.86;
+  filter: drop-shadow(0 0 5px rgba(103, 215, 161, 0.42));
+}
+.feasibility-stage__bars { opacity: 0.76; }
+.feasibility-stage__signals { opacity: 0.62; }
+.feasibility-stage__signals circle {
+  fill: #67d7a1;
+  stroke: none;
+  animation: feasibility-node 2.8s ease-in-out infinite;
+}
+.feasibility-stage__gold-line { stroke: #e1c579; }
+.feasibility-stage__gold-node { fill: #e1c579 !important; stroke: none; }
+.projects-feasibility .projects-analysis__stage-label span i {
+  background: #e1c579;
+  box-shadow: 0 0 8px #e1c579;
+}
+.projects-feasibility .projects-analysis__lens-orbit::before { border-color: rgba(225, 197, 121, 0.28); }
+.projects-feasibility .projects-analysis__input-line i::before,
+.projects-feasibility .projects-analysis__input-line i::after { background: #67d7a1; }
+@keyframes feasibility-orbit { to { transform: rotate(-360deg); } }
+@keyframes feasibility-node {
+  0%, 100% { opacity: 0.38; }
+  50% { opacity: 1; transform: scale(1.35); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .projects-feasibility *,
+  .projects-feasibility *::before,
+  .projects-feasibility *::after { animation: none !important; }
+}

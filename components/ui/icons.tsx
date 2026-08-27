@@ -25,6 +25,13 @@ export type IconName =
   | "sparkles"
   | "user"
   | "wallet"
+  | "building"
+  | "graduation"
+  | "cart"
+  | "rocket"
+  | "trend"
+  | "barChart"
+  | "pieChart"
   | "x";
 
 const paths: Record<IconName, React.ReactNode> = {
@@ -142,6 +149,13 @@ const paths: Record<IconName, React.ReactNode> = {
       <path d="M2 8h18M15 13h5v3h-5a1.5 1.5 0 0 1 0-3Z" />
     </>
   ),
+  building: <><path d="M4 21V5l8-3 8 3v16" /><path d="M8 9h1M15 9h1M8 13h1M15 13h1M8 17h1M15 17h1M3 21h18" /></>,
+  graduation: <><path d="m3 9 9-5 9 5-9 5-9-5Z" /><path d="M7 12v5c3 2 7 2 10 0v-5M21 10v6" /></>,
+  cart: <><path d="M3 4h2l2 11h10l3-8H6" /><circle cx="9" cy="19" r="1" /><circle cx="17" cy="19" r="1" /></>,
+  rocket: <><path d="M14 4c3-2 6-1 6-1s1 3-1 6l-6 6-4-4 5-7Z" /><path d="m9 11-4 1-2 4 5-1M13 15l-1 4-4 2 1-5M8 18l-3 3" /></>,
+  trend: <><path d="M3 17 9 11l4 4 8-9" /><path d="M16 6h5v5" /></>,
+  barChart: <><path d="M5 20V10M12 20V4M19 20v-7" /></>,
+  pieChart: <><path d="M12 3v9h9A9 9 0 1 1 12 3Z" /><path d="M15 3a6 6 0 0 1 6 6h-6V3Z" /></>,
   x: <path d="m6 6 12 12M18 6 6 18" />,
 };
 

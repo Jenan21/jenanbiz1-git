@@ -1,0 +1,72 @@
+.projects-completion--evaluation {
+  background:
+    radial-gradient(circle at 53% 50%, rgba(58, 142, 174, 0.2), transparent 30%),
+    radial-gradient(circle at 90% 8%, rgba(225, 197, 121, 0.06), transparent 26%),
+    linear-gradient(142deg, #020f19, #08283d 54%, #03131f);
+}
+.projects-completion--launch {
+  background:
+    radial-gradient(circle at 53% 50%, rgba(68, 171, 151, 0.2), transparent 30%),
+    radial-gradient(circle at 8% 90%, rgba(225, 197, 121, 0.07), transparent 28%),
+    linear-gradient(142deg, #020f18, #062d3a 54%, #03131c);
+}
+.projects-completion--evaluation .projects-analysis__header h1,
+.projects-completion--launch .projects-analysis__header h1 {
+  color: transparent;
+  background: linear-gradient(90deg, #efffff, #65dfe6 54%, #e1c579);
+  background-clip: text;
+  -webkit-background-clip: text;
+}
+.projects-completion--launch .projects-analysis__header h1 {
+  background-image: linear-gradient(90deg, #efffff, #70dfac 56%, #e1c579);
+}
+.completion-stage__core { width: 100%; height: 100%; overflow: visible; }
+.completion-stage__floor,
+.completion-stage__rings,
+.completion-stage__radar,
+.completion-stage__rocket,
+.completion-stage__signals {
+  fill: none;
+  stroke: #5edce9;
+  stroke-width: 1.15;
+  vector-effect: non-scaling-stroke;
+}
+.completion-stage__floor {
+  opacity: 0.2;
+  stroke: rgba(94, 220, 233, 0.55);
+}
+.completion-stage__rings {
+  opacity: 0.48;
+  stroke: rgba(94, 220, 233, 0.72);
+  transform-origin: 380px 292px;
+  animation: completion-orbit 30s linear infinite;
+}
+.completion-stage__radar,
+.completion-stage__rocket {
+  opacity: 0.82;
+  stroke: #72e8df;
+  filter: drop-shadow(0 0 5px rgba(94, 220, 233, 0.38));
+}
+.completion-stage__signals {
+  opacity: 0.62;
+  stroke: rgba(103, 215, 161, 0.72);
+}
+.completion-stage__signals circle { fill: #5edce9; stroke: none; }
+.completion-stage__gold-line { stroke: #e1c579; }
+.completion-stage__gold-node { fill: #e1c579 !important; stroke: none; }
+.projects-completion--launch .completion-stage__rocket {
+  stroke: #67d7a1;
+  animation: completion-lift 4s ease-in-out infinite;
+}
+.projects-completion--launch .projects-analysis__input-line i::before,
+.projects-completion--launch .projects-analysis__input-line i::after { background: #67d7a1; }
+@keyframes completion-orbit { to { transform: rotate(360deg); } }
+@keyframes completion-lift {
+  0%, 100% { transform: translateY(3px); }
+  50% { transform: translateY(-6px); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .projects-completion *,
+  .projects-completion *::before,
+  .projects-completion *::after { animation: none !important; }
+}
