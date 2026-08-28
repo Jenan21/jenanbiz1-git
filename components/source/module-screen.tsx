@@ -5,6 +5,8 @@ import {
   PlatformShell,
   WorldNetwork,
 } from "@/components/source/source-ui";
+import { ConnectionLines } from "@/components/dashboard/connection-lines";
+import { MarketWatchPanel } from "@/components/dashboard/market-watch-panel";
 import type { IconName } from "@/components/ui/icons";
 import { Icon } from "@/components/ui/icons";
 import Link from "next/link";
@@ -152,6 +154,19 @@ const cards: Array<{ icon: IconName; ar: string; en: string }> = [
   { icon: "sparkles", ar: "الأدوات الذكية", en: "Intelligent tools" },
 ];
 
+const dashboardHubStats: Array<{
+  labelAr: string;
+  labelEn: string;
+  value: string;
+  deltaAr: string;
+  deltaEn: string;
+  up: boolean;
+}> = [
+  { labelAr: "المستخدمون النشطون", labelEn: "Active users", value: "24.8K", deltaAr: "+12% هذا الشهر", deltaEn: "+12% this month", up: true },
+  { labelAr: "معدل التوصيل", labelEn: "Delivery rate", value: "96.4%", deltaAr: "+0.8% هذا الأسبوع", deltaEn: "+0.8% this week", up: true },
+  { labelAr: "المشاريع النشطة", labelEn: "Active projects", value: "142", deltaAr: "-3 من الأمس", deltaEn: "-3 from yesterday", up: false },
+];
+
 export function ModuleScreen({
   locale,
   route,
@@ -167,6 +182,7 @@ export function ModuleScreen({
   const i = ar ? 0 : 1;
   const cfg = labels[route] ?? labels["/dashboard"];
   const awaiting = ar ? "بانتظار مصدر حقيقي" : "Awaiting real source";
+  const isDashboard = route === "/dashboard";
   return (
     <PlatformShell
       locale={locale}
@@ -182,69 +198,138 @@ export function ModuleScreen({
         </div>
         <div className="hero-art" aria-hidden="true" />
       </section>
-      <section className="stats-row">
-        {(ar
-          ? ["الإجمالي", "النشط", "هذا الشهر", "الأداء", "التغطية"]
-          : ["Total", "Active", "This month", "Performance", "Coverage"]
-        ).map((label) => (
-          <EmptyMetric key={label} label={label} note={awaiting} />
-        ))}
-      </section>
-      {route === "/software" && (
-        <Link href="/software/robotics" className="card robotics-entry">
-          <span className="feature-icon">
-            <Icon name="settings" />
-          </span>
-          <div>
-            <span className="eyebrow">JENAN ROBOTICS</span>
-            <h2>{ar ? "الروبوتات الذكية" : "Intelligent robotics"}</h2>
-            <p>
-              {ar
-                ? "استكشف كتالوج الروبوتات وتصنيفاتها ومهامها المستقبلية."
-                : "Explore the future robot catalog, categories, and missions."}
-            </p>
+
+      {/* ── Three-zone command hub (dashboard only) ── */}
+      {isDashboard && (
+        <div className="dashboard-three-zone">
+          {/* Center + stats zone */}
+          <div className="dashboard-hub">
+            {/* World map hub */}
+            <div className="dashboard-hub__map glass">
+              <div className="dashboard-hub__map-inner">
+                <div className="dashboard-hub__map-header">
+                  <span className="dashboard-hub__map-title">
+                    {ar ? "شبكة النشاط العالمي" : "Global Activity Network"}
+                  </span>
+                  <span className="hub-status-badge">
+                    <i />
+                    {ar ? "نشط" : "Live"}
+                  </span>
+                </div>
+                {/* Glowing connection lines behind the map */}
+                <ConnectionLines />
+                <div className="dashboard-hub__world-svg">
+                  <WorldNetwork />
+                </div>
+              </div>
+            </div>
+
+            {/* KPI stats row */}
+            <div className="dashboard-hub__stats">
+              {dashboardHubStats.map((stat) => (
+                <div key={stat.labelEn} className="hub-stat glass">
+                  <span className="hub-stat__label">{ar ? stat.labelAr : stat.labelEn}</span>
+                  <span className="hub-stat__value">{stat.value}</span>
+                  <span className={`hub-stat__delta${stat.up ? "" : " hub-stat__delta--down"}`}>
+                    {ar ? stat.deltaAr : stat.deltaEn}
+                  </span>
+                </div>
+              ))}
+            </div>
+
+            {/* Feature cards */}
+            <section className="feature-grid">
+              {cards.map((card) => (
+                <FeatureCard
+                  key={card.en}
+                  icon={card.icon}
+                  title={ar ? card.ar : card.en}
+                  description={
+                    ar
+                      ? "واجهة مرئية فقط؛ الوظائف غير مفعّلة في هذه المرحلة."
+                      : "Visual interface only; functions are not active in this phase."
+                  }
+                  status={ar ? "واجهة فقط" : "Interface only"}
+                />
+              ))}
+            </section>
           </div>
-          <span className="entry-arrow">→</span>
-        </Link>
+
+          {/* Right zone — live market watch */}
+          <div className="dashboard-market-zone">
+            <MarketWatchPanel ar={ar} />
+          </div>
+        </div>
       )}
-      <section className="feature-grid">
-        {cards.map((card) => (
-          <FeatureCard
-            key={card.en}
-            icon={card.icon}
-            title={ar ? card.ar : card.en}
-            description={
-              ar
-                ? "واجهة مرئية فقط؛ الوظائف غير مفعّلة في هذه المرحلة."
-                : "Visual interface only; functions are not active in this phase."
-            }
-            status={ar ? "واجهة فقط" : "Interface only"}
-          />
-        ))}
-      </section>
-      <section className="grid-2">
-        <EmptyPanel
-          title={ar ? "النشاط الأخير" : "Recent activity"}
-          message={
-            ar
-              ? "لا يوجد نشاط لعرضه حتى الآن."
-              : "There is no activity to display yet."
-          }
-        />
-        <section className="card">
-          <div className="card-title">
-            {ar ? "الحضور العالمي" : "Global presence"}
-          </div>
-          <div className="world-panel">
-            <WorldNetwork />
-          </div>
-          <div className="notice">
-            {ar
-              ? "تتطلب الخريطة مصدر بيانات حقيقيًا."
-              : "The map requires a real data source."}
-          </div>
-        </section>
-      </section>
+
+      {/* ── Standard layout for all other routes ── */}
+      {!isDashboard && (
+        <>
+          <section className="stats-row">
+            {(ar
+              ? ["الإجمالي", "النشط", "هذا الشهر", "الأداء", "التغطية"]
+              : ["Total", "Active", "This month", "Performance", "Coverage"]
+            ).map((label) => (
+              <EmptyMetric key={label} label={label} note={awaiting} />
+            ))}
+          </section>
+          {route === "/software" && (
+            <Link href="/software/robotics" className="card robotics-entry">
+              <span className="feature-icon">
+                <Icon name="settings" />
+              </span>
+              <div>
+                <span className="eyebrow">JENAN ROBOTICS</span>
+                <h2>{ar ? "الروبوتات الذكية" : "Intelligent robotics"}</h2>
+                <p>
+                  {ar
+                    ? "استكشف كتالوج الروبوتات وتصنيفاتها ومهامها المستقبلية."
+                    : "Explore the future robot catalog, categories, and missions."}
+                </p>
+              </div>
+              <span className="entry-arrow">→</span>
+            </Link>
+          )}
+          <section className="feature-grid">
+            {cards.map((card) => (
+              <FeatureCard
+                key={card.en}
+                icon={card.icon}
+                title={ar ? card.ar : card.en}
+                description={
+                  ar
+                    ? "واجهة مرئية فقط؛ الوظائف غير مفعّلة في هذه المرحلة."
+                    : "Visual interface only; functions are not active in this phase."
+                }
+                status={ar ? "واجهة فقط" : "Interface only"}
+              />
+            ))}
+          </section>
+          <section className="grid-2">
+            <EmptyPanel
+              title={ar ? "النشاط الأخير" : "Recent activity"}
+              message={
+                ar
+                  ? "لا يوجد نشاط لعرضه حتى الآن."
+                  : "There is no activity to display yet."
+              }
+            />
+            <section className="card">
+              <div className="card-title">
+                {ar ? "الحضور العالمي" : "Global presence"}
+              </div>
+              <div className="world-panel">
+                <WorldNetwork />
+              </div>
+              <div className="notice">
+                {ar
+                  ? "تتطلب الخريطة مصدر بيانات حقيقيًا."
+                  : "The map requires a real data source."}
+              </div>
+            </section>
+          </section>
+        </>
+      )}
     </PlatformShell>
   );
 }
