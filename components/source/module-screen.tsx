@@ -9,6 +9,7 @@ import type { IconName } from "@/components/ui/icons";
 import { Icon } from "@/components/ui/icons";
 import Link from "next/link";
 import type { Locale } from "@/types/i18n";
+import { ProjectsWorkspace } from "@/components/source/projects-workspace";
 
 type Pair = [string, string];
 const labels: Record<
@@ -27,8 +28,8 @@ const labels: Record<
     title: ["مركز المشاريع", "Projects center"],
     eyebrow: ["نظّم ونفّذ", "Organize and deliver"],
     description: [
-      "واجهة تشغيلية للمشاريع بحالات فارغة واضحة حتى بدء مرحلة الوظائف.",
-      "A project operations shell with explicit empty states until functionality begins.",
+      "مساحة واحدة لفهم فكرة المشروع، تقييمها، ثم تجهيزها للتنفيذ.",
+      "One workspace to shape an idea, assess it, and prepare it for delivery.",
     ],
   },
   "/academy": {
@@ -152,6 +153,13 @@ const cards: Array<{ icon: IconName; ar: string; en: string }> = [
   { icon: "sparkles", ar: "الأدوات الذكية", en: "Intelligent tools" },
 ];
 
+const projectCards: Array<{ icon: IconName; ar: string; en: string }> = [
+  { icon: "activity", ar: "تحليل الفكرة", en: "Idea analysis" },
+  { icon: "briefcase", ar: "دراسة الجدوى", en: "Feasibility" },
+  { icon: "grid", ar: "خطة التنفيذ", en: "Delivery plan" },
+  { icon: "people", ar: "فريق المشروع", en: "Project team" },
+];
+
 export function ModuleScreen({
   locale,
   route,
@@ -167,6 +175,8 @@ export function ModuleScreen({
   const i = ar ? 0 : 1;
   const cfg = labels[route] ?? labels["/dashboard"];
   const awaiting = ar ? "بانتظار مصدر حقيقي" : "Awaiting real source";
+  const projectView = route === "/projects";
+  const visibleCards = projectView ? projectCards : cards;
   return (
     <PlatformShell
       locale={locale}
@@ -174,14 +184,33 @@ export function ModuleScreen({
       userLabel={userLabel}
       admin={admin}
     >
-      <section className="hero glass">
+      <section className={`hero glass ${projectView ? "projects-hero" : ""}`}>
         <div className="hero-copy">
           <span className="eyebrow">{cfg.eyebrow[i]}</span>
           <h1>{cfg.title[i]}</h1>
           <p>{cfg.description[i]}</p>
+          {projectView && (
+            <Link className="button button--primary hero-action" href="#project-flow">
+              {ar ? "استكشف مسار المشروع" : "Explore the project path"}
+            </Link>
+          )}
         </div>
         <div className="hero-art" aria-hidden="true" />
       </section>
+      {projectView && (
+        <section className="card project-status" aria-labelledby="project-status-title">
+          <div>
+            <span className="eyebrow eyebrow--small">{ar ? "حالة القسم" : "Section status"}</span>
+            <h2 id="project-status-title">{ar ? "مساحة تشغيلية" : "Operational workspace"}</h2>
+            <p>
+              {ar
+                ? "يمكنك إنشاء مشاريعك ومتابعة مراحلها وتقييماتها من هذه المساحة. تعرض القائمة بيانات حسابك فقط."
+                : "Create projects and follow their phases and assessments here. The list shows your account data only."}
+            </p>
+          </div>
+          <span className="badge badge--preview">{ar ? "متصل" : "Connected"}</span>
+        </section>
+      )}
       <section className="stats-row">
         {(ar
           ? ["الإجمالي", "النشط", "هذا الشهر", "الأداء", "التغطية"]
@@ -207,21 +236,57 @@ export function ModuleScreen({
           <span className="entry-arrow">→</span>
         </Link>
       )}
-      <section className="feature-grid">
-        {cards.map((card) => (
+      <section className="feature-grid" aria-label={ar ? "مساحات المشروع" : "Project areas"}>
+        {visibleCards.map((card) => (
           <FeatureCard
             key={card.en}
             icon={card.icon}
             title={ar ? card.ar : card.en}
             description={
               ar
-                ? "واجهة مرئية فقط؛ الوظائف غير مفعّلة في هذه المرحلة."
-                : "Visual interface only; functions are not active in this phase."
+                ? projectView
+                  ? "منطقة جاهزة للبيانات الفعلية."
+                  : "واجهة مرئية فقط؛ الوظائف غير مفعّلة في هذه المرحلة."
+                : projectView
+                  ? "Ready for real project data."
+                  : "Visual interface only; functions are not active in this phase."
             }
-            status={ar ? "واجهة فقط" : "Interface only"}
+            status={ar ? (projectView ? "قريباً" : "واجهة فقط") : projectView ? "Coming soon" : "Interface only"}
           />
         ))}
       </section>
+      {projectView && (
+        <section className="project-flow" id="project-flow" aria-labelledby="project-flow-title">
+          <div className="section-heading">
+            <span className="eyebrow eyebrow--small">{ar ? "من الفكرة إلى التنفيذ" : "From idea to delivery"}</span>
+            <h2 id="project-flow-title">{ar ? "مسار المشروع" : "Project path"}</h2>
+            <p>{ar ? "تسلسل واضح يساعدك على معرفة الخطوة التالية." : "A clear sequence that keeps the next step visible."}</p>
+          </div>
+          <div className="project-flow-grid">
+            {(ar
+              ? [
+                  ["01", "الفكرة", "عرّف المشكلة والفرصة."],
+                  ["02", "التقييم", "اختبر الجدوى والأثر المتوقع."],
+                  ["03", "التنفيذ", "حوّل الخطة إلى نتائج قابلة للمتابعة."],
+                ]
+              : [
+                  ["01", "Idea", "Define the problem and opportunity."],
+                  ["02", "Assessment", "Test feasibility and expected impact."],
+                  ["03", "Delivery", "Turn the plan into trackable outcomes."],
+                ]
+            ).map(([number, title, description]) => (
+              <article className="project-step" key={number}>
+                <span className="project-step-number" aria-hidden="true">{number}</span>
+                <div>
+                  <h3>{title}</h3>
+                  <p>{description}</p>
+                </div>
+              </article>
+            ))}
+          </div>
+        </section>
+      )}
+      {projectView && <ProjectsWorkspace locale={locale} />}
       <section className="grid-2">
         <EmptyPanel
           title={ar ? "النشاط الأخير" : "Recent activity"}

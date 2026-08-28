@@ -35,17 +35,20 @@ export type AdminSummary = {
   }>;
   totalSkillGain: number;
   readyRobots: number;
+  revenue: { succeededMinor: number; pendingMinor: number; currency: string };
+  execution: { successful: number; failed: number; successRate: number };
+  verifiedEvidence: number;
+  unverifiedEvidence: number;
+  topRobots: Array<{ id: string; name: string; team: string | null; status: string; intelligence: number; skill: number; experience: number; tasks: number; verifiedEvidence: number }>;
+  recentAudit: Array<{ action: string; entityType: string; createdAt: string }>;
 };
 
-function moneyLabel(value: number) {
-  return `${Math.round(value).toLocaleString("ar-SA")} ر.س`;
-}
-
 export async function getPlatformAdminSummary(): Promise<AdminSummary> {
-  const [robots, tasks, reviews, users, organizations] = await Promise.all([
+  const [robots, tasks, reviews, users, organizations, payments, executions, evidence, recentAudit] = await Promise.all([
     db.robot.findMany({
       orderBy: { intelligence: "desc" },
-      take: 12,
+      take: 50,
+      include: { _count: { select: { tasks: true, evidence: true } } },
     }),
     db.robotTask.findMany({
       orderBy: { updatedAt: "desc" },
@@ -65,32 +68,35 @@ export async function getPlatformAdminSummary(): Promise<AdminSummary> {
       take: 8,
       orderBy: { createdAt: "desc" },
     }),
+    db.payment.findMany({ select: { amountMinor: true, currency: true, status: true } }),
+    db.modelExecution.findMany({ select: { success: true } }),
+    db.evidence.findMany({ select: { verified: true } }),
+    db.auditLog.findMany({ orderBy: { createdAt: "desc" }, take: 10, select: { action: true, entityType: true, createdAt: true } }),
   ]);
 
-  const [totalUsers, totalOrganizations, totalRoles] = await Promise.all([
+  const [totalUsers, totalOrganizations, totalRoles, robotCounts, robotAverages] = await Promise.all([
     db.user.count(),
     db.organization.count(),
     db.role.count(),
+    db.robot.groupBy({ by: ["status"], _count: { _all: true } }),
+    db.robot.aggregate({ _avg: { intelligence: true, skill: true, experience: true } }),
   ]);
 
-  const totalRobots = robots.length;
-  const visibleRobots = robots.filter((robot) => robot.status === "ACTIVE").length;
-  const reviewRobots = robots.filter((robot) => robot.status === "REVIEW").length;
-  const hiddenRobots = robots.filter((robot) => robot.status === "HIDDEN" || robot.status === "ARCHIVED").length;
-  const averageIntelligence = robots.length
-    ? Math.round(robots.reduce((sum, robot) => sum + robot.intelligence, 0) / robots.length)
-    : 0;
-  const averageSkill = robots.length
-    ? Math.round(robots.reduce((sum, robot) => sum + robot.skill, 0) / robots.length)
-    : 0;
-  const averageExperience = robots.length
-    ? Math.round(robots.reduce((sum, robot) => sum + robot.experience, 0) / robots.length)
-    : 0;
+  const totalRobots = await db.robot.count();
+  const countByStatus = (status: string) => robotCounts.find((entry) => entry.status === status)?._count._all ?? 0;
+  const visibleRobots = countByStatus("ACTIVE");
+  const reviewRobots = countByStatus("REVIEW");
+  const hiddenRobots = countByStatus("HIDDEN") + countByStatus("ARCHIVED");
+  const averageIntelligence = Math.round(robotAverages._avg.intelligence ?? 0);
+  const averageSkill = Math.round(robotAverages._avg.skill ?? 0);
+  const averageExperience = Math.round(robotAverages._avg.experience ?? 0);
 
-  const totalTasks = tasks.length;
-  const activeTasks = tasks.filter((task) => task.status === "ACTIVE" || task.status === "IN_PROGRESS").length;
-  const pendingTasks = tasks.filter((task) => task.status === "PENDING_APPROVAL").length;
-  const completedTasks = tasks.filter((task) => task.status === "COMPLETED").length;
+  const totalTasks = await db.robotTask.count();
+  const [activeTasks, pendingTasks, completedTasks] = await Promise.all([
+    db.robotTask.count({ where: { status: { in: ["ACTIVE", "IN_PROGRESS"] } } }),
+    db.robotTask.count({ where: { status: "PENDING_APPROVAL" } }),
+    db.robotTask.count({ where: { status: "COMPLETED" } }),
+  ]);
   const activeUsers = users.filter((user) => user.status === "ACTIVE").length;
 
   const committeeAverageScore = reviews.length
@@ -100,10 +106,10 @@ export async function getPlatformAdminSummary(): Promise<AdminSummary> {
     ? Math.round((reviews.filter((review) => review.verdict === "APPROVE").length / reviews.length) * 100)
     : 0;
 
-  const leaders = robots.slice(0, 4).map((robot, index) => ({
+  const leaders = robots.slice(0, 4).map((robot) => ({
     name: robot.name,
     score: robot.intelligence,
-    reward: moneyLabel(8400 - index * 500 + robot.intelligence * 20),
+    reward: robot.team ?? "No team assigned",
   }));
 
   const reports = [
@@ -155,6 +161,13 @@ export async function getPlatformAdminSummary(): Promise<AdminSummary> {
   const totalSkillGain = missionAssignments.reduce((sum, mission) => sum + mission.totalSkillGain, 0);
   const readyRobots = robots.filter((robot) => robot.intelligence >= 85).length;
 
+  const succeededMinor = payments.filter((payment) => payment.status === "SUCCEEDED").reduce((sum, payment) => sum + payment.amountMinor, 0);
+  const pendingMinor = payments.filter((payment) => payment.status === "PENDING").reduce((sum, payment) => sum + payment.amountMinor, 0);
+  const successfulExecutions = executions.filter((execution) => execution.success).length;
+  const executionFailures = executions.length - successfulExecutions;
+  const verifiedEvidence = evidence.filter((item) => item.verified).length;
+  const unverifiedEvidence = evidence.length - verifiedEvidence;
+
   const branches = organizations.map((organization) => ({
     name: organization.name,
     members: organization.members.length,
@@ -192,5 +205,11 @@ export async function getPlatformAdminSummary(): Promise<AdminSummary> {
     missionAssignments,
     totalSkillGain,
     readyRobots,
+    revenue: { succeededMinor, pendingMinor, currency: payments[0]?.currency ?? "SAR" },
+    execution: { successful: successfulExecutions, failed: executionFailures, successRate: executions.length ? Math.round((successfulExecutions / executions.length) * 100) : 0 },
+    verifiedEvidence,
+    unverifiedEvidence,
+    topRobots: robots.map((robot) => ({ id: robot.id, name: robot.name, team: robot.team, status: robot.status, intelligence: robot.intelligence, skill: robot.skill, experience: robot.experience, tasks: robot._count.tasks, verifiedEvidence: robot._count.evidence })).slice(0, 50),
+    recentAudit: recentAudit.map((entry) => ({ ...entry, createdAt: entry.createdAt.toISOString() })),
   };
 }

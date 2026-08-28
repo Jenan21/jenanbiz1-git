@@ -5,32 +5,26 @@ import { LogoutButton } from "@/components/auth/logout-button";
 import { ThemeToggle } from "@/components/source/source-controls";
 import { Icon, type IconName } from "@/components/ui/icons";
 import { LanguageSwitcher } from "@/components/ui/language-switcher";
-import { readPlatformCatalog } from "@/lib/platform/catalog";
 import type { Locale } from "@/types/i18n";
 
-export function JenanLogo({ compact = false }: { compact?: boolean } = {}) {
+export function JenanLogo({ compact = false }: { compact?: boolean }) {
   return (
-    <Link
-      href="/dashboard"
-      className="logo-wrap"
-      aria-label="Jenan BIZ"
-      data-compact={compact || undefined}
-    >
+    <Link href="/dashboard" className="logo-wrap" aria-label="Jenan BIZ">
       <Image
-        src="/assets/jenan-biz-logo-transparent.png"
+        src="/assets/jenan-biz-logo.png"
         alt="Jenan BIZ"
         width={152}
         height={96}
         priority
       />
-    </Link>
-  );
-}
-
-function JenanHeaderMark() {
-  return (
-    <Link href="/dashboard" className="platform-context__logo" aria-label="Jenan BIZ">
-      <span aria-hidden="true" />
+      {!compact && (
+        <div>
+          <div className="logo-text">
+            JENAN <span>BIZ</span>
+          </div>
+          <div className="logo-sub">GLOBAL BUSINESS HUB</div>
+        </div>
+      )}
     </Link>
   );
 }
@@ -75,139 +69,99 @@ export function WorldNetwork() {
   );
 }
 
+const platformNav = [
+  ["/dashboard", "الرئيسية", "Home"],
+  ["/projects", "المشاريع", "Projects"],
+  ["/academy", "الأكاديمية", "Academy"],
+  ["/market", "السوق", "Market"],
+  ["/software", "البرمجيات", "Software"],
+  ["/talent", "المواهب", "Talent"],
+  ["/marketing", "التسويق", "Marketing"],
+  ["/funding-eligibility", "أهلية التمويل", "Funding"],
+] as const;
 const adminNav = [
-  ["/admin", "مركز القيادة", "Command Center", "shield"],
-  ["/admin/data-center", "مركز البيانات", "Data Center", "grid"],
-  ["/admin/global-health", "الصحة العالمية", "Global Health", "activity"],
-  ["/admin/bounty-hunters", "صائدو الجوائز", "Bounty Hunters", "sparkles"],
-  ["/admin/social-growth", "الانتشار المراقب", "Governed Outreach", "globe"],
-] as const satisfies ReadonlyArray<readonly [string, string, string, IconName]>;
+  ["/admin", "القيادة", "Command"],
+  ["/admin/data-center", "مركز البيانات", "Data Center"],
+  ["/admin/global-health", "الصحة العالمية", "Global Health"],
+  ["/admin/bounty-hunters", "صائدو الجوائز", "Bounty Hunters"],
+  ["/admin/social-growth", "النمو الاجتماعي", "Social Growth"],
+] as const;
 
-export async function PlatformShell({
+export function PlatformShell({
   locale,
   activeRoute,
   userLabel,
   admin = false,
-  immersive = false,
   children,
 }: {
   locale: Locale;
   activeRoute: string;
   userLabel: string;
   admin?: boolean;
-  immersive?: boolean;
   children: ReactNode;
 }) {
   const ar = locale === "ar";
-  const catalog = admin ? null : await readPlatformCatalog();
-  const navigation: ReadonlyArray<readonly [string, string, string, IconName]> =
-    admin
-      ? adminNav
-      : catalog!.modules.map(
-          (module) =>
-            [
-              module.route,
-              module.title[0],
-              module.title[1],
-              module.icon,
-            ] as const,
-        );
-  const current = navigation.find(([href]) => href === activeRoute);
-  const currentModule = catalog?.modules.find(
-    (module) => module.route === activeRoute,
-  );
+  const navigation = admin ? adminNav : platformNav;
   return (
-    <div className={"source-app" + (immersive ? " source-app--immersive" : "")}>
-      <div
-        className={
-          "shell shell--platform" + (immersive ? " shell--immersive" : "")
-        }
-      >
-        <div className="platform-layout">
-          <aside className="platform-sidebar glass">
-            <div className="platform-sidebar__mode">
-              <span>{admin ? "ADMIN CONTROL" : "JENAN WORKSPACE"}</span>
-              <strong>
-                {admin
-                  ? ar
-                    ? "مركز إدارة المنصة"
-                    : "Platform administration"
-                  : ar
-                    ? "منظومة الأعمال"
-                    : "Business ecosystem"}
-              </strong>
-            </div>
+    <div className="source-app">
+      <div className="shell">
+        <header className="platform-header glass">
+          <JenanLogo />
+          <nav
+            className="main-nav"
+            aria-label={ar ? "التنقل الرئيسي" : "Main navigation"}
+          >
+            {navigation.map(([href, arabic, english]) => (
+              <Link
+                href={href}
+                key={href}
+                className={`nav-link ${activeRoute === href ? "active" : ""}`}
+                aria-current={activeRoute === href ? "page" : undefined}
+              >
+                {ar ? arabic : english}
+              </Link>
+            ))}
+          </nav>
+          <details className="mobile-nav">
+            <summary aria-label={ar ? "فتح تنقل المنصة" : "Open platform navigation"}>
+              <Icon name="grid" aria-hidden="true" />
+              <span>{ar ? "الأقسام" : "Sections"}</span>
+            </summary>
             <nav
-              className="platform-nav"
-              aria-label={ar ? "التنقل الرئيسي" : "Main navigation"}
+              className="mobile-nav-panel"
+              aria-label={ar ? "تنقل المنصة على الهاتف" : "Mobile platform navigation"}
             >
-              {navigation.map(([href, arabic, english, icon]) => (
+              {navigation.map(([href, arabic, english]) => (
                 <Link
                   href={href}
                   key={href}
+                  className={`nav-link ${activeRoute === href ? "active" : ""}`}
                   aria-current={activeRoute === href ? "page" : undefined}
-                  className={`platform-nav__link ${activeRoute === href ? "active" : ""}`}
                 >
-                  <span className="platform-nav__icon">
-                    <Icon name={icon} />
-                  </span>
-                  <span>{ar ? arabic : english}</span>
-                  <i aria-hidden="true" />
+                  {ar ? arabic : english}
                 </Link>
               ))}
             </nav>
-            <div className="platform-sidebar__footer">
-              <span className="platform-sidebar__status">
-                <i />
-                {ar ? "واجهة تصميمية — غير تشغيلية" : "Design shell — inactive"}
-              </span>
-              {admin && (
-                <Link href="/dashboard" className="platform-sidebar__switch">
-                  <Icon name="arrow" />
-                  {ar ? "العودة إلى المنصة" : "Return to platform"}
-                </Link>
-              )}
-            </div>
-          </aside>
-          <div className="platform-workspace">
-            <header className="platform-header glass">
-              <div className="platform-context">
-                <JenanHeaderMark />
-                {!immersive && <span>{admin ? "JENAN ADMIN" : "JENAN BIZ"}</span>}
-                <strong>
-                  {current ? (ar ? current[1] : current[2]) : "Jenan BIZ"}
-                </strong>
-              </div>
-              {immersive && currentModule && (
-                <div className="platform-header__signal" aria-label={ar ? "حالة القسم" : "Section status"}>
-                  <span><i />{currentModule.code}</span>
-                  <strong>{ar ? currentModule.eyebrow[0] : currentModule.eyebrow[1]}</strong>
-                  <small>
-                    {currentModule.services.length.toLocaleString(ar ? "ar-SA" : "en-US")} {ar ? "مسارات متخصصة" : "SPECIALIZED PATHS"}
-                  </small>
-                </div>
-              )}
-              <div className="top-tools">
-                <ThemeToggle label={ar ? "المظهر" : "Theme"} />
-                <LanguageSwitcher
-                  locale={locale}
-                  label={ar ? "Switch to English" : "التبديل إلى العربية"}
-                />
-                <span className="user-chip">{userLabel}</span>
-                <LogoutButton label={ar ? "خروج" : "Logout"} />
-              </div>
-            </header>
-            <main className="platform-body">{children}</main>
-            {!immersive && <MarketUnavailable locale={locale} />}
-            {!immersive && (
-              <p className="footer-note">
-                {ar
-                  ? "Jenan BIZ — لا تُعرض أرقام تشغيلية إلا من مصادر حقيقية"
-                  : "Jenan BIZ — operational metrics require real sources"}
-              </p>
-            )}
+          </details>
+          <div className="top-tools">
+            <ThemeToggle label={ar ? "المظهر" : "Theme"} />
+            <LanguageSwitcher
+              locale={locale}
+              label={ar ? "Switch to English" : "التبديل إلى العربية"}
+            />
+            <span className="user-chip">{userLabel}</span>
+            <LogoutButton label={ar ? "خروج" : "Logout"} />
           </div>
-        </div>
+        </header>
+        <main className={`platform-body ${activeRoute === "/projects" ? "projects-body" : ""}`}>
+          {children}
+        </main>
+        <MarketUnavailable locale={locale} />
+        <p className="footer-note">
+          {ar
+            ? "Jenan BIZ — لا تُعرض أرقام تشغيلية إلا من مصادر حقيقية"
+            : "Jenan BIZ — operational metrics require real sources"}
+        </p>
       </div>
     </div>
   );

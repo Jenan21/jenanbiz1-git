@@ -3,17 +3,20 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useState, type ReactNode } from "react";
+import { JenanLogo } from "@/components/source/source-ui";
 
 const navItems = [
   { href: "/admin", label: { ar: "نظرة عامة", en: "Overview" }, icon: "▣" },
   { href: "/admin/operations", label: { ar: "العمليات", en: "Operations" }, icon: "▤" },
   { href: "/admin/dashboard", label: { ar: "لوحة التحكم", en: "Control" }, icon: "◫" },
+  { href: "/admin/academy", label: { ar: "الأكاديمية", en: "Academy" }, icon: "◈" },
   { href: "/admin/branches", label: { ar: "الفروع", en: "Branches" }, icon: "▣" },
   { href: "/admin/users", label: { ar: "المستخدمون", en: "Users" }, icon: "◉" },
   { href: "/admin/robots", label: { ar: "صائدو الجوائز", en: "Bounty Scouts" }, icon: "◎" },
   { href: "/admin/committee", label: { ar: "اللجنة", en: "Committee" }, icon: "◌" },
   { href: "/admin/decisions", label: { ar: "القرارات", en: "Decisions" }, icon: "✓" },
   { href: "/admin/reports", label: { ar: "التقارير", en: "Reports" }, icon: "◔" },
+  { href: "/admin/finance", label: { ar: "المالية والتكاليف", en: "Finance & costs" }, icon: "₿" },
   { href: "/admin/robot-knowledge", label: { ar: "المعرفة", en: "Knowledge" }, icon: "◍" },
   { href: "/admin/intel", label: { ar: "الذكاء", en: "Intelligence" }, icon: "◐" },
   { href: "/admin/data-center", label: { ar: "مركز البيانات", en: "Data Center" }, icon: "◭" },
@@ -45,14 +48,21 @@ const texts = {
 
 export function AdminShell({ children }: { children: ReactNode }) {
   const pathname = usePathname();
-  const [lang, setLang] = useState<"ar" | "en">("ar");
+  const [lang, setLang] = useState<"ar" | "en">(() => {
+    return "ar";
+  });
 
   useEffect(() => {
-    const saved = localStorage.getItem("jenan-admin-lang");
-    const locale = document.cookie.match(/(?:^|;\s*)locale=(ar|en)(?:;|$)/)?.[1];
-    const nextLanguage = saved === "ar" || saved === "en" ? saved : locale === "en" ? "en" : "ar";
-    const frame = window.requestAnimationFrame(() => setLang(nextLanguage));
-    return () => window.cancelAnimationFrame(frame);
+    const frame = requestAnimationFrame(() => {
+      const locale = document.cookie
+        .split(";")
+        .map((item) => item.trim())
+        .find((item) => item.startsWith("locale="))
+        ?.split("=")[1];
+      const saved = localStorage.getItem("jenan-admin-lang");
+      setLang(locale === "ar" || locale === "en" ? locale : saved === "ar" || saved === "en" ? saved : "ar");
+    });
+    return () => cancelAnimationFrame(frame);
   }, []);
 
   useEffect(() => {
@@ -65,7 +75,7 @@ export function AdminShell({ children }: { children: ReactNode }) {
     <div className="admin-shell" dir={lang === "ar" ? "rtl" : "ltr"}>
       <aside className="admin-sidebar glass">
         <div className="admin-brand">
-          <div className="admin-brand-mark">J</div>
+          <JenanLogo compact />
           <div>
             <strong>{t.brand}</strong>
             <small>{t.layer}</small>

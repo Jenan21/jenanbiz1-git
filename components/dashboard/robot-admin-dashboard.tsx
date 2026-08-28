@@ -180,7 +180,7 @@ export function RobotAdminDashboard() {
         if (!active || !payload?.success || !payload.summary) return;
 
         const visible = (payload.summary.visibleRobots.slice(0, 10) as RobotApiRecord[]).map((robot) => ({
-          id: robot.id.slice(0, 8).toUpperCase(),
+          id: robot.id,
           name: robot.name,
           team: "Platform",
           intelligence: Number(robot.intelligence ?? 0),
@@ -278,7 +278,7 @@ export function RobotAdminDashboard() {
                 <div className="rank-info">
                   <strong>{bot.name}</strong>
                   <small>
-                    {bot.team} · {bot.id} · {bot.status}
+                    {bot.team} · {bot.id.slice(0, 8).toUpperCase()} · {bot.status}
                   </small>
                 </div>
                 <div className="rank-metrics">
@@ -286,7 +286,7 @@ export function RobotAdminDashboard() {
                   <span>{bot.skill}%</span>
                   <span>{bot.experience}%</span>
                 </div>
-                <Link href={`/admin/robots/${bot.id.toLowerCase()}`} className="btn small primary">
+                <Link href={`/admin/robots/${bot.id}`} className="btn small primary">
                   Assign
                 </Link>
               </div>

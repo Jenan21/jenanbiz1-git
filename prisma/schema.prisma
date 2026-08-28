@@ -67,6 +67,46 @@ enum TaskStatus {
   CANCELLED
 }
 
+enum ProjectStatus {
+  DRAFT
+  ANALYSIS
+  FEASIBILITY
+  EVALUATION
+  APPROVED
+  IN_PROGRESS
+  ON_HOLD
+  COMPLETED
+  REJECTED
+  ARCHIVED
+}
+
+enum ProjectPhaseType {
+  ANALYSIS
+  FEASIBILITY
+  EVALUATION
+  PLANNING
+  EXECUTION
+  REVIEW
+  COMPLETION
+}
+
+enum ProjectPhaseStatus {
+  PENDING
+  ACTIVE
+  COMPLETED
+  BLOCKED
+  SKIPPED
+}
+
+enum ProjectAssessmentType {
+  MARKET
+  FINANCIAL
+  OPERATIONAL
+  RISK
+  TECHNICAL
+  COMPLIANCE
+}
+
 enum ReviewVerdict {
   APPROVE
   DEFER
@@ -306,24 +346,25 @@ enum GenomeCapabilityType {
 }
 
 model User {
-  id              String               @id @default(cuid())
-  email           String               @unique
-  passwordHash    String?
-  status          UserStatus           @default(PENDING)
-  systemRole      SystemRole           @default(USER)
-  emailVerifiedAt DateTime?
-  profile         Profile?
-  memberships     OrganizationMember[]
-  sessions        Session[]
-  notifications   Notification[]
-  auditLogs       AuditLog[]           @relation("AuditActor")
-  hierarchyEntries EmployeeHierarchy[] @relation("HierarchyUser")
-  supervisedEntries EmployeeHierarchy[] @relation("HierarchySupervisor")
-  managedEntries EmployeeHierarchy[] @relation("HierarchyManager")
-  uploadedFiles   FileAsset[]          @relation("FileUploader")
+  id                      String                   @id @default(cuid())
+  email                   String                   @unique
+  passwordHash            String?
+  status                  UserStatus               @default(PENDING)
+  systemRole              SystemRole               @default(USER)
+  emailVerifiedAt         DateTime?
+  profile                 Profile?
+  memberships             OrganizationMember[]
+  sessions                Session[]
+  notifications           Notification[]
+  auditLogs               AuditLog[]               @relation("AuditActor")
+  hierarchyEntries        EmployeeHierarchy[]      @relation("HierarchyUser")
+  supervisedEntries       EmployeeHierarchy[]      @relation("HierarchySupervisor")
+  managedEntries          EmployeeHierarchy[]      @relation("HierarchyManager")
+  uploadedFiles           FileAsset[]              @relation("FileUploader")
+  createdProjects         Project[]                @relation("ProjectCreator")
   academyStaffAssignments AcademyStaffAssignment[]
-  createdAt       DateTime             @default(now())
-  updatedAt       DateTime             @updatedAt
+  createdAt               DateTime                 @default(now())
+  updatedAt               DateTime                 @updatedAt
 }
 
 model Profile {
@@ -351,6 +392,7 @@ model Organization {
   payments      Payment[]
   files         FileAsset[]
   auditLogs     AuditLog[]
+  projects      Project[]
   createdAt     DateTime             @default(now())
   updatedAt     DateTime             @updatedAt
 }
@@ -547,62 +589,63 @@ model FileAsset {
 }
 
 model Robot {
-  id          String      @id @default(cuid())
-  name        String
-  slug        String      @unique
-  team        String?
-  intelligence Int        @default(0)
-  skill       Int         @default(0)
-  experience  Int         @default(0)
-  status      RobotStatus @default(PENDING)
-  isVisible   Boolean     @default(false)
-  notes       String?
-  tasks       RobotTask[]
-  reviews     CommitteeReview[]
-  missions    Mission[]
-  evidence    Evidence[]
-  costs       CostRecord[]
-  learningLogs LearningLog[]
-  evolutions  RobotEvolution[]
-  modelRuns   ModelExecution[]
-  genomeId    String?
-  genome      AgentGenome? @relation(fields: [genomeId], references: [id], onDelete: SetNull)
-  academicProfile RobotAcademicProfile?
-  runtimeAllocations AgentRuntimeAllocation[]
+  id                      String                   @id @default(cuid())
+  name                    String
+  slug                    String                   @unique
+  team                    String?
+  intelligence            Int                      @default(0)
+  skill                   Int                      @default(0)
+  experience              Int                      @default(0)
+  status                  RobotStatus              @default(PENDING)
+  isVisible               Boolean                  @default(false)
+  notes                   String?
+  tasks                   RobotTask[]
+  reviews                 CommitteeReview[]
+  missions                Mission[]
+  evidence                Evidence[]
+  costs                   CostRecord[]
+  learningLogs            LearningLog[]
+  evolutions              RobotEvolution[]
+  modelRuns               ModelExecution[]
+  genomeId                String?
+  genome                  AgentGenome?             @relation(fields: [genomeId], references: [id], onDelete: SetNull)
+  academicProfile         RobotAcademicProfile?
+  runtimeAllocations      AgentRuntimeAllocation[]
   academyStaffAssignments AcademyStaffAssignment[]
-  createdAt   DateTime    @default(now())
-  updatedAt   DateTime    @updatedAt
+  createdAt               DateTime                 @default(now())
+  updatedAt               DateTime                 @updatedAt
 
   @@index([status])
   @@index([isVisible])
 }
 
 model RobotTask {
-  id          String    @id @default(cuid())
-  robotId     String
-  robot       Robot     @relation(fields: [robotId], references: [id], onDelete: Cascade)
-  title       String
-  description String?
-  status      TaskStatus @default(DRAFT)
-  priority    String?   @default("MEDIUM")
-  dueAt       DateTime?
-  createdAt   DateTime  @default(now())
-  updatedAt   DateTime  @updatedAt
-  missionId   String?
-  mission     Mission?  @relation(fields: [missionId], references: [id], onDelete: SetNull)
-  evidence    Evidence[]
-  costs       CostRecord[]
-  learningLogs LearningLog[]
+  id                 String                   @id @default(cuid())
+  robotId            String
+  robot              Robot                    @relation(fields: [robotId], references: [id], onDelete: Cascade)
+  title              String
+  description        String?
+  status             TaskStatus               @default(DRAFT)
+  priority           String?                  @default("MEDIUM")
+  dueAt              DateTime?
+  createdAt          DateTime                 @default(now())
+  updatedAt          DateTime                 @updatedAt
+  missionId          String?
+  mission            Mission?                 @relation(fields: [missionId], references: [id], onDelete: SetNull)
+  evidence           Evidence[]
+  costs              CostRecord[]
+  learningLogs       LearningLog[]
   runtimeAllocations AgentRuntimeAllocation[]
+
   @@index([robotId, status])
 }
 
 model Mission {
-  id                   String          @id @default(cuid())
+  id                   String                   @id @default(cuid())
   name                 String
   description          String?
-  status               TaskStatus      @default(DRAFT)
-  requiredIntelligence Int             @default(0)
+  status               TaskStatus               @default(DRAFT)
+  requiredIntelligence Int                      @default(0)
   assignedRobots       Robot[]
   tasks                RobotTask[]
   costs                CostRecord[]
@@ -610,8 +653,8 @@ model Mission {
   learningLogs         LearningLog[]
   knowledgeEntries     SharedKnowledge[]
   runtimeAllocations   AgentRuntimeAllocation[]
-  createdAt            DateTime        @default(now())
-  updatedAt            DateTime        @updatedAt
+  createdAt            DateTime                 @default(now())
+  updatedAt            DateTime                 @updatedAt
 
   @@index([status])
 }
@@ -637,22 +680,22 @@ model Evidence {
 }
 
 model CostRecord {
-  id               String     @id @default(cuid())
-  robotId          String?
-  robotTaskId      String?
-  missionId        String?
-  provider         String
-  model            String?
-  inputTokens      Int        @default(0)
-  outputTokens     Int        @default(0)
-  computeCostMinor Int        @default(0)
-  currency         String     @default("USD")
+  id                String     @id @default(cuid())
+  robotId           String?
+  robotTaskId       String?
+  missionId         String?
+  provider          String
+  model             String?
+  inputTokens       Int        @default(0)
+  outputTokens      Int        @default(0)
+  computeCostMinor  Int        @default(0)
+  currency          String     @default("USD")
   estimatedDuration Int?
-  actualDuration   Int?
-  robot            Robot?     @relation(fields: [robotId], references: [id], onDelete: SetNull)
-  robotTask        RobotTask? @relation(fields: [robotTaskId], references: [id], onDelete: SetNull)
-  mission          Mission?   @relation(fields: [missionId], references: [id], onDelete: SetNull)
-  createdAt        DateTime   @default(now())
+  actualDuration    Int?
+  robot             Robot?     @relation(fields: [robotId], references: [id], onDelete: SetNull)
+  robotTask         RobotTask? @relation(fields: [robotTaskId], references: [id], onDelete: SetNull)
+  mission           Mission?   @relation(fields: [missionId], references: [id], onDelete: SetNull)
+  createdAt         DateTime   @default(now())
 
   @@index([robotId, createdAt])
   @@index([missionId, createdAt])
@@ -676,97 +719,97 @@ model LearningLog {
 }
 
 model RobotEvolution {
-  id              String   @id @default(cuid())
-  robotId         String
-  generation      Int
-  intelligenceDelta Int     @default(0)
-  skillDelta      Int       @default(0)
-  experienceDelta Int       @default(0)
-  reason          String
-  robot           Robot    @relation(fields: [robotId], references: [id], onDelete: Cascade)
-  createdAt       DateTime @default(now())
+  id                String   @id @default(cuid())
+  robotId           String
+  generation        Int
+  intelligenceDelta Int      @default(0)
+  skillDelta        Int      @default(0)
+  experienceDelta   Int      @default(0)
+  reason            String
+  robot             Robot    @relation(fields: [robotId], references: [id], onDelete: Cascade)
+  createdAt         DateTime @default(now())
 
   @@unique([robotId, generation])
   @@index([robotId, createdAt])
 }
 
 model SharedKnowledge {
-  id          String   @id @default(cuid())
-  title       String
-  content     String
-  source      String
-  confidence  Int      @default(0)
-  missionId   String?
-  mission     Mission? @relation(fields: [missionId], references: [id], onDelete: SetNull)
+  id                String              @id @default(cuid())
+  title             String
+  content           String
+  source            String
+  confidence        Int                 @default(0)
+  missionId         String?
+  mission           Mission?            @relation(fields: [missionId], references: [id], onDelete: SetNull)
   academyExperience AcademicExperience?
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  createdAt         DateTime            @default(now())
+  updatedAt         DateTime            @updatedAt
 
   @@index([confidence])
 }
 
 model ModelExecution {
-  id            String   @id @default(cuid())
-  robotId       String?
-  provider      String
-  model         String
-  taskType      String
-  inputTokens   Int      @default(0)
-  outputTokens  Int      @default(0)
-  latencyMs     Int      @default(0)
-  success       Boolean  @default(false)
-  robot         Robot?   @relation(fields: [robotId], references: [id], onDelete: SetNull)
-  createdAt     DateTime @default(now())
+  id           String   @id @default(cuid())
+  robotId      String?
+  provider     String
+  model        String
+  taskType     String
+  inputTokens  Int      @default(0)
+  outputTokens Int      @default(0)
+  latencyMs    Int      @default(0)
+  success      Boolean  @default(false)
+  robot        Robot?   @relation(fields: [robotId], references: [id], onDelete: SetNull)
+  createdAt    DateTime @default(now())
 
   @@index([provider, model, createdAt])
 }
 
 model CommitteeReview {
-  id          String       @id @default(cuid())
-  robotId     String
-  robot       Robot        @relation(fields: [robotId], references: [id], onDelete: Cascade)
-  reviewer    String
-  score       Int          @default(0)
-  verdict     ReviewVerdict @default(DEFER)
-  notes       String?
-  createdAt   DateTime     @default(now())
-  updatedAt   DateTime     @updatedAt
+  id        String        @id @default(cuid())
+  robotId   String
+  robot     Robot         @relation(fields: [robotId], references: [id], onDelete: Cascade)
+  reviewer  String
+  score     Int           @default(0)
+  verdict   ReviewVerdict @default(DEFER)
+  notes     String?
+  createdAt DateTime      @default(now())
+  updatedAt DateTime      @updatedAt
 
   @@index([robotId, verdict])
 }
 
 model AgentGenome {
-  id             String                    @id @default(cuid())
+  id             String                     @id @default(cuid())
   name           String
-  key            String                    @unique
+  key            String                     @unique
   description    String?
   runtimeModel   String?
   robots         Robot[]
   skillPacks     AgentGenomeSkillPack[]
   knowledgePacks AgentGenomeKnowledgePack[]
   capabilities   AgentGenomeCapability[]
-  createdAt      DateTime                  @default(now())
-  updatedAt      DateTime                  @updatedAt
+  createdAt      DateTime                   @default(now())
+  updatedAt      DateTime                   @updatedAt
 }
 
 model SkillPack {
-  id          String                @id @default(cuid())
+  id          String                 @id @default(cuid())
   name        String
-  key         String                @unique
+  key         String                 @unique
   description String?
   genomes     AgentGenomeSkillPack[]
-  createdAt   DateTime              @default(now())
-  updatedAt   DateTime              @updatedAt
+  createdAt   DateTime               @default(now())
+  updatedAt   DateTime               @updatedAt
 }
 
 model KnowledgePack {
-  id          String                    @id @default(cuid())
+  id          String                     @id @default(cuid())
   name        String
-  key         String                    @unique
+  key         String                     @unique
   description String?
   genomes     AgentGenomeKnowledgePack[]
-  createdAt   DateTime                  @default(now())
-  updatedAt   DateTime                  @updatedAt
+  createdAt   DateTime                   @default(now())
+  updatedAt   DateTime                   @updatedAt
 }
 
 model AgentGenomeSkillPack {
@@ -779,29 +822,29 @@ model AgentGenomeSkillPack {
 }
 
 model AgentGenomeKnowledgePack {
-  genomeId       String
+  genomeId        String
   knowledgePackId String
-  genome         AgentGenome   @relation(fields: [genomeId], references: [id], onDelete: Cascade)
-  knowledgePack  KnowledgePack @relation(fields: [knowledgePackId], references: [id], onDelete: Cascade)
+  genome          AgentGenome   @relation(fields: [genomeId], references: [id], onDelete: Cascade)
+  knowledgePack   KnowledgePack @relation(fields: [knowledgePackId], references: [id], onDelete: Cascade)
 
   @@id([genomeId, knowledgePackId])
 }
 
 model Academy {
-  id          String         @id @default(cuid())
-  name        String
-  slug        String         @unique
-  description String?
-  fields      AcademyField[]
-  courses     AcademyCourse[]
-  colleges    AcademyCollege[]
-  programs    AcademyProgram[]
-  cohorts     AcademyCohort[]
-  roles       AcademyRole[]
+  id                String                     @id @default(cuid())
+  name              String
+  slug              String                     @unique
+  description       String?
+  fields            AcademyField[]
+  courses           AcademyCourse[]
+  colleges          AcademyCollege[]
+  programs          AcademyProgram[]
+  cohorts           AcademyCohort[]
+  roles             AcademyRole[]
   curriculumChanges CurriculumChangeProposal[]
-  workQueues  AcademyWorkQueue[]
-  createdAt   DateTime       @default(now())
-  updatedAt   DateTime       @updatedAt
+  workQueues        AcademyWorkQueue[]
+  createdAt         DateTime                   @default(now())
+  updatedAt         DateTime                   @updatedAt
 }
 
 model AcademyField {
@@ -824,83 +867,83 @@ model AcademyField {
 }
 
 model Specialization {
-  id               String                      @id @default(cuid())
-  fieldId          String
-  disciplineId     String?
-  name             String
-  key              String
-  description      String?
-  field            AcademyField                @relation(fields: [fieldId], references: [id], onDelete: Cascade)
-  discipline       AcademyDiscipline?          @relation(fields: [disciplineId], references: [id], onDelete: SetNull)
+  id                 String                         @id @default(cuid())
+  fieldId            String
+  disciplineId       String?
+  name               String
+  key                String
+  description        String?
+  field              AcademyField                   @relation(fields: [fieldId], references: [id], onDelete: Cascade)
+  discipline         AcademyDiscipline?             @relation(fields: [disciplineId], references: [id], onDelete: SetNull)
   subSpecializations AcademySubspecialization[]
-  skills           Skill[]
-  courses          AcademyCourse[]
-  exams            AcademyExam[]
-  certifications   AcademyCertification[]
-  primaryProfiles  RobotAcademicProfile[]      @relation("PrimarySpecialization")
-  secondaryProfiles RobotSecondarySpecialization[]
-  demands          WorkforceDemand[]
-  programs         AcademyProgram[]
-  createdAt        DateTime                    @default(now())
-  updatedAt        DateTime                    @updatedAt
+  skills             Skill[]
+  courses            AcademyCourse[]
+  exams              AcademyExam[]
+  certifications     AcademyCertification[]
+  primaryProfiles    RobotAcademicProfile[]         @relation("PrimarySpecialization")
+  secondaryProfiles  RobotSecondarySpecialization[]
+  demands            WorkforceDemand[]
+  programs           AcademyProgram[]
+  createdAt          DateTime                       @default(now())
+  updatedAt          DateTime                       @updatedAt
 
   @@unique([fieldId, key])
 }
 
 model Skill {
-  id                       String                     @id @default(cuid())
-  specializationId         String?
-  parentSkillId            String?
-  name                     String
-  key                      String                     @unique
-  description              String?
-  riskLevel                SkillRiskLevel       @default(LOW)
-  specialization           Specialization?            @relation(fields: [specializationId], references: [id], onDelete: SetNull)
-  parentSkill              Skill?                      @relation("SkillHierarchy", fields: [parentSkillId], references: [id], onDelete: SetNull)
-  subskills                Skill[]                     @relation("SkillHierarchy")
-  dependencies             SkillPrerequisite[]         @relation("SkillDependencies")
-  requiredBy               SkillPrerequisite[]         @relation("SkillPrerequisites")
-  courseLinks              CourseSkill[]
+  id                        String                     @id @default(cuid())
+  specializationId          String?
+  parentSkillId             String?
+  name                      String
+  key                       String                     @unique
+  description               String?
+  riskLevel                 SkillRiskLevel             @default(LOW)
+  specialization            Specialization?            @relation(fields: [specializationId], references: [id], onDelete: SetNull)
+  parentSkill               Skill?                     @relation("SkillHierarchy", fields: [parentSkillId], references: [id], onDelete: SetNull)
+  subskills                 Skill[]                    @relation("SkillHierarchy")
+  dependencies              SkillPrerequisite[]        @relation("SkillDependencies")
+  requiredBy                SkillPrerequisite[]        @relation("SkillPrerequisites")
+  courseLinks               CourseSkill[]
   certificationRequirements CertificationRequirement[]
-  robotSkills              RobotSkill[]
-  retrainingEvents         RetrainingEvent[]
-  demands                  WorkforceDemand[]
-  relationsFrom            SkillRelation[]      @relation("SkillRelationSource")
-  relationsTo              SkillRelation[]      @relation("SkillRelationTarget")
-  resourceRequirements     SkillResourceRequirement[]
-  createdAt                DateTime                    @default(now())
-  updatedAt                DateTime                    @updatedAt
+  robotSkills               RobotSkill[]
+  retrainingEvents          RetrainingEvent[]
+  demands                   WorkforceDemand[]
+  relationsFrom             SkillRelation[]            @relation("SkillRelationSource")
+  relationsTo               SkillRelation[]            @relation("SkillRelationTarget")
+  resourceRequirements      SkillResourceRequirement[]
+  createdAt                 DateTime                   @default(now())
+  updatedAt                 DateTime                   @updatedAt
 }
 
 model SkillPrerequisite {
   skillId        String
   prerequisiteId String
-  skill          Skill @relation("SkillDependencies", fields: [skillId], references: [id], onDelete: Cascade)
-  prerequisite   Skill @relation("SkillPrerequisites", fields: [prerequisiteId], references: [id], onDelete: Cascade)
+  skill          Skill  @relation("SkillDependencies", fields: [skillId], references: [id], onDelete: Cascade)
+  prerequisite   Skill  @relation("SkillPrerequisites", fields: [prerequisiteId], references: [id], onDelete: Cascade)
 
   @@id([skillId, prerequisiteId])
 }
 
 model AcademyCourse {
-  id               String                 @id @default(cuid())
-  academyId        String
-  fieldId          String?
-  specializationId String?
+  id                  String             @id @default(cuid())
+  academyId           String
+  fieldId             String?
+  specializationId    String?
   curriculumVersionId String?
-  title            String
-  code             String
-  description      String?
-  academy          Academy                @relation(fields: [academyId], references: [id], onDelete: Cascade)
-  field            AcademyField?          @relation(fields: [fieldId], references: [id], onDelete: SetNull)
-  specialization   Specialization?        @relation(fields: [specializationId], references: [id], onDelete: SetNull)
-  curriculumVersion CurriculumVersion?    @relation(fields: [curriculumVersionId], references: [id], onDelete: SetNull)
-  lessons          AcademyLesson[]
-  labs             AcademyLab[]
-  exams            AcademyExam[]
-  skills           CourseSkill[]
-  completions      CourseCompletion[]
-  createdAt        DateTime               @default(now())
-  updatedAt        DateTime               @updatedAt
+  title               String
+  code                String
+  description         String?
+  academy             Academy            @relation(fields: [academyId], references: [id], onDelete: Cascade)
+  field               AcademyField?      @relation(fields: [fieldId], references: [id], onDelete: SetNull)
+  specialization      Specialization?    @relation(fields: [specializationId], references: [id], onDelete: SetNull)
+  curriculumVersion   CurriculumVersion? @relation(fields: [curriculumVersionId], references: [id], onDelete: SetNull)
+  lessons             AcademyLesson[]
+  labs                AcademyLab[]
+  exams               AcademyExam[]
+  skills              CourseSkill[]
+  completions         CourseCompletion[]
+  createdAt           DateTime           @default(now())
+  updatedAt           DateTime           @updatedAt
 
   @@unique([academyId, code])
 }
@@ -934,22 +977,22 @@ model AcademyLab {
 }
 
 model AcademyExam {
-  id               String                 @id @default(cuid())
+  id               String                     @id @default(cuid())
   courseId         String?
   specializationId String?
   title            String
   assessmentType   AcademicAssessmentType
-  passingScore     Int                    @default(70)
-  critical         Boolean                @default(false)
-  version          Int                    @default(1)
+  passingScore     Int                        @default(70)
+  critical         Boolean                    @default(false)
+  version          Int                        @default(1)
   maxAttempts      Int?
-  rubricVersion    String                 @default("v1")
-  course           AcademyCourse?         @relation(fields: [courseId], references: [id], onDelete: SetNull)
-  specialization   Specialization?        @relation(fields: [specializationId], references: [id], onDelete: SetNull)
+  rubricVersion    String                     @default("v1")
+  course           AcademyCourse?             @relation(fields: [courseId], references: [id], onDelete: SetNull)
+  specialization   Specialization?            @relation(fields: [specializationId], references: [id], onDelete: SetNull)
   requirements     CertificationRequirement[]
   attempts         ExamAttempt[]
-  createdAt        DateTime               @default(now())
-  updatedAt        DateTime               @updatedAt
+  createdAt        DateTime                   @default(now())
+  updatedAt        DateTime                   @updatedAt
 }
 
 model CourseSkill {
@@ -962,74 +1005,74 @@ model CourseSkill {
 }
 
 model AcademyCertification {
-  id                String                     @id @default(cuid())
-  specializationId  String
-  name              String
-  key               String                     @unique
-  expiresAfterDays  Int?
-  specialization    Specialization             @relation(fields: [specializationId], references: [id], onDelete: Cascade)
-  requirements      CertificationRequirement[]
-  records           RobotCertification[]
-  createdAt         DateTime                   @default(now())
-  updatedAt         DateTime                   @updatedAt
+  id               String                     @id @default(cuid())
+  specializationId String
+  name             String
+  key              String                     @unique
+  expiresAfterDays Int?
+  specialization   Specialization             @relation(fields: [specializationId], references: [id], onDelete: Cascade)
+  requirements     CertificationRequirement[]
+  records          RobotCertification[]
+  createdAt        DateTime                   @default(now())
+  updatedAt        DateTime                   @updatedAt
 }
 
 model CertificationRequirement {
-  id                        String                 @id @default(cuid())
-  certificationId           String
-  skillId                   String?
-  examId                    String?
-  minimumLevel              SkillProficiencyLevel  @default(TRAINEE)
-  minimumTheoryScore        Int                    @default(0)
-  minimumPracticalScore     Int                    @default(0)
-  minimumBlindScore         Int                    @default(0)
-  minimumRealWorldScore     Int                    @default(0)
-  hardFailureGate           Boolean                @default(false)
-  certification             AcademyCertification   @relation(fields: [certificationId], references: [id], onDelete: Cascade)
-  skill                     Skill?                 @relation(fields: [skillId], references: [id], onDelete: SetNull)
-  exam                      AcademyExam?           @relation(fields: [examId], references: [id], onDelete: SetNull)
-  createdAt                 DateTime               @default(now())
-  updatedAt                 DateTime               @updatedAt
+  id                    String                @id @default(cuid())
+  certificationId       String
+  skillId               String?
+  examId                String?
+  minimumLevel          SkillProficiencyLevel @default(TRAINEE)
+  minimumTheoryScore    Int                   @default(0)
+  minimumPracticalScore Int                   @default(0)
+  minimumBlindScore     Int                   @default(0)
+  minimumRealWorldScore Int                   @default(0)
+  hardFailureGate       Boolean               @default(false)
+  certification         AcademyCertification  @relation(fields: [certificationId], references: [id], onDelete: Cascade)
+  skill                 Skill?                @relation(fields: [skillId], references: [id], onDelete: SetNull)
+  exam                  AcademyExam?          @relation(fields: [examId], references: [id], onDelete: SetNull)
+  createdAt             DateTime              @default(now())
+  updatedAt             DateTime              @updatedAt
 }
 
 model RobotAcademicProfile {
-  id                      String                  @id @default(cuid())
-  robotId                 String                  @unique
-  primarySpecializationId String?
-  status                  AcademyLifecycleStatus  @default(CANDIDATE)
-  theoryScore             Int                     @default(0)
-  practicalScore          Int                     @default(0)
-  blindExamScore          Int                     @default(0)
-  projectScore            Int                     @default(0)
-  realWorldScore          Int                     @default(0)
-  reliabilityScore        Int                     @default(0)
-  qualityScore            Int                     @default(0)
-  safetyScore             Int                     @default(0)
-  trustScore              Int                     @default(0)
-  lastVerifiedAt          DateTime?
-  probationStartedAt      DateTime?
-  operationalAt           DateTime?
-  robot                   Robot                   @relation(fields: [robotId], references: [id], onDelete: Cascade)
-  primarySpecialization   Specialization?         @relation("PrimarySpecialization", fields: [primarySpecializationId], references: [id], onDelete: SetNull)
+  id                       String                         @id @default(cuid())
+  robotId                  String                         @unique
+  primarySpecializationId  String?
+  status                   AcademyLifecycleStatus         @default(CANDIDATE)
+  theoryScore              Int                            @default(0)
+  practicalScore           Int                            @default(0)
+  blindExamScore           Int                            @default(0)
+  projectScore             Int                            @default(0)
+  realWorldScore           Int                            @default(0)
+  reliabilityScore         Int                            @default(0)
+  qualityScore             Int                            @default(0)
+  safetyScore              Int                            @default(0)
+  trustScore               Int                            @default(0)
+  lastVerifiedAt           DateTime?
+  probationStartedAt       DateTime?
+  operationalAt            DateTime?
+  robot                    Robot                          @relation(fields: [robotId], references: [id], onDelete: Cascade)
+  primarySpecialization    Specialization?                @relation("PrimarySpecialization", fields: [primarySpecializationId], references: [id], onDelete: SetNull)
   secondarySpecializations RobotSecondarySpecialization[]
-  skills                  RobotSkill[]
-  courses                 CourseCompletion[]
-  examAttempts            ExamAttempt[]
-  certifications          RobotCertification[]
-  retrainingEvents        RetrainingEvent[]
-  cohortEnrollments       CohortEnrollment[]
-  candidateBatchMembers   CandidateBatchMember[]
-  geographyProfiles       AgentGeographyProfile[]
-  experienceRecords       AcademicExperience[]
-  certificationReviews    CertificationReview[]
-  probationRecords        AcademicProbation[]
-  promotionEvents         AcademicPromotionEvent[]
-  staffAssignments        AcademyStaffAssignment[]
-  queueItems             AcademyQueueItem[]
-  sandboxLabRuns         SandboxLabRun[]
-  languages              AgentLanguageProficiency[]
-  createdAt               DateTime                @default(now())
-  updatedAt               DateTime                @updatedAt
+  skills                   RobotSkill[]
+  courses                  CourseCompletion[]
+  examAttempts             ExamAttempt[]
+  certifications           RobotCertification[]
+  retrainingEvents         RetrainingEvent[]
+  cohortEnrollments        CohortEnrollment[]
+  candidateBatchMembers    CandidateBatchMember[]
+  geographyProfiles        AgentGeographyProfile[]
+  experienceRecords        AcademicExperience[]
+  certificationReviews     CertificationReview[]
+  probationRecords         AcademicProbation[]
+  promotionEvents          AcademicPromotionEvent[]
+  staffAssignments         AcademyStaffAssignment[]
+  queueItems               AcademyQueueItem[]
+  sandboxLabRuns           SandboxLabRun[]
+  languages                AgentLanguageProficiency[]
+  createdAt                DateTime                       @default(now())
+  updatedAt                DateTime                       @updatedAt
 
   @@index([status])
   @@index([primarySpecializationId])
@@ -1045,16 +1088,16 @@ model RobotSecondarySpecialization {
 }
 
 model RobotSkill {
-  profileId         String
-  skillId           String
-  level             SkillProficiencyLevel @default(TRAINEE)
-  theoryScore       Int                   @default(0)
-  practicalScore    Int                   @default(0)
-  blindScore        Int                   @default(0)
-  realWorldScore    Int                   @default(0)
-  profile           RobotAcademicProfile  @relation(fields: [profileId], references: [id], onDelete: Cascade)
-  skill             Skill                 @relation(fields: [skillId], references: [id], onDelete: Cascade)
-  updatedAt         DateTime              @updatedAt
+  profileId      String
+  skillId        String
+  level          SkillProficiencyLevel @default(TRAINEE)
+  theoryScore    Int                   @default(0)
+  practicalScore Int                   @default(0)
+  blindScore     Int                   @default(0)
+  realWorldScore Int                   @default(0)
+  profile        RobotAcademicProfile  @relation(fields: [profileId], references: [id], onDelete: Cascade)
+  skill          Skill                 @relation(fields: [skillId], references: [id], onDelete: Cascade)
+  updatedAt      DateTime              @updatedAt
 
   @@id([profileId, skillId])
   @@index([skillId, level])
@@ -1075,21 +1118,21 @@ model CourseCompletion {
 }
 
 model ExamAttempt {
-  id          String                    @id @default(cuid())
-  profileId   String
-  examId      String
-  score       Int
-  outcome     AcademicAssessmentOutcome
+  id                  String                    @id @default(cuid())
+  profileId           String
+  examId              String
+  score               Int
+  outcome             AcademicAssessmentOutcome
   curriculumVersionId String?
-  evaluatorIdentity String?
-  reviewerIdentity String?
-  rubricVersion String @default("v1")
-  evidence Json?
-  profile     RobotAcademicProfile      @relation(fields: [profileId], references: [id], onDelete: Cascade)
-  exam        AcademyExam               @relation(fields: [examId], references: [id], onDelete: Cascade)
-  curriculumVersion CurriculumVersion? @relation(fields: [curriculumVersionId], references: [id], onDelete: SetNull)
-  reviews     ExamAttemptReview[]
-  createdAt   DateTime                  @default(now())
+  evaluatorIdentity   String?
+  reviewerIdentity    String?
+  rubricVersion       String                    @default("v1")
+  evidence            Json?
+  profile             RobotAcademicProfile      @relation(fields: [profileId], references: [id], onDelete: Cascade)
+  exam                AcademyExam               @relation(fields: [examId], references: [id], onDelete: Cascade)
+  curriculumVersion   CurriculumVersion?        @relation(fields: [curriculumVersionId], references: [id], onDelete: SetNull)
+  reviews             ExamAttemptReview[]
+  createdAt           DateTime                  @default(now())
 
   @@index([profileId, examId, createdAt])
 }
@@ -1111,40 +1154,118 @@ model RobotCertification {
 }
 
 model RetrainingEvent {
-  id          String            @id @default(cuid())
+  id          String               @id @default(cuid())
   profileId   String
   skillId     String?
   reason      String
-  status      RetrainingStatus  @default(ASSIGNED)
+  status      RetrainingStatus     @default(ASSIGNED)
   completedAt DateTime?
   profile     RobotAcademicProfile @relation(fields: [profileId], references: [id], onDelete: Cascade)
-  skill       Skill?            @relation(fields: [skillId], references: [id], onDelete: SetNull)
-  createdAt   DateTime          @default(now())
-  updatedAt   DateTime          @updatedAt
+  skill       Skill?               @relation(fields: [skillId], references: [id], onDelete: SetNull)
+  createdAt   DateTime             @default(now())
+  updatedAt   DateTime             @updatedAt
 
   @@index([profileId, status])
 }
 
 model WorkforceDemand {
-  id               String               @id @default(cuid())
-  fieldId          String?
-  specializationId String?
-  skillId          String?
-  title            String
-  requiredCount    Int                  @default(0)
-  priority         Int                  @default(0)
+  id                   String                @id @default(cuid())
+  fieldId              String?
+  specializationId     String?
+  skillId              String?
+  title                String
+  requiredCount        Int                   @default(0)
+  priority             Int                   @default(0)
   expectedGraduationAt DateTime?
-  demandScore      Int                  @default(0)
-  status           WorkforceDemandStatus @default(OPEN)
-  field            AcademyField?        @relation(fields: [fieldId], references: [id], onDelete: SetNull)
-  specialization   Specialization?      @relation(fields: [specializationId], references: [id], onDelete: SetNull)
-  skill            Skill?               @relation(fields: [skillId], references: [id], onDelete: SetNull)
-  gap              WorkforceGap?
-  candidateBatches CandidateBatch[]
-  createdAt        DateTime             @default(now())
-  updatedAt        DateTime             @updatedAt
+  demandScore          Int                   @default(0)
+  status               WorkforceDemandStatus @default(OPEN)
+  field                AcademyField?         @relation(fields: [fieldId], references: [id], onDelete: SetNull)
+  specialization       Specialization?       @relation(fields: [specializationId], references: [id], onDelete: SetNull)
+  skill                Skill?                @relation(fields: [skillId], references: [id], onDelete: SetNull)
+  gap                  WorkforceGap?
+  candidateBatches     CandidateBatch[]
+  createdAt            DateTime              @default(now())
+  updatedAt            DateTime              @updatedAt
 
   @@index([status, demandScore])
+}
+
+model Project {
+  id                    String                        @id @default(cuid())
+  organizationId        String?
+  createdById           String
+  name                  String
+  slug                  String                        @unique
+  description           String?
+  sector                String?
+  countryCode           String?
+  currency              String                        @default("SAR")
+  status                ProjectStatus                 @default(DRAFT)
+  currentPhase          ProjectPhaseType              @default(ANALYSIS)
+  createdBy             User                          @relation("ProjectCreator", fields: [createdById], references: [id], onDelete: Restrict)
+  organization          Organization?                 @relation(fields: [organizationId], references: [id], onDelete: SetNull)
+  phases                ProjectPhase[]
+  assessments           ProjectAssessment[]
+  intelligenceSnapshots ProjectIntelligenceSnapshot[]
+  createdAt             DateTime                      @default(now())
+  updatedAt             DateTime                      @updatedAt
+
+  @@index([createdById, status])
+  @@index([organizationId, status])
+  @@index([countryCode, sector])
+}
+
+model ProjectPhase {
+  id          String             @id @default(cuid())
+  projectId   String
+  type        ProjectPhaseType
+  status      ProjectPhaseStatus @default(PENDING)
+  title       String
+  sequence    Int
+  notes       String?
+  project     Project            @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  startedAt   DateTime?
+  completedAt DateTime?
+  createdAt   DateTime           @default(now())
+  updatedAt   DateTime           @updatedAt
+
+  @@unique([projectId, type])
+  @@unique([projectId, sequence])
+  @@index([projectId, status])
+}
+
+model ProjectAssessment {
+  id         String                @id @default(cuid())
+  projectId  String
+  type       ProjectAssessmentType
+  score      Int?
+  status     ProjectPhaseStatus    @default(PENDING)
+  summary    String?
+  source     String?
+  assessedAt DateTime?
+  project    Project               @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  createdAt  DateTime              @default(now())
+  updatedAt  DateTime              @updatedAt
+
+  @@unique([projectId, type])
+  @@index([projectId, status])
+}
+
+model ProjectIntelligenceSnapshot {
+  id              String   @id @default(cuid())
+  projectId       String
+  query           String
+  location        Json?
+  population      Json?
+  purchasingPower Json?
+  competitors     Json?
+  sources         Json
+  limitations     Json
+  fetchedAt       DateTime
+  project         Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  createdAt       DateTime @default(now())
+
+  @@index([projectId, fetchedAt])
 }
 
 model AcademyCollege {
@@ -1162,15 +1283,15 @@ model AcademyCollege {
 }
 
 model AcademyDiscipline {
-  id          String           @id @default(cuid())
-  fieldId     String
-  name        String
-  key         String
-  description String?
-  field       AcademyField     @relation(fields: [fieldId], references: [id], onDelete: Cascade)
+  id              String           @id @default(cuid())
+  fieldId         String
+  name            String
+  key             String
+  description     String?
+  field           AcademyField     @relation(fields: [fieldId], references: [id], onDelete: Cascade)
   specializations Specialization[]
-  createdAt   DateTime         @default(now())
-  updatedAt   DateTime         @updatedAt
+  createdAt       DateTime         @default(now())
+  updatedAt       DateTime         @updatedAt
 
   @@unique([fieldId, key])
 }
@@ -1192,79 +1313,79 @@ model SkillRelation {
   sourceSkillId String
   targetSkillId String
   relationType  SkillRelationType
-  sourceSkill   Skill @relation("SkillRelationSource", fields: [sourceSkillId], references: [id], onDelete: Cascade)
-  targetSkill   Skill @relation("SkillRelationTarget", fields: [targetSkillId], references: [id], onDelete: Cascade)
-  createdAt     DateTime @default(now())
+  sourceSkill   Skill             @relation("SkillRelationSource", fields: [sourceSkillId], references: [id], onDelete: Cascade)
+  targetSkill   Skill             @relation("SkillRelationTarget", fields: [targetSkillId], references: [id], onDelete: Cascade)
+  createdAt     DateTime          @default(now())
 
   @@id([sourceSkillId, targetSkillId, relationType])
   @@index([targetSkillId, relationType])
 }
 
 model SkillResourceRequirement {
-  id          String            @id @default(cuid())
-  skillId     String
-  relationType SkillRelationType
-  resourceKey String
+  id              String            @id @default(cuid())
+  skillId         String
+  relationType    SkillRelationType
+  resourceKey     String
   resourceVersion String?
-  description String?
-  skill       Skill             @relation(fields: [skillId], references: [id], onDelete: Cascade)
-  createdAt   DateTime          @default(now())
-  updatedAt   DateTime          @updatedAt
+  description     String?
+  skill           Skill             @relation(fields: [skillId], references: [id], onDelete: Cascade)
+  createdAt       DateTime          @default(now())
+  updatedAt       DateTime          @updatedAt
 
   @@unique([skillId, relationType, resourceKey])
 }
 
 model AcademyProgram {
-  id                String              @id @default(cuid())
-  academyId         String
-  specializationId  String?
-  name              String
-  key               String
-  status            AcademyProgramStatus @default(DRAFT)
-  estimatedTheoryHours Int              @default(0)
-  requiredTheoryHours Int               @default(0)
-  requiredLabHours  Int                 @default(0)
-  requiredPracticeHours Int             @default(0)
-  requiredProjectHours Int              @default(0)
-  minimumPracticeCount Int              @default(0)
-  minimumCalendarDays Int?
-  maximumCompletionWindow Int?
-  probationHours    Int                 @default(0)
+  id                          String               @id @default(cuid())
+  academyId                   String
+  specializationId            String?
+  name                        String
+  key                         String
+  status                      AcademyProgramStatus @default(DRAFT)
+  estimatedTheoryHours        Int                  @default(0)
+  requiredTheoryHours         Int                  @default(0)
+  requiredLabHours            Int                  @default(0)
+  requiredPracticeHours       Int                  @default(0)
+  requiredProjectHours        Int                  @default(0)
+  minimumPracticeCount        Int                  @default(0)
+  minimumCalendarDays         Int?
+  maximumCompletionWindow     Int?
+  probationHours              Int                  @default(0)
   recertificationIntervalDays Int?
-  minimumMasteryScore Int               @default(70)
-  academy           Academy             @relation(fields: [academyId], references: [id], onDelete: Cascade)
-  specialization    Specialization?     @relation(fields: [specializationId], references: [id], onDelete: SetNull)
-  curriculumVersions CurriculumVersion[]
-  cohorts           AcademyCohort[]
-  createdAt         DateTime            @default(now())
-  updatedAt         DateTime            @updatedAt
+  minimumMasteryScore         Int                  @default(70)
+  academy                     Academy              @relation(fields: [academyId], references: [id], onDelete: Cascade)
+  specialization              Specialization?      @relation(fields: [specializationId], references: [id], onDelete: SetNull)
+  curriculumVersions          CurriculumVersion[]
+  cohorts                     AcademyCohort[]
+  createdAt                   DateTime             @default(now())
+  updatedAt                   DateTime             @updatedAt
 
   @@unique([academyId, key])
   @@index([status, specializationId])
 }
 
 model CurriculumVersion {
-  id              String                  @id @default(cuid())
+  id              String                     @id @default(cuid())
   programId       String
   version         Int
-  status          CurriculumVersionStatus @default(DRAFT)
+  status          CurriculumVersionStatus    @default(DRAFT)
   changeSummary   String?
   source          String?
   approvedAt      DateTime?
   retiredAt       DateTime?
-  program         AcademyProgram          @relation(fields: [programId], references: [id], onDelete: Cascade)
+  program         AcademyProgram             @relation(fields: [programId], references: [id], onDelete: Cascade)
   courses         AcademyCourse[]
   examAttempts    ExamAttempt[]
   changeProposals CurriculumChangeProposal[]
-  createdAt       DateTime                @default(now())
-  updatedAt       DateTime                @updatedAt
+  createdAt       DateTime                   @default(now())
+  updatedAt       DateTime                   @updatedAt
 
   @@unique([programId, version])
   @@index([programId, status])
 }
 
 model AcademyCohort {
-  id          String             @id @default(cuid())
+  id          String              @id @default(cuid())
   academyId   String
   programId   String?
   name        String
@@ -1273,38 +1394,38 @@ model AcademyCohort {
   capacity    Int?
   startsAt    DateTime?
   endsAt      DateTime?
-  academy     Academy            @relation(fields: [academyId], references: [id], onDelete: Cascade)
-  program     AcademyProgram?    @relation(fields: [programId], references: [id], onDelete: SetNull)
+  academy     Academy             @relation(fields: [academyId], references: [id], onDelete: Cascade)
+  program     AcademyProgram?     @relation(fields: [programId], references: [id], onDelete: SetNull)
   enrollments CohortEnrollment[]
-  createdAt   DateTime           @default(now())
-  updatedAt   DateTime           @updatedAt
+  createdAt   DateTime            @default(now())
+  updatedAt   DateTime            @updatedAt
 
   @@unique([academyId, key])
   @@index([status, startsAt])
 }
 
 model CohortEnrollment {
-  cohortId  String
-  profileId String
-  cohort    AcademyCohort        @relation(fields: [cohortId], references: [id], onDelete: Cascade)
-  profile   RobotAcademicProfile @relation(fields: [profileId], references: [id], onDelete: Cascade)
-  enrolledAt DateTime            @default(now())
+  cohortId   String
+  profileId  String
+  cohort     AcademyCohort        @relation(fields: [cohortId], references: [id], onDelete: Cascade)
+  profile    RobotAcademicProfile @relation(fields: [profileId], references: [id], onDelete: Cascade)
+  enrolledAt DateTime             @default(now())
 
   @@id([cohortId, profileId])
   @@index([profileId])
 }
 
 model CandidateBatch {
-  id          String               @id @default(cuid())
-  demandId    String?
-  name        String
-  status      CandidateBatchStatus @default(DRAFT)
-  requestedCount Int                @default(0)
-  priority    Int                   @default(0)
-  demand      WorkforceDemand?      @relation(fields: [demandId], references: [id], onDelete: SetNull)
-  members     CandidateBatchMember[]
-  createdAt   DateTime             @default(now())
-  updatedAt   DateTime             @updatedAt
+  id             String                 @id @default(cuid())
+  demandId       String?
+  name           String
+  status         CandidateBatchStatus   @default(DRAFT)
+  requestedCount Int                    @default(0)
+  priority       Int                    @default(0)
+  demand         WorkforceDemand?       @relation(fields: [demandId], references: [id], onDelete: SetNull)
+  members        CandidateBatchMember[]
+  createdAt      DateTime               @default(now())
+  updatedAt      DateTime               @updatedAt
 
   @@index([status, priority])
   @@index([demandId])
@@ -1313,25 +1434,25 @@ model CandidateBatch {
 model CandidateBatchMember {
   batchId   String
   profileId String
-  batch     CandidateBatch        @relation(fields: [batchId], references: [id], onDelete: Cascade)
-  profile   RobotAcademicProfile  @relation(fields: [profileId], references: [id], onDelete: Cascade)
-  createdAt DateTime              @default(now())
+  batch     CandidateBatch       @relation(fields: [batchId], references: [id], onDelete: Cascade)
+  profile   RobotAcademicProfile @relation(fields: [profileId], references: [id], onDelete: Cascade)
+  createdAt DateTime             @default(now())
 
   @@id([batchId, profileId])
   @@index([profileId])
 }
 
 model WorkforceGap {
-  id               String              @id @default(cuid())
-  demandId         String              @unique
-  requiredCount    Int                 @default(0)
-  availableCount   Int                 @default(0)
-  inTrainingCount  Int                 @default(0)
-  gapCount         Int                 @default(0)
-  status           WorkforceGapStatus  @default(OPEN)
-  demand           WorkforceDemand     @relation(fields: [demandId], references: [id], onDelete: Cascade)
-  createdAt        DateTime            @default(now())
-  updatedAt        DateTime            @updatedAt
+  id              String             @id @default(cuid())
+  demandId        String             @unique
+  requiredCount   Int                @default(0)
+  availableCount  Int                @default(0)
+  inTrainingCount Int                @default(0)
+  gapCount        Int                @default(0)
+  status          WorkforceGapStatus @default(OPEN)
+  demand          WorkforceDemand    @relation(fields: [demandId], references: [id], onDelete: Cascade)
+  createdAt       DateTime           @default(now())
+  updatedAt       DateTime           @updatedAt
 
   @@index([status, gapCount])
 }
@@ -1354,182 +1475,182 @@ model AgentRuntimeAllocation {
 }
 
 model GeographyNode {
-  id          String            @id @default(cuid())
-  parentId    String?
-  type        GeographyNodeType
-  name        String
-  code        String?
-  metadata    Json?
-  parent      GeographyNode?    @relation("GeographyHierarchy", fields: [parentId], references: [id], onDelete: SetNull)
-  children    GeographyNode[]   @relation("GeographyHierarchy")
+  id            String                  @id @default(cuid())
+  parentId      String?
+  type          GeographyNodeType
+  name          String
+  code          String?
+  metadata      Json?
+  parent        GeographyNode?          @relation("GeographyHierarchy", fields: [parentId], references: [id], onDelete: SetNull)
+  children      GeographyNode[]         @relation("GeographyHierarchy")
   agentProfiles AgentGeographyProfile[]
-  knowledge    GeographicKnowledge[]
-  createdAt   DateTime          @default(now())
-  updatedAt   DateTime          @updatedAt
+  knowledge     GeographicKnowledge[]
+  createdAt     DateTime                @default(now())
+  updatedAt     DateTime                @updatedAt
 
   @@unique([parentId, type, name])
   @@index([type, code])
 }
 
 model AgentGeographyProfile {
-  profileId      String
-  geographyNodeId String
-  proficiency    SkillProficiencyLevel @default(TRAINEE)
-  market         String?
-  language       String?
-  knowledgeFreshness Int               @default(0)
-  profile        RobotAcademicProfile  @relation(fields: [profileId], references: [id], onDelete: Cascade)
-  geographyNode  GeographyNode         @relation(fields: [geographyNodeId], references: [id], onDelete: Cascade)
-  createdAt      DateTime              @default(now())
-  updatedAt      DateTime              @updatedAt
+  profileId          String
+  geographyNodeId    String
+  proficiency        SkillProficiencyLevel @default(TRAINEE)
+  market             String?
+  language           String?
+  knowledgeFreshness Int                   @default(0)
+  profile            RobotAcademicProfile  @relation(fields: [profileId], references: [id], onDelete: Cascade)
+  geographyNode      GeographyNode         @relation(fields: [geographyNodeId], references: [id], onDelete: Cascade)
+  createdAt          DateTime              @default(now())
+  updatedAt          DateTime              @updatedAt
 
   @@id([profileId, geographyNodeId])
   @@index([geographyNodeId, proficiency])
 }
 
 model GeographicKnowledge {
-  id             String                  @id @default(cuid())
-  geographyNodeId String
-  industry       String?
-  title          String
-  content        String
-  source         String
-  sourceType     GeographicSourceType
-  observedAt     DateTime?
-  collectedAt    DateTime                @default(now())
-  validFrom      DateTime?
-  validUntil     DateTime?
-  resolution     String?
-  confidence     Int                     @default(0)
+  id                String                   @id @default(cuid())
+  geographyNodeId   String
+  industry          String?
+  title             String
+  content           String
+  source            String
+  sourceType        GeographicSourceType
+  observedAt        DateTime?
+  collectedAt       DateTime                 @default(now())
+  validFrom         DateTime?
+  validUntil        DateTime?
+  resolution        String?
+  confidence        Int                      @default(0)
   verificationState GeographicKnowledgeState @default(UNKNOWN)
-  version        Int                     @default(1)
-  geographyNode  GeographyNode           @relation(fields: [geographyNodeId], references: [id], onDelete: Cascade)
-  createdAt      DateTime                @default(now())
-  updatedAt      DateTime                @updatedAt
+  version           Int                      @default(1)
+  geographyNode     GeographyNode            @relation(fields: [geographyNodeId], references: [id], onDelete: Cascade)
+  createdAt         DateTime                 @default(now())
+  updatedAt         DateTime                 @updatedAt
 
   @@index([geographyNodeId, verificationState, validUntil])
   @@index([industry, confidence])
 }
 
 model AcademicExperience {
-  id          String                @id @default(cuid())
-  profileId   String
-  missionId   String?
-  evidenceId  String?
-  knowledgeEntryId String? @unique
-  title       String
-  outcome     String
-  complexity  Int                   @default(0)
-  risk        SkillRiskLevel        @default(LOW)
-  qualityScore Int                  @default(0)
-  validated   Boolean               @default(false)
-  profile     RobotAcademicProfile  @relation(fields: [profileId], references: [id], onDelete: Cascade)
-  knowledgeEntry SharedKnowledge? @relation(fields: [knowledgeEntryId], references: [id], onDelete: SetNull)
+  id                  String                     @id @default(cuid())
+  profileId           String
+  missionId           String?
+  evidenceId          String?
+  knowledgeEntryId    String?                    @unique
+  title               String
+  outcome             String
+  complexity          Int                        @default(0)
+  risk                SkillRiskLevel             @default(LOW)
+  qualityScore        Int                        @default(0)
+  validated           Boolean                    @default(false)
+  profile             RobotAcademicProfile       @relation(fields: [profileId], references: [id], onDelete: Cascade)
+  knowledgeEntry      SharedKnowledge?           @relation(fields: [knowledgeEntryId], references: [id], onDelete: SetNull)
   curriculumProposals CurriculumChangeProposal[]
-  createdAt   DateTime              @default(now())
-  updatedAt   DateTime              @updatedAt
+  createdAt           DateTime                   @default(now())
+  updatedAt           DateTime                   @updatedAt
 
   @@index([profileId, validated, createdAt])
 }
 
 model CurriculumChangeProposal {
-  id                String                 @id @default(cuid())
-  academyId         String
+  id                  String                 @id @default(cuid())
+  academyId           String
   curriculumVersionId String?
-  sourceExperienceId String?
-  title             String
-  rationale         String
-  status            CurriculumChangeStatus @default(PROPOSED)
-  proposedVersion   Int?
-  reviewerIdentity  String?
-  academy           Academy                @relation(fields: [academyId], references: [id], onDelete: Cascade)
-  curriculumVersion CurriculumVersion?     @relation(fields: [curriculumVersionId], references: [id], onDelete: SetNull)
-  sourceExperience AcademicExperience? @relation(fields: [sourceExperienceId], references: [id], onDelete: SetNull)
-  createdAt         DateTime               @default(now())
-  updatedAt         DateTime               @updatedAt
+  sourceExperienceId  String?
+  title               String
+  rationale           String
+  status              CurriculumChangeStatus @default(PROPOSED)
+  proposedVersion     Int?
+  reviewerIdentity    String?
+  academy             Academy                @relation(fields: [academyId], references: [id], onDelete: Cascade)
+  curriculumVersion   CurriculumVersion?     @relation(fields: [curriculumVersionId], references: [id], onDelete: SetNull)
+  sourceExperience    AcademicExperience?    @relation(fields: [sourceExperienceId], references: [id], onDelete: SetNull)
+  createdAt           DateTime               @default(now())
+  updatedAt           DateTime               @updatedAt
 
   @@index([academyId, status])
 }
 
 model ExamAttemptReview {
-  id            String             @id @default(cuid())
-  examAttemptId String
+  id               String             @id @default(cuid())
+  examAttemptId    String
   reviewerIdentity String
-  role          AcademicReviewRole
-  score         Int?
-  verdict       ReviewVerdict      @default(DEFER)
-  notes         String?
-  attempt       ExamAttempt        @relation(fields: [examAttemptId], references: [id], onDelete: Cascade)
-  createdAt     DateTime           @default(now())
+  role             AcademicReviewRole
+  score            Int?
+  verdict          ReviewVerdict      @default(DEFER)
+  notes            String?
+  attempt          ExamAttempt        @relation(fields: [examAttemptId], references: [id], onDelete: Cascade)
+  createdAt        DateTime           @default(now())
 
   @@index([examAttemptId, role])
 }
 
 model CertificationReview {
-  id              String                @id @default(cuid())
-  profileId       String
-  certificationId String
+  id               String               @id @default(cuid())
+  profileId        String
+  certificationId  String
   reviewerIdentity String
-  verdict         ReviewVerdict         @default(DEFER)
-  notes           String?
-  profile         RobotAcademicProfile  @relation(fields: [profileId], references: [id], onDelete: Cascade)
-  createdAt       DateTime              @default(now())
+  verdict          ReviewVerdict        @default(DEFER)
+  notes            String?
+  profile          RobotAcademicProfile @relation(fields: [profileId], references: [id], onDelete: Cascade)
+  createdAt        DateTime             @default(now())
 
   @@index([profileId, certificationId, createdAt])
 }
 
 model AcademicProbation {
-  id             String                @id @default(cuid())
-  profileId      String
-  missionCount   Int                   @default(0)
-  successCount   Int                   @default(0)
-  restricted     Boolean               @default(true)
-  startedAt      DateTime              @default(now())
-  completedAt    DateTime?
-  profile        RobotAcademicProfile  @relation(fields: [profileId], references: [id], onDelete: Cascade)
+  id           String               @id @default(cuid())
+  profileId    String
+  missionCount Int                  @default(0)
+  successCount Int                  @default(0)
+  restricted   Boolean              @default(true)
+  startedAt    DateTime             @default(now())
+  completedAt  DateTime?
+  profile      RobotAcademicProfile @relation(fields: [profileId], references: [id], onDelete: Cascade)
 
   @@index([profileId, completedAt])
 }
 
 model AcademicPromotionEvent {
-  id          String                @id @default(cuid())
-  profileId   String
-  skillId     String?
-  fromLevel   SkillProficiencyLevel?
-  toLevel     SkillProficiencyLevel?
-  reason      String
-  profile     RobotAcademicProfile  @relation(fields: [profileId], references: [id], onDelete: Cascade)
-  createdAt   DateTime              @default(now())
+  id        String                 @id @default(cuid())
+  profileId String
+  skillId   String?
+  fromLevel SkillProficiencyLevel?
+  toLevel   SkillProficiencyLevel?
+  reason    String
+  profile   RobotAcademicProfile   @relation(fields: [profileId], references: [id], onDelete: Cascade)
+  createdAt DateTime               @default(now())
 
   @@index([profileId, createdAt])
 }
 
 model AcademyRole {
-  id          String            @id @default(cuid())
+  id          String                   @id @default(cuid())
   academyId   String
   name        String
   key         String
   scope       AcademyRoleScope
-  academy     Academy           @relation(fields: [academyId], references: [id], onDelete: Cascade)
+  academy     Academy                  @relation(fields: [academyId], references: [id], onDelete: Cascade)
   assignments AcademyStaffAssignment[]
-  createdAt   DateTime          @default(now())
-  updatedAt   DateTime          @updatedAt
+  createdAt   DateTime                 @default(now())
+  updatedAt   DateTime                 @updatedAt
 
   @@unique([academyId, key])
 }
 
 model AcademyStaffAssignment {
-  id          String                @id @default(cuid())
+  id            String                @id @default(cuid())
   academyRoleId String
-  userId      String?
-  robotId     String?
-  profileId   String?
-  academyRole AcademyRole           @relation(fields: [academyRoleId], references: [id], onDelete: Cascade)
-  user        User?                 @relation(fields: [userId], references: [id], onDelete: Cascade)
-  robot       Robot?                @relation(fields: [robotId], references: [id], onDelete: Cascade)
-  profile     RobotAcademicProfile? @relation(fields: [profileId], references: [id], onDelete: Cascade)
-  createdAt   DateTime              @default(now())
-  updatedAt   DateTime              @updatedAt
+  userId        String?
+  robotId       String?
+  profileId     String?
+  academyRole   AcademyRole           @relation(fields: [academyRoleId], references: [id], onDelete: Cascade)
+  user          User?                 @relation(fields: [userId], references: [id], onDelete: Cascade)
+  robot         Robot?                @relation(fields: [robotId], references: [id], onDelete: Cascade)
+  profile       RobotAcademicProfile? @relation(fields: [profileId], references: [id], onDelete: Cascade)
+  createdAt     DateTime              @default(now())
+  updatedAt     DateTime              @updatedAt
 
   @@index([academyRoleId])
   @@index([userId])
@@ -1579,12 +1700,12 @@ model AcademyQueueItem {
 }
 
 model SandboxLabRun {
-  id             String              @id @default(cuid())
+  id             String               @id @default(cuid())
   profileId      String
   labId          String
-  idempotencyKey String              @unique
-  status         SandboxLabRunStatus @default(QUEUED)
-  providerState  AIProviderReadiness @default(NOT_REQUIRED)
+  idempotencyKey String               @unique
+  status         SandboxLabRunStatus  @default(QUEUED)
+  providerState  AIProviderReadiness  @default(NOT_REQUIRED)
   input          Json?
   output         Json?
   evidence       Json?
@@ -1601,29 +1722,29 @@ model SandboxLabRun {
 }
 
 model AgentLanguageProficiency {
-  profileId       String
-  languageCode    String
-  proficiency     SkillProficiencyLevel @default(TRAINEE)
+  profileId        String
+  languageCode     String
+  proficiency      SkillProficiencyLevel @default(TRAINEE)
   businessLanguage Boolean               @default(false)
   localTerminology Boolean               @default(false)
-  profile         RobotAcademicProfile  @relation(fields: [profileId], references: [id], onDelete: Cascade)
-  createdAt       DateTime              @default(now())
-  updatedAt       DateTime              @updatedAt
+  profile          RobotAcademicProfile  @relation(fields: [profileId], references: [id], onDelete: Cascade)
+  createdAt        DateTime              @default(now())
+  updatedAt        DateTime              @updatedAt
 
   @@id([profileId, languageCode])
   @@index([languageCode, proficiency])
 }
 
 model AgentGenomeCapability {
-  id          String               @id @default(cuid())
-  genomeId    String
-  type        GenomeCapabilityType
-  key         String
-  version     String?
-  metadata    Json?
-  genome      AgentGenome          @relation(fields: [genomeId], references: [id], onDelete: Cascade)
-  createdAt   DateTime             @default(now())
-  updatedAt   DateTime             @updatedAt
+  id        String               @id @default(cuid())
+  genomeId  String
+  type      GenomeCapabilityType
+  key       String
+  version   String?
+  metadata  Json?
+  genome    AgentGenome          @relation(fields: [genomeId], references: [id], onDelete: Cascade)
+  createdAt DateTime             @default(now())
+  updatedAt DateTime             @updatedAt
 
   @@unique([genomeId, type, key])
   @@index([type, key])

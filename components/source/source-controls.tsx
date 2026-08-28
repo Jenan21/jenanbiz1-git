@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { Icon } from "@/components/ui/icons";
 
-export function ThemeToggle({ label, switchStyle = false }: { label: string; switchStyle?: boolean }) {
+export function ThemeToggle({ label }: { label: string }) {
   const [theme, setTheme] = useState<"balanced-dark" | "light">(
     "balanced-dark",
   );
@@ -24,8 +24,14 @@ export function ThemeToggle({ label, switchStyle = false }: { label: string; swi
   }
 
   return (
-    <button className={`btn small ghost${switchStyle ? " theme-toggle-switch" : ""}`} type="button" onClick={toggle}>
-      <Icon name={theme === "light" ? "moon" : "sparkles"} />
+    <button
+      className="btn small ghost"
+      type="button"
+      onClick={toggle}
+      aria-label={label}
+      aria-pressed={theme === "light"}
+    >
+      <Icon name={theme === "light" ? "moon" : "sparkles"} aria-hidden="true" />
       <span>{label}</span>
     </button>
   );
