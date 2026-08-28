@@ -11,12 +11,14 @@ export default async function RegisterPage() {
       languageLabel={ar ? "التبديل إلى الإنجليزية" : "Switch to Arabic"}
       eyebrow={ar ? "ابدأ رحلتك" : "Start your journey"}
       title={
-        ar ? "ابنِ مساحة أعمالك الذكية" : "Build your intelligent workspace"
+        ar
+          ? "أنشئ حساب أعمالك بثقة"
+          : "Create your business account with confidence"
       }
       subtitle={
         ar
-          ? "أنشئ حسابك الأولي واستعد لتجربة أعمال أكثر ترابطًا."
-          : "Create your initial account and get ready for a more connected business experience."
+          ? "تجربة تسجيل مهيأة للإطلاق العالمي مع هوية واضحة وأمان متدرج."
+          : "A launch-ready registration flow with clear identity and layered security."
       }
       alternateText={ar ? "لديك حساب بالفعل؟" : "Already have an account?"}
       alternateLabel={ar ? "تسجيل الدخول" : "Sign in"}
