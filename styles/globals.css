@@ -632,6 +632,32 @@ html[data-theme="light"] .glass {
   gap: 22px;
   padding: 8px 4px 24px;
 }
+.admin-shell {
+  background: var(--deep);
+}
+.admin-sidebar,
+.admin-topbar,
+.dashboard-hero,
+.panel,
+.metric-card,
+.signal-card {
+  border-color: color-mix(in srgb, var(--border) 72%, transparent);
+  box-shadow: var(--shadow);
+}
+.admin-brand {
+  gap: 8px;
+}
+.admin-brand .logo-wrap {
+  padding: 0;
+}
+.admin-brand .logo-wrap img {
+  width: 46px;
+  height: 34px;
+  object-fit: contain;
+}
+.admin-brand-mark {
+  display: none;
+}
 
 .dashboard-hero {
   display: grid;
@@ -646,9 +672,9 @@ html[data-theme="light"] .glass {
 
 .dashboard-hero__copy h1 {
   margin: 18px 0 12px;
-  font-size: clamp(2.2rem, 4vw, 4rem);
-  line-height: 1.05;
-  letter-spacing: -0.06em;
+  font-size: 30px;
+  line-height: 1.2;
+  letter-spacing: 0;
 }
 
 .dashboard-hero__copy p {
@@ -1973,6 +1999,9 @@ html[data-theme="light"] .input {
   justify-content: center;
   gap: 7px;
 }
+.mobile-nav {
+  display: none;
+}
 .nav-link {
   border: 0;
   background: transparent;
@@ -1986,6 +2015,14 @@ html[data-theme="light"] .input {
 .nav-link.active {
   color: var(--text);
   background: color-mix(in srgb, var(--blue) 9%, transparent);
+}
+.nav-link:focus-visible,
+.mobile-nav summary:focus-visible,
+.button:focus-visible,
+.btn:focus-visible,
+a:focus-visible {
+  outline: 3px solid color-mix(in srgb, var(--brand) 72%, white);
+  outline-offset: 3px;
 }
 .nav-link.active::after {
   content: "";
@@ -2043,6 +2080,378 @@ html[data-theme="light"] .input {
   font-size: 11px;
   color: var(--muted);
   line-height: 1.9;
+}
+.projects-hero {
+  min-height: 220px;
+}
+.projects-hero p {
+  max-width: 620px;
+  font-size: 14px;
+  line-height: 1.8;
+}
+.hero-action {
+  margin-top: 12px;
+}
+.project-status {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 20px;
+  padding: 18px 20px;
+  border-inline-start: 3px solid var(--brand);
+}
+.project-status h2,
+.section-heading h2 {
+  margin: 8px 0 4px;
+  font-size: 18px;
+}
+.project-status p,
+.section-heading p {
+  margin: 0;
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.7;
+}
+.badge--preview {
+  color: var(--brand);
+  border-color: color-mix(in srgb, var(--brand) 42%, transparent);
+  white-space: nowrap;
+}
+.projects-body .feature-card p {
+  font-size: 12px;
+  line-height: 1.65;
+}
+.project-flow {
+  display: grid;
+  gap: 14px;
+  scroll-margin-top: 100px;
+}
+.projects-workspace {
+  display: grid;
+  gap: 14px;
+  scroll-margin-top: 100px;
+}
+.projects-workspace > .section-heading p {
+  margin: 0;
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.7;
+}
+.project-create-form {
+  display: grid;
+  grid-template-columns: 1.5fr 1fr 120px auto;
+  align-items: end;
+  gap: 12px;
+  padding: 16px;
+}
+.project-create-form label {
+  display: grid;
+  gap: 6px;
+  color: var(--muted);
+  font-size: 11px;
+}
+.project-create-form input {
+  width: 100%;
+  min-height: 42px;
+  padding: 8px 10px;
+  border: 1px solid color-mix(in srgb, var(--border) 70%, transparent);
+  border-radius: 10px;
+  background: color-mix(in srgb, var(--deep) 55%, transparent);
+  color: var(--text);
+}
+.project-create-form input:focus-visible {
+  outline: 3px solid color-mix(in srgb, var(--brand) 38%, transparent);
+  border-color: var(--brand);
+}
+.projects-list {
+  display: grid;
+  gap: 10px;
+}
+.project-list-item {
+  display: grid;
+  grid-template-columns: minmax(180px, 1fr) auto minmax(150px, 220px);
+  align-items: center;
+  gap: 20px;
+  padding: 16px;
+}
+.project-list-item h3 {
+  margin: 0 0 5px;
+  font-size: 15px;
+}
+.project-list-item p {
+  margin: 0;
+  color: var(--muted);
+  font-size: 11px;
+}
+.project-list-item dl {
+  display: flex;
+  gap: 20px;
+  margin: 0;
+}
+.project-list-item dl div {
+  display: grid;
+  gap: 4px;
+}
+.project-list-item dt {
+  color: var(--muted);
+  font-size: 10px;
+}
+.project-list-item dd {
+  margin: 0;
+  font-size: 12px;
+  font-weight: 700;
+}
+.project-progress {
+  display: grid;
+  gap: 7px;
+}
+.project-progress-label {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  color: var(--muted);
+  font-size: 10px;
+}
+.project-progress-label strong {
+  color: var(--text);
+  font-size: 11px;
+}
+.project-progress-track {
+  height: 7px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--border) 48%, transparent);
+}
+.project-progress-track span {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: linear-gradient(90deg, var(--blue), var(--brand));
+  transition: width 0.3s ease;
+}
+.project-quality {
+  display: grid;
+  gap: 4px;
+  min-width: 130px;
+  color: var(--muted);
+  font-size: 10px;
+}
+.project-quality div {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+}
+.project-quality strong {
+  color: var(--brand);
+  font-size: 14px;
+}
+.project-quality small {
+  font-size: 10px;
+}
+.project-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.project-actions .button {
+  min-height: 36px;
+  padding-inline: 10px;
+  font-size: 11px;
+}
+.project-error {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+.project-calculator {
+  display: grid;
+  gap: 14px;
+}
+.project-calculator-form {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr) auto;
+  align-items: end;
+  gap: 12px;
+  padding: 16px;
+}
+.project-calculator-form label {
+  display: grid;
+  gap: 6px;
+  color: var(--muted);
+  font-size: 11px;
+}
+.project-calculator-form input {
+  width: 100%;
+  min-height: 42px;
+  padding: 8px 10px;
+  border: 1px solid color-mix(in srgb, var(--border) 70%, transparent);
+  border-radius: 10px;
+  background: color-mix(in srgb, var(--deep) 55%, transparent);
+  color: var(--text);
+}
+.project-calculator-form input:focus-visible {
+  outline: 3px solid color-mix(in srgb, var(--brand) 38%, transparent);
+  border-color: var(--brand);
+}
+.project-calculation-result {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 10px;
+}
+.project-intelligence {
+  display: grid;
+  gap: 14px;
+}
+.project-intelligence-form {
+  display: grid;
+  grid-template-columns: 2fr repeat(4, 1fr) auto;
+  align-items: end;
+  gap: 10px;
+  padding: 16px;
+}
+.project-intelligence-form label {
+  display: grid;
+  gap: 6px;
+  color: var(--muted);
+  font-size: 11px;
+}
+.project-intelligence-form input {
+  width: 100%;
+  min-height: 42px;
+  padding: 8px 10px;
+  border: 1px solid color-mix(in srgb, var(--border) 70%, transparent);
+  border-radius: 10px;
+  background: color-mix(in srgb, var(--deep) 55%, transparent);
+  color: var(--text);
+}
+.project-intelligence-form select {
+  width: 100%;
+  min-height: 42px;
+  padding: 8px 10px;
+  border: 1px solid color-mix(in srgb, var(--border) 70%, transparent);
+  border-radius: 10px;
+  background: color-mix(in srgb, var(--deep) 55%, transparent);
+  color: var(--text);
+}
+.project-intelligence-result {
+  display: grid;
+  gap: 14px;
+  padding: 16px;
+}
+.project-intelligence-result > p {
+  margin: 0;
+  color: var(--text);
+  font-size: 12px;
+}
+.project-intelligence-result > small {
+  color: var(--muted);
+  font-size: 10px;
+}
+.project-intelligence-result > a {
+  color: var(--brand);
+  font-size: 11px;
+  font-weight: 700;
+}
+.project-competitors {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 6px;
+}
+.project-competitors span {
+  padding: 8px;
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--surface2) 65%, transparent);
+  color: var(--muted);
+  font-size: 10px;
+}
+.project-intelligence-metrics {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 10px;
+}
+.project-intelligence-metrics div {
+  display: grid;
+  gap: 5px;
+  padding: 12px;
+  border: 1px solid color-mix(in srgb, var(--border) 50%, transparent);
+  border-radius: 10px;
+}
+.project-intelligence-metrics span,
+.project-intelligence-metrics small {
+  color: var(--muted);
+  font-size: 10px;
+}
+.project-intelligence-metrics strong {
+  font-size: 18px;
+}
+.project-intelligence-result ul {
+  margin: 6px 0 0;
+  padding-inline-start: 18px;
+}
+.project-calculation-result > .card {
+  display: grid;
+  gap: 8px;
+  padding: 14px;
+}
+.project-calculation-result span,
+.project-scenarios h3 {
+  color: var(--muted);
+  font-size: 11px;
+}
+.project-calculation-result strong {
+  font-size: 18px;
+}
+.project-scenarios {
+  grid-column: 1 / -1;
+}
+.project-scenarios h3 {
+  margin: 0 0 4px;
+}
+.project-scenarios div {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 8px 0;
+  border-bottom: 1px solid color-mix(in srgb, var(--border) 30%, transparent);
+}
+.project-scenarios div:last-child {
+  border-bottom: 0;
+}
+.section-heading {
+  display: grid;
+  gap: 2px;
+}
+.project-flow-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 12px;
+}
+.project-step {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  min-height: 112px;
+  padding: 16px;
+  border: 1px solid color-mix(in srgb, var(--border) 62%, transparent);
+  border-radius: 14px;
+  background: color-mix(in srgb, var(--surface) 76%, transparent);
+}
+.project-step-number {
+  color: var(--brand);
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+}
+.project-step h3 {
+  margin: 0 0 6px;
+  font-size: 14px;
+}
+.project-step p {
+  margin: 0;
+  color: var(--muted);
+  font-size: 11px;
+  line-height: 1.65;
 }
 .hero-art {
   width: 260px;
@@ -2409,11 +2818,53 @@ html[data-theme="light"] .toggle i {
   .platform-header {
     height: auto;
     min-height: 66px;
-    grid-template-columns: 1fr auto;
+    grid-template-columns: minmax(0, 1fr) auto auto;
     padding: 8px 10px;
   }
   .main-nav {
     display: none;
+  }
+  .mobile-nav {
+    display: block;
+    position: relative;
+    justify-self: end;
+  }
+  .top-tools {
+    justify-self: end;
+  }
+  .mobile-nav summary {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    min-height: 38px;
+    padding: 7px 10px;
+    border: 1px solid color-mix(in srgb, var(--border) 68%, transparent);
+    border-radius: 10px;
+    color: var(--text);
+    cursor: pointer;
+    list-style: none;
+    font-size: 11px;
+  }
+  .mobile-nav summary::-webkit-details-marker {
+    display: none;
+  }
+  .mobile-nav-panel {
+    position: absolute;
+    inset-inline-end: 0;
+    top: calc(100% + 8px);
+    z-index: 30;
+    display: grid;
+    min-width: 190px;
+    padding: 8px;
+    gap: 3px;
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    background: var(--surface);
+    box-shadow: var(--shadow);
+  }
+  .mobile-nav-panel .nav-link {
+    text-align: start;
+    font-size: 12px;
   }
   .logo-wrap img {
     height: 40px;
@@ -2446,6 +2897,79 @@ html[data-theme="light"] .toggle i {
   }
   .hero-art {
     display: none;
+  }
+  .projects-hero p {
+    font-size: 13px;
+  }
+  .project-flow-grid {
+    grid-template-columns: 1fr;
+  }
+  .project-create-form {
+    grid-template-columns: 1fr 1fr;
+  }
+  .project-create-form .button {
+    grid-column: 1 / -1;
+  }
+  .project-list-item {
+    align-items: flex-start;
+    flex-direction: column;
+    grid-template-columns: 1fr;
+  }
+  .project-list-item dl {
+    width: 100%;
+    justify-content: space-between;
+  }
+  .project-progress {
+    width: 100%;
+  }
+  .project-quality {
+    width: 100%;
+  }
+  .project-actions {
+    width: 100%;
+  }
+  .project-calculator-form {
+    grid-template-columns: 1fr 1fr;
+  }
+  .project-intelligence-form {
+    grid-template-columns: 1fr 1fr;
+  }
+  .project-intelligence-form .button {
+    grid-column: 1 / -1;
+  }
+  .project-intelligence-metrics {
+    grid-template-columns: 1fr;
+  }
+  .project-competitors {
+    grid-template-columns: 1fr;
+  }
+  .project-calculator-form .button {
+    grid-column: 1 / -1;
+  }
+  .project-calculation-result {
+    grid-template-columns: 1fr 1fr;
+  }
+}
+
+@media print {
+  .platform-header,
+  .bottom-ticker,
+  .footer-note,
+  .project-create-form,
+  .project-actions,
+  .project-calculator,
+  .hero-action {
+    display: none !important;
+  }
+  .source-app,
+  .shell {
+    background: #fff !important;
+    color: #111827 !important;
+  }
+  .card,
+  .glass {
+    box-shadow: none !important;
+    border-color: #cbd5e1 !important;
   }
 }
 @media (max-width: 520px) {
@@ -2484,6 +3008,45 @@ html[data-theme="light"] .toggle i {
   }
   .hero h1 {
     font-size: 24px;
+  }
+  .project-status {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 12px;
+  }
+  .project-status p {
+    font-size: 11px;
+  }
+  .projects-body .feature-card p {
+    font-size: 11px;
+  }
+  .project-create-form {
+    grid-template-columns: 1fr;
+  }
+  .project-create-form .button {
+    grid-column: auto;
+  }
+  .project-calculator-form {
+    grid-template-columns: 1fr;
+  }
+  .project-intelligence-form {
+    grid-template-columns: 1fr;
+  }
+  .project-intelligence-form .button {
+    grid-column: auto;
+  }
+  .project-calculator-form .button {
+    grid-column: auto;
+  }
+  .project-calculation-result {
+    grid-template-columns: 1fr;
+  }
+  .project-list-item dl {
+    gap: 10px;
+  }
+  .project-list-item dt,
+  .project-list-item dd {
+    font-size: 10px;
   }
   .platform-header .logo-text {
     display: none;
