@@ -3,24 +3,8 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useState, type ReactNode } from "react";
-
-const navItems = [
-  { href: "/admin", label: { ar: "نظرة عامة", en: "Overview" }, icon: "▣" },
-  { href: "/admin/operations", label: { ar: "العمليات", en: "Operations" }, icon: "▤" },
-  { href: "/admin/dashboard", label: { ar: "لوحة التحكم", en: "Control" }, icon: "◫" },
-  { href: "/admin/branches", label: { ar: "الفروع", en: "Branches" }, icon: "▣" },
-  { href: "/admin/users", label: { ar: "المستخدمون", en: "Users" }, icon: "◉" },
-  { href: "/admin/robots", label: { ar: "صائدو الجوائز", en: "Bounty Scouts" }, icon: "◎" },
-  { href: "/admin/committee", label: { ar: "اللجنة", en: "Committee" }, icon: "◌" },
-  { href: "/admin/decisions", label: { ar: "القرارات", en: "Decisions" }, icon: "✓" },
-  { href: "/admin/reports", label: { ar: "التقارير", en: "Reports" }, icon: "◔" },
-  { href: "/admin/robot-knowledge", label: { ar: "المعرفة", en: "Knowledge" }, icon: "◍" },
-  { href: "/admin/intel", label: { ar: "الذكاء", en: "Intelligence" }, icon: "◐" },
-  { href: "/admin/data-center", label: { ar: "مركز البيانات", en: "Data Center" }, icon: "◭" },
-  { href: "/admin/global-health", label: { ar: "الصحة العامة", en: "Global Health" }, icon: "◎" },
-  { href: "/admin/bounty-hunters", label: { ar: "لوحة الجوائز", en: "Reward Board" }, icon: "★" },
-  { href: "/admin/social-growth", label: { ar: "النمو الاجتماعي", en: "Social Growth" }, icon: "◉" },
-];
+import { Icon } from "@/components/ui/icons";
+import { adminNavItems } from "@/lib/admin/navigation";
 
 const texts = {
   ar: {
@@ -49,8 +33,11 @@ export function AdminShell({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     const saved = localStorage.getItem("jenan-admin-lang");
-    const locale = document.cookie.match(/(?:^|;\s*)locale=(ar|en)(?:;|$)/)?.[1];
-    const nextLanguage = saved === "ar" || saved === "en" ? saved : locale === "en" ? "en" : "ar";
+    const locale = document.cookie.match(
+      /(?:^|;\s*)locale=(ar|en)(?:;|$)/,
+    )?.[1];
+    const nextLanguage =
+      saved === "ar" || saved === "en" ? saved : locale === "en" ? "en" : "ar";
     const frame = window.requestAnimationFrame(() => setLang(nextLanguage));
     return () => window.cancelAnimationFrame(frame);
   }, []);
@@ -73,7 +60,7 @@ export function AdminShell({ children }: { children: ReactNode }) {
         </div>
 
         <nav className="admin-nav" aria-label="Admin navigation">
-          {navItems.map((item) => {
+          {adminNavItems.map((item) => {
             const isActive =
               pathname === item.href ||
               (item.href !== "/admin" && pathname.startsWith(`${item.href}/`));
@@ -83,7 +70,9 @@ export function AdminShell({ children }: { children: ReactNode }) {
                 href={item.href}
                 className={`admin-nav-item ${isActive ? "active" : ""}`}
               >
-                <span>{item.icon}</span>
+                <span>
+                  <Icon name={item.icon} />
+                </span>
                 {item.label[lang]}
               </Link>
             );
@@ -98,7 +87,9 @@ export function AdminShell({ children }: { children: ReactNode }) {
             <h2>{t.heading}</h2>
           </div>
           <div className="admin-topbar__actions">
-            <span className="pill"><span className="live-dot" /> {t.live}</span>
+            <span className="pill">
+              <span className="live-dot" /> {t.live}
+            </span>
             <button
               type="button"
               className="btn small secondary"

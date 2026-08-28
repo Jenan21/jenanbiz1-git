@@ -11,12 +11,14 @@ export default async function LoginPage() {
       languageLabel={ar ? "التبديل إلى الإنجليزية" : "Switch to Arabic"}
       eyebrow={ar ? "مرحبًا بعودتك" : "Welcome back"}
       title={
-        ar ? "سجّل دخولك إلى مستقبل أعمالك" : "Sign in to your business future"
+        ar
+          ? "تسجيل دخول احترافي إلى منصة أعمالك"
+          : "Professional sign in to your business platform"
       }
       subtitle={
         ar
-          ? "مساحة واحدة ذكية لإدارة أعمالك بثقة ووضوح."
-          : "One intelligent space to run your business with confidence and clarity."
+          ? "دخول موثوق عبر البريد الإلكتروني مع تجربة مستقرة وآمنة للفرق العالمية."
+          : "Trusted email-first access with a stable and secure experience for global teams."
       }
       alternateText={ar ? "ليس لديك حساب؟" : "New to Jenan BIZ?"}
       alternateLabel={ar ? "أنشئ حسابًا" : "Create an account"}

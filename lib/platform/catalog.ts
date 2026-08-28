@@ -58,13 +58,17 @@ const service = (
   description: CatalogCopy,
   hrefOrOptions:
     | string
-    | { href?: string; previewHref?: string; template?: ServiceTemplateKey } = {},
+    | {
+        href?: string;
+        previewHref?: string;
+        template?: ServiceTemplateKey;
+      } = {},
 ): PlatformServiceDefinition => ({
   description,
   href:
     typeof hrefOrOptions === "string"
       ? hrefOrOptions
-      : hrefOrOptions.href ?? `/${moduleId}/${slug}`,
+      : (hrefOrOptions.href ?? `/${moduleId}/${slug}`),
   icon,
   id: `${moduleId}.${slug}`,
   previewHref:
@@ -73,7 +77,7 @@ const service = (
   template:
     typeof hrefOrOptions === "string"
       ? "catalog-service"
-      : hrefOrOptions.template ?? "catalog-service",
+      : (hrefOrOptions.template ?? "catalog-service"),
   title,
 });
 
@@ -135,7 +139,7 @@ const modules: readonly PlatformModuleDefinition[] = [
         "dashboard",
         "talent",
         "people",
-        ["وظيفتي", "My Career"],
+        ["المواهب والتوظيف", "Talent & Hiring"],
         [
           "مساحتان للباحث عن وظيفة والمنشأة الباحثة عن موظفين.",
           "Two spaces for job seekers and hiring organizations.",
@@ -157,7 +161,7 @@ const modules: readonly PlatformModuleDefinition[] = [
         "dashboard",
         "programs",
         "grid",
-        ["برامج جنان للمنشآت", "Jenan Programs for Organizations"],
+        ["منظومة التشغيل المؤسسي", "Operations Suite"],
         [
           "برامج مساندة للموارد والمحاسبة والميدان والأسطول.",
           "Support programs for people, finance, field teams, and fleets.",
@@ -207,7 +211,10 @@ const modules: readonly PlatformModuleDefinition[] = [
           "واجهة لتنظيم فكرة المشروع وعناصرها الأساسية.",
           "An interface for structuring the project idea and its essentials.",
         ],
-        { previewHref: "/projects-analysis-review", template: "projects-analysis" },
+        {
+          previewHref: "/projects-analysis-review",
+          template: "projects-analysis",
+        },
       ),
       service(
         "projects",
@@ -218,7 +225,10 @@ const modules: readonly PlatformModuleDefinition[] = [
           "شاشة مرتبة لأقسام دراسة الجدوى ومخرجاتها.",
           "A structured screen for feasibility study sections and outputs.",
         ],
-        { previewHref: "/projects-feasibility-review", template: "projects-feasibility" },
+        {
+          previewHref: "/projects-feasibility-review",
+          template: "projects-feasibility",
+        },
       ),
       service(
         "projects",
@@ -229,7 +239,10 @@ const modules: readonly PlatformModuleDefinition[] = [
           "واجهة تعرض محاور التقييم والملخصات دون تشغيل التحليل.",
           "An interface presenting evaluation dimensions without running analysis.",
         ],
-        { previewHref: "/projects-evaluation-review", template: "projects-evaluation" },
+        {
+          previewHref: "/projects-evaluation-review",
+          template: "projects-evaluation",
+        },
       ),
       service(
         "projects",
@@ -288,7 +301,10 @@ const modules: readonly PlatformModuleDefinition[] = [
           "شاشات للندوات والمحاور والمتحدثين.",
           "Screens for seminars, themes, and speakers.",
         ],
-        { previewHref: "/academy-path-review/seminars", template: "academy-seminars" },
+        {
+          previewHref: "/academy-path-review/seminars",
+          template: "academy-seminars",
+        },
       ),
       service(
         "academy",
@@ -299,7 +315,10 @@ const modules: readonly PlatformModuleDefinition[] = [
           "مساحة لاستكشاف الأبحاث وتصنيفها وعرضها.",
           "A space to discover, categorize, and present research.",
         ],
-        { previewHref: "/academy-path-review/research", template: "academy-research" },
+        {
+          previewHref: "/academy-path-review/research",
+          template: "academy-research",
+        },
       ),
       service(
         "academy",
@@ -310,7 +329,10 @@ const modules: readonly PlatformModuleDefinition[] = [
           "واجهات لمسارات الدورات والمواد والمستويات.",
           "Interfaces for course tracks, materials, and levels.",
         ],
-        { previewHref: "/academy-path-review/courses", template: "academy-courses" },
+        {
+          previewHref: "/academy-path-review/courses",
+          template: "academy-courses",
+        },
       ),
     ],
   },
@@ -365,7 +387,7 @@ const modules: readonly PlatformModuleDefinition[] = [
     code: "CAREER / 04",
     icon: "people",
     scene: "talent",
-    title: ["وظيفتي", "My Career"],
+    title: ["المواهب والتوظيف", "Talent & Hiring"],
     eyebrow: [
       "الفرصة والكفاءة في مكان واحد",
       "Opportunity and capability in one place",
@@ -455,7 +477,7 @@ const modules: readonly PlatformModuleDefinition[] = [
     code: "OPERATE / 06",
     icon: "grid",
     scene: "programs",
-    title: ["برامج جنان للمنشآت", "Jenan Programs for Organizations"],
+    title: ["منظومة التشغيل المؤسسي", "Operations Suite"],
     eyebrow: [
       "برامج مساندة لإدارة المنشأة",
       "Support programs for organization operations",
