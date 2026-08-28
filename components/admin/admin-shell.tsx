@@ -6,6 +6,7 @@ import { useEffect, useState, type ReactNode } from "react";
 
 const navItems = [
   { href: "/admin", label: { ar: "نظرة عامة", en: "Overview" }, icon: "▣" },
+  { href: "/admin/pages", label: { ar: "الصفحات والأقسام", en: "Pages & Sections" }, icon: "⊞" },
   { href: "/admin/operations", label: { ar: "العمليات", en: "Operations" }, icon: "▤" },
   { href: "/admin/dashboard", label: { ar: "لوحة التحكم", en: "Control" }, icon: "◫" },
   { href: "/admin/branches", label: { ar: "الفروع", en: "Branches" }, icon: "▣" },
