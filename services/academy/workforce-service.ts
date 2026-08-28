@@ -8,6 +8,49 @@ import {
 } from "@/generated/prisma/client";
 import { db } from "@/lib/db";
 
+export async function generateCandidatesForDemand(demandId: string) {
+  const demand = await db.workforceDemand.findUnique({
+    where: { id: demandId },
+    include: { specialization: { include: { field: { include: { academy: true } } } } },
+  });
+  if (!demand?.specialization) throw new Error("Workforce demand specialization not found");
+  const academy = demand.specialization.field.academy;
+  const [course, cohort, queue] = await Promise.all([
+    db.academyCourse.findFirst({ where: { academyId: academy.id, specializationId: demand.specializationId }, orderBy: { createdAt: "asc" } }),
+    db.academyCohort.findFirst({ where: { academyId: academy.id, status: { in: ["OPEN", "PLANNED"] } }, orderBy: { createdAt: "asc" } }),
+    db.academyWorkQueue.findFirst({ where: { academyId: academy.id, key: "admission" } }),
+  ]);
+  if (!course || !cohort || !queue) throw new Error("Academy course, cohort, and admission queue are required");
+
+  const gap = await db.workforceGap.findUnique({ where: { demandId }, select: { availableCount: true } });
+  const generated = Math.max(0, demand.requiredCount - (gap?.availableCount ?? 0));
+  if (!generated) return { generated: 0, batch: null };
+
+  return db.$transaction(async (transaction) => {
+    const batch = await transaction.candidateBatch.create({
+      data: { demandId, name: `Candidates for ${demand.title}`, requestedCount: generated, priority: demand.priority, status: "COMPLETED" },
+    });
+    const profileIds: string[] = [];
+    for (let index = 0; index < generated; index += 1) {
+      const robot = await transaction.robot.create({
+        data: { name: `Candidate ${demand.title} ${index + 1}`, slug: `candidate-${demandId}-${index + 1}-${crypto.randomUUID().slice(0, 6)}`, status: "PENDING" },
+      });
+      const profile = await transaction.robotAcademicProfile.create({
+        data: { robotId: robot.id, primarySpecializationId: demand.specializationId, status: "ENROLLED" },
+      });
+      profileIds.push(profile.id);
+      await transaction.candidateBatchMember.create({ data: { batchId: batch.id, profileId: profile.id } });
+      await transaction.courseCompletion.create({ data: { profileId: profile.id, courseId: course.id, status: "ASSIGNED" } });
+      await transaction.cohortEnrollment.create({ data: { cohortId: cohort.id, profileId: profile.id } });
+      await transaction.academyQueueItem.create({
+        data: { queueId: queue.id, profileId: profile.id, kind: "ENROLLMENT", idempotencyKey: `demand-${demandId}-profile-${profile.id}`, payload: { demandId, batchId: batch.id } },
+      });
+    }
+    await transaction.auditLog.create({ data: { action: "DEMAND_CANDIDATES_GENERATED", entityType: "WorkforceDemand", entityId: demandId, metadata: { generated, batchId: batch.id, profileIds } } });
+    return { generated, batch: batch.id };
+  });
+}
+
 const assignableStatuses: AcademyLifecycleStatus[] = ["CERTIFIED", "PROBATION", "OPERATIONAL"];
 const trainingStatuses: AcademyLifecycleStatus[] = [
   "ACCEPTED",

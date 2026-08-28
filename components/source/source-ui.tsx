@@ -92,18 +92,20 @@ export function PlatformShell({
   activeRoute,
   userLabel,
   admin = false,
+  immersive = false,
   children,
 }: {
   locale: Locale;
   activeRoute: string;
   userLabel: string;
   admin?: boolean;
+  immersive?: boolean;
   children: ReactNode;
 }) {
   const ar = locale === "ar";
   const navigation = admin ? adminNav : platformNav;
   return (
-    <div className="source-app">
+    <div className={`source-app ${immersive ? "source-app--immersive" : ""}`}>
       <div className="shell">
         <header className="platform-header glass">
           <JenanLogo />
