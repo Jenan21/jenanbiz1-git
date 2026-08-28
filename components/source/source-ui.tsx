@@ -5,6 +5,7 @@ import { LogoutButton } from "@/components/auth/logout-button";
 import { ThemeToggle } from "@/components/source/source-controls";
 import { Icon, type IconName } from "@/components/ui/icons";
 import { LanguageSwitcher } from "@/components/ui/language-switcher";
+import { MarketWatchPanel } from "@/components/dashboard/market-watch-panel";
 import { readPlatformCatalog } from "@/lib/platform/catalog";
 import type { Locale } from "@/types/i18n";
 
@@ -116,6 +117,7 @@ export async function PlatformShell({
   const currentModule = catalog?.modules.find(
     (module) => module.route === activeRoute,
   );
+  const showMarketPanel = !admin && !immersive;
   return (
     <div className={"source-app" + (immersive ? " source-app--immersive" : "")}>
       <div
@@ -123,7 +125,7 @@ export async function PlatformShell({
           "shell shell--platform" + (immersive ? " shell--immersive" : "")
         }
       >
-        <div className="platform-layout">
+        <div className={"platform-layout" + (showMarketPanel ? " platform-layout--three-zone" : "")}>
           <aside className="platform-sidebar glass">
             <div className="platform-sidebar__mode">
               <span>{admin ? "ADMIN CONTROL" : "JENAN WORKSPACE"}</span>
@@ -198,7 +200,6 @@ export async function PlatformShell({
               </div>
             </header>
             <main className="platform-body">{children}</main>
-            {!immersive && <MarketUnavailable locale={locale} />}
             {!immersive && (
               <p className="footer-note">
                 {ar
@@ -207,6 +208,9 @@ export async function PlatformShell({
               </p>
             )}
           </div>
+          {showMarketPanel && (
+            <MarketWatchPanel locale={locale} />
+          )}
         </div>
       </div>
     </div>
