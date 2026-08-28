@@ -10,9 +10,7 @@ export default async function LoginPage() {
       locale={locale}
       languageLabel={ar ? "التبديل إلى الإنجليزية" : "Switch to Arabic"}
       eyebrow={ar ? "مرحبًا بعودتك" : "Welcome back"}
-      title={
-        ar ? "سجّل دخولك إلى مستقبل أعمالك" : "Sign in to your business future"
-      }
+      title={ar ? "سجّل دخولك إلى مستقبل أعمالك" : "Sign in to your business future"}
       subtitle={
         ar
           ? "مساحة واحدة ذكية لإدارة أعمالك بثقة ووضوح."
@@ -34,9 +32,7 @@ export default async function LoginPage() {
           remember: ar ? "تذكرني" : "Remember me",
           forgot: ar ? "نسيت كلمة المرور؟" : "Forgot password?",
           loading: ar ? "جارٍ التحقق..." : "Verifying...",
-          note: ar
-            ? "اتصال مشفر وجلسة آمنة"
-            : "Encrypted connection and secure session",
+          note: ar ? "اتصال مشفر وجلسة آمنة" : "Encrypted connection and secure session",
           errors: {
             INVALID_CREDENTIALS: ar
               ? "البريد الإلكتروني أو كلمة المرور غير صحيحة."

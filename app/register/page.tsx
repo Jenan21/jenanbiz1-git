@@ -10,9 +10,7 @@ export default async function RegisterPage() {
       locale={locale}
       languageLabel={ar ? "التبديل إلى الإنجليزية" : "Switch to Arabic"}
       eyebrow={ar ? "ابدأ رحلتك" : "Start your journey"}
-      title={
-        ar ? "ابنِ مساحة أعمالك الذكية" : "Build your intelligent workspace"
-      }
+      title={ar ? "ابنِ مساحة أعمالك الذكية" : "Build your intelligent workspace"}
       subtitle={
         ar
           ? "أنشئ حسابك الأولي واستعد لتجربة أعمال أكثر ترابطًا."
@@ -34,9 +32,7 @@ export default async function RegisterPage() {
           loading: ar ? "جارٍ إنشاء الحساب..." : "Creating account...",
           remember: "",
           forgot: "",
-          note: ar
-            ? "كلمة المرور 12 حرفًا على الأقل"
-            : "Password must contain at least 12 characters",
+          note: ar ? "كلمة المرور 12 حرفًا على الأقل" : "Password must contain at least 12 characters",
           errors: {
             DUPLICATE_EMAIL: ar
               ? "البريد الإلكتروني مستخدم بالفعل."
