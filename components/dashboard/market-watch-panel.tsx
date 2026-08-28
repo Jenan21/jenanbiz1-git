@@ -67,12 +67,6 @@ function MiniSparkline({ values, up }: { values: number[]; up: boolean }) {
   const color = up ? "var(--success)" : "var(--error)";
   return (
     <svg width={w} height={h} viewBox={`0 0 ${w} ${h}`} aria-hidden="true" className="sparkline">
-      <defs>
-        <linearGradient id={`sg-${up}`} x1="0" y1="0" x2="0" y2="1">
-          <stop offset="0%" stopColor={color} stopOpacity="0.35" />
-          <stop offset="100%" stopColor={color} stopOpacity="0" />
-        </linearGradient>
-      </defs>
       <polyline points={pts} fill="none" stroke={color} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
     </svg>
   );
@@ -92,7 +86,7 @@ function TrendArrow({ up }: { up: boolean }) {
 }
 
 // ── TickerRow ──────────────────────────────────────────────────────────────
-function TickerRow({ ticker, ar }: { ticker: Ticker; up: boolean; ar: boolean }) {
+function TickerRow({ ticker, ar }: { ticker: Ticker; ar: boolean }) {
   const [data, setData] = useState({
     price: ticker.price,
     change: ticker.change,
@@ -158,7 +152,7 @@ export function MarketWatchPanel({ ar = false }: { ar?: boolean }) {
           <section key={cat} className="mw-section">
             <h3 className="mw-section__label">{label}</h3>
             {items.map((t) => (
-              <TickerRow key={t.symbol} ticker={t} up={t.change >= 0} ar={ar} />
+              <TickerRow key={t.symbol} ticker={t} ar={ar} />
             ))}
           </section>
         ))}

@@ -6,6 +6,7 @@ import { ThemeToggle } from "@/components/source/source-controls";
 import { Icon, type IconName } from "@/components/ui/icons";
 import { LanguageSwitcher } from "@/components/ui/language-switcher";
 import { readPlatformCatalog } from "@/lib/platform/catalog";
+import { LiveMarketTicker } from "@/components/dashboard/live-market-ticker";
 import type { Locale } from "@/types/i18n";
 
 export function JenanLogo({ compact = false }: { compact?: boolean } = {}) {
@@ -46,6 +47,20 @@ export function WorldNetwork() {
   ];
   return (
     <svg viewBox="0 0 900 420" aria-hidden="true" className="world-svg">
+      <defs>
+        <filter id="wn-glow" x="-40%" y="-40%" width="180%" height="180%">
+          <feGaussianBlur in="SourceGraphic" stdDeviation="3" result="blur" />
+          <feMerge>
+            <feMergeNode in="blur" />
+            <feMergeNode in="SourceGraphic" />
+          </feMerge>
+        </filter>
+        <linearGradient id="wn-line" x1="0" y1="0" x2="1" y2="0">
+          <stop offset="0%" stopColor="var(--brand)" stopOpacity="0" />
+          <stop offset="50%" stopColor="var(--brand)" stopOpacity="0.7" />
+          <stop offset="100%" stopColor="var(--brand)" stopOpacity="0.1" />
+        </linearGradient>
+      </defs>
       <g fill="none" stroke="currentColor">
         <ellipse cx="450" cy="210" rx="390" ry="150" opacity=".16" />
         <ellipse cx="450" cy="210" rx="390" ry="75" opacity=".1" />
@@ -59,17 +74,37 @@ export function WorldNetwork() {
         <path d="M520 113 620 94l90 27 35 35-27 25-55-11-28 22-49-9-21-33-53-11z" />
         <path d="M666 246 714 231l42 17 19 31-25 30-44-4-30-24z" />
       </g>
-      <g fill="var(--brand)">
-        {points.map(([cx, cy]) => (
-          <circle key={`${cx}-${cy}`} cx={cx} cy={cy} r="5" />
+      {/* Connection lines with gradient stroke */}
+      <g fill="none" stroke="var(--brand)" opacity=".55">
+        <path d="M173 151 Q330 35 459 150" strokeWidth="1.2" />
+        <path d="M459 150 Q560 80 625 153" strokeWidth="1" />
+        <path d="M625 153 Q735 178 714 273" strokeWidth="1" />
+        <path d="M254 257 Q352 175 459 150" strokeWidth="0.9" />
+        <path d="M489 240 Q585 175 714 273" strokeWidth="0.9" />
+      </g>
+      {/* Animated pulse rings around each point */}
+      <g filter="url(#wn-glow)">
+        {points.map(([cx, cy], i) => (
+          <g key={`pulse-${cx}-${cy}`}>
+            <circle cx={cx} cy={cy} r="5" fill="var(--brand)" opacity="0.95" />
+            <circle cx={cx} cy={cy} r="5" fill="none" stroke="var(--brand)" strokeWidth="1.5" opacity="0.7">
+              <animate attributeName="r" values="5;18;5" dur={`${2.5 + i * 0.4}s`} repeatCount="indefinite" />
+              <animate attributeName="opacity" values="0.7;0;0.7" dur={`${2.5 + i * 0.4}s`} repeatCount="indefinite" />
+            </circle>
+          </g>
         ))}
       </g>
-      <g fill="none" stroke="var(--brand)" opacity=".55">
-        <path d="M173 151 Q330 35 459 150" />
-        <path d="M459 150 Q560 80 625 153" />
-        <path d="M625 153 Q735 178 714 273" />
-        <path d="M254 257 Q352 175 459 150" />
-        <path d="M489 240 Q585 175 714 273" />
+      {/* Travelling pulse dots */}
+      <g filter="url(#wn-glow)">
+        <circle r="3" fill="var(--brand)" opacity="0.85">
+          <animateMotion dur="5s" repeatCount="indefinite" path="M173 151 Q330 35 459 150" />
+        </circle>
+        <circle r="2.5" fill="var(--glow)" opacity="0.7">
+          <animateMotion dur="6s" repeatCount="indefinite" begin="1s" path="M459 150 Q560 80 625 153" />
+        </circle>
+        <circle r="2" fill="var(--brand)" opacity="0.6">
+          <animateMotion dur="7s" repeatCount="indefinite" begin="2s" path="M254 257 Q352 175 459 150" />
+        </circle>
       </g>
     </svg>
   );
@@ -214,25 +249,7 @@ export async function PlatformShell({
 }
 
 export function MarketUnavailable({ locale }: { locale: Locale }) {
-  const ar = locale === "ar";
-  return (
-    <div className="bottom-ticker glass market-unavailable">
-      <div className="ticker-label">
-        {ar ? "الأسواق العالمية" : "Global markets"}
-        <span>{ar ? "مزود بيانات مباشر مطلوب" : "Live provider required"}</span>
-      </div>
-      <div className="ticker-track">
-        {["S&P 500", "NASDAQ", "XAU/USD", "WTI", "EUR/USD", "BTC/USD"].map(
-          (item) => (
-            <div className="ticker-item" key={item}>
-              <strong>{item}</strong>
-              <span>—</span>
-            </div>
-          ),
-        )}
-      </div>
-    </div>
-  );
+  return <LiveMarketTicker locale={locale === "ar" ? "ar" : "en"} />;
 }
 
 export function EmptyMetric({ label, note }: { label: string; note: string }) {
