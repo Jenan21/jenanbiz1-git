@@ -3,6 +3,7 @@ import { cookies, headers } from "next/headers";
 import type { ReactNode } from "react";
 import { getDirection, resolveLocale } from "@/lib/i18n";
 import "@/styles/globals.css";
+import "@/styles/design-system.css";
 import "@/styles/internal-workspace.css";
 import "@/styles/division-workspace.css";
 import "@/styles/module-identity.css";

@@ -3,23 +3,24 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useState, type ReactNode } from "react";
+import { Icon, type IconName } from "@/components/ui/icons";
 
-const navItems = [
-  { href: "/admin", label: { ar: "نظرة عامة", en: "Overview" }, icon: "▣" },
-  { href: "/admin/operations", label: { ar: "العمليات", en: "Operations" }, icon: "▤" },
-  { href: "/admin/dashboard", label: { ar: "لوحة التحكم", en: "Control" }, icon: "◫" },
-  { href: "/admin/branches", label: { ar: "الفروع", en: "Branches" }, icon: "▣" },
-  { href: "/admin/users", label: { ar: "المستخدمون", en: "Users" }, icon: "◉" },
-  { href: "/admin/robots", label: { ar: "صائدو الجوائز", en: "Bounty Scouts" }, icon: "◎" },
-  { href: "/admin/committee", label: { ar: "اللجنة", en: "Committee" }, icon: "◌" },
-  { href: "/admin/decisions", label: { ar: "القرارات", en: "Decisions" }, icon: "✓" },
-  { href: "/admin/reports", label: { ar: "التقارير", en: "Reports" }, icon: "◔" },
-  { href: "/admin/robot-knowledge", label: { ar: "المعرفة", en: "Knowledge" }, icon: "◍" },
-  { href: "/admin/intel", label: { ar: "الذكاء", en: "Intelligence" }, icon: "◐" },
-  { href: "/admin/data-center", label: { ar: "مركز البيانات", en: "Data Center" }, icon: "◭" },
-  { href: "/admin/global-health", label: { ar: "الصحة العامة", en: "Global Health" }, icon: "◎" },
-  { href: "/admin/bounty-hunters", label: { ar: "لوحة الجوائز", en: "Reward Board" }, icon: "★" },
-  { href: "/admin/social-growth", label: { ar: "النمو الاجتماعي", en: "Social Growth" }, icon: "◉" },
+const navItems: Array<{ href: string; label: { ar: string; en: string }; icon: IconName }> = [
+  { href: "/admin", label: { ar: "نظرة عامة", en: "Overview" }, icon: "dashboard" },
+  { href: "/admin/operations", label: { ar: "العمليات", en: "Operations" }, icon: "activity" },
+  { href: "/admin/dashboard", label: { ar: "لوحة التحكم", en: "Control" }, icon: "settings" },
+  { href: "/admin/branches", label: { ar: "الفروع", en: "Branches" }, icon: "building" },
+  { href: "/admin/users", label: { ar: "المستخدمون", en: "Users" }, icon: "people" },
+  { href: "/admin/robots", label: { ar: "صائدو الجوائز", en: "Bounty Scouts" }, icon: "rocket" },
+  { href: "/admin/committee", label: { ar: "اللجنة", en: "Committee" }, icon: "briefcase" },
+  { href: "/admin/decisions", label: { ar: "القرارات", en: "Decisions" }, icon: "check" },
+  { href: "/admin/reports", label: { ar: "التقارير", en: "Reports" }, icon: "barChart" },
+  { href: "/admin/robot-knowledge", label: { ar: "المعرفة", en: "Knowledge" }, icon: "brain" },
+  { href: "/admin/intel", label: { ar: "الذكاء", en: "Intelligence" }, icon: "sparkles" },
+  { href: "/admin/data-center", label: { ar: "مركز البيانات", en: "Data Center" }, icon: "grid" },
+  { href: "/admin/global-health", label: { ar: "الصحة العامة", en: "Global Health" }, icon: "globe" },
+  { href: "/admin/bounty-hunters", label: { ar: "لوحة الجوائز", en: "Reward Board" }, icon: "wallet" },
+  { href: "/admin/social-growth", label: { ar: "النمو الاجتماعي", en: "Social Growth" }, icon: "trend" },
 ];
 
 const texts = {
@@ -83,7 +84,9 @@ export function AdminShell({ children }: { children: ReactNode }) {
                 href={item.href}
                 className={`admin-nav-item ${isActive ? "active" : ""}`}
               >
-                <span>{item.icon}</span>
+                <span className="admin-nav-icon">
+                  <Icon name={item.icon} />
+                </span>
                 {item.label[lang]}
               </Link>
             );
