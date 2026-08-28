@@ -143,7 +143,7 @@ export function FundingEligibilityScreen({
               </label>
             ))}
           </div>
-          <button className="button button--primary" disabled>
+          <button className="button button--primary" disabled type="button">
             {tr(locale, "ابدأ تقييم الأهلية", "Start eligibility assessment")}
           </button>
           <div className="notice">
@@ -292,13 +292,25 @@ export function RoboticsCatalogScreen({
                 </span>
               </div>
               <div className="robot-actions">
-                <button className="button button--secondary" disabled>
+                <button
+                  className="button button--secondary"
+                  disabled
+                  type="button"
+                >
                   {tr(locale, "شراء", "Buy")}
                 </button>
-                <button className="button button--secondary" disabled>
+                <button
+                  className="button button--secondary"
+                  disabled
+                  type="button"
+                >
                   {tr(locale, "إيجار", "Rent")}
                 </button>
-                <button className="button button--primary" disabled>
+                <button
+                  className="button button--primary"
+                  disabled
+                  type="button"
+                >
                   {tr(locale, "طلب عرض سعر", "Request quote")}
                 </button>
               </div>

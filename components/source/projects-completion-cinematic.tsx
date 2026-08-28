@@ -2,6 +2,7 @@ import Link from "next/link";
 
 import { PlatformShell } from "@/components/source/source-ui";
 import { ProjectsInteractiveExperience } from "@/components/source/projects-interactive-experience";
+import { ServiceToolDock } from "@/components/source/service-tool-workspace";
 import type {
   PlatformModuleDefinition,
   PlatformServiceDefinition,
@@ -122,6 +123,12 @@ export function ProjectsCompletionCinematic({
         className={"projects-analysis projects-completion " + (launch ? "projects-completion--launch" : "projects-completion--evaluation")}
         aria-labelledby="projects-completion-title"
       >
+        <ServiceToolDock
+          locale={locale}
+          moduleId={module.id}
+          navigationMode={navigationMode}
+          serviceSlug={service.slug}
+        />
         <ProjectsInteractiveExperience
           locale={locale}
           mode={launch ? "launch" : "evaluation"}

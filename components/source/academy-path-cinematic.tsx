@@ -1,6 +1,7 @@
 import Link from "next/link";
 
 import { PlatformShell } from "@/components/source/source-ui";
+import { ServiceToolDock } from "@/components/source/service-tool-workspace";
 import type {
   PlatformModuleDefinition,
   PlatformServiceDefinition,
@@ -251,6 +252,12 @@ export function AcademyPathCinematic({
         data-locale={locale}
         aria-labelledby="academy-path-title"
       >
+        <ServiceToolDock
+          locale={locale}
+          moduleId={module.id}
+          navigationMode={navigationMode}
+          serviceSlug={service.slug}
+        />
         <div className="academy-path__traces" aria-hidden="true">
           <span />
           <span />

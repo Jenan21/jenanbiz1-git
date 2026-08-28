@@ -210,8 +210,8 @@ export async function AdminCommandCenter({
                 : "The future admin interface for adding, updating, or removing sections and services without changing page structure."}
             </p>
           </div>
-          <span className="admin-catalog__state">
-            <i />
+          <span className="admin-catalog__state" role="status">
+            <i aria-hidden="true" />
             {ar ? "مزود الحفظ غير متصل" : "Storage provider not connected"}
           </span>
         </header>

@@ -29,7 +29,11 @@ export function JenanLogo({ compact = false }: { compact?: boolean } = {}) {
 
 function JenanHeaderMark() {
   return (
-    <Link href="/dashboard" className="platform-context__logo" aria-label="Jenan BIZ">
+    <Link
+      href="/dashboard"
+      className="platform-context__logo"
+      aria-label="Jenan BIZ"
+    >
       <span aria-hidden="true" />
     </Link>
   );
@@ -118,6 +122,9 @@ export async function PlatformShell({
   );
   return (
     <div className={"source-app" + (immersive ? " source-app--immersive" : "")}>
+      <a className="skip-link" href="#main-content">
+        {ar ? "تخطي إلى المحتوى الرئيسي" : "Skip to main content"}
+      </a>
       <div
         className={
           "shell shell--platform" + (immersive ? " shell--immersive" : "")
@@ -157,8 +164,8 @@ export async function PlatformShell({
               ))}
             </nav>
             <div className="platform-sidebar__footer">
-              <span className="platform-sidebar__status">
-                <i />
+              <span className="platform-sidebar__status" role="status">
+                <i aria-hidden="true" />
                 {ar ? "واجهة تصميمية — غير تشغيلية" : "Design shell — inactive"}
               </span>
               {admin && (
@@ -173,17 +180,30 @@ export async function PlatformShell({
             <header className="platform-header glass">
               <div className="platform-context">
                 <JenanHeaderMark />
-                {!immersive && <span>{admin ? "JENAN ADMIN" : "JENAN BIZ"}</span>}
+                {!immersive && (
+                  <span>{admin ? "JENAN ADMIN" : "JENAN BIZ"}</span>
+                )}
                 <strong>
                   {current ? (ar ? current[1] : current[2]) : "Jenan BIZ"}
                 </strong>
               </div>
               {immersive && currentModule && (
-                <div className="platform-header__signal" aria-label={ar ? "حالة القسم" : "Section status"}>
-                  <span><i />{currentModule.code}</span>
-                  <strong>{ar ? currentModule.eyebrow[0] : currentModule.eyebrow[1]}</strong>
+                <div
+                  className="platform-header__signal"
+                  aria-label={ar ? "حالة القسم" : "Section status"}
+                >
+                  <span>
+                    <i />
+                    {currentModule.code}
+                  </span>
+                  <strong>
+                    {ar ? currentModule.eyebrow[0] : currentModule.eyebrow[1]}
+                  </strong>
                   <small>
-                    {currentModule.services.length.toLocaleString(ar ? "ar-SA" : "en-US")} {ar ? "مسارات متخصصة" : "SPECIALIZED PATHS"}
+                    {currentModule.services.length.toLocaleString(
+                      ar ? "ar-SA" : "en-US",
+                    )}{" "}
+                    {ar ? "مسارات متخصصة" : "SPECIALIZED PATHS"}
                   </small>
                 </div>
               )}
@@ -197,7 +217,9 @@ export async function PlatformShell({
                 <LogoutButton label={ar ? "خروج" : "Logout"} />
               </div>
             </header>
-            <main className="platform-body">{children}</main>
+            <main className="platform-body" id="main-content" tabIndex={-1}>
+              {children}
+            </main>
             {!immersive && <MarketUnavailable locale={locale} />}
             {!immersive && (
               <p className="footer-note">
@@ -216,7 +238,12 @@ export async function PlatformShell({
 export function MarketUnavailable({ locale }: { locale: Locale }) {
   const ar = locale === "ar";
   return (
-    <div className="bottom-ticker glass market-unavailable">
+    <section
+      aria-label={
+        ar ? "حالة بيانات الأسواق العالمية" : "Global market data status"
+      }
+      className="bottom-ticker glass market-unavailable"
+    >
       <div className="ticker-label">
         {ar ? "الأسواق العالمية" : "Global markets"}
         <span>{ar ? "مزود بيانات مباشر مطلوب" : "Live provider required"}</span>
@@ -231,13 +258,17 @@ export function MarketUnavailable({ locale }: { locale: Locale }) {
           ),
         )}
       </div>
-    </div>
+    </section>
   );
 }
 
 export function EmptyMetric({ label, note }: { label: string; note: string }) {
   return (
-    <div className="card stat-card">
+    <div
+      className="card stat-card"
+      role="status"
+      aria-label={`${label}: ${note}`}
+    >
       <div className="metric-label">{label}</div>
       <div className="placeholder-value">
         <b>—</b> {note}
@@ -278,9 +309,9 @@ export function EmptyPanel({
   icon?: IconName;
 }) {
   return (
-    <section className="card">
+    <section className="card" aria-label={title}>
       <div className="card-title">{title}</div>
-      <div className="empty-state">
+      <div className="empty-state" role="status">
         <div>
           <span className="empty-icon">
             <Icon name={icon} />

@@ -2,6 +2,7 @@ import Link from "next/link";
 
 import { PlatformShell } from "@/components/source/source-ui";
 import { ProjectsInteractiveExperience } from "@/components/source/projects-interactive-experience";
+import { ServiceToolDock } from "@/components/source/service-tool-workspace";
 import type {
   PlatformModuleDefinition,
   PlatformServiceDefinition,
@@ -87,6 +88,12 @@ export function ProjectsFeasibilityCinematic({
   return (
     <PlatformShell locale={locale} activeRoute={module.route} userLabel={userLabel} immersive>
       <section className="projects-analysis projects-feasibility" aria-labelledby="projects-feasibility-title">
+        <ServiceToolDock
+          locale={locale}
+          moduleId={module.id}
+          navigationMode={navigationMode}
+          serviceSlug={service.slug}
+        />
         <ProjectsInteractiveExperience locale={locale} mode="feasibility" />
         <div className="projects-analysis__traces" aria-hidden="true">
           <span /><span /><span /><i /><i />

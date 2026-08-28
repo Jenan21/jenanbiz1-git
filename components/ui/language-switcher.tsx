@@ -25,6 +25,8 @@ export function LanguageSwitcher({
       className="language-switcher"
       onClick={switchLanguage}
       aria-label={label}
+      lang={locale === "ar" ? "en" : "ar"}
+      title={label}
     >
       <Icon name="globe" />
       <span>{locale === "ar" ? "EN" : "ع"}</span>
