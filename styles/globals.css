@@ -317,10 +317,14 @@ html[data-theme="light"] .glass {
 
 .hero-section {
   display: grid;
-  grid-template-columns: 1.2fr 0.8fr;
+  grid-template-columns: 1.2fr 0.8fr 280px;
   gap: 28px;
   align-items: center;
   padding: 42px 0 30px;
+}
+
+.hero-section--no-market {
+  grid-template-columns: 1.2fr 0.8fr;
 }
 
 .hero-copy {
@@ -3429,4 +3433,297 @@ html[data-theme="light"] .field__control {
     gap: 3px;
     font-size: 0.62rem;
   }
+}
+
+/* ═══════════════════════════════════════════════
+   DESIGN SYSTEM — Auth Shell Enhancements
+   ═══════════════════════════════════════════════ */
+
+/* Auth page ambient background glows */
+.auth-bg-glow {
+  position: fixed;
+  pointer-events: none;
+  border-radius: 50%;
+  filter: blur(90px);
+  z-index: 0;
+}
+.auth-bg-glow--a {
+  width: 600px;
+  height: 600px;
+  top: -180px;
+  right: -120px;
+  background: radial-gradient(
+    circle,
+    color-mix(in srgb, var(--brand) 8%, transparent),
+    transparent 70%
+  );
+}
+.auth-bg-glow--b {
+  width: 500px;
+  height: 500px;
+  bottom: -100px;
+  left: -80px;
+  background: radial-gradient(
+    circle,
+    color-mix(in srgb, var(--violet) 6%, transparent),
+    transparent 70%
+  );
+}
+
+/* Glow connector overlay */
+.auth-glow-overlay {
+  position: absolute;
+  inset: 70px 0 80px;
+  pointer-events: none;
+  z-index: 1;
+}
+
+/* Auth three-zone layout */
+.auth-zone {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  z-index: 2;
+}
+
+.auth-zone--left {
+  /* service carousel */
+}
+
+.auth-zone--center {
+  align-items: center;
+}
+
+.auth-zone--right {
+  /* activity + market */
+  overflow-y: auto;
+  max-height: calc(100vh - 140px);
+  scrollbar-width: thin;
+  scrollbar-color: var(--border) transparent;
+}
+
+/* Market ticker panel in auth */
+.auth-market-panel {
+  border-radius: 20px;
+  border: 1px solid color-mix(in srgb, var(--border) 55%, transparent);
+  overflow: hidden;
+  max-height: 420px;
+  overflow-y: auto;
+  scrollbar-width: thin;
+  scrollbar-color: var(--border) transparent;
+}
+
+/* Activity panel improvements */
+.activity-panel .ds-panel__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 10px;
+}
+
+/* ═══════════════════════════════════════════════
+   DESIGN SYSTEM — Admin Shell Enhancements
+   ═══════════════════════════════════════════════ */
+
+/* Improved admin nav icon support */
+.admin-nav-item .icon {
+  width: 16px;
+  height: 16px;
+  color: var(--brand);
+  opacity: 0.8;
+}
+
+.admin-nav-item.active .icon,
+.admin-nav-item:hover .icon {
+  opacity: 1;
+}
+
+/* Active left border indicator */
+.admin-nav-item {
+  position: relative;
+  overflow: hidden;
+}
+
+.admin-nav-item::before {
+  content: "";
+  position: absolute;
+  inset-inline-start: 0;
+  top: 20%;
+  bottom: 20%;
+  width: 2px;
+  background: var(--brand);
+  border-radius: 2px;
+  opacity: 0;
+  transition: 0.18s ease;
+}
+
+.admin-nav-item.active::before {
+  opacity: 1;
+}
+
+.admin-nav-item.active {
+  color: var(--brand);
+}
+
+/* ═══════════════════════════════════════════════
+   DESIGN SYSTEM — Branch / Sections Page
+   ═══════════════════════════════════════════════ */
+
+.branches-page {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+
+.branches-hero {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 20px;
+  padding: 28px 32px;
+  border-radius: 22px;
+  border: 1px solid color-mix(in srgb, var(--brand) 22%, transparent);
+  background: color-mix(in srgb, var(--surface) 65%, transparent);
+  position: relative;
+  overflow: hidden;
+}
+
+.branches-hero::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(
+    ellipse at 80% 50%,
+    color-mix(in srgb, var(--brand) 7%, transparent),
+    transparent 60%
+  );
+  pointer-events: none;
+}
+
+.branches-hero__title {
+  margin: 0 0 6px;
+  font-size: 22px;
+  font-weight: 800;
+}
+
+.branches-hero__subtitle {
+  margin: 0;
+  font-size: 11px;
+  color: var(--muted);
+  max-width: 480px;
+  line-height: 1.65;
+}
+
+.branches-hero__eyebrow {
+  font-size: 9px;
+  color: var(--brand);
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  margin-bottom: 8px;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.branches-hero__stat {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+}
+
+.branches-hero__count {
+  font-size: 42px;
+  font-weight: 900;
+  line-height: 1;
+  background: linear-gradient(135deg, var(--brand), var(--blue));
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+.branches-hero__count-label {
+  font-size: 9px;
+  color: var(--muted);
+  text-align: center;
+}
+
+.branches-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+  gap: 14px;
+}
+
+/* ═══════════════════════════════════════════════
+   DESIGN SYSTEM — Landing Page Improvements
+   ═══════════════════════════════════════════════ */
+
+.landing-market-panel {
+  padding: 16px;
+  border-radius: 22px;
+  border: 1px solid color-mix(in srgb, var(--border) 55%, transparent);
+  background: color-mix(in srgb, var(--surface) 65%, transparent);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  max-height: 480px;
+  overflow-y: auto;
+  scrollbar-width: thin;
+  scrollbar-color: var(--border) transparent;
+}
+
+.landing-market-panel__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+
+@media (max-width: 860px) {
+  .auth-zone--left,
+  .auth-zone--right {
+    display: none;
+  }
+
+  .auth-stage {
+    grid-template-columns: 1fr;
+    justify-items: center;
+  }
+
+  .auth-glow-overlay {
+    display: none;
+  }
+
+  .branches-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .branches-hero {
+    flex-direction: column;
+    align-items: flex-start;
+    padding: 20px;
+  }
+}
+
+/* ── Admin nav icon wrapper ── */
+.admin-nav-icon {
+  display: grid;
+  place-items: center;
+  width: 20px;
+  height: 20px;
+  flex-shrink: 0;
+}
+
+.admin-nav-icon .icon {
+  width: 16px;
+  height: 16px;
+  color: var(--brand);
+  opacity: 0.75;
+}
+
+.admin-nav-item.active .admin-nav-icon .icon,
+.admin-nav-item:hover .admin-nav-icon .icon {
+  opacity: 1;
 }

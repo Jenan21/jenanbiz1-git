@@ -1,4 +1,6 @@
 import Link from "next/link";
+import { GlowLines } from "@/components/ui/glow-lines";
+import { MarketTicker } from "@/components/ui/market-ticker";
 import { LogoPlaceholder } from "@/components/layout/logo-placeholder";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -52,8 +54,22 @@ export default async function HomePage() {
         />
       </header>
 
-      <section className="hero-section">
-        <div className="hero-copy">
+      <section className="hero-section" style={{ position: "relative" }}>
+        {/* Glow lines decorative overlay */}
+        <div
+          style={{
+            position: "absolute",
+            inset: 0,
+            pointerEvents: "none",
+            zIndex: 0,
+            overflow: "hidden",
+          }}
+          aria-hidden="true"
+        >
+          <GlowLines idPrefix="home" />
+        </div>
+
+        <div className="hero-copy" style={{ position: "relative", zIndex: 1 }}>
           <p className="eyebrow">
             <Icon name="sparkles" />
             {ar ? "أعمال أذكى • رؤية أوضح • نمو أوسع" : "Smarter business • clearer vision • broader growth"}
@@ -123,6 +139,23 @@ export default async function HomePage() {
             ))}
           </div>
         </Card>
+
+        {/* Right — Market indicators panel */}
+        <aside
+          className="landing-market-panel ds-hide-mobile"
+          aria-label={ar ? "مؤشرات السوق" : "Market indicators"}
+        >
+          <div className="landing-market-panel__header">
+            <span className="ds-eyebrow">
+              <Icon name="trend" />
+              {ar ? "مؤشرات السوق" : "Markets"}
+            </span>
+            <span className="ds-pill ds-pill--live" style={{ fontSize: 9 }}>
+              {ar ? "لحظي" : "Live"}
+            </span>
+          </div>
+          <MarketTicker locale={locale} showSparklines />
+        </aside>
       </section>
 
       <section id="platform" className="section-block">
