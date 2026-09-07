@@ -19,7 +19,13 @@ export async function WorkspaceDivisions({
   const catalogModule =
     (await findPlatformModule(route)) ??
     (await findPlatformModule("dashboard"));
-  const divisions = catalogModule?.services ?? [];
+  const pilotModeEnabled = process.env.PILOT_MODE === "true";
+  const pilotAllowedServices = new Set(["/projects"]);
+  const divisions = (catalogModule?.services ?? []).filter((service) =>
+    pilotModeEnabled && route === "/dashboard"
+      ? pilotAllowedServices.has(service.href)
+      : true,
+  );
 
   return (
     <section

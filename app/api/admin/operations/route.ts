@@ -1,7 +1,10 @@
 import { NextResponse } from "next/server";
 import { getPlatformAdminSummary } from "@/lib/admin/platform-summary";
+import { denyUnlessAdmin } from "@/lib/auth/admin-api";
 
 export async function GET() {
+  const denied = await denyUnlessAdmin();
+  if (denied) return denied;
   try {
     const summary = await getPlatformAdminSummary();
 
@@ -23,12 +26,7 @@ export async function GET() {
               owner: branch.name,
               zone: branch.status,
             }))
-          : [
-              { title: "تحديثات قلب المنصة", owner: "Platform Core", zone: "الإنتاج" },
-              { title: "تحسين دورة النمو", owner: "Growth Loop", zone: "النمو" },
-              { title: "مراجعة الثقة والتحويل", owner: "Trust Review", zone: "العملاء" },
-              { title: "توسيع الوصول للسوق", owner: "Market Reach", zone: "التوسع" },
-            ],
+          : [],
       },
     });
   } catch (error) {

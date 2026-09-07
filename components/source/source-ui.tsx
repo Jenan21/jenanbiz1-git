@@ -103,7 +103,25 @@ export function PlatformShell({
   children: ReactNode;
 }) {
   const ar = locale === "ar";
-  const navigation = admin ? adminNav : platformNav;
+  const pilotModeEnabled = process.env.PILOT_MODE === "true";
+  const allowedPilotUserRoutes = new Set(["/dashboard", "/projects"]);
+  const allowedPilotAdminRoutes = new Set([
+    "/admin",
+    "/admin/dashboard",
+    "/admin/operations",
+    "/admin/reports",
+    "/admin/users",
+    "/admin/robots",
+    "/admin/decisions",
+    "/admin/academy",
+  ]);
+  const navigation = (admin ? adminNav : platformNav).filter(([href]) =>
+    pilotModeEnabled
+      ? admin
+        ? allowedPilotAdminRoutes.has(href)
+        : allowedPilotUserRoutes.has(href)
+      : true,
+  );
   return (
     <div className={`source-app ${immersive ? "source-app--immersive" : ""}`}>
       <div className="shell">
