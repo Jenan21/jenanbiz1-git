@@ -1,8 +1,11 @@
 import { NextResponse } from "next/server";
 import { db } from "@/lib/db";
+import { denyUnlessAdmin } from "@/lib/auth/admin-api";
 import { summarizeRobotMetrics } from "@/lib/admin/robot-intelligence";
 
 export async function GET() {
+  const denied = await denyUnlessAdmin();
+  if (denied) return denied;
   try {
     const robots = await db.robot.findMany({
       orderBy: { intelligence: "desc" },

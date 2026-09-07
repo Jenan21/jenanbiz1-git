@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { db } from "@/lib/db";
+import { denyUnlessAdmin } from "@/lib/auth/admin-api";
 import { hasPlatformAdminAccess } from "@/lib/auth/authorization";
 import { hasValidOrigin } from "@/lib/auth/request";
 import { getCurrentUser } from "@/lib/auth/session";
@@ -14,6 +15,8 @@ const generationSchema = z.object({
 });
 
 export async function GET() {
+  const denied = await denyUnlessAdmin();
+  if (denied) return denied;
   try {
     const snapshot = await getRobotDashboardSnapshot();
     return NextResponse.json({

@@ -1,13 +1,10 @@
 import { NextResponse } from "next/server";
 import { getPlatformAdminSummary } from "@/lib/admin/platform-summary";
-import { hasPlatformAdminAccess } from "@/lib/auth/authorization";
-import { getCurrentUser } from "@/lib/auth/session";
+import { denyUnlessAdmin } from "@/lib/auth/admin-api";
 
 export async function GET() {
-  const user = await getCurrentUser();
-  if (!user || !hasPlatformAdminAccess(user.systemRole)) {
-    return NextResponse.json({ success: false, message: "Admin access required" }, { status: 403 });
-  }
+  const denied = await denyUnlessAdmin();
+  if (denied) return denied;
   try {
     const summary = await getPlatformAdminSummary();
     return NextResponse.json({

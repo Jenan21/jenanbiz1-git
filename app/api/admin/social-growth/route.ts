@@ -1,7 +1,10 @@
 import { NextResponse } from "next/server";
 import { db } from "@/lib/db";
+import { denyUnlessAdmin } from "@/lib/auth/admin-api";
 
 export async function GET() {
+  const denied = await denyUnlessAdmin();
+  if (denied) return denied;
   try {
     const [users, organizations, completedTasks, activeRobots] = await Promise.all([
       db.user.count(),

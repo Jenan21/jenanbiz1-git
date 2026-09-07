@@ -1,7 +1,10 @@
 import { NextResponse } from "next/server";
 import { db } from "@/lib/db";
+import { denyUnlessAdmin } from "@/lib/auth/admin-api";
 
 export async function GET() {
+  const denied = await denyUnlessAdmin();
+  if (denied) return denied;
   try {
     const [robots, activeTasks, failedExecutions, pendingRetraining] = await Promise.all([
       db.robot.count({ where: { status: "ACTIVE" } }),

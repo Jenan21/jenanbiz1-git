@@ -18,6 +18,26 @@ npm run dev
 
 Open `http://localhost:3000`. `.env.example` contains placeholders only; never commit real secrets.
 
+## Pilot mode
+
+Set `PILOT_MODE=true` to run the platform in pilot scope.
+
+- Allowed product routes: `/dashboard`, `/projects`
+- Allowed admin area: `/admin/*` (role-gated)
+- Non-pilot product routes are redirected to `/dashboard?pilot=scope`
+
+Pilot setup:
+
+```bash
+npm install
+cp .env.example .env
+# set PILOT_MODE=true and DATABASE_URL in .env
+npm run prisma:generate
+npm run db:migrate
+npm run auth:bootstrap-super-admin
+npm run dev
+```
+
 Quality commands: `npm run lint`, `npm run typecheck`, `npm test`, `npm run test:e2e`, `npm run format:check`, `npm run prisma:validate`, and `npm run build`.
 
 ## Structure
