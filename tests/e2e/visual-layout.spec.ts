@@ -32,29 +32,25 @@ for (const path of ["/login", "/register"] as const) {
       "dir",
       locale === "ar" ? "rtl" : "ltr",
     );
-    await expect(page.locator("main")).toBeVisible();
-    await expect(page.locator(".login-gateway__brand-mark")).toBeVisible();
-    await expect(page.locator(".login-gateway__service-icon")).toHaveCount(4);
-    for (const icon of await page.locator(".login-gateway__service-icon").all()) {
-      await expect(icon).toBeInViewport();
-    }
-    await expect(page.locator(".login-gateway__opportunity-map")).toBeVisible();
+    await expect(page.locator(".access-page")).toBeVisible();
+    await expect(page.locator(".access-page__logo")).toBeInViewport();
+    await expect(page.locator(".access-page__form-panel")).toBeInViewport();
+    await expect(page.locator(".access-page__form-panel form")).toBeVisible();
+    await expect(page.locator(".access-page__alternate a")).toHaveAttribute(
+      "href",
+      path === "/login" ? "/register" : "/login",
+    );
     await expect(page.locator(".gateway-world-map__activity > g")).toHaveCount(2);
     const activityRadii = await page
       .locator(".gateway-world-map__activity-ring")
       .evaluateAll((rings) => rings.map((ring) => Number(ring.getAttribute("r"))));
     expect(activityRadii[0]).toBeGreaterThan(activityRadii[1]);
-    await expect(page.getByTestId("jenan-entry-gateway")).toBeInViewport();
-    await expect(page.getByTestId("jenan-register-gateway")).toBeInViewport();
-
     const initialLayout = await page.evaluate(() => {
       const viewportHeight = document.documentElement.clientHeight;
       const selectors = [
-        ".login-gateway__brand-mark",
-        ".login-gateway__service-icon",
-        ".login-gateway__opportunity-map",
-        ".login-gateway__access-button",
-        ".login-gateway__ticker",
+        ".access-page__logo",
+        ".access-page__form-panel",
+        ".access-page__form-panel form",
       ];
       return selectors.flatMap((selector) =>
         [...document.querySelectorAll<HTMLElement>(selector)]
@@ -65,33 +61,14 @@ for (const path of ["/login", "/register"] as const) {
     });
     expect(initialLayout).toEqual([]);
 
-    await page
-      .getByTestId(
-        path === "/login" ? "jenan-entry-gateway" : "jenan-register-gateway",
-      )
-      .click();
-    await expect(page.getByTestId("login-expanded")).toBeVisible();
-    await expect(
-      page.locator(
-        `.login-gateway__mode-icon[data-mode="${path === "/login" ? "login" : "register"}"]`,
-      ),
-    ).toBeVisible();
-    await expect(page.locator(".login-gateway__panel-back")).toBeInViewport();
-    await expect(page.locator(".login-gateway__auth-tabs")).toBeVisible();
-    await expect(page.locator("form")).toBeVisible();
-    await page.locator(".login-gateway__auth-content").evaluate((element) => {
-      element.scrollTop = element.scrollHeight;
-    });
-    await expect(page.locator(".login-gateway__panel-back")).toBeInViewport();
-
     const layout = await page.evaluate(() => {
       const viewportWidth = document.documentElement.clientWidth;
       const selectors = [
         "main",
         "form",
         "header",
-        ".login-gateway__opportunity-map",
-        ".login-gateway__login-panel",
+        ".access-page__story",
+        ".access-page__form-panel",
       ];
       const violations = selectors.flatMap((selector) =>
         [...document.querySelectorAll<HTMLElement>(selector)]

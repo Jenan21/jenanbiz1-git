@@ -1,12 +1,13 @@
-import { LoginGateway } from "@/components/auth/login-gateway";
+import { AuthAccessPage } from "@/components/auth/auth-access-page";
 import { getRequestDictionary } from "@/lib/i18n/server";
 
 export default async function LoginPage() {
   const { locale } = await getRequestDictionary();
   const ar = locale === "ar";
   return (
-    <LoginGateway
+    <AuthAccessPage
       locale={locale}
+      mode="login"
       languageLabel={ar ? "التبديل إلى الإنجليزية" : "Switch to Arabic"}
       labels={{
           name: "",

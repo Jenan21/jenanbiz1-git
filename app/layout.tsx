@@ -6,6 +6,7 @@ import "@fontsource-variable/alexandria";
 import "@/styles/globals.css";
 import "@/styles/login-gateway.css";
 import "@/styles/global-home.css";
+import "@/styles/auth-access.css";
 
 export const metadata: Metadata = {
   metadataBase: new URL("https://jenanbiz.com"),

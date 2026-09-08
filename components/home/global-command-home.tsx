@@ -70,12 +70,7 @@ export function GlobalCommandHome({
       <header className="global-home__header">
         <Link className="global-home__brand" href="/" aria-label="Jenan BIZ">
           <span aria-hidden="true" />
-          <strong>Jenan BIZ</strong>
         </Link>
-        <div className="global-home__headline">
-          <b>{ar ? "منصة جنان بيز" : "Jenan BIZ Platform"}</b>
-          <span>{ar ? "مركز الأعمال الذكي" : "Intelligent business command"}</span>
-        </div>
         <div className="global-home__tools">
           <span className="global-home__live"><i />{ar ? "المنصة متصلة" : "Platform online"}</span>
           <LanguageSwitcher locale={locale} label={ar ? "English" : "العربية"} showChevron />
@@ -100,11 +95,6 @@ export function GlobalCommandHome({
 
         <section className="global-home__map" aria-label={ar ? "انتشار المنصة العالمي" : "Global platform activity"}>
           <GatewayWorldMap activity={activity.locations} locale={locale} />
-          <div className="global-home__hero-copy">
-            <span>{ar ? "منصة واحدة · أثر بلا حدود" : "One platform · Borderless impact"}</span>
-            <h1>{ar ? "مركز أعمالك العالمي" : "Your global business command"}</h1>
-            <p>{ar ? "إدارة، معرفة، فرص وخدمات مترابطة في تجربة تشغيل واحدة." : "Operations, knowledge, opportunities, and services in one connected experience."}</p>
-          </div>
           <div className="global-home__actions">
             <Link href="/login"><Icon name="user" />{ar ? "تسجيل الدخول" : "Sign in"}</Link>
             <Link href="/register"><Icon name="plus" />{ar ? "إنشاء حساب" : "Create account"}</Link>

@@ -674,7 +674,7 @@ export function LoginGateway({ locale, languageLabel, labels }: LoginGatewayProp
                 <Icon name="arrow" />{ar ? "العودة إلى الخريطة" : "Back to map"}
               </button>
               <aside className="login-gateway__auth-identity">
-                <span className="login-gateway__auth-brand">JENAN <b>BIZ</b></span>
+                <span className="login-gateway__auth-brand" aria-label="Jenan BIZ" />
                 <div className="login-gateway__mode-icon" data-mode={state} aria-hidden="true">
                   <Icon name={state === "login" ? "user" : "plus"} />
                 </div>
