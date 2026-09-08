@@ -1,4 +1,5 @@
-import { ProtectedModulePage } from "@/components/source/protected-module-page";
+import { ModulePage } from "@/components/custom/module-page";
+
 export default function Page() {
-  return <ProtectedModulePage route="/projects" />;
+  return <ModulePage route="/projects" />;
 }

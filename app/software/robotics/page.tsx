@@ -1,4 +1,5 @@
-import { ProtectedRoboticsPage } from "@/components/source/protected-module-page";
+import { ModulePage } from "@/components/custom/module-page";
+
 export default function Page() {
-  return <ProtectedRoboticsPage />;
+  return <ModulePage route="/software/robotics" />;
 }

@@ -1,13 +1,3 @@
-html[data-theme="light"] .source-app {
-  --admin-ink: #0a2940;
-  --admin-copy: #4f6b7a;
-  --admin-muted: #718b98;
-  --admin-cyan: #087f98;
-  --admin-gold: #9b7416;
-  --admin-line: rgba(28, 119, 148, 0.2);
-  --admin-panel: rgba(248, 252, 255, 0.88);
-}
-
 html[data-theme="light"] .platform-sidebar {
   background:
     radial-gradient(circle at 50% 0, rgba(14, 154, 177, 0.14), transparent 34%),
@@ -163,12 +153,6 @@ html[data-theme="light"]
   color: #365d6d;
   border-color: rgba(35, 132, 156, 0.2);
   background: rgba(255, 255, 255, 0.72);
-}
-
-html[data-theme="light"] .source-app .card {
-  border-color: rgba(41, 127, 151, 0.2);
-  background: rgba(248, 252, 255, 0.9);
-  box-shadow: 0 10px 28px rgba(51, 95, 117, 0.08);
 }
 
 html[data-theme="light"] :is(.data-center-kpi, .health-kpi, .growth-kpi) > span,

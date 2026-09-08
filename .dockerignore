@@ -14,7 +14,6 @@ blob-report
 .playwright-result-*
 outputs
 work
-codex
 docs
 *.log
 *.tsbuildinfo

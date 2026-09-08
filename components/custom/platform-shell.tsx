@@ -1,44 +1,52 @@
-import Image from "next/image";
+"use client";
+
 import Link from "next/link";
+import { useEffect, useState } from "react";
 import type { ReactNode } from "react";
-import { LogoutButton } from "@/components/auth/logout-button";
-import { ThemeToggle } from "@/components/source/source-controls";
 import { Icon, type IconName } from "@/components/ui/icons";
 import { LanguageSwitcher } from "@/components/ui/language-switcher";
-import { NotificationMenu } from "@/components/source/notification-menu";
 import type { Locale } from "@/types/i18n";
 
 export function JenanLogo({ compact = false }: { compact?: boolean }) {
   return (
-    <Link href="/dashboard" className="logo-wrap" aria-label="Jenan BIZ">
-      <Image
-        src="/assets/jenan-biz-logo.png"
-        alt="Jenan BIZ"
-        width={152}
-        height={96}
-        priority
-      />
-      {!compact && (
-        <div>
-          <div className="logo-text">
-            JENAN <span>BIZ</span>
-          </div>
-          <div className="logo-sub">GLOBAL BUSINESS HUB</div>
-        </div>
-      )}
+    <Link href="/" className="brandmark" aria-label="Jenan BIZ home">
+      <span className="brandmark__logo">J</span>
+      <span className="brandmark__text">
+        <strong>Jenan BIZ</strong>
+        {!compact && <small>Global business platform</small>}
+      </span>
     </Link>
   );
 }
 
+export function ThemeToggle({ label, switchStyle = false }: { label: string; switchStyle?: boolean }) {
+  const [theme, setTheme] = useState<"balanced-dark" | "light">(() => {
+    if (typeof window === "undefined") return "balanced-dark";
+    return localStorage.getItem("jenan-theme") === "light" ? "light" : "balanced-dark";
+  });
+
+  useEffect(() => {
+    document.documentElement.dataset.theme = theme;
+  }, [theme]);
+
+  function toggle() {
+    const next = theme === "light" ? "balanced-dark" : "light";
+    setTheme(next);
+    localStorage.setItem("jenan-theme", next);
+    document.documentElement.dataset.theme = next;
+  }
+
+  return (
+    <button type="button" onClick={toggle} className={`btn small ghost ${switchStyle ? "theme-switch" : ""}`} aria-label={label} aria-pressed={theme === "light"}>
+      <Icon name={theme === "light" ? "moon" : "sparkles"} aria-hidden="true" />
+      <span>{label}</span>
+    </button>
+  );
+}
+
 export function WorldNetwork() {
-  const points = [
-    [173, 151],
-    [254, 257],
-    [459, 150],
-    [489, 240],
-    [625, 153],
-    [714, 273],
-  ];
+  const points = [[173, 151], [254, 257], [459, 150], [489, 240], [625, 153], [714, 273]];
+
   return (
     <svg viewBox="0 0 900 420" aria-hidden="true" className="world-svg">
       <g fill="none" stroke="currentColor">
@@ -55,9 +63,7 @@ export function WorldNetwork() {
         <path d="M666 246 714 231l42 17 19 31-25 30-44-4-30-24z" />
       </g>
       <g fill="var(--brand)">
-        {points.map(([cx, cy]) => (
-          <circle key={`${cx}-${cy}`} cx={cx} cy={cy} r="5" />
-        ))}
+        {points.map(([cx, cy]) => <circle key={`${cx}-${cy}`} cx={cx} cy={cy} r="5" />)}
       </g>
       <g fill="none" stroke="var(--brand)" opacity=".55">
         <path d="M173 151 Q330 35 459 150" />
@@ -70,23 +76,57 @@ export function WorldNetwork() {
   );
 }
 
+const services = [
+  ["activity", "تحليل المشاريع", "Project intelligence"],
+  ["briefcase", "دراسة الجدوى", "Feasibility studies"],
+  ["people", "أكاديمية جنان", "Jenan Academy"],
+  ["wallet", "سوق جنان", "Jenan Market"],
+  ["settings", "Jenan Studio", "Creative studio"],
+  ["user", "Jenan Talent", "Talent intelligence"],
+  ["grid", "Jenan Software", "Business software"],
+  ["sparkles", "الإعلان والتسويق", "Marketing & growth"],
+] as const;
+
+export function AuthServiceCarousel({ locale }: { locale: "ar" | "en" }) {
+  return (
+    <aside className="auth-services" aria-label="Jenan BIZ services">
+      {services.slice(0, 4).map(([icon, arLabel, enLabel]) => (
+        <div className="service-card card" key={icon}>
+          <div className="service-orb">
+            <Icon name={icon} />
+          </div>
+          <div>
+            <h3>{locale === "ar" ? arLabel : enLabel}</h3>
+            <p>
+              {locale === "ar"
+                ? "واجهة مخصصة لمنصة Jenan BIZ مع تجربة أعمال متكاملة."
+                : "Custom interface for the Jenan BIZ platform with a unified business experience."}
+            </p>
+          </div>
+        </div>
+      ))}
+    </aside>
+  );
+}
+
 const platformNav = [
   ["/dashboard", "الرئيسية", "Home"],
   ["/projects", "المشاريع", "Projects"],
   ["/academy", "الأكاديمية", "Academy"],
   ["/market", "السوق", "Market"],
   ["/software", "البرمجيات", "Software"],
-  ["/programs", "برامج المنشآت", "Organization Programs"],
+  ["/programs", "البرامج", "Programs"],
   ["/talent", "المواهب", "Talent"],
   ["/marketing", "التسويق", "Marketing"],
-  ["/funding-eligibility", "أهلية التمويل", "Funding"],
+  ["/funding-eligibility", "برامج جنان", "Jenan Programs"],
 ] as const;
+
 const adminNav = [
   ["/admin", "القيادة", "Command"],
+  ["/admin/dashboard", "لوحة التحكم", "Dashboard"],
   ["/admin/data-center", "مركز البيانات", "Data Center"],
-  ["/admin/global-health", "الصحة العالمية", "Global Health"],
-  ["/admin/bounty-hunters", "صائدو الجوائز", "Bounty Hunters"],
-  ["/admin/social-growth", "النمو الاجتماعي", "Social Growth"],
+  ["/admin/global-health", "الصحة العامة", "Global Health"],
+  ["/admin/users", "المستخدمون", "Users"],
 ] as const;
 
 export function PlatformShell({
@@ -94,27 +134,24 @@ export function PlatformShell({
   activeRoute,
   userLabel,
   admin = false,
-  immersive = false,
   children,
 }: {
   locale: Locale;
   activeRoute: string;
   userLabel: string;
   admin?: boolean;
-  immersive?: boolean;
   children: ReactNode;
 }) {
   const ar = locale === "ar";
   const navigation = admin ? adminNav : platformNav;
+
   return (
-    <div className={`source-app ${immersive ? "source-app--immersive" : ""}`}>
-      <div className={`shell ${immersive ? "shell--immersive" : ""}`}>
+    <div className="custom-platform">
+      <div className="shell custom-shell">
         <header className="platform-header glass">
           <JenanLogo />
-          <nav
-            className="main-nav"
-            aria-label={ar ? "التنقل الرئيسي" : "Main navigation"}
-          >
+
+          <nav className="main-nav" aria-label={ar ? "التنقل الرئيسي" : "Main navigation"}>
             {navigation.map(([href, arabic, english]) => (
               <Link
                 href={href}
@@ -126,47 +163,33 @@ export function PlatformShell({
               </Link>
             ))}
           </nav>
-          <details className="mobile-nav">
-            <summary aria-label={ar ? "فتح تنقل المنصة" : "Open platform navigation"}>
-              <Icon name="grid" aria-hidden="true" />
-              <span>{ar ? "الأقسام" : "Sections"}</span>
-            </summary>
-            <nav
-              className="mobile-nav-panel"
-              aria-label={ar ? "تنقل المنصة على الهاتف" : "Mobile platform navigation"}
-            >
-              {navigation.map(([href, arabic, english]) => (
-                <Link
-                  href={href}
-                  key={href}
-                  className={`nav-link ${activeRoute === href ? "active" : ""}`}
-                  aria-current={activeRoute === href ? "page" : undefined}
-                >
-                  {ar ? arabic : english}
-                </Link>
-              ))}
-            </nav>
-          </details>
+
           <div className="top-tools">
             <ThemeToggle label={ar ? "المظهر" : "Theme"} />
-            <NotificationMenu locale={locale} />
-            <LanguageSwitcher
-              locale={locale}
-              label={ar ? "Switch to English" : "التبديل إلى العربية"}
-            />
+            <LanguageSwitcher locale={locale} label={ar ? "Switch to English" : "التبديل إلى العربية"} />
             <span className="user-chip">{userLabel}</span>
-            <LogoutButton label={ar ? "خروج" : "Logout"} />
+            <Link href="/login" className="btn small secondary">
+              {ar ? "خروج" : "Logout"}
+            </Link>
           </div>
         </header>
-        <main className={`platform-body ${activeRoute === "/projects" ? "projects-body" : ""}`}>
-          {children}
-        </main>
-        <MarketUnavailable locale={locale} />
-        <p className="footer-note">
-          {ar
-            ? "Jenan BIZ — لا تُعرض أرقام تشغيلية إلا من مصادر حقيقية"
-            : "Jenan BIZ — operational metrics require real sources"}
-        </p>
+
+        <main className="platform-body">{children}</main>
+
+        <div className="bottom-ticker glass market-unavailable">
+          <div className="ticker-label">
+            {ar ? "المنصة" : "Platform"}
+            <span>{ar ? "واجهة مخصصة" : "Custom interface"}</span>
+          </div>
+          <div className="ticker-track">
+            {["Jenan BIZ", "Operations", "AI", "Growth", "Finance"].map((item) => (
+              <div className="ticker-item" key={item}>
+                <strong>{item}</strong>
+                <span>•</span>
+              </div>
+            ))}
+          </div>
+        </div>
       </div>
     </div>
   );
@@ -177,18 +200,16 @@ export function MarketUnavailable({ locale }: { locale: Locale }) {
   return (
     <div className="bottom-ticker glass market-unavailable">
       <div className="ticker-label">
-        {ar ? "الأسواق العالمية" : "Global markets"}
-        <span>{ar ? "مزود بيانات مباشر مطلوب" : "Live provider required"}</span>
+        {ar ? "الأسواق" : "Markets"}
+        <span>{ar ? "مخطط حقيقي" : "Real data"}</span>
       </div>
       <div className="ticker-track">
-        {["S&P 500", "NASDAQ", "XAU/USD", "WTI", "EUR/USD", "BTC/USD"].map(
-          (item) => (
-            <div className="ticker-item" key={item}>
-              <strong>{item}</strong>
-              <span>—</span>
-            </div>
-          ),
-        )}
+        {"Jenan BIZ • Operations • AI • Growth • Finance".split(" • ").map((item) => (
+          <div className="ticker-item" key={item}>
+            <strong>{item}</strong>
+            <span>—</span>
+          </div>
+        ))}
       </div>
     </div>
   );
@@ -205,6 +226,7 @@ export function EmptyMetric({ label, note }: { label: string; note: string }) {
     </div>
   );
 }
+
 export function FeatureCard({
   icon,
   title,
@@ -227,6 +249,7 @@ export function FeatureCard({
     </article>
   );
 }
+
 export function EmptyPanel({
   title,
   message,

@@ -22,25 +22,6 @@ services:
     security_opt:
       - no-new-privileges:true
 
-  redis:
-    image: redis:7.4-alpine
-    container_name: jenanbiz-redis
-    restart: unless-stopped
-    command: ["redis-server", "--appendonly", "yes", "--requirepass", "${REDIS_PASSWORD:?REDIS_PASSWORD is required}"]
-    environment:
-      REDIS_PASSWORD: ${REDIS_PASSWORD:?REDIS_PASSWORD is required}
-    ports:
-      - "127.0.0.1:${REDIS_PORT:-6379}:6379"
-    volumes:
-      - jenanbiz_redis_data:/data
-    healthcheck:
-      test: ["CMD-SHELL", "redis-cli -a \"$${REDIS_PASSWORD}\" ping | grep PONG"]
-      interval: 5s
-      timeout: 5s
-      retries: 12
-    security_opt:
-      - no-new-privileges:true
-
   migrate:
     build: .
     command: ["npx", "prisma", "migrate", "deploy"]
@@ -59,14 +40,11 @@ services:
       AUTH_SECRET: ${AUTH_SECRET:?AUTH_SECRET is required}
       DATABASE_URL: postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}?schema=public
       METRICS_TOKEN: ${METRICS_TOKEN:?METRICS_TOKEN is required}
-      REDIS_URL: redis://:${REDIS_PASSWORD:?REDIS_PASSWORD is required}@redis:6379
     ports:
       - "127.0.0.1:${APP_PORT:-3000}:3000"
     depends_on:
       migrate:
         condition: service_completed_successfully
-      redis:
-        condition: service_healthy
     healthcheck:
       test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:3000/api/health/ready').then((response) => process.exit(response.ok ? 0 : 1)).catch(() => process.exit(1))"]
       interval: 15s
@@ -116,7 +94,5 @@ services:
 volumes:
   jenanbiz_postgres_data:
     name: jenanbiz_postgres_data
-  jenanbiz_redis_data:
-    name: jenanbiz_redis_data
   jenanbiz_postgres_backups:
     name: jenanbiz_postgres_backups

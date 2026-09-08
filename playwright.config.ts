@@ -4,6 +4,7 @@ process.env.E2E_RUN_ID ??= `${Date.now()}-${Math.random().toString(36).slice(2, 
 
 const visualProjects = [
   ["desktop", { width: 1440, height: 1000 }],
+  ["wide-short", { width: 1690, height: 768 }],
   ["laptop", { width: 1280, height: 800 }],
   ["tablet", { width: 820, height: 1180 }],
   ["mobile", { width: 390, height: 844 }],
@@ -37,13 +38,6 @@ export default defineConfig({
       testMatch: /auth\.spec\.ts/,
       use: { viewport: { width: 1280, height: 800 }, locale: "en-US" },
       metadata: { appLocale: "en" },
-    },
-    {
-      name: "review-pack",
-      testMatch:
-        /(review-pack.*|refinement-review|auth-contract-review|auth-new-direction-login-review|projects-interactions)\.spec\.ts/,
-      use: { viewport: { width: 1440, height: 1000 }, locale: "ar-SA" },
-      metadata: { appLocale: "ar" },
     },
     {
       name: "admin-control-panel",

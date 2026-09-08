@@ -32,17 +32,20 @@
     "auth:bootstrap-super-admin": "node --env-file=.env scripts/bootstrap-super-admin.mjs"
   },
   "dependencies": {
+    "@fontsource-variable/alexandria": "^5.3.0",
     "@node-rs/argon2": "^2.0.2",
     "@prisma/adapter-pg": "7.9.1",
     "@prisma/client": "7.9.1",
+    "@svg-maps/world": "^2.0.0",
     "exceljs": "^4.4.0",
     "mammoth": "^1.12.2",
     "next": "16.3.0",
     "pdf-lib": "^1.17.1",
     "react": "19.2.8",
     "react-dom": "19.2.8",
-    "redis": "^6.2.1",
     "sharp": "^0.35.3",
+    "svg-path-bbox": "^2.1.0",
+    "world-countries": "^5.1.0",
     "zod": "^4.0.0"
   },
   "devDependencies": {

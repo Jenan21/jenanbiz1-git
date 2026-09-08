@@ -1,10 +1,10 @@
 "use client";
 
-import Image from "next/image";
 import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 import { AuthForm } from "@/components/auth/auth-form";
-import { ThemeToggle } from "@/components/source/source-controls";
+import { GatewayWorldMap, type GatewayActivityLocation } from "@/components/auth/gateway-world-map";
+import { ThemeToggle } from "@/components/custom/platform-shell";
 import { Icon } from "@/components/ui/icons";
 import { LanguageSwitcher } from "@/components/ui/language-switcher";
 import type { Locale } from "@/types/i18n";
@@ -60,8 +60,15 @@ interface LiveMarketPayload {
   instruments: LiveMarketInstrument[];
   audience?: {
     countryCode: string | null;
-    countrySource: "vercel" | "unavailable";
+    countrySource: "unavailable";
   };
+}
+
+interface LiveActivityPayload {
+  activeUsers: number;
+  generatedAt: string;
+  locations: GatewayActivityLocation[];
+  windowMinutes: number;
 }
 
 const demoMarketInstruments: LiveMarketInstrument[] = [
@@ -279,6 +286,12 @@ export function LoginGateway({ locale, languageLabel, labels }: LoginGatewayProp
   const ar = locale === "ar";
   const [state, setState] = useState<GatewayState>("initial");
   const [activeMetric, setActiveMetric] = useState(0);
+  const [activity, setActivity] = useState<LiveActivityPayload>({
+    activeUsers: 0,
+    generatedAt: "",
+    locations: [],
+    windowMinutes: 15,
+  });
   // No live market data provider is configured; the panel always renders labeled sample figures.
   const [market] = useState<LiveMarketPayload | null>({ state: "error", provider: null, updatedAt: null, staleAt: null, instruments: [] });
   const gatewayRef = useRef<HTMLButtonElement>(null);
@@ -295,6 +308,30 @@ export function LoginGateway({ locale, languageLabel, labels }: LoginGatewayProp
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, [state]);
+
+  useEffect(() => {
+    const controller = new AbortController();
+    async function loadActivity() {
+      try {
+        const response = await fetch("/api/platform/activity", {
+          cache: "no-store",
+          signal: controller.signal,
+        });
+        if (!response.ok) return;
+        setActivity((await response.json()) as LiveActivityPayload);
+      } catch (error) {
+        if (!(error instanceof DOMException && error.name === "AbortError")) {
+          console.error("Unable to load anonymized platform activity");
+        }
+      }
+    }
+    void loadActivity();
+    const interval = window.setInterval(loadActivity, 30_000);
+    return () => {
+      controller.abort();
+      window.clearInterval(interval);
+    };
+  }, []);
 
   useEffect(() => {
     if (state !== "initial") {
@@ -339,8 +376,14 @@ export function LoginGateway({ locale, languageLabel, labels }: LoginGatewayProp
     lastGatewayRef.current = next;
     setState((current) => current === next ? "initial" : next);
   };
+  const selectGateway = (next: Exclude<GatewayState, "initial">) => {
+    lastGatewayRef.current = next;
+    setState(next);
+  };
   const registerLabels = {
     ...labels,
+    name: ar ? "الاسم الكامل" : "Full name",
+    countryCode: ar ? "رمز الدولة" : "Country code",
     submit: ar ? "إنشاء الحساب" : "Create account",
     loading: ar ? "جارٍ إنشاء الحساب..." : "Creating account...",
     remember: "",
@@ -432,13 +475,7 @@ export function LoginGateway({ locale, languageLabel, labels }: LoginGatewayProp
                 <circle className="brand-node brand-node--green" cx="208" cy="58" r="2.1" />
               </g>
             </svg>
-            <Image
-              src="/assets/jenan-biz-logo-transparent.png"
-              alt="Jenan BIZ"
-              width={997}
-              height={611}
-              priority
-            />
+            <span className="login-gateway__brand-mark" aria-hidden="true" />
           </Link>
 
           <section
@@ -518,36 +555,12 @@ export function LoginGateway({ locale, languageLabel, labels }: LoginGatewayProp
 
             <section className="login-gateway__opportunities" aria-label={ar ? "الخريطة العالمية" : "Global map"}>
               <div className="login-gateway__opportunity-map">
-                <Image
-                  src="/assets/world-map-reference-interior-feathered-1672x941.png"
-                  alt={ar ? "خريطة العالم" : "World map"}
-                  fill
-                  sizes="820px"
-                  priority
-                />
-                <svg className="login-gateway__map-network" viewBox="0 0 1000 520" preserveAspectRatio="none" aria-hidden="true">
-                  <defs>
-                    <linearGradient id="map-route-cyan" x1="0" y1="0" x2="1" y2="0"><stop stopColor="#47d5f1" stopOpacity=".18" /><stop offset=".5" stopColor="#72edec" stopOpacity=".82" /><stop offset="1" stopColor="#47d5f1" stopOpacity=".18" /></linearGradient>
-                    <linearGradient id="map-route-gold" x1="0" y1="0" x2="1" y2="0"><stop stopColor="#dfc26d" stopOpacity=".16" /><stop offset=".55" stopColor="#f4d982" stopOpacity=".74" /><stop offset="1" stopColor="#dfc26d" stopOpacity=".14" /></linearGradient>
-                    <filter id="map-route-glow" x="-20%" y="-40%" width="140%" height="180%"><feGaussianBlur stdDeviation="2" result="route-blur" /><feMerge><feMergeNode in="route-blur" /><feMergeNode in="SourceGraphic" /></feMerge></filter>
-                  </defs>
-                  <g className="map-network__routes" fill="none" filter="url(#map-route-glow)">
-                    <path className="map-route map-route--cyan" d="M180 218C255 150 345 168 420 244" />
-                    <path className="map-route map-route--green" d="M420 244C470 198 520 196 570 234" />
-                    <path className="map-route map-route--gold" d="M570 234C625 174 674 176 710 208" />
-                    <path className="map-route map-route--cyan" d="M710 208C790 226 836 282 820 343" />
-                    <path className="map-route map-route--gold map-route--long" d="M180 218C330 70 580 68 710 208" />
-                    <path className="map-route map-route--green map-route--long" d="M420 244C570 104 770 160 820 343" />
-                  </g>
-                </svg>
-                <span className="login-gateway__map-node node-a" aria-hidden="true" />
-                <span className="login-gateway__map-node node-b" aria-hidden="true" />
-                <span className="login-gateway__map-node node-c" aria-hidden="true" />
-                <span className="login-gateway__map-node node-d" aria-hidden="true" />
-                <span className="login-gateway__map-node node-e" aria-hidden="true" />
-                <span className="login-gateway__map-node node-f" aria-hidden="true" />
-                <span className="login-gateway__map-node node-g" aria-hidden="true" />
-                <span className="login-gateway__map-node node-h" aria-hidden="true" />
+                <GatewayWorldMap activity={activity.locations} locale={locale} />
+                <div className="login-gateway__activity-summary" aria-live="polite">
+                  <i aria-hidden="true" />
+                  <span>{ar ? `${activity.activeUsers} مستخدم نشط` : `${activity.activeUsers} active users`}</span>
+                  <small>{ar ? `آخر ${activity.windowMinutes} دقيقة` : `Last ${activity.windowMinutes} minutes`}</small>
+                </div>
                 <div className="login-gateway__map-pager" aria-hidden="true">
                   <i /><i /><i className="active" /><i /><i /><i /><i />
                 </div>
@@ -657,17 +670,47 @@ export function LoginGateway({ locale, languageLabel, labels }: LoginGatewayProp
                   : (ar ? "إغلاق نموذج إنشاء الحساب" : "Close account creation panel")}
                 data-testid="close-login"
               ><Icon name="x" /></button>
-              <Image className="login-gateway__login-logo" src="/assets/jenan-biz-logo-transparent.png" alt="Jenan BIZ" width={997} height={611} priority />
-              <h2 id="login-gateway-title">{state === "login"
-                ? (ar ? "تسجيل الدخول" : "Sign in")
-                : (ar ? "إنشاء حساب" : "Create account")}</h2>
-              <p>{state === "login"
-                ? (ar ? "ادخل إلى بيئة أعمالك الآمنة" : "Enter your secure business environment")
-                : (ar ? "أنشئ مساحة أعمالك الآمنة" : "Create your secure business workspace")}</p>
-              <AuthForm mode={state} locale={locale} labels={state === "register" ? registerLabels : labels} />
               <button type="button" className="login-gateway__panel-back" onClick={() => setState("initial")}>
-                <Icon name="arrow" />{ar ? "العودة إلى البوابة" : "Back to gateway"}
+                <Icon name="arrow" />{ar ? "العودة إلى الخريطة" : "Back to map"}
               </button>
+              <aside className="login-gateway__auth-identity">
+                <span className="login-gateway__auth-brand">JENAN <b>BIZ</b></span>
+                <div className="login-gateway__mode-icon" data-mode={state} aria-hidden="true">
+                  <Icon name={state === "login" ? "user" : "plus"} />
+                </div>
+                <div className="login-gateway__auth-identity-copy">
+                  <span>{ar ? "بوابة الأعمال العالمية" : "Global business gateway"}</span>
+                  <strong>{state === "login"
+                    ? (ar ? "عودة آمنة إلى أعمالك" : "Secure return to your business")
+                    : (ar ? "بداية موثوقة لأعمالك" : "A trusted business beginning")}</strong>
+                </div>
+                <div className="login-gateway__security-state">
+                  <Icon name="shield" />
+                  <span><b>{ar ? "اتصال محمي" : "Protected connection"}</b><small>{ar ? "تشفير وجلسة آمنة" : "Encrypted secure session"}</small></span>
+                </div>
+                <i className="login-gateway__identity-line" aria-hidden="true" />
+              </aside>
+
+              <div className="login-gateway__auth-content">
+                <div className="login-gateway__auth-heading">
+                  <span>{state === "login" ? "ACCESS / 01" : "ONBOARD / 02"}</span>
+                  <h2 id="login-gateway-title">{state === "login"
+                    ? (ar ? "تسجيل الدخول" : "Sign in")
+                    : (ar ? "إنشاء حساب" : "Create account")}</h2>
+                  <p>{state === "login"
+                    ? (ar ? "أدخل بياناتك للوصول إلى مساحة أعمالك." : "Enter your details to access your workspace.")
+                    : (ar ? "أنشئ هويتك الأولى داخل منظومة جنان." : "Create your first identity in the Jenan ecosystem.")}</p>
+                </div>
+                <div className="login-gateway__auth-tabs" role="tablist" aria-label={ar ? "نوع المصادقة" : "Authentication mode"}>
+                  <button type="button" role="tab" aria-selected={state === "login"} onClick={() => selectGateway("login")}>
+                    <Icon name="user" />{ar ? "دخول" : "Sign in"}
+                  </button>
+                  <button type="button" role="tab" aria-selected={state === "register"} onClick={() => selectGateway("register")}>
+                    <Icon name="plus" />{ar ? "حساب جديد" : "New account"}
+                  </button>
+                </div>
+                <AuthForm mode={state} locale={locale} labels={state === "register" ? registerLabels : labels} />
+              </div>
             </section>
           )}
         </section>

@@ -5,7 +5,6 @@ import type {
   RateLimitProvider,
 } from "@/lib/rate-limit/contracts";
 import { MemoryRateLimitProvider } from "@/lib/rate-limit/memory-provider";
-import { RedisRateLimitProvider } from "@/lib/rate-limit/redis-provider";
 
 export type AuthRateLimitRoute = "login" | "register";
 
@@ -32,17 +31,6 @@ export function setRateLimitProvider(provider: RateLimitProvider) {
 export function getRateLimitProvider() {
   if (globalForRateLimit.jenanRateLimitProvider)
     return globalForRateLimit.jenanRateLimitProvider;
-  const redisUrl = process.env.REDIS_URL;
-  if (redisUrl) {
-    const provider = new RedisRateLimitProvider(redisUrl);
-    globalForRateLimit.jenanRateLimitProvider = provider;
-    return provider;
-  }
-  if (process.env.NODE_ENV === "production") {
-    throw new Error(
-      "A distributed RateLimitProvider must be configured in production",
-    );
-  }
   const provider = createLocalRateLimitProvider();
   globalForRateLimit.jenanRateLimitProvider = provider;
   return provider;

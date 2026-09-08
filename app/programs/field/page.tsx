@@ -1,5 +1,5 @@
 import { FieldOperationsWorkspace } from "@/components/programs/field-operations-workspace";
-import { PlatformShell } from "@/components/source/source-ui";
+import { PlatformShell } from "@/components/custom/platform-shell";
 import { requireUser } from "@/lib/auth/session";
 import { getRequestDictionary } from "@/lib/i18n/server";
 import type { Locale } from "@/types/i18n";

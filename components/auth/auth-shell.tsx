@@ -1,14 +1,12 @@
 import Link from "next/link";
+import Image from "next/image";
 import type { ReactNode } from "react";
 import {
   AuthServiceCarousel,
-  ThemeToggle,
-} from "@/components/source/source-controls";
-import {
-  JenanLogo,
   MarketUnavailable,
+  ThemeToggle,
   WorldNetwork,
-} from "@/components/source/source-ui";
+} from "@/components/custom/platform-shell";
 import { Icon } from "@/components/ui/icons";
 import { LanguageSwitcher } from "@/components/ui/language-switcher";
 import type { Locale } from "@/types/i18n";
@@ -28,10 +26,18 @@ interface AuthShellProps {
 export function AuthShell(props: AuthShellProps) {
   const ar = props.locale === "ar";
   return (
-    <main className="auth-page source-app">
+    <main className="auth-page">
       <div className="shell auth-shell">
         <header className="auth-top">
-          <JenanLogo />
+          <Link href="/" className="auth-logo" aria-label="Jenan BIZ home">
+            <Image
+              src="/assets/jenan-biz-logo-transparent.png"
+              alt="Jenan BIZ"
+              width={210}
+              height={128}
+              priority
+            />
+          </Link>
           <div className="top-tools">
             <ThemeToggle label={ar ? "المظهر" : "Theme"} />
             <LanguageSwitcher
@@ -40,11 +46,14 @@ export function AuthShell(props: AuthShellProps) {
             />
           </div>
         </header>
+
         <div className="world-layer">
           <WorldNetwork />
         </div>
+
         <section className="auth-stage">
           <AuthServiceCarousel locale={props.locale} />
+
           <div className="auth-card glass">
             <div className="auth-brand">
               <span className="eyebrow">
@@ -60,6 +69,7 @@ export function AuthShell(props: AuthShellProps) {
               <Link href={props.alternateHref}>{props.alternateLabel}</Link>
             </p>
           </div>
+
           <aside className="activity-panel glass card">
             <div className="card-title">
               {ar ? "خريطة النشاط العالمي" : "Global activity map"}
@@ -68,13 +78,8 @@ export function AuthShell(props: AuthShellProps) {
               <WorldNetwork />
             </div>
             <div className="notice">
-              <strong>
-                {ar ? "غير متاح حاليًا" : "Currently unavailable"}
-              </strong>
-              <br />
-              {ar
-                ? "تظهر البيانات بعد ربط مزود التحليلات الحقيقي."
-                : "Data appears after a real analytics provider is connected."}
+              <strong>{ar ? "منصة أعمال بلا حدود" : "Business without borders"}</strong>
+              <span>{ar ? "تشغيل موحد، رؤية عالمية، وقرارات أوضح." : "Unified operations, global vision, clearer decisions."}</span>
             </div>
           </aside>
         </section>

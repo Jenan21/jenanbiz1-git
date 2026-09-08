@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useState, type ReactNode } from "react";
-import { JenanLogo } from "@/components/source/source-ui";
+import { JenanLogo } from "@/components/custom/platform-shell";
 
 const navItems = [
   { href: "/admin", label: { ar: "نظرة عامة", en: "Overview" }, icon: "▣" },

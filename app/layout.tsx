@@ -2,13 +2,10 @@ import type { Metadata } from "next";
 import { cookies, headers } from "next/headers";
 import type { ReactNode } from "react";
 import { getDirection, resolveLocale } from "@/lib/i18n";
+import "@fontsource-variable/alexandria";
 import "@/styles/globals.css";
-import "@/styles/internal-workspace.css";
-import "@/styles/division-workspace.css";
-import "@/styles/module-identity.css";
-import "@/styles/module-showcase.css";
-import "@/styles/service-screens.css";
-import "@/styles/admin-catalog.css";
+import "@/styles/login-gateway.css";
+import "@/styles/global-home.css";
 
 export const metadata: Metadata = {
   metadataBase: new URL("https://jenanbiz.com"),
