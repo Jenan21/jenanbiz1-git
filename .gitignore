@@ -1,5 +1,7 @@
 /node_modules
 /.next
+/.next-e2e
+/.data
 /out
 .env*
 !.env.example
@@ -17,3 +19,8 @@ Thumbs.db
 /test-results
 /blob-report
 /.playwright-result-*
+.vercel
+lint.json
+lint-output.json
+audit-omit-dev.json
+e2e-summary.txt

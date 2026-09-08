@@ -1,8 +1,14 @@
 import { NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { getPlatformAdminSummary } from "@/lib/admin/platform-summary";
+import { hasPlatformAdminAccess } from "@/lib/auth/authorization";
+import { getCurrentUser } from "@/lib/auth/session";
 
 export async function GET() {
+  const user = await getCurrentUser();
+  if (!user || !hasPlatformAdminAccess(user.systemRole)) {
+    return NextResponse.json({ success: false, message: "Admin access required" }, { status: 403 });
+  }
   try {
     const [summary, users, organizations, robots, tasks] = await Promise.all([
       getPlatformAdminSummary(),

@@ -16,7 +16,9 @@ export default defineConfig({
   retries: process.env.CI ? 1 : 0,
   reporter: [["list"]],
   use: {
-    baseURL: process.env.PLAYWRIGHT_BASE_URL ?? "http://127.0.0.1:3101",
+    baseURL:
+      process.env.PLAYWRIGHT_BASE_URL ??
+      `http://127.0.0.1:${process.env.PLAYWRIGHT_PORT ?? "3101"}`,
     trace: "retain-on-failure",
     screenshot: "only-on-failure",
     video: "off",
@@ -42,6 +44,18 @@ export default defineConfig({
         /(review-pack.*|refinement-review|auth-contract-review|auth-new-direction-login-review|projects-interactions)\.spec\.ts/,
       use: { viewport: { width: 1440, height: 1000 }, locale: "ar-SA" },
       metadata: { appLocale: "ar" },
+    },
+    {
+      name: "admin-control-panel",
+      testMatch: /admin-control-panel\.spec\.ts/,
+      use: { viewport: { width: 1440, height: 1000 }, locale: "ar-SA" },
+      metadata: { appLocale: "ar" },
+    },
+    {
+      name: "projects-section",
+      testMatch: /projects-section\.spec\.ts/,
+      use: { viewport: { width: 1440, height: 1000 }, locale: "en-US" },
+      metadata: { appLocale: "en" },
     },
   ],
 });

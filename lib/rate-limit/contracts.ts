@@ -15,6 +15,7 @@ export interface RateLimitDecision {
 
 export interface RateLimitProvider {
   consume(input: RateLimitConsumeInput): Promise<RateLimitDecision>;
+  isReady(): Promise<boolean>;
 }
 
 /** Distributed adapters must implement atomic increment and expiry semantics. */

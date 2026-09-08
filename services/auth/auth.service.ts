@@ -191,6 +191,7 @@ export async function getSessionUser(token: string) {
   });
   if (
     !session ||
+    !session.user ||
     session.expiresAt <= new Date() ||
     session.user.status !== UserStatus.ACTIVE
   ) {

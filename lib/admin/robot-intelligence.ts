@@ -7,6 +7,7 @@ export type RobotRecord = {
   skill: number;
   experience: number;
   status: RobotStatus;
+  createdAt?: Date;
 };
 
 export type RobotDashboardSummary = {
@@ -114,7 +115,7 @@ export function summarizeRobotMetrics(robots: RobotRecord[]): RobotDashboardSumm
     visibleRobots,
     hiddenRobots,
     averageIntelligence,
-    dailyGeneration: 1000,
+    dailyGeneration: robots.filter((robot) => robot.createdAt && robot.createdAt >= new Date(Date.now() - 86_400_000)).length,
     approvalRate,
   };
 }

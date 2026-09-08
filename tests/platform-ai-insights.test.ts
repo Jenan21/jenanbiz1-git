@@ -1,9 +1,9 @@
 import { describe, expect, it } from "vitest";
-import { buildFallbackPlatformInsights } from "@/lib/ai/platform-intelligence";
+import { buildPlatformObservations } from "@/lib/ai/platform-intelligence";
 
-describe("buildFallbackPlatformInsights", () => {
-  it("creates actionable intelligence from live platform metrics", () => {
-    const insights = buildFallbackPlatformInsights({
+describe("buildPlatformObservations", () => {
+  it("creates traceable operational observations from persisted metrics", () => {
+    const observations = buildPlatformObservations({
       totalRobots: 12,
       visibleRobots: 8,
       reviewRobots: 2,
@@ -16,9 +16,9 @@ describe("buildFallbackPlatformInsights", () => {
       totalOrganizations: 7,
     });
 
-    expect(insights.length).toBeGreaterThanOrEqual(3);
-    expect(insights[0].title.length).toBeGreaterThan(0);
-    expect(insights[0].summary.length).toBeGreaterThan(0);
-    expect(insights[0].confidence).toBeGreaterThan(0);
+    expect(observations.length).toBeGreaterThanOrEqual(3);
+    expect(observations[0].title.length).toBeGreaterThan(0);
+    expect(observations[0].summary.length).toBeGreaterThan(0);
+    expect(observations.every((observation) => observation.source === "PERSISTED_RECORDS")).toBe(true);
   });
 });

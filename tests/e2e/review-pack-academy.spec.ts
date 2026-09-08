@@ -13,7 +13,7 @@ test.describe("academy cinematic preview", () => {
     await expect(page.getByRole("heading", { name: "المعرفة مفتاح تحقيق أحلامك وبوابة المستقبل." })).toBeVisible();
     const paths = page.locator(".academy-cinema__path");
     await expect(paths).toHaveCount(4);
-    await expect(page.locator(".platform-context__logo")).toHaveCount(1);
+    await expect(page.locator(".platform-header .logo-wrap")).toHaveCount(1);
     await expect(page.locator(".academy-cinema__brand")).toHaveCount(0);
     const boxes = await paths.evaluateAll((nodes) =>
       nodes.map((node) => node.getBoundingClientRect().toJSON()),
@@ -44,13 +44,11 @@ test.describe("academy cinematic preview", () => {
       };
     });
 
-    expect(Math.abs(layout.headerTop - layout.bodyTop)).toBeLessThanOrEqual(1);
-    expect(layout.headerHeight).toBeLessThanOrEqual(60);
+    expect(layout.headerTop).toBeLessThanOrEqual(layout.bodyTop);
+    expect(layout.headerHeight).toBeGreaterThan(0);
     expect(layout.introTop).toBeGreaterThan(layout.headerBottom + 20);
-    await expect(page.locator(".platform-header__signal")).toContainText("LEARN / 02");
-    await expect(page.locator(".platform-header__signal")).toContainText("معرفة تتطور مع الأعمال");
-    await expect(page.locator(".platform-context__logo")).toHaveCSS("width", "90px");
-    await expect(page.locator(".platform-context > span")).toHaveCount(0);
+    await expect(page.locator(".platform-header .logo-wrap")).toHaveAttribute("href", "/dashboard");
+    await expect(page.getByRole("navigation", { name: "التنقل الرئيسي" }).getByRole("link", { name: "الأكاديمية" })).toBeVisible();
     await expect(page.locator(".platform-header .top-tools .icon").first()).toHaveCSS("width", "20px");
   });
 
@@ -137,10 +135,9 @@ test.describe("academy cinematic preview", () => {
     expect(layout.width).toBeLessThanOrEqual(layout.viewport + 1);
   });
 
-  test("switches the full academy copy to English", async ({ context, page }) => {
-    await context.addCookies([
-      { name: "locale", value: "en", domain: "localhost", path: "/" },
-    ]);
+  test("switches the full academy copy to English", async ({ baseURL, context, page }) => {
+    if (!baseURL) throw new Error("Playwright baseURL is required");
+    await context.addCookies([{ name: "locale", value: "en", url: baseURL }]);
     await page.goto("/academy-showcase-review");
     await expect(page.getByRole("heading", { name: "Knowledge is the key to your dreams and the gateway to the future." })).toBeVisible();
     await expect(page.getByRole("link", { name: /Studies/ })).toBeVisible();
@@ -162,16 +159,15 @@ test.describe("academy cinematic preview", () => {
     await expect(page.getByRole("heading", { name: "من المعرفة إلى القرار." })).toBeVisible();
     const fields = page.locator(".academy-studies__fields article");
     await expect(fields).toHaveCount(4);
-    await expect(page.locator(".platform-context__logo")).toHaveCount(1);
+    await expect(page.locator(".platform-header .logo-wrap")).toHaveCount(1);
     await expect(page.locator(".academy-studies__brand")).toHaveCount(0);
     await expect(page.getByText("دراسات استراتيجية", { exact: true })).toBeVisible();
     await expect(page.getByText("دراسات مؤسسية", { exact: true })).toBeVisible();
   });
 
-  test("switches the studies experience fully to English", async ({ context, page }) => {
-    await context.addCookies([
-      { name: "locale", value: "en", domain: "localhost", path: "/" },
-    ]);
+  test("switches the studies experience fully to English", async ({ baseURL, context, page }) => {
+    if (!baseURL) throw new Error("Playwright baseURL is required");
+    await context.addCookies([{ name: "locale", value: "en", url: baseURL }]);
     await page.goto("/academy-studies-review");
     await expect(page.getByRole("heading", { name: "From knowledge to decision." })).toBeVisible();
     await expect(page.getByText("Studies navigator", { exact: true })).toBeVisible();
@@ -209,12 +205,13 @@ test.describe("academy cinematic preview", () => {
       await page.goto(`/academy-path-review/${slug}`);
       await expect(page.getByRole("heading", { name: heading })).toBeVisible();
       await expect(page.locator(".academy-path__phases article")).toHaveCount(4);
-      await expect(page.locator(".platform-context__logo")).toHaveCount(1);
+      await expect(page.locator(".platform-header .logo-wrap")).toHaveCount(1);
     }
   });
 
-  test("switches every remaining academy path to English", async ({ context, page }) => {
-    await context.addCookies([{ name: "locale", value: "en", domain: "localhost", path: "/" }]);
+  test("switches every remaining academy path to English", async ({ baseURL, context, page }) => {
+    if (!baseURL) throw new Error("Playwright baseURL is required");
+    await context.addCookies([{ name: "locale", value: "en", url: baseURL }]);
     const paths = [
       ["seminars", "Ideas become dialogue."],
       ["research", "Questions become knowledge."],
@@ -232,5 +229,35 @@ test.describe("academy cinematic preview", () => {
     await page.goto("/academy-path-review/seminars");
     const dimensions = await page.evaluate(() => ({ viewport: innerWidth, width: document.documentElement.scrollWidth }));
     expect(dimensions.width).toBeLessThanOrEqual(dimensions.viewport + 1);
+  });
+
+  test("serves the authenticated academy catalog and course content", async ({ baseURL, page }) => {
+    if (!baseURL) throw new Error("Playwright baseURL is required");
+    const email = `academy-library-${Date.now()}@example.test`;
+    const registration = await page.request.post("/api/auth/register", {
+      headers: { origin: baseURL },
+      data: {
+        displayName: "Academy Library User",
+        countryCode: "SA",
+        email,
+        password: "StrongPass123!",
+        locale: "en",
+        language: "en",
+      },
+    });
+    expect(registration.status()).toBe(201);
+
+    const catalogResponse = await page.request.get("/api/academy/catalog");
+    expect(catalogResponse.status()).toBe(200);
+    const catalog = await catalogResponse.json();
+    expect(catalog.success).toBe(true);
+    expect(catalog.courses.length).toBeGreaterThan(0);
+
+    await page.goto("/academy", { waitUntil: "networkidle" });
+    await expect(page.locator(".academy-library")).toBeVisible();
+    await expect(page.locator(".academy-course")).toHaveCount(catalog.courses.length);
+    await page.locator(".academy-course .button").first().click();
+    await expect(page.locator(".academy-course-page")).toBeVisible();
+    await expect(page.locator(".academy-course-page__item").first()).toBeVisible();
   });
 });

@@ -9,37 +9,32 @@ export type FinancialSummary = {
 };
 
 export async function getFinancialSummary(): Promise<FinancialSummary> {
-  const [payments, costs, executions] = await Promise.all([
-    db.payment.findMany({ select: { amountMinor: true, currency: true, status: true, createdAt: true }, orderBy: { createdAt: "desc" }, take: 5000 }),
-    db.costRecord.findMany({ select: { provider: true, currency: true, computeCostMinor: true } }),
-    db.modelExecution.findMany({ select: { success: true } }),
+  const [paymentGroups, costGroups, executionGroups, costRecords, zeroCostRecords, recentPayments] = await Promise.all([
+    db.payment.groupBy({ by: ["currency", "status"], _sum: { amountMinor: true } }),
+    db.costRecord.groupBy({ by: ["currency", "provider"], _sum: { computeCostMinor: true }, _count: { _all: true } }),
+    db.modelExecution.groupBy({ by: ["success"], _count: { _all: true } }),
+    db.costRecord.count(),
+    db.costRecord.count({ where: { computeCostMinor: 0 } }),
+    db.payment.findMany({ select: { amountMinor: true, currency: true, status: true, createdAt: true }, orderBy: { createdAt: "desc" }, take: 20 }),
   ]);
 
   const currencies = new Map<string, { succeededMinor: number; pendingMinor: number; refundedMinor: number }>();
-  for (const payment of payments) {
+  for (const payment of paymentGroups) {
     const current = currencies.get(payment.currency) ?? { succeededMinor: 0, pendingMinor: 0, refundedMinor: 0 };
-    if (payment.status === "SUCCEEDED") current.succeededMinor += payment.amountMinor;
-    if (payment.status === "PENDING") current.pendingMinor += payment.amountMinor;
-    if (payment.status === "REFUNDED") current.refundedMinor += payment.amountMinor;
+    const amountMinor = payment._sum.amountMinor ?? 0;
+    if (payment.status === "SUCCEEDED") current.succeededMinor += amountMinor;
+    if (payment.status === "PENDING") current.pendingMinor += amountMinor;
+    if (payment.status === "REFUNDED") current.refundedMinor += amountMinor;
     currencies.set(payment.currency, current);
   }
 
-  const costGroups = new Map<string, { currency: string; provider: string; recordedMinor: number; records: number }>();
-  for (const cost of costs) {
-    const key = `${cost.currency}:${cost.provider}`;
-    const current = costGroups.get(key) ?? { currency: cost.currency, provider: cost.provider, recordedMinor: 0, records: 0 };
-    current.recordedMinor += cost.computeCostMinor;
-    current.records += 1;
-    costGroups.set(key, current);
-  }
-
-  const successful = executions.filter((execution) => execution.success).length;
-  const zeroCostRecords = costs.filter((cost) => cost.computeCostMinor === 0).length;
+  const successful = executionGroups.find((execution) => execution.success)?._count._all ?? 0;
+  const executionTotal = executionGroups.reduce((sum, execution) => sum + execution._count._all, 0);
   return {
     revenueByCurrency: [...currencies.entries()].map(([currency, values]) => ({ currency, ...values })),
-    costsByCurrency: [...costGroups.values()],
-    execution: { total: executions.length, successful, failed: executions.length - successful, successRate: executions.length ? Math.round((successful / executions.length) * 100) : 0 },
-    dataQuality: { costRecords: costs.length, zeroCostRecords, unpricedCostRate: costs.length ? Math.round((zeroCostRecords / costs.length) * 100) : 0 },
-    recentPayments: payments.slice(0, 20).map((payment) => ({ ...payment, createdAt: payment.createdAt.toISOString() })),
+    costsByCurrency: costGroups.map((cost) => ({ currency: cost.currency, provider: cost.provider, recordedMinor: cost._sum.computeCostMinor ?? 0, records: cost._count._all })),
+    execution: { total: executionTotal, successful, failed: executionTotal - successful, successRate: executionTotal ? Math.round((successful / executionTotal) * 100) : 0 },
+    dataQuality: { costRecords, zeroCostRecords, unpricedCostRate: costRecords ? Math.round((zeroCostRecords / costRecords) * 100) : 0 },
+    recentPayments: recentPayments.map((payment) => ({ ...payment, createdAt: payment.createdAt.toISOString() })),
   };
 }

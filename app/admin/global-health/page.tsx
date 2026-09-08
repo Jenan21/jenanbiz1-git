@@ -5,29 +5,31 @@ import { AdminShell } from "@/components/admin/admin-shell";
 import { Card } from "@/components/ui/card";
 
 type HealthSummary = {
-  healthServices: Array<{ label: string; value: string; detail: string }>;
-  averageIntelligence: number;
+  status: string;
+  monitoringConfigured: boolean;
+  activeRobots: number;
+  activeTasks: number;
   pendingTasks: number;
+  failedExecutions: number;
+  pendingRetraining: number;
 };
 
 export default function GlobalHealthPage() {
   const [summary, setSummary] = useState<HealthSummary>({
-    healthServices: [],
-    averageIntelligence: 0,
+    status: "LOADING",
+    monitoringConfigured: false,
+    activeRobots: 0,
+    activeTasks: 0,
     pendingTasks: 0,
+    failedExecutions: 0,
+    pendingRetraining: 0,
   });
 
   useEffect(() => {
-    fetch("/api/admin/summary")
+    fetch("/api/admin/global-health")
       .then((response) => response.json())
       .then((payload) => {
-        if (payload?.success && payload.summary) {
-          setSummary({
-            healthServices: payload.summary.healthServices,
-            averageIntelligence: payload.summary.averageIntelligence,
-            pendingTasks: payload.summary.pendingTasks,
-          });
-        }
+        if (payload?.success && payload.health) setSummary(payload.health);
       })
       .catch(() => undefined);
   }, []);
@@ -39,17 +41,22 @@ export default function GlobalHealthPage() {
           <div>
             <div className="kicker">الصحة العامة</div>
             <h1>نظرة عامة على سلامة النظام</h1>
-            <p>راقب صحة البيئة الذكية بالكامل وتأكد أن محرك السياسة، أسطول الصائدين، وخطوط القرار تبقى مستقرة.</p>
+            <p>يعرض هذا القسم إشارات التشغيل المسجلة. وقت التشغيل وSLA لا يظهران قبل توصيل مصدر مراقبة معتمد.</p>
           </div>
           <div className="owner-summary">
-            <span className="pill"><span className="live-dot" /> الصحة مستقرة</span>
-            <strong>{summary.averageIntelligence}%</strong>
-            <small>النظم الأساسية متصلة</small>
+            <span className="pill"><span className="live-dot" /> بيانات السجل</span>
+            <strong>{summary.monitoringConfigured ? "مهيأ" : "—"}</strong>
+            <small>{summary.monitoringConfigured ? "مصدر مراقبة متصل" : "مصدر مراقبة غير مهيأ"}</small>
           </div>
         </section>
 
         <section className="stats-grid stats-grid--admin">
-          {summary.healthServices.map((item) => (
+          {[
+            { label: "روبوتات نشطة", value: summary.activeRobots, detail: "من سجل الروبوتات" },
+            { label: "مهام قيد التنفيذ", value: summary.activeTasks, detail: "نشطة أو قيد التنفيذ" },
+            { label: "تنفيذات نموذج فاشلة", value: summary.failedExecutions, detail: "من سجل التنفيذ" },
+            { label: "إعادة تدريب معلقة", value: summary.pendingRetraining, detail: "تحتاج متابعة" },
+          ].map((item) => (
             <Card key={item.label} className="stat-card">
               <span className="stat-card__icon accent-1" />
               <div>
@@ -68,9 +75,9 @@ export default function GlobalHealthPage() {
               <span>صحة التشغيل</span>
             </header>
             <div className="mission-list">
-              <div className="mission-item"><span className="mission-icon">✓</span><span>الخدمات الأساسية تعمل دون تدهور</span></div>
-              <div className="mission-item"><span className="mission-icon">✓</span><span>القرارات الآلية ضمن SLA المتوقع</span></div>
-              <div className="mission-item"><span className="mission-icon">✓</span><span>مراقبة المخاطر نشطة وقائمة المراجعة منخفضة</span></div>
+              <div className="mission-item"><span className="mission-icon">◎</span><span>حالة المراقبة: {summary.status}</span></div>
+              <div className="mission-item"><span className="mission-icon">◎</span><span>مهام تنتظر الموافقة: {summary.pendingTasks}</span></div>
+              <div className="mission-item"><span className="mission-icon">◎</span><span>لا توجد نسبة uptime أو SLA قبل ربط مزود مراقبة.</span></div>
             </div>
           </Card>
 
@@ -80,10 +87,10 @@ export default function GlobalHealthPage() {
               <span>حالة التصعيد</span>
             </header>
             <div className="generation-grid">
-              <div className="metric-pill good"><small>حرج</small><strong>0</strong></div>
-              <div className="metric-pill safe"><small>تحذير</small><strong>{Math.min(9, summary.pendingTasks)}</strong></div>
-              <div className="metric-pill safe"><small>معلومة</small><strong>12</strong></div>
-              <div className="metric-pill good"><small>محلولة</small><strong>21</strong></div>
+              <div className="metric-pill safe"><small>تنفيذات فاشلة</small><strong>{summary.failedExecutions}</strong></div>
+              <div className="metric-pill safe"><small>إعادة تدريب</small><strong>{summary.pendingRetraining}</strong></div>
+              <div className="metric-pill safe"><small>معلقة</small><strong>{summary.pendingTasks}</strong></div>
+              <div className="metric-pill safe"><small>المراقبة</small><strong>{summary.monitoringConfigured ? "مهيأة" : "غير مهيأة"}</strong></div>
             </div>
           </Card>
         </section>

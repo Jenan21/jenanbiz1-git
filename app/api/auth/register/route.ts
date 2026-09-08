@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { ZodError } from "zod";
+import { isPublicRegistrationAllowed } from "@/lib/auth/registration-policy";
 import { getRequestContext, hasValidOrigin } from "@/lib/auth/request";
 import { setSessionCookie } from "@/lib/auth/session";
 import { registerSchema } from "@/lib/auth/validation";
@@ -12,6 +13,8 @@ import { checkAuthRateLimit } from "@/lib/rate-limit/auth-rate-limit";
 export async function POST(request: NextRequest) {
   if (!hasValidOrigin(request))
     return NextResponse.json({ error: "INVALID_ORIGIN" }, { status: 403 });
+  if (!isPublicRegistrationAllowed())
+    return NextResponse.json({ error: "REGISTRATION_CLOSED" }, { status: 403 });
   try {
     const payload: unknown = await request.json();
     const email =

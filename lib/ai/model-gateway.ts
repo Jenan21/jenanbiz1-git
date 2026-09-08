@@ -46,11 +46,19 @@ class OpenAIResponsesModel implements AIModel {
       body: JSON.stringify({ model: this.model, input: request.prompt }),
     });
     if (!response.ok) throw new Error(`OpenAI request failed with status ${response.status}`);
-    const data = await response.json() as { output_text?: string; usage?: { input_tokens?: number; output_tokens?: number } };
+    const data = await response.json() as {
+      output_text?: string;
+      output?: Array<{ content?: Array<{ type?: string; text?: string }> }>;
+      usage?: { input_tokens?: number; output_tokens?: number };
+    };
+    const outputText = data.output_text ?? data.output
+      ?.flatMap((item) => item.content ?? [])
+      .find((item) => item.type === "output_text")
+      ?.text ?? "";
     return {
       provider: this.provider,
       model: this.model,
-      text: data.output_text ?? "",
+      text: outputText,
       inputTokens: data.usage?.input_tokens ?? 0,
       outputTokens: data.usage?.output_tokens ?? 0,
       latencyMs: Date.now() - started,

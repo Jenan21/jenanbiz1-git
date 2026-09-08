@@ -5,6 +5,7 @@ import { LogoutButton } from "@/components/auth/logout-button";
 import { ThemeToggle } from "@/components/source/source-controls";
 import { Icon, type IconName } from "@/components/ui/icons";
 import { LanguageSwitcher } from "@/components/ui/language-switcher";
+import { NotificationMenu } from "@/components/source/notification-menu";
 import type { Locale } from "@/types/i18n";
 
 export function JenanLogo({ compact = false }: { compact?: boolean }) {
@@ -75,6 +76,7 @@ const platformNav = [
   ["/academy", "الأكاديمية", "Academy"],
   ["/market", "السوق", "Market"],
   ["/software", "البرمجيات", "Software"],
+  ["/programs", "برامج المنشآت", "Organization Programs"],
   ["/talent", "المواهب", "Talent"],
   ["/marketing", "التسويق", "Marketing"],
   ["/funding-eligibility", "أهلية التمويل", "Funding"],
@@ -106,7 +108,7 @@ export function PlatformShell({
   const navigation = admin ? adminNav : platformNav;
   return (
     <div className={`source-app ${immersive ? "source-app--immersive" : ""}`}>
-      <div className="shell">
+      <div className={`shell ${immersive ? "shell--immersive" : ""}`}>
         <header className="platform-header glass">
           <JenanLogo />
           <nav
@@ -147,6 +149,7 @@ export function PlatformShell({
           </details>
           <div className="top-tools">
             <ThemeToggle label={ar ? "المظهر" : "Theme"} />
+            <NotificationMenu locale={locale} />
             <LanguageSwitcher
               locale={locale}
               label={ar ? "Switch to English" : "التبديل إلى العربية"}

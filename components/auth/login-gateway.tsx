@@ -279,7 +279,8 @@ export function LoginGateway({ locale, languageLabel, labels }: LoginGatewayProp
   const ar = locale === "ar";
   const [state, setState] = useState<GatewayState>("initial");
   const [activeMetric, setActiveMetric] = useState(0);
-  const [market, setMarket] = useState<LiveMarketPayload | null>(null);
+  // No live market data provider is configured; the panel always renders labeled sample figures.
+  const [market] = useState<LiveMarketPayload | null>({ state: "error", provider: null, updatedAt: null, staleAt: null, instruments: [] });
   const gatewayRef = useRef<HTMLButtonElement>(null);
   const registerGatewayRef = useRef<HTMLButtonElement>(null);
   const lastGatewayRef = useRef<Exclude<GatewayState, "initial">>("login");
@@ -294,22 +295,6 @@ export function LoginGateway({ locale, languageLabel, labels }: LoginGatewayProp
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, [state]);
-
-  useEffect(() => {
-    const controller = new AbortController();
-    async function refreshMarket() {
-      try {
-        const response = await fetch("/api/market/live", { cache: "no-store", signal: controller.signal });
-        const payload = (await response.json()) as LiveMarketPayload;
-        if (!controller.signal.aborted) setMarket(payload);
-      } catch {
-        if (!controller.signal.aborted) setMarket({ state: "error", provider: null, updatedAt: null, staleAt: null, instruments: [] });
-      }
-    }
-    void refreshMarket();
-    const interval = window.setInterval(() => void refreshMarket(), 30_000);
-    return () => { controller.abort(); window.clearInterval(interval); };
-  }, []);
 
   useEffect(() => {
     if (state !== "initial") {

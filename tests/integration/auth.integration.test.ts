@@ -164,6 +164,18 @@ describe.sequential("real PostgreSQL authentication integration", () => {
     ).toBe(0);
   });
 
+  it("rejects an orphaned session result without throwing", async () => {
+    const registered = await registerUser(baseRegistration);
+    const session = await db.session.findUniqueOrThrow({
+      where: { tokenHash: hashSessionToken(registered.token) },
+    });
+    await db.user.delete({ where: { id: registered.user.id } });
+    await expect(getSessionUser(registered.token)).resolves.toBeNull();
+    expect(
+      await db.session.findUnique({ where: { id: session.id } }),
+    ).toBeNull();
+  });
+
   it("enforces platform RBAC for USER and ADMIN", async () => {
     const registered = await registerUser(baseRegistration);
     expect(canAccessAdmin(registered.user.systemRole)).toBe(false);

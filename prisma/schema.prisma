@@ -25,6 +25,20 @@ enum NotificationStatus {
   ARCHIVED
 }
 
+enum CommunitySocialPlatform {
+  FACEBOOK
+  INSTAGRAM
+  TIKTOK
+  YOUTUBE
+  SNAPCHAT
+  X
+}
+
+enum CommunityAccessStatus {
+  ACTIVE
+  REVOKED
+}
+
 enum SubscriptionStatus {
   TRIALING
   ACTIVE
@@ -105,6 +119,107 @@ enum ProjectAssessmentType {
   RISK
   TECHNICAL
   COMPLIANCE
+}
+
+enum MarketListingKind {
+  PROJECT
+  BUSINESS
+}
+
+enum MarketListingStatus {
+  DRAFT
+  PUBLISHED
+  PAUSED
+  ARCHIVED
+}
+
+enum MarketInquiryStatus {
+  NEW
+  CONTACTED
+  CLOSED
+}
+
+enum FundingAssessmentStatus {
+  COMPLETED
+  ARCHIVED
+}
+
+enum LearnerEnrollmentStatus {
+  ENROLLED
+  COMPLETED
+}
+
+enum JobPostingStatus {
+  DRAFT
+  PUBLISHED
+  CLOSED
+  ARCHIVED
+}
+
+enum JobWorkMode {
+  ON_SITE
+  HYBRID
+  REMOTE
+}
+
+enum JobApplicationStatus {
+  SUBMITTED
+  UNDER_REVIEW
+  WITHDRAWN
+  REJECTED
+  ACCEPTED
+}
+
+enum MarketingCampaignStatus {
+  DRAFT
+  ACTIVE
+  PAUSED
+  ARCHIVED
+}
+
+enum MarketingChannel {
+  CONTENT
+  EMAIL
+  SOCIAL
+  PAID_SEARCH
+  DIRECT
+}
+
+enum MarketingLeadStatus {
+  NEW
+  QUALIFIED
+  CONTACTED
+  CONVERTED
+  LOST
+}
+
+enum ServiceCustomerType {
+  INDIVIDUAL
+  ORGANIZATION
+}
+
+enum OrganizationProgramKey {
+  FINANCE
+  PEOPLE
+  FIELD_OPERATIONS
+  FLEET
+}
+
+enum OrganizationProgramStatus {
+  ACTIVE
+  SUSPENDED
+  ARCHIVED
+}
+
+enum FinancialEntryType {
+  INCOME
+  EXPENSE
+}
+
+enum FleetVehicleStatus {
+  ACTIVE
+  MAINTENANCE
+  INACTIVE
 }
 
 enum ReviewVerdict {
@@ -356,12 +471,22 @@ model User {
   memberships             OrganizationMember[]
   sessions                Session[]
   notifications           Notification[]
+  communityAccessGrants   CommunityAccessGrant[]
   auditLogs               AuditLog[]               @relation("AuditActor")
   hierarchyEntries        EmployeeHierarchy[]      @relation("HierarchyUser")
   supervisedEntries       EmployeeHierarchy[]      @relation("HierarchySupervisor")
   managedEntries          EmployeeHierarchy[]      @relation("HierarchyManager")
   uploadedFiles           FileAsset[]              @relation("FileUploader")
   createdProjects         Project[]                @relation("ProjectCreator")
+  marketListings          MarketListing[]          @relation("MarketListingCreator")
+  marketInquiries         MarketInquiry[]          @relation("MarketInquiryRequester")
+  fundingAssessments      FundingAssessment[]
+  learnerEnrollments      LearnerEnrollment[]
+  learnerLessonCompletions LearnerLessonCompletion[]
+  createdJobPostings      JobPosting[]             @relation("JobPostingCreator")
+  jobApplications         JobApplication[]         @relation("JobApplicant")
+  marketingCampaigns      MarketingCampaign[]      @relation("MarketingCampaignCreator")
+  payments                Payment[]                @relation("PaymentPayer")
   academyStaffAssignments AcademyStaffAssignment[]
   createdAt               DateTime                 @default(now())
   updatedAt               DateTime                 @updatedAt
@@ -393,8 +518,80 @@ model Organization {
   files         FileAsset[]
   auditLogs     AuditLog[]
   projects      Project[]
+  marketListings MarketListing[]
+  jobPostings   JobPosting[]
+  marketingCampaigns MarketingCampaign[]
+  businessPrograms OrganizationProgram[]
+  financialEntries FinancialEntry[]
+  fieldAssignments FieldAssignment[]
+  fleetVehicles FleetVehicle[]
   createdAt     DateTime             @default(now())
   updatedAt     DateTime             @updatedAt
+}
+
+model OrganizationProgram {
+  id             String                    @id @default(cuid())
+  organizationId String
+  key            OrganizationProgramKey
+  status         OrganizationProgramStatus @default(ACTIVE)
+  settings       Json?
+  createdById    String
+  organization   Organization              @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  createdAt      DateTime                  @default(now())
+  updatedAt      DateTime                  @updatedAt
+
+  @@unique([organizationId, key])
+  @@index([organizationId, status])
+}
+
+model FinancialEntry {
+  id             String             @id @default(cuid())
+  organizationId String
+  type           FinancialEntryType
+  amountMinor    Int
+  currency       String             @default("SAR")
+  description    String
+  occurredAt     DateTime
+  createdById    String
+  organization   Organization       @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  createdAt      DateTime           @default(now())
+  updatedAt      DateTime           @updatedAt
+
+  @@index([organizationId, occurredAt])
+  @@index([organizationId, type])
+}
+
+model FieldAssignment {
+  id               String              @id @default(cuid())
+  organizationId   String
+  assigneeMemberId String?
+  title            String
+  description      String?
+  status           TaskStatus          @default(DRAFT)
+  dueAt            DateTime?
+  createdById      String
+  organization     Organization        @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  assigneeMember   OrganizationMember? @relation("FieldAssignmentAssignee", fields: [assigneeMemberId], references: [id], onDelete: SetNull)
+  createdAt        DateTime            @default(now())
+  updatedAt        DateTime            @updatedAt
+
+  @@index([organizationId, status])
+  @@index([assigneeMemberId, status])
+}
+
+model FleetVehicle {
+  id             String             @id @default(cuid())
+  organizationId String
+  label          String
+  plateNumber    String
+  status         FleetVehicleStatus @default(ACTIVE)
+  createdById    String
+  organization   Organization       @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  createdAt      DateTime           @default(now())
+  updatedAt      DateTime           @updatedAt
+
+  @@unique([organizationId, plateNumber])
+  @@index([organizationId, status])
 }
 
 model EmployeeHierarchy {
@@ -422,7 +619,9 @@ model OrganizationMember {
   user           User                     @relation(fields: [userId], references: [id], onDelete: Cascade)
   role           Role?                    @relation(fields: [roleId], references: [id], onDelete: SetNull)
   status         OrganizationMemberStatus @default(INVITED)
+  isOwner        Boolean                  @default(false)
   joinedAt       DateTime?
+  fieldAssignments FieldAssignment[]      @relation("FieldAssignmentAssignee")
   createdAt      DateTime                 @default(now())
   updatedAt      DateTime                 @updatedAt
 
@@ -496,6 +695,30 @@ model Notification {
   @@index([userId, status])
 }
 
+model CommunityAccessGrant {
+  id        String                  @id @default(cuid())
+  userId    String
+  user      User                    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  platform  CommunitySocialPlatform
+  status    CommunityAccessStatus   @default(ACTIVE)
+  grantedAt DateTime                @default(now())
+  revokedAt DateTime?
+  createdAt DateTime                @default(now())
+  updatedAt DateTime                @updatedAt
+
+  @@unique([userId, platform])
+  @@index([userId, status])
+}
+
+model PlatformSocialLink {
+  id        String                  @id @default(cuid())
+  platform  CommunitySocialPlatform @unique
+  url       String
+  isActive  Boolean                 @default(true)
+  createdAt DateTime                @default(now())
+  updatedAt DateTime                @updatedAt
+}
+
 model AuditLog {
   id             String        @id @default(cuid())
   actorId        String?
@@ -551,9 +774,12 @@ model Subscription {
 
 model Payment {
   id             String        @id @default(cuid())
-  organizationId String
+  organizationId String?
+  payerUserId    String?
   subscriptionId String?
-  organization   Organization  @relation(fields: [organizationId], references: [id], onDelete: Restrict)
+  marketingCampaign MarketingCampaign? @relation("MarketingCampaignPayment")
+  organization   Organization? @relation(fields: [organizationId], references: [id], onDelete: Restrict)
+  payerUser      User?         @relation("PaymentPayer", fields: [payerUserId], references: [id], onDelete: Restrict)
   subscription   Subscription? @relation(fields: [subscriptionId], references: [id], onDelete: SetNull)
   amountMinor    Int
   currency       String        @default("SAR")
@@ -566,6 +792,7 @@ model Payment {
   updatedAt      DateTime      @updatedAt
 
   @@index([organizationId, status])
+  @@index([payerUserId, status])
   @@index([subscriptionId])
 }
 
@@ -636,6 +863,7 @@ model RobotTask {
   costs              CostRecord[]
   learningLogs       LearningLog[]
   runtimeAllocations AgentRuntimeAllocation[]
+  marketingCampaign MarketingCampaign? @relation("MarketingCampaignTask")
 
   @@index([robotId, status])
 }
@@ -942,6 +1170,7 @@ model AcademyCourse {
   exams               AcademyExam[]
   skills              CourseSkill[]
   completions         CourseCompletion[]
+  learnerEnrollments  LearnerEnrollment[]
   createdAt           DateTime           @default(now())
   updatedAt           DateTime           @updatedAt
 
@@ -955,10 +1184,39 @@ model AcademyLesson {
   sequence  Int
   content   String?
   course    AcademyCourse @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  learnerCompletions LearnerLessonCompletion[]
   createdAt DateTime      @default(now())
   updatedAt DateTime      @updatedAt
 
   @@unique([courseId, sequence])
+}
+
+model LearnerEnrollment {
+  id          String                  @id @default(cuid())
+  userId      String
+  courseId    String
+  status      LearnerEnrollmentStatus @default(ENROLLED)
+  enrolledAt  DateTime                @default(now())
+  completedAt DateTime?
+  user        User                    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  course      AcademyCourse           @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  createdAt   DateTime                @default(now())
+  updatedAt   DateTime                @updatedAt
+
+  @@unique([userId, courseId])
+  @@index([userId, status])
+}
+
+model LearnerLessonCompletion {
+  id          String        @id @default(cuid())
+  userId      String
+  lessonId    String
+  completedAt DateTime      @default(now())
+  user        User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  lesson      AcademyLesson @relation(fields: [lessonId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, lessonId])
+  @@index([userId])
 }
 
 model AcademyLab {
@@ -1207,6 +1465,7 @@ model Project {
   phases                ProjectPhase[]
   assessments           ProjectAssessment[]
   intelligenceSnapshots ProjectIntelligenceSnapshot[]
+  marketListings        MarketListing[]
   createdAt             DateTime                      @default(now())
   updatedAt             DateTime                      @updatedAt
 
@@ -1266,6 +1525,148 @@ model ProjectIntelligenceSnapshot {
   createdAt       DateTime @default(now())
 
   @@index([projectId, fetchedAt])
+}
+
+model MarketListing {
+  id            String              @id @default(cuid())
+  createdById   String
+  projectId     String?
+  organizationId String?
+  kind          MarketListingKind
+  status        MarketListingStatus @default(DRAFT)
+  title         String
+  slug          String              @unique
+  summary       String
+  sector        String?
+  countryCode   String?
+  currency      String              @default("SAR")
+  createdBy     User                @relation("MarketListingCreator", fields: [createdById], references: [id], onDelete: Restrict)
+  project       Project?            @relation(fields: [projectId], references: [id], onDelete: SetNull)
+  organization  Organization?       @relation(fields: [organizationId], references: [id], onDelete: SetNull)
+  inquiries     MarketInquiry[]
+  createdAt     DateTime            @default(now())
+  updatedAt     DateTime            @updatedAt
+
+  @@index([status, kind, createdAt])
+  @@index([createdById, status])
+  @@index([countryCode, sector])
+}
+
+model MarketInquiry {
+  id          String              @id @default(cuid())
+  listingId   String
+  requesterId String
+  message     String
+  status      MarketInquiryStatus @default(NEW)
+  listing     MarketListing       @relation(fields: [listingId], references: [id], onDelete: Cascade)
+  requester   User                @relation("MarketInquiryRequester", fields: [requesterId], references: [id], onDelete: Cascade)
+  createdAt   DateTime            @default(now())
+  updatedAt   DateTime            @updatedAt
+
+  @@unique([listingId, requesterId])
+  @@index([requesterId, status])
+  @@index([listingId, status])
+}
+
+model FundingAssessment {
+  id                   String                  @id @default(cuid())
+  userId               String
+  countryCode          String
+  organizationType     String
+  growthStage          String
+  requestedAmountMinor Int
+  monthlyRevenueMinor  Int
+  yearsOperating       Int
+  score                Int
+  status               FundingAssessmentStatus @default(COMPLETED)
+  user                 User                    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt            DateTime                @default(now())
+  updatedAt            DateTime                @updatedAt
+
+  @@index([userId, status, createdAt])
+  @@index([countryCode, createdAt])
+}
+
+model JobPosting {
+  id             String           @id @default(cuid())
+  createdById    String
+  organizationId String?
+  title          String
+  slug           String           @unique
+  description    String
+  department     String?
+  countryCode    String?
+  city           String?
+  workMode       JobWorkMode      @default(ON_SITE)
+  status         JobPostingStatus @default(DRAFT)
+  createdBy      User             @relation("JobPostingCreator", fields: [createdById], references: [id], onDelete: Restrict)
+  organization   Organization?    @relation(fields: [organizationId], references: [id], onDelete: SetNull)
+  applications   JobApplication[]
+  createdAt      DateTime         @default(now())
+  updatedAt      DateTime         @updatedAt
+
+  @@index([status, workMode, createdAt])
+  @@index([createdById, status])
+  @@index([countryCode, city])
+}
+
+model JobApplication {
+  id          String               @id @default(cuid())
+  jobPostingId String
+  applicantId String
+  message     String?
+  status      JobApplicationStatus @default(SUBMITTED)
+  jobPosting  JobPosting           @relation(fields: [jobPostingId], references: [id], onDelete: Cascade)
+  applicant   User                 @relation("JobApplicant", fields: [applicantId], references: [id], onDelete: Cascade)
+  createdAt   DateTime             @default(now())
+  updatedAt   DateTime             @updatedAt
+
+  @@unique([jobPostingId, applicantId])
+  @@index([applicantId, status])
+  @@index([jobPostingId, status])
+}
+
+model MarketingCampaign {
+  id             String                  @id @default(cuid())
+  createdById    String
+  organizationId String?
+  name           String
+  slug           String                  @unique
+  objective      String
+  channel        MarketingChannel
+  customerType   ServiceCustomerType     @default(INDIVIDUAL)
+  status         MarketingCampaignStatus @default(DRAFT)
+  budgetMinor    Int                     @default(0)
+  currency       String                  @default("SAR")
+  paymentId      String?                 @unique
+  robotTaskId    String?                 @unique
+  startsAt       DateTime?
+  endsAt         DateTime?
+  createdBy      User                    @relation("MarketingCampaignCreator", fields: [createdById], references: [id], onDelete: Restrict)
+  organization   Organization?           @relation(fields: [organizationId], references: [id], onDelete: SetNull)
+  payment        Payment?                @relation("MarketingCampaignPayment", fields: [paymentId], references: [id], onDelete: SetNull)
+  robotTask      RobotTask?              @relation("MarketingCampaignTask", fields: [robotTaskId], references: [id], onDelete: SetNull)
+  leads          MarketingLead[]
+  createdAt      DateTime                @default(now())
+  updatedAt      DateTime                @updatedAt
+
+  @@index([createdById, status])
+  @@index([status, channel, createdAt])
+}
+
+model MarketingLead {
+  id         String               @id @default(cuid())
+  campaignId String
+  label      String
+  source     String?
+  status     MarketingLeadStatus  @default(NEW)
+  valueMinor Int?
+  campaign   MarketingCampaign    @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  createdAt  DateTime             @default(now())
+  updatedAt  DateTime             @updatedAt
+
+  @@index([campaignId, status])
+  @@index([status, createdAt])
 }
 
 model AcademyCollege {

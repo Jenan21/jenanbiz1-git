@@ -1,0 +1,1 @@
+ALTER TABLE "OrganizationMember" ADD COLUMN "isOwner" BOOLEAN NOT NULL DEFAULT false;

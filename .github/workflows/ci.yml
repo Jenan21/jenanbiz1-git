@@ -1,0 +1,61 @@
+name: Continuous verification
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+concurrency:
+  group: verification-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    services:
+      postgres:
+        image: postgres:17-bookworm
+        env:
+          POSTGRES_DB: jenanbiz
+          POSTGRES_USER: jenanbiz_app
+          POSTGRES_PASSWORD: ci-postgres-password
+        options: >-
+          --health-cmd "pg_isready -U jenanbiz_app -d jenanbiz"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 12
+        ports:
+          - 5432:5432
+      redis:
+        image: redis:7.4-alpine
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 12
+        ports:
+          - 6379:6379
+    env:
+      AUTH_SECRET: ci-auth-secret-not-for-production
+      DATABASE_URL: postgresql://jenanbiz_app:ci-postgres-password@127.0.0.1:5432/jenanbiz?schema=public
+      METRICS_TOKEN: ci-metrics-token-not-for-production
+      REDIS_URL: redis://127.0.0.1:6379
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+      - run: cp .env.example .env
+      - run: npx prisma generate
+      - run: npm run db:migrate
+        - run: |
+          createdb -h 127.0.0.1 -U jenanbiz_app jenanbiz_migration_verify
+          DATABASE_URL=postgresql://jenanbiz_app:ci-postgres-password@127.0.0.1:5432/jenanbiz_migration_verify?schema=public npm run db:migrate
+      - run: npm run typecheck
+      - run: npm run lint
+      - run: npm run test
+      - run: npm run build

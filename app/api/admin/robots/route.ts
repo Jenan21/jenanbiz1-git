@@ -14,6 +14,10 @@ const generationSchema = z.object({
 });
 
 export async function GET() {
+  const user = await getCurrentUser();
+  if (!user || !hasPlatformAdminAccess(user.systemRole)) {
+    return NextResponse.json({ success: false, message: "Admin access required" }, { status: 403 });
+  }
   try {
     const snapshot = await getRobotDashboardSnapshot();
     return NextResponse.json({

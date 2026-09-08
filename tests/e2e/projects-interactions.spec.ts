@@ -116,8 +116,9 @@ test.describe("projects interactive previews", () => {
     expect(dimensions.width).toBeLessThanOrEqual(dimensions.viewport + 1);
   });
 
-  test("project previews fully switch to English", async ({ context, page }) => {
-    await context.addCookies([{ name: "locale", value: "en", domain: "localhost", path: "/" }]);
+  test("project previews fully switch to English", async ({ baseURL, context, page }) => {
+    if (!baseURL) throw new Error("Playwright baseURL is required");
+    await context.addCookies([{ name: "locale", value: "en", url: baseURL }]);
     await page.goto("/projects-analysis-review");
     await expect(page.getByRole("heading", { name: "Project analysis" })).toBeVisible();
     await expect(page.getByText("Local simulation — data is not saved")).toBeVisible();

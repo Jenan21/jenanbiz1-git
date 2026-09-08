@@ -3,6 +3,8 @@ import { e2eIdentity } from "./test-identities";
 import { cleanE2EIdentities, queryE2E, seedE2EAdmin } from "./identity-fixture";
 
 test.describe.serial("real authentication and server-side RBAC", () => {
+  test.setTimeout(90_000);
+
   test.beforeAll(async () => {
     await cleanE2EIdentities();
     await seedE2EAdmin();

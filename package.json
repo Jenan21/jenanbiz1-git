@@ -36,12 +36,13 @@
     "@prisma/adapter-pg": "7.9.1",
     "@prisma/client": "7.9.1",
     "exceljs": "^4.4.0",
-    "mammoth": "^1.12.1",
+    "mammoth": "^1.12.2",
     "next": "16.3.0",
     "node-vibrant": "^4.0.4",
     "pdf-lib": "^1.17.1",
     "react": "19.2.8",
     "react-dom": "19.2.8",
+    "redis": "^6.2.1",
     "sharp": "^0.35.3",
     "zod": "^4.0.0"
   },
@@ -60,7 +61,22 @@
     "typescript": "^5.9.0",
     "vitest": "^3.2.0"
   },
+  "browserslist": [
+    "Chrome >= 111",
+    "Edge >= 111",
+    "Firefox >= 113",
+    "Safari >= 16.2",
+    "iOS >= 16.2",
+    "Samsung >= 23"
+  ],
   "engines": {
     "node": ">=20.9.0"
+  },
+  "overrides": {
+    "@xmldom/xmldom": "0.8.15",
+    "fast-uri": "3.1.7",
+    "mysql2": "3.24.4",
+    "deepmerge-ts": "8.0.2",
+    "uuid": "11.1.1"
   }
 }

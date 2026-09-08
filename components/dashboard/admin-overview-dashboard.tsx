@@ -10,6 +10,8 @@ type SummaryPayload = {
   reviewRobots: number;
   hiddenRobots: number;
   averageIntelligence: number;
+  averageSkill: number;
+  averageExperience: number;
   committeeApprovalRate: number;
   committeeReviews: number;
   totalTasks: number;
@@ -31,6 +33,7 @@ type SummaryPayload = {
 
 const emptySummary: SummaryPayload = {
   totalRobots: 0, visibleRobots: 0, reviewRobots: 0, hiddenRobots: 0, averageIntelligence: 0, committeeApprovalRate: 0,
+  averageSkill: 0, averageExperience: 0,
   totalTasks: 0, activeTasks: 0, completedTasks: 0, totalOrganizations: 0, committeeReviews: 0, pendingTasks: 0,
   leaders: [], revenue: { succeededMinor: 0, pendingMinor: 0, currency: "SAR" }, execution: { successful: 0, failed: 0, successRate: 0 },
   verifiedEvidence: 0, unverifiedEvidence: 0, topRobots: [], recentAudit: [],
@@ -41,49 +44,78 @@ export function AdminOverviewDashboard() {
     return "ar";
   });
   const [summary, setSummary] = useState<SummaryPayload>(emptySummary);
+  const [isSummaryReady, setIsSummaryReady] = useState(false);
+  const [isRefreshing, setIsRefreshing] = useState(false);
+  const [summaryError, setSummaryError] = useState(false);
+  const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
 
   useEffect(() => {
     const frame = requestAnimationFrame(() => {
-      const locale = document.cookie
-        .split(";")
-        .map((item) => item.trim())
-        .find((item) => item.startsWith("locale="))
-        ?.split("=")[1];
-      const saved = localStorage.getItem("jenan-admin-lang");
-      setLang(locale === "ar" || locale === "en" ? locale : saved === "ar" || saved === "en" ? saved : "ar");
+      try {
+        const locale = document.cookie
+          .split(";")
+          .map((item) => item.trim())
+          .find((item) => item.startsWith("locale="))
+          ?.split("=")[1];
+        const saved = localStorage.getItem("jenan-admin-lang");
+        const nextLocale = locale === "ar" || locale === "en" ? locale : saved === "ar" || saved === "en" ? saved : "ar";
+        setLang(nextLocale);
+      } catch {
+        setLang("ar");
+      }
     });
     return () => cancelAnimationFrame(frame);
   }, []);
 
+  async function loadSummary() {
+    setIsRefreshing(true);
+    setSummaryError(false);
+    try {
+      const response = await fetch("/api/admin/summary", { cache: "no-store" });
+      if (!response.ok) {
+        throw new Error(`Request failed with status ${response.status}`);
+      }
+      const payload = await response.json();
+      const nextSummary = payload?.summary ?? {};
+      setSummary({
+        totalRobots: Number(nextSummary.totalRobots ?? 0),
+        visibleRobots: Number(nextSummary.visibleRobots ?? 0),
+        reviewRobots: Number(nextSummary.reviewRobots ?? 0),
+        hiddenRobots: Number(nextSummary.hiddenRobots ?? 0),
+        averageIntelligence: Number(nextSummary.averageIntelligence ?? 0),
+        averageSkill: Number(nextSummary.averageSkill ?? 0),
+        averageExperience: Number(nextSummary.averageExperience ?? 0),
+        committeeApprovalRate: Number(nextSummary.committeeApprovalRate ?? 0),
+        totalTasks: Number(nextSummary.totalTasks ?? 0),
+        activeTasks: Number(nextSummary.activeTasks ?? 0),
+        completedTasks: Number(nextSummary.completedTasks ?? 0),
+        totalOrganizations: Number(nextSummary.totalOrganizations ?? 0),
+        pendingTasks: Number(nextSummary.pendingTasks ?? 0),
+        committeeReviews: Number(nextSummary.committeeReviews ?? 0),
+        leaders: Array.isArray(nextSummary.leaders) ? nextSummary.leaders : [],
+        missionAssignments: Array.isArray(nextSummary.missionAssignments) ? nextSummary.missionAssignments : [],
+        totalSkillGain: Number(nextSummary.totalSkillGain ?? 0),
+        readyRobots: Number(nextSummary.readyRobots ?? 0),
+        revenue: nextSummary.revenue ?? { succeededMinor: 0, pendingMinor: 0, currency: "SAR" },
+        execution: nextSummary.execution ?? { successful: 0, failed: 0, successRate: 0 },
+        verifiedEvidence: Number(nextSummary.verifiedEvidence ?? 0),
+        unverifiedEvidence: Number(nextSummary.unverifiedEvidence ?? 0),
+        topRobots: Array.isArray(nextSummary.topRobots) ? nextSummary.topRobots : [],
+        recentAudit: Array.isArray(nextSummary.recentAudit) ? nextSummary.recentAudit : [],
+      });
+      setIsSummaryReady(true);
+      setLastUpdated(new Date());
+    } catch {
+      setSummaryError(true);
+      setIsSummaryReady(false);
+    } finally {
+      setIsRefreshing(false);
+    }
+  }
+
   useEffect(() => {
-    fetch("/api/admin/summary")
-      .then((response) => response.json())
-      .then((payload) => {
-        if (payload?.success && payload.summary) {
-          setSummary({
-            totalRobots: payload.summary.totalRobots,
-            visibleRobots: payload.summary.visibleRobots,
-            reviewRobots: payload.summary.reviewRobots,
-            hiddenRobots: payload.summary.hiddenRobots,
-            averageIntelligence: payload.summary.averageIntelligence,
-            committeeApprovalRate: payload.summary.committeeApprovalRate,
-            totalTasks: payload.summary.totalTasks,
-            activeTasks: payload.summary.activeTasks,
-            completedTasks: payload.summary.completedTasks,
-            totalOrganizations: payload.summary.totalOrganizations,
-            pendingTasks: payload.summary.pendingTasks,
-            committeeReviews: payload.summary.committeeReviews,
-            leaders: payload.summary.leaders,
-            revenue: payload.summary.revenue,
-            execution: payload.summary.execution,
-            verifiedEvidence: payload.summary.verifiedEvidence,
-            unverifiedEvidence: payload.summary.unverifiedEvidence,
-            topRobots: payload.summary.topRobots,
-            recentAudit: payload.summary.recentAudit,
-          });
-        }
-      })
-      .catch(() => undefined);
+    const timeout = window.setTimeout(() => { void loadSummary(); }, 0);
+    return () => window.clearTimeout(timeout);
   }, []);
 
   const metrics = [
@@ -91,7 +123,7 @@ export function AdminOverviewDashboard() {
       label: lang === "ar" ? "الروبوتات النشطة" : "Visible robots",
       value: summary.visibleRobots,
       delta: `${summary.totalRobots}`,
-      detail: lang === "ar" ? "مقارنة بالأسبوع الماضي" : "vs. last week",
+      detail: lang === "ar" ? "من إجمالي الروبوتات المسجلة" : "of all registered robots",
     },
     {
       label: lang === "ar" ? "قيد المراجعة" : "Under review",
@@ -102,8 +134,8 @@ export function AdminOverviewDashboard() {
     {
       label: lang === "ar" ? "متوسط الذكاء" : "Avg. intelligence",
       value: `${summary.averageIntelligence}%`,
-      delta: `${summary.execution.successful}`,
-      detail: lang === "ar" ? "مستوى الأداء العام" : "overall performance",
+      delta: `${summary.averageSkill}%`,
+      detail: lang === "ar" ? "متوسط المهارة" : "average skill",
     },
     {
       label: lang === "ar" ? "معدل الموافقة" : "Approval rate",
@@ -126,38 +158,45 @@ export function AdminOverviewDashboard() {
     { title: lang === "ar" ? "تنفيذ فاشل يحتاج مراجعة" : "Failed executions to review", progress: summary.execution.failed, status: String(summary.execution.failed) },
   ];
 
+  const dataChecks = [
+    { label: lang === "ar" ? "مصدر الملخص" : "Summary source", status: isSummaryReady ? (lang === "ar" ? "متصل" : "Connected") : (lang === "ar" ? "غير متاح" : "Unavailable") },
+    { label: lang === "ar" ? "سجل الروبوتات" : "Robot records", status: String(summary.totalRobots) },
+    { label: lang === "ar" ? "سجل المهام" : "Task records", status: String(summary.totalTasks) },
+    { label: lang === "ar" ? "الأدلة الموثقة" : "Verified evidence", status: String(summary.verifiedEvidence) },
+  ];
+
   const activities = summary.recentAudit.map((entry) => ({ time: new Date(entry.createdAt).toLocaleTimeString(lang === "ar" ? "ar-SA" : "en-US", { hour: "2-digit", minute: "2-digit" }), item: `${entry.action} · ${entry.entityType}`, tone: "info" }));
 
   const platformTracks = [
     {
       title: lang === "ar" ? "منصة التشغيل" : "Operations platform",
-      text: lang === "ar" ? "إدارة مطابقة الأداء، توزيع المهام، ورؤية اللحظة الحالية في وقت واحد." : "Operational alignment, task orchestration, and live execution visibility in one layer.",
+      text: lang === "ar" ? `${summary.activeTasks} مهام نشطة و${summary.completedTasks} مهام مكتملة في السجل.` : `${summary.activeTasks} active tasks and ${summary.completedTasks} completed tasks in the record.`,
       value: `${summary.activeTasks ?? 0}`,
     },
     {
-      title: lang === "ar" ? "الذكاء التوليدي" : "Generative intelligence",
-      text: lang === "ar" ? "مستودع شخصي للمهام والاستشارات والتوصيات باستخدام محرك قرار ذكي." : "Task-driven recommendations and strategic guidance generated from the platform intelligence core.",
-      value: "Deferred",
+      title: lang === "ar" ? "سجل التنفيذ" : "Execution record",
+      text: lang === "ar" ? `${summary.execution.successful} تنفيذات ناجحة و${summary.execution.failed} فاشلة ضمن البيانات الحالية.` : `${summary.execution.successful} successful and ${summary.execution.failed} failed executions in current data.`,
+      value: `${summary.execution.successRate}%`,
     },
     {
       title: lang === "ar" ? "التوسع العالمي" : "Global expansion",
-      text: lang === "ar" ? "مرونة في التوسع اللغوي والإقليمي مع أنظمة أمان ومعايير معتمدة." : "Regional and language expansion with governance, security, and enterprise-grade controls.",
+      text: lang === "ar" ? `${summary.totalOrganizations} منظمات مسجلة في المنصة.` : `${summary.totalOrganizations} organizations are registered in the platform.`,
       value: `${summary.totalOrganizations ?? 0}`,
     },
   ];
 
   const operatingTools = [
-    { name: lang === "ar" ? "لوحة القيادة" : "Command board", status: lang === "ar" ? "نشط" : "Live" },
-    { name: lang === "ar" ? "مركز الذكاء" : "Intelligence hub", status: lang === "ar" ? "مُشغَّل" : "Running" },
-    { name: lang === "ar" ? "إدارة الروبوتات" : "Robot operations", status: lang === "ar" ? "قيد التوسع" : "Scaling" },
-    { name: lang === "ar" ? "جودة الاختبارات" : "Test quality", status: lang === "ar" ? "مقبول" : "Healthy" },
+    { name: lang === "ar" ? "ملخص المنصة" : "Platform summary", status: isSummaryReady ? (lang === "ar" ? "محدّث" : "Current") : (lang === "ar" ? "بانتظار المصدر" : "Awaiting source") },
+    { name: lang === "ar" ? "إدارة الروبوتات" : "Robot operations", status: `${summary.visibleRobots}/${summary.totalRobots}` },
+    { name: lang === "ar" ? "قرارات اللجنة" : "Committee decisions", status: String(summary.committeeReviews) },
+    { name: lang === "ar" ? "توثيق الأدلة" : "Evidence verification", status: `${summary.verifiedEvidence}/${summary.verifiedEvidence + summary.unverifiedEvidence}` },
   ];
 
   const phaseCompletion = [
-    { label: lang === "ar" ? "لوحة التحكم" : "Control center", value: "مكتمل" },
-    { label: lang === "ar" ? "مركز الذكاء" : "AI core", value: "جيد" },
-    { label: lang === "ar" ? "الروبوتات" : "Robots", value: "تجريبي" },
-    { label: lang === "ar" ? "المشاريع" : "Projects", value: "مستعد" },
+    { label: lang === "ar" ? "المنظمات" : "Organizations", value: String(summary.totalOrganizations) },
+    { label: lang === "ar" ? "المهام النشطة" : "Active tasks", value: String(summary.activeTasks) },
+    { label: lang === "ar" ? "المهام المعلقة" : "Pending tasks", value: String(summary.pendingTasks) },
+    { label: lang === "ar" ? "متوسط الخبرة" : "Average experience", value: `${summary.averageExperience}%` },
   ];
 
   const robotMissions = summary.missionAssignments ?? [];
@@ -177,13 +216,27 @@ export function AdminOverviewDashboard() {
               : "A unified operating layer to monitor performance, track execution, and guide decisions in real time."}
           </p>
           <div className="dashboard-actions">
-            <button type="button" className="button button--primary">
-              {lang === "ar" ? "تحديث البيانات" : "Refresh data"}
+            <button
+              type="button"
+              className="button button--primary"
+              onClick={() => void loadSummary()}
+              disabled={isRefreshing}
+            >
+              {isRefreshing
+                ? (lang === "ar" ? "جارٍ التحديث..." : "Refreshing...")
+                : (lang === "ar" ? "تحديث البيانات" : "Refresh data")}
             </button>
             <Link href="/admin/reports" className="button button--secondary">
               {lang === "ar" ? "عرض التقارير" : "View reports"}
             </Link>
           </div>
+          <p className="dashboard-refresh-status" aria-live="polite">
+            {summaryError
+              ? (lang === "ar" ? "تعذر تحميل أحدث بيانات اللوحة." : "The latest dashboard data could not be loaded.")
+              : lastUpdated
+                ? (lang === "ar" ? `آخر تحديث: ${lastUpdated.toLocaleTimeString("ar-SA")}` : `Last updated: ${lastUpdated.toLocaleTimeString("en-US")}`)
+                : (lang === "ar" ? "جارٍ الاتصال بمصدر البيانات..." : "Connecting to the data source...")}
+          </p>
         </div>
 
         <div className="dashboard-hero__summary">
@@ -227,6 +280,26 @@ export function AdminOverviewDashboard() {
             <p>{track.text}</p>
           </Card>
         ))}
+      </section>
+
+      <section className="panel qa-gate-panel">
+        <div className="panel-header">
+          <div>
+            <p className="panel-kicker">{lang === "ar" ? "تغطية البيانات" : "Data coverage"}</p>
+            <h2>{lang === "ar" ? "حالة مصادر لوحة التحكم" : "Control center data sources"}</h2>
+          </div>
+          <span className={`chip ${isSummaryReady ? "chip--success" : "chip--warning"}`}>
+            {isSummaryReady ? (lang === "ar" ? "محدّث" : "Current") : (lang === "ar" ? "غير متاح" : "Unavailable")}
+          </span>
+        </div>
+        <div className="qa-gate-grid">
+          {dataChecks.map((item) => (
+            <div key={item.label} className="qa-gate-item">
+              <span>{item.label}</span>
+              <strong>{item.status}</strong>
+            </div>
+          ))}
+        </div>
       </section>
 
       <section className="tool-grid">
@@ -402,8 +475,8 @@ export function AdminOverviewDashboard() {
             <div className="activity-item">
               <span className="activity-dot activity-dot--accent" />
               <div>
-                <strong>{lang === "ar" ? "أفضل مهارة" : "Highest skill"}</strong>
-                <p>{Math.max(...(robotMissions.flatMap((mission) => mission.assignedRobots.map(() => 90))), 0)}%</p>
+                <strong>{lang === "ar" ? "متوسط المهارة" : "Average skill"}</strong>
+                <p>{summary.averageSkill}%</p>
               </div>
             </div>
           </div>
@@ -418,8 +491,8 @@ export function AdminOverviewDashboard() {
           </div>
 
           <div className="activity-feed">
-            {activities.map((entry) => (
-              <div key={`${entry.time}-${entry.item}`} className="activity-item">
+            {activities.map((entry, index) => (
+              <div key={`${entry.time}-${entry.item}-${index}`} className="activity-item">
                 <span className={`activity-dot activity-dot--${entry.tone}`} />
                 <div>
                   <strong>{entry.time}</strong>

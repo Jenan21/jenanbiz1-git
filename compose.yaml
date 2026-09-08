@@ -22,6 +22,101 @@ services:
     security_opt:
       - no-new-privileges:true
 
+  redis:
+    image: redis:7.4-alpine
+    container_name: jenanbiz-redis
+    restart: unless-stopped
+    command: ["redis-server", "--appendonly", "yes", "--requirepass", "${REDIS_PASSWORD:?REDIS_PASSWORD is required}"]
+    environment:
+      REDIS_PASSWORD: ${REDIS_PASSWORD:?REDIS_PASSWORD is required}
+    ports:
+      - "127.0.0.1:${REDIS_PORT:-6379}:6379"
+    volumes:
+      - jenanbiz_redis_data:/data
+    healthcheck:
+      test: ["CMD-SHELL", "redis-cli -a \"$${REDIS_PASSWORD}\" ping | grep PONG"]
+      interval: 5s
+      timeout: 5s
+      retries: 12
+    security_opt:
+      - no-new-privileges:true
+
+  migrate:
+    build: .
+    command: ["npx", "prisma", "migrate", "deploy"]
+    environment:
+      DATABASE_URL: postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}?schema=public
+    depends_on:
+      postgres:
+        condition: service_healthy
+    restart: "no"
+
+  app:
+    build: .
+    container_name: jenanbiz-app
+    restart: unless-stopped
+    environment:
+      AUTH_SECRET: ${AUTH_SECRET:?AUTH_SECRET is required}
+      DATABASE_URL: postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}?schema=public
+      METRICS_TOKEN: ${METRICS_TOKEN:?METRICS_TOKEN is required}
+      REDIS_URL: redis://:${REDIS_PASSWORD:?REDIS_PASSWORD is required}@redis:6379
+    ports:
+      - "127.0.0.1:${APP_PORT:-3000}:3000"
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:3000/api/health/ready').then((response) => process.exit(response.ok ? 0 : 1)).catch(() => process.exit(1))"]
+      interval: 15s
+      timeout: 5s
+      retries: 6
+      start_period: 30s
+    security_opt:
+      - no-new-privileges:true
+
+  postgres-backup:
+    image: postgres:17-bookworm
+    container_name: jenanbiz-postgres-backup
+    restart: unless-stopped
+    environment:
+      PGPASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD is required}
+      POSTGRES_DB: ${POSTGRES_DB}
+      POSTGRES_USER: ${POSTGRES_USER}
+      BACKUP_INTERVAL_SECONDS: ${BACKUP_INTERVAL_SECONDS:-86400}
+      BACKUP_RETENTION_DAYS: ${BACKUP_RETENTION_DAYS:-14}
+    depends_on:
+      postgres:
+        condition: service_healthy
+    volumes:
+      - jenanbiz_postgres_backups:/backups
+    command:
+      - /bin/sh
+      - -ec
+      - |
+        while true; do
+          if pg_dump -h postgres -U "$${POSTGRES_USER}" -d "$${POSTGRES_DB}" --format=custom --file "/backups/jenanbiz-$$(date +%Y%m%dT%H%M%SZ).dump"; then
+            date -u +%Y-%m-%dT%H:%M:%SZ > /backups/.last-success
+          else
+            echo "PostgreSQL backup failed" >&2
+          fi
+          find /backups -type f -name '*.dump' -mtime +"$${BACKUP_RETENTION_DAYS}" -delete
+          sleep "$${BACKUP_INTERVAL_SECONDS}"
+        done
+    healthcheck:
+      test: ["CMD-SHELL", "test -f /backups/.last-success && test \"$$(( $$(date +%s) - $$(date -r /backups/.last-success +%s) ))\" -le \"$$(( $${BACKUP_INTERVAL_SECONDS} * 2 + 300 ))\""]
+      interval: 60s
+      timeout: 5s
+      retries: 3
+      start_period: 60s
+    security_opt:
+      - no-new-privileges:true
+
 volumes:
   jenanbiz_postgres_data:
     name: jenanbiz_postgres_data
+  jenanbiz_redis_data:
+    name: jenanbiz_redis_data
+  jenanbiz_postgres_backups:
+    name: jenanbiz_postgres_backups

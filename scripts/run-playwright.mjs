@@ -4,6 +4,7 @@ import { fileURLToPath } from "node:url";
 const projectRoot = new URL("../", import.meta.url);
 const isWindows = process.platform === "win32";
 const nodeBin = process.execPath;
+const port = process.env.PLAYWRIGHT_PORT ?? "3101";
 const nextBin = new URL("../node_modules/next/dist/bin/next", import.meta.url);
 const playwrightBin = new URL(
   "../node_modules/@playwright/test/cli.js",
@@ -12,10 +13,10 @@ const playwrightBin = new URL(
 
 const server = spawn(
   nodeBin,
-  [fileURLToPath(nextBin), "dev", "--hostname", "127.0.0.1", "--port", "3101"],
+  [fileURLToPath(nextBin), "dev", "--hostname", "127.0.0.1", "--port", port],
   {
     cwd: projectRoot,
-    env: { ...process.env, NODE_ENV: "development" },
+    env: { ...process.env, NEXT_DIST_DIR: ".next-e2e", NODE_ENV: "development" },
     stdio: "inherit",
     detached: !isWindows,
   },
@@ -29,7 +30,7 @@ async function waitUntilReady() {
         "The Playwright application server exited before readiness",
       );
     try {
-      const response = await fetch("http://127.0.0.1:3101/login");
+      const response = await fetch(`http://127.0.0.1:${port}/login`);
       if (response.ok) return;
     } catch {
       // The server is still starting.

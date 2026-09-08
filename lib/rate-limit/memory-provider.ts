@@ -12,6 +12,10 @@ interface Entry {
 export class MemoryRateLimitProvider implements RateLimitProvider {
   private readonly entries = new Map<string, Entry>();
 
+  async isReady() {
+    return true;
+  }
+
   async consume({
     key,
     limit,

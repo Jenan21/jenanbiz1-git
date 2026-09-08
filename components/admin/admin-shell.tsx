@@ -48,25 +48,33 @@ const texts = {
 
 export function AdminShell({ children }: { children: ReactNode }) {
   const pathname = usePathname();
-  const [lang, setLang] = useState<"ar" | "en">(() => {
-    return "ar";
-  });
+  const [lang, setLang] = useState<"ar" | "en">("ar");
 
   useEffect(() => {
     const frame = requestAnimationFrame(() => {
-      const locale = document.cookie
-        .split(";")
-        .map((item) => item.trim())
-        .find((item) => item.startsWith("locale="))
-        ?.split("=")[1];
-      const saved = localStorage.getItem("jenan-admin-lang");
-      setLang(locale === "ar" || locale === "en" ? locale : saved === "ar" || saved === "en" ? saved : "ar");
+      try {
+        const locale = document.cookie
+          .split(";")
+          .map((item) => item.trim())
+          .find((item) => item.startsWith("locale="))
+          ?.split("=")[1];
+        const saved = localStorage.getItem("jenan-admin-lang");
+        const nextLocale = locale === "ar" || locale === "en" ? locale : saved === "ar" || saved === "en" ? saved : "ar";
+        setLang(nextLocale);
+      } catch {
+        setLang("ar");
+      }
     });
+
     return () => cancelAnimationFrame(frame);
   }, []);
 
   useEffect(() => {
-    localStorage.setItem("jenan-admin-lang", lang);
+    try {
+      localStorage.setItem("jenan-admin-lang", lang);
+    } catch {
+      // Ignore storage restrictions in private browsing or locked environments.
+    }
   }, [lang]);
 
   const t = texts[lang];
@@ -92,8 +100,10 @@ export function AdminShell({ children }: { children: ReactNode }) {
                 key={item.href}
                 href={item.href}
                 className={`admin-nav-item ${isActive ? "active" : ""}`}
+                aria-current={isActive ? "page" : undefined}
+                aria-label={item.label[lang]}
               >
-                <span>{item.icon}</span>
+                <span aria-hidden="true">{item.icon}</span>
                 {item.label[lang]}
               </Link>
             );
@@ -113,11 +123,13 @@ export function AdminShell({ children }: { children: ReactNode }) {
               type="button"
               className="btn small secondary"
               onClick={() => setLang((prev) => (prev === "ar" ? "en" : "ar"))}
-              aria-label="Toggle language"
+              aria-label={lang === "ar" ? "Switch to English" : "التبديل إلى العربية"}
             >
               {t.toggle}
             </button>
-            <button className="btn small primary">{t.deploy}</button>
+            <Link href="/admin/operations" className="btn small primary" aria-label={t.deploy}>
+              {t.deploy}
+            </Link>
           </div>
         </header>
 

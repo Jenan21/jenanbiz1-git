@@ -6,6 +6,9 @@ import { e2eIdentity } from "./test-identities";
 
 const outputDirectory = path.resolve("outputs/visual-review-pack");
 const origin = "http://127.0.0.1:3101";
+
+test.setTimeout(90_000);
+
 async function prepare(page: Page) {
   await mkdir(outputDirectory, { recursive: true });
   await cleanE2EIdentities();

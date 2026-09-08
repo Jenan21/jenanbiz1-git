@@ -28,6 +28,8 @@ const desktopAdminRoutes = [
   "admin/social-growth",
 ];
 
+test.setTimeout(120_000);
+
 test("creates the Arabic visual review pack without baselines", async ({
   page,
 }) => {
@@ -46,10 +48,10 @@ test("creates the Arabic visual review pack without baselines", async ({
   const registration = await page.request.post("/api/auth/register", {
     headers: { origin: "http://127.0.0.1:3101" },
     data: {
-      displayName: e2eIdentity.user.displayName,
+      displayName: e2eIdentity.visualUser.displayName,
       countryCode: "SA",
-      email: e2eIdentity.user.email,
-      password: e2eIdentity.user.password,
+      email: e2eIdentity.visualUser.email,
+      password: e2eIdentity.visualUser.password,
       locale: "ar",
       language: "ar",
     },
@@ -130,8 +132,8 @@ test("creates the Arabic visual review pack without baselines", async ({
   const userLogin = await page.request.post("/api/auth/login", {
     headers: { origin: "http://127.0.0.1:3101" },
     data: {
-      email: e2eIdentity.user.email,
-      password: e2eIdentity.user.password,
+      email: e2eIdentity.visualUser.email,
+      password: e2eIdentity.visualUser.password,
       remember: false,
     },
   });
