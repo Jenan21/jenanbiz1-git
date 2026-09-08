@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
 // Buffer is global in Node; no need to import as type-only
 
 export async function extractPaletteFromBase64(imageData: string, maxColors = 6): Promise<string[]> {
@@ -6,53 +5,7 @@ export async function extractPaletteFromBase64(imageData: string, maxColors = 6)
     const base64 = imageData.includes('base64,') ? imageData.split('base64,')[1] : imageData;
     const buffer = Buffer.from(base64, 'base64');
 
-    // Try node-vibrant first (Node entry)
-    try {
-      // dynamic import to avoid bundler issues
-      const VibrantModule = (await import('node-vibrant/node')) as unknown;
-      const shapes: unknown[] = [
-        (VibrantModule as any)?.default ?? null,
-        (VibrantModule as any)?.Vibrant ?? null,
-        VibrantModule ?? null,
-      ];
-      let palette: unknown = null;
-      for (const shape of shapes) {
-        if (!shape) continue;
-        try {
-          // Use runtime checks; types are dynamic across bundlers
-          const s: unknown = shape;
-          if (s && typeof (s as any).from === 'function') {
-            palette = await (s as any).from(buffer).maxColorCount(maxColors).getPalette();
-            break;
-          }
-          if ((s as any).Vibrant && typeof (s as any).Vibrant.from === 'function') {
-            palette = await (s as any).Vibrant.from(buffer).maxColorCount(maxColors).getPalette();
-            break;
-          }
-          if (typeof s === 'function') {
-            const instance = new (s as any)(buffer);
-            if (instance && typeof instance.getPalette === 'function') {
-              palette = await instance.getPalette();
-              break;
-            }
-          }
-        } catch {
-          // try next shape
-        }
-      }
-
-      type Swatch = { getHex?: () => string };
-      const swatches = palette ? (Object.values(palette) as unknown[]) : [];
-      const colors = swatches
-        .filter((swatch): swatch is Swatch => Boolean(swatch) && typeof (swatch as Swatch).getHex === 'function')
-        .map((swatch) => (swatch.getHex as () => string)());
-
-      if (colors && colors.length) return colors;
-    } catch {
-      // fallthrough to sharp-based quantizer
-    }
-
-    // sharp fallback
+    // sharp-based quantizer: no dependency on node-vibrant/jimp/file-type
     try {
       const sharp = (await import('sharp')).default ?? (await import('sharp'));
       const small = await sharp(buffer).resize(128, 128, { fit: 'inside' }).raw().toBuffer({ resolveWithObject: true });
