@@ -1,8 +1,8 @@
-import dynamic from "next/dynamic";
 import Link from "next/link";
 
 import { PlatformShell } from "@/components/source/source-ui";
 import type { Project } from "@/components/source/projects-workspace";
+import { ProjectsWorkspacePanel } from "@/components/source/projects-workspace-panel";
 import { assessProjectQuality } from "@/services/projects/project-quality";
 import {
   buildProjectPortfolioStats,
@@ -16,14 +16,6 @@ import type {
 } from "@/lib/platform/catalog";
 import { resolveModuleHref } from "@/lib/platform/navigation";
 import type { Locale } from "@/types/i18n";
-
-const ProjectsWorkspace = dynamic(
-  () =>
-    import("@/components/source/projects-workspace").then(
-      (module) => module.ProjectsWorkspace,
-    ),
-  { ssr: false },
-);
 
 type ProjectsLiveView =
   | "showcase"
@@ -261,7 +253,7 @@ export async function ProjectsLiveExperience({
                 <span>{text.services}</span>
                 <div>
                   {module.services.map((item) => (
-                    <Link key={item.id} href={item.previewHref ?? item.href}>
+                    <Link key={item.id} href={item.href}>
                       {pick(item.title, locale)}
                     </Link>
                   ))}
@@ -394,7 +386,7 @@ export async function ProjectsLiveExperience({
               </article>
             </section>
 
-            <ProjectsWorkspace
+            <ProjectsWorkspacePanel
               locale={locale}
               focusMode={config.focusMode}
               initialProjects={projects}
@@ -407,7 +399,7 @@ export async function ProjectsLiveExperience({
         ) : (
           <section className="card empty-state">
             <p>{text.noProjects}</p>
-            <Link className="button button--primary" href="/projects-analysis-review">
+            <Link className="button button--primary" href="/projects/analysis">
               {ar ? "ابدأ من التحليل" : "Start from analysis"}
             </Link>
           </section>

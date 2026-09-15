@@ -1,4 +1,4 @@
-import {
+import type {
   ProjectAssessmentType,
   ProjectPhaseStatus,
   ProjectPhaseType,
@@ -35,18 +35,18 @@ function isResolvedPhase(status: ProjectPhaseStatus) {
 function resolveProjectStatus(
   phaseType: ProjectPhaseType,
   phaseStatus: ProjectPhaseStatus,
-) {
-  if (phaseStatus === "BLOCKED") return ProjectStatus.ON_HOLD;
-  if (phaseType === "ANALYSIS") return ProjectStatus.ANALYSIS;
-  if (phaseType === "FEASIBILITY") return ProjectStatus.FEASIBILITY;
-  if (phaseType === "EVALUATION") return ProjectStatus.EVALUATION;
-  if (phaseType === "PLANNING") return ProjectStatus.APPROVED;
+): ProjectStatus {
+ if (phaseStatus === "BLOCKED") return "ON_HOLD" as ProjectStatus;
+ if (phaseType === "ANALYSIS") return "ANALYSIS" as ProjectStatus;
+ if (phaseType === "FEASIBILITY") return "FEASIBILITY" as ProjectStatus;
+ if (phaseType === "EVALUATION") return "EVALUATION" as ProjectStatus;
+ if (phaseType === "PLANNING") return "APPROVED" as ProjectStatus;
   if (phaseType === "EXECUTION" || phaseType === "REVIEW") {
-    return ProjectStatus.IN_PROGRESS;
+   return "IN_PROGRESS" as ProjectStatus;
   }
   return phaseStatus === "COMPLETED"
-    ? ProjectStatus.COMPLETED
-    : ProjectStatus.IN_PROGRESS;
+   ? ("COMPLETED" as ProjectStatus)
+   : ("IN_PROGRESS" as ProjectStatus);
 }
 
 export function deriveProjectTransition(
@@ -78,7 +78,7 @@ export function deriveProjectTransition(
     return {
       project: {
         currentPhase: updatedPhaseType,
-        status: ProjectStatus.COMPLETED,
+        status: "COMPLETED" as ProjectStatus,
       },
     } as const;
   }
@@ -92,7 +92,7 @@ export function deriveProjectTransition(
       nextPhase.status === "PENDING"
         ? {
             type: nextPhase.type,
-            status: ProjectPhaseStatus.ACTIVE,
+            status: "ACTIVE" as ProjectPhaseStatus,
             startedAt: now,
             completedAt: null,
           }

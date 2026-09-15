@@ -1,4 +1,3 @@
-import dynamic from "next/dynamic";
 import {
   EmptyMetric,
   EmptyPanel,
@@ -8,15 +7,8 @@ import {
 } from "@/components/source/source-ui";
 import type { IconName } from "@/components/ui/icons";
 import { Icon } from "@/components/ui/icons";
-import Link from "next/link";
 import type { Locale } from "@/types/i18n";
-const ProjectsWorkspace = dynamic(
-  () =>
-    import("@/components/source/projects-workspace").then(
-      (module) => module.ProjectsWorkspace,
-    ),
-  { ssr: false },
-);
+import Link from "next/link";
 
 type Pair = [string, string];
 const labels: Record<
@@ -293,7 +285,6 @@ export function ModuleScreen({
           </div>
         </section>
       )}
-      {projectView && <ProjectsWorkspace locale={locale} />}
       <section className="grid-2">
         <EmptyPanel
           title={ar ? "النشاط الأخير" : "Recent activity"}

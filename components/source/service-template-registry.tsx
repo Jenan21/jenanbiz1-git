@@ -2,9 +2,6 @@ import type { ComponentType } from "react";
 
 import { AcademyStudiesCinematic } from "@/components/source/academy-studies-cinematic";
 import { AcademyPathCinematic } from "@/components/source/academy-path-cinematic";
-import { ProjectsAnalysisCinematic } from "@/components/source/projects-analysis-cinematic";
-import { ProjectsCompletionCinematic } from "@/components/source/projects-completion-cinematic";
-import { ProjectsFeasibilityCinematic } from "@/components/source/projects-feasibility-cinematic";
 import type {
   PlatformModuleDefinition,
   PlatformServiceDefinition,
@@ -23,38 +20,25 @@ export interface ServiceTemplateProps {
   userLabel: string;
 }
 
-type SpecializedTemplateKey = Exclude<ServiceTemplateKey, "catalog-service">;
-
-function EvaluationTemplate(props: ServiceTemplateProps) {
-  return <ProjectsCompletionCinematic {...props} mode="evaluation" />;
-}
-
-function LaunchTemplate(props: ServiceTemplateProps) {
-  return <ProjectsCompletionCinematic {...props} mode="launch" />;
-}
-
 const specializedServiceTemplates: Readonly<
-  Record<SpecializedTemplateKey, ComponentType<ServiceTemplateProps>>
+  Partial<Record<ServiceTemplateKey, ComponentType<ServiceTemplateProps>>>
 > = {
   "academy-studies": AcademyStudiesCinematic,
   "academy-seminars": AcademyPathCinematic,
   "academy-research": AcademyPathCinematic,
   "academy-courses": AcademyPathCinematic,
-  "projects-analysis": ProjectsAnalysisCinematic,
-  "projects-feasibility": ProjectsFeasibilityCinematic,
-  "projects-evaluation": EvaluationTemplate,
-  "projects-launch": LaunchTemplate,
 };
 
 export function ServiceTemplateRenderer(props: ServiceTemplateProps) {
   const template = resolveServiceTemplate(props.service.template);
   if (template === "catalog-service") return null;
   const Renderer = specializedServiceTemplates[template];
+  if (!Renderer) return null;
   return <Renderer {...props} />;
 }
 
 export function hasSpecializedServiceTemplate(
   service: PlatformServiceDefinition,
 ) {
-  return resolveServiceTemplate(service.template) !== "catalog-service";
+  return Boolean(specializedServiceTemplates[resolveServiceTemplate(service.template)]);
 }

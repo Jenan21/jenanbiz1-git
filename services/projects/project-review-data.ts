@@ -1,4 +1,9 @@
-import type { ProjectAssessment, ProjectIntelligenceSnapshot, ProjectPhase, ProjectStatus } from "@/generated/prisma/client";
+import type {
+  ProjectAssessment,
+  ProjectIntelligenceSnapshot,
+  ProjectPhase,
+  ProjectStatus,
+} from "@/generated/prisma/client";
 import { assessProjectQuality } from "@/services/projects/project-quality";
 
 type ProjectReviewRecord = {

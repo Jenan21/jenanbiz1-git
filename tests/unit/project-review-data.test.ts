@@ -58,7 +58,7 @@ describe("project review data", () => {
       total: 2,
       active: 1,
       ready: 1,
-      averageScore: 76,
+      averageScore: 77,
       completionPercent: 50,
     });
   });

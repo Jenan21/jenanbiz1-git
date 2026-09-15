@@ -276,6 +276,11 @@ export function ProjectsWorkspace({
 }) {
   const language = locale === "ar" ? "ar" : "en";
   const text = copy[language];
+  const initialSelectedProject =
+    initialProjects.find((project) => project.id === initialSelectedProjectId) ??
+    initialProjects[0] ??
+    null;
+  const initialProjectId = initialSelectedProject?.id ?? "";
   const [projects, setProjects] = useState<Project[]>(initialProjects);
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
@@ -291,29 +296,32 @@ export function ProjectsWorkspace({
   const [startingProjectId, setStartingProjectId] = useState("");
   const [error, setError] = useState("");
   const [message, setMessage] = useState("");
-  const [selectedProjectId, setSelectedProjectId] = useState(
-    initialSelectedProjectId && initialProjects.some((project) => project.id === initialSelectedProjectId)
-      ? initialSelectedProjectId
-      : initialProjects[0]?.id ?? "",
-  );
+  const [selectedProjectId, setSelectedProjectId] = useState(initialProjectId);
   const [detailsDraft, setDetailsDraft] = useState(() =>
-    createDetailsDraft(
-      initialProjects.find((project) => project.id === initialSelectedProjectId) ??
-        initialProjects[0] ??
-        null,
-    ),
+    createDetailsDraft(initialSelectedProject),
   );
   const [phaseDraft, setPhaseDraft] = useState<{
     phaseType: ProjectPhaseType;
     status: ProjectPhaseStatus;
     notes: string;
-  }>({ phaseType: "ANALYSIS", status: "ACTIVE", notes: "" });
+  }>(() =>
+    initialSelectedProject
+      ? createPhaseDraft(initialSelectedProject)
+      : { phaseType: "ANALYSIS", status: "ACTIVE", notes: "" },
+  );
   const [assessmentDraft, setAssessmentDraft] = useState<{
     type: ProjectAssessmentType;
     score: string;
     summary: string;
     source: string;
-  }>({ type: "MARKET", score: "", summary: "", source: "" });
+  }>(() =>
+    initialSelectedProject
+      ? createAssessmentDraft(
+          initialSelectedProject,
+          focusMode === "feasibility" ? "FINANCIAL" : "MARKET",
+        )
+      : { type: focusMode === "feasibility" ? "FINANCIAL" : "MARKET", score: "", summary: "", source: "" },
+  );
   const [calculating, setCalculating] = useState(false);
   const [calculation, setCalculation] = useState<{
     base: {
@@ -343,7 +351,7 @@ export function ProjectsWorkspace({
     latitude: "",
     longitude: "",
   });
-  const [intelligenceProjectId, setIntelligenceProjectId] = useState("");
+  const [intelligenceProjectId, setIntelligenceProjectId] = useState(initialProjectId);
   const [intelligenceLoading, setIntelligenceLoading] = useState(false);
   const [intelligence, setIntelligence] = useState<{
     location: { label: string; latitude: number; longitude: number } | null;
@@ -421,13 +429,6 @@ export function ProjectsWorkspace({
       setLoading(false);
     }
   }, [syncSelectedProject, text.error]);
-
-  useEffect(() => {
-    if (initialProjects.length > 0) {
-      syncSelectedProject(projects, selectedProjectId || initialSelectedProjectId);
-    }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
 
   useEffect(() => {
     const timer = window.setTimeout(() => {

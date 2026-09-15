@@ -15,13 +15,13 @@ export async function ProjectsReportPreview({
   userLabel: string;
   variant: ReportVariant;
 }) {
-  const module = await findPlatformModule("/projects");
-  if (!module) return null;
+  const projectModule = await findPlatformModule("/projects");
+  if (!projectModule) return null;
 
   return (
     <ProjectsLiveExperience
       locale={locale}
-      module={module}
+      module={projectModule}
       userId={userId}
       userLabel={userLabel}
       view={
