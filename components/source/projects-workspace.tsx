@@ -1,6 +1,6 @@
 "use client";
 
-import { FormEvent, useEffect, useMemo, useState } from "react";
+import { FormEvent, useCallback, useEffect, useMemo, useState } from "react";
 import type { Locale } from "@/types/i18n";
 import { assessProjectQuality } from "@/services/projects/project-quality";
 import {
@@ -309,11 +309,11 @@ export function ProjectsWorkspace({ locale }: { locale: Locale }) {
     [selectedProject],
   );
 
-  function syncSelectedProject(
+  const syncSelectedProject = useCallback((
     nextProjects: Project[],
     preferredId?: string,
     preferredAssessmentType?: ProjectAssessmentType,
-  ) {
+  ) => {
     const fallbackId =
       preferredId && nextProjects.some((project) => project.id === preferredId)
         ? preferredId
@@ -327,9 +327,9 @@ export function ProjectsWorkspace({ locale }: { locale: Locale }) {
       assessmentDraft.type ??
       projectAssessmentTypes[0];
     setAssessmentDraft(createAssessmentDraft(current, assessmentType));
-  }
+  }, [assessmentDraft.type]);
 
-  async function loadProjects(preferredId?: string) {
+  const loadProjects = useCallback(async (preferredId?: string) => {
     setLoading(true);
     setError("");
     try {
@@ -349,19 +349,14 @@ export function ProjectsWorkspace({ locale }: { locale: Locale }) {
     } finally {
       setLoading(false);
     }
-  }
+  }, [syncSelectedProject, text.error]);
 
   useEffect(() => {
-    void loadProjects();
-  }, [text.error]);
-
-  useEffect(() => {
-    if (!selectedProject) return;
-    setPhaseDraft(createPhaseDraft(selectedProject));
-    setAssessmentDraft((current) =>
-      createAssessmentDraft(selectedProject, current.type),
-    );
-  }, [selectedProject]);
+    const timer = window.setTimeout(() => {
+      void loadProjects();
+    }, 0);
+    return () => window.clearTimeout(timer);
+  }, [loadProjects]);
 
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -452,12 +447,6 @@ export function ProjectsWorkspace({ locale }: { locale: Locale }) {
       if (!response.ok) throw new Error(data.message ?? text.error);
       setMessage(text.projectSaved);
       await loadProjects(selectedProject.id);
-      const nextProject = projects.find(
-        (project) => project.id === selectedProject.id,
-      );
-      if (nextProject) {
-        setAssessmentDraft(createAssessmentDraft(nextProject, assessmentDraft.type));
-      }
     } catch (assessmentError) {
       setError(
         assessmentError instanceof Error ? assessmentError.message : text.error,
