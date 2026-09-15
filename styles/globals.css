@@ -2139,7 +2139,7 @@ a:focus-visible {
 }
 .project-create-form {
   display: grid;
-  grid-template-columns: 1.5fr 1fr 120px auto;
+  grid-template-columns: minmax(180px, 1.2fr) minmax(220px, 1.3fr) minmax(140px, 1fr) 110px 110px auto;
   align-items: end;
   gap: 12px;
   padding: 16px;
@@ -2150,7 +2150,11 @@ a:focus-visible {
   color: var(--muted);
   font-size: 11px;
 }
-.project-create-form input {
+.project-create-form input,
+.project-create-form select,
+.project-operations-form input,
+.project-operations-form select,
+.project-operations-form textarea {
   width: 100%;
   min-height: 42px;
   padding: 8px 10px;
@@ -2158,8 +2162,18 @@ a:focus-visible {
   border-radius: 10px;
   background: color-mix(in srgb, var(--deep) 55%, transparent);
   color: var(--text);
+  font: inherit;
 }
-.project-create-form input:focus-visible {
+.project-create-form textarea,
+.project-operations-form textarea {
+  min-height: 96px;
+  resize: vertical;
+}
+.project-create-form input:focus-visible,
+.project-create-form select:focus-visible,
+.project-operations-form input:focus-visible,
+.project-operations-form select:focus-visible,
+.project-operations-form textarea:focus-visible {
   outline: 3px solid color-mix(in srgb, var(--brand) 38%, transparent);
   border-color: var(--brand);
 }
@@ -2169,10 +2183,14 @@ a:focus-visible {
 }
 .project-list-item {
   display: grid;
-  grid-template-columns: minmax(180px, 1fr) auto minmax(150px, 220px);
+  grid-template-columns: minmax(220px, 1.2fr) auto minmax(150px, 220px) minmax(120px, 150px);
   align-items: center;
   gap: 20px;
   padding: 16px;
+}
+.project-list-item--active {
+  border-color: color-mix(in srgb, var(--brand) 55%, transparent);
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--brand) 18%, transparent);
 }
 .project-list-item h3 {
   margin: 0 0 5px;
@@ -2263,6 +2281,82 @@ a:focus-visible {
   align-items: center;
   justify-content: space-between;
   gap: 12px;
+}
+.project-error--danger {
+  border-color: color-mix(in srgb, #ef4444 45%, var(--border));
+}
+.project-operations {
+  display: grid;
+  gap: 14px;
+}
+.project-operations-grid {
+  display: grid;
+  grid-template-columns: minmax(240px, 0.9fr) minmax(0, 1fr) minmax(0, 1fr);
+  gap: 12px;
+}
+.project-readiness-card,
+.project-phase-card,
+.project-assessment-card {
+  display: grid;
+  gap: 14px;
+  padding: 16px;
+}
+.project-readiness-card__top,
+.project-readiness-card__meta,
+.project-card-heading,
+.project-phase-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+.project-readiness-card__top strong {
+  display: block;
+  margin-top: 4px;
+  font-size: 22px;
+}
+.project-readiness-card__meta,
+.project-card-heading span,
+.project-missing-list,
+.project-phase-row span {
+  color: var(--muted);
+  font-size: 11px;
+}
+.project-missing-list {
+  display: grid;
+  gap: 6px;
+}
+.project-card-heading h3 {
+  margin: 0;
+  font-size: 14px;
+}
+.project-operations-form {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+  align-items: start;
+}
+.project-operations-form label {
+  display: grid;
+  gap: 6px;
+  color: var(--muted);
+  font-size: 11px;
+}
+.project-operations-form__full,
+.project-operations-form .button {
+  grid-column: 1 / -1;
+}
+.project-phase-list {
+  display: grid;
+  gap: 8px;
+}
+.project-phase-row {
+  padding-bottom: 8px;
+  border-bottom: 1px solid color-mix(in srgb, var(--border) 32%, transparent);
+}
+.project-phase-row:last-child {
+  border-bottom: 0;
+  padding-bottom: 0;
 }
 .project-calculator {
   display: grid;
@@ -2910,6 +3004,9 @@ html[data-theme="light"] .toggle i {
   .project-create-form .button {
     grid-column: 1 / -1;
   }
+  .project-operations-grid {
+    grid-template-columns: 1fr;
+  }
   .project-list-item {
     align-items: flex-start;
     flex-direction: column;
@@ -2930,6 +3027,13 @@ html[data-theme="light"] .toggle i {
   }
   .project-calculator-form {
     grid-template-columns: 1fr 1fr;
+  }
+  .project-operations-form {
+    grid-template-columns: 1fr;
+  }
+  .project-operations-form__full,
+  .project-operations-form .button {
+    grid-column: auto;
   }
   .project-intelligence-form {
     grid-template-columns: 1fr 1fr;
@@ -3025,6 +3129,13 @@ html[data-theme="light"] .toggle i {
   }
   .project-create-form .button {
     grid-column: auto;
+  }
+  .project-readiness-card__top,
+  .project-readiness-card__meta,
+  .project-card-heading,
+  .project-phase-row {
+    flex-direction: column;
+    align-items: flex-start;
   }
   .project-calculator-form {
     grid-template-columns: 1fr;

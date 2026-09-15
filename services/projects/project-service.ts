@@ -6,25 +6,11 @@ import {
   Prisma,
 } from "@/generated/prisma/client";
 import { db } from "@/lib/db";
-
-const phasePlan: Array<{ type: ProjectPhaseType; title: string; sequence: number }> = [
-  { type: "ANALYSIS", title: "Project analysis", sequence: 1 },
-  { type: "FEASIBILITY", title: "Feasibility study", sequence: 2 },
-  { type: "EVALUATION", title: "Project evaluation", sequence: 3 },
-  { type: "PLANNING", title: "Delivery planning", sequence: 4 },
-  { type: "EXECUTION", title: "Project launch", sequence: 5 },
-  { type: "REVIEW", title: "Progress review", sequence: 6 },
-  { type: "COMPLETION", title: "Completion", sequence: 7 },
-];
-
-const assessmentTypes: ProjectAssessmentType[] = [
-  "MARKET",
-  "FINANCIAL",
-  "OPERATIONAL",
-  "RISK",
-  "TECHNICAL",
-  "COMPLIANCE",
-];
+import {
+  deriveProjectTransition,
+  projectAssessmentTypes,
+  projectPhasePlan,
+} from "@/services/projects/project-lifecycle";
 
 function slugify(value: string) {
   const slug = value
@@ -88,14 +74,17 @@ export async function createProject(
         currentPhase: ProjectPhaseType.ANALYSIS,
         createdById: userId,
         phases: {
-          create: phasePlan.map((phase, index) => ({
+          create: projectPhasePlan.map((phase, index) => ({
             ...phase,
             status: index === 0 ? ProjectPhaseStatus.ACTIVE : ProjectPhaseStatus.PENDING,
             startedAt: index === 0 ? new Date() : undefined,
           })),
         },
         assessments: {
-          create: assessmentTypes.map((type) => ({ type, status: ProjectPhaseStatus.PENDING })),
+          create: projectAssessmentTypes.map((type) => ({
+            type,
+            status: ProjectPhaseStatus.PENDING,
+          })),
         },
       },
       include: projectInclude(),
@@ -106,7 +95,10 @@ export async function createProject(
         action: "project.created",
         entityType: "Project",
         entityId: project.id,
-        metadata: { phaseCount: phasePlan.length, assessmentCount: assessmentTypes.length },
+        metadata: {
+          phaseCount: projectPhasePlan.length,
+          assessmentCount: projectAssessmentTypes.length,
+        },
       },
     });
     return project;
@@ -120,20 +112,41 @@ export async function updateProjectPhase(
   userId: string,
   notes?: string,
 ) {
-  const phase = phasePlan.find((item) => item.type === phaseType);
+  const phase = projectPhasePlan.find((item) => item.type === phaseType);
   if (!phase) throw new Error("Unknown project phase");
   return db.$transaction(async (transaction) => {
-    const project = await transaction.project.findFirst({ where: { id: projectId, createdById: userId } });
+    const project = await transaction.project.findFirst({
+      where: { id: projectId, createdById: userId },
+      include: { phases: { orderBy: { sequence: "asc" } } },
+    });
     if (!project) throw new Error("Project not found");
+    const currentPhase = project.phases.find((item) => item.type === phaseType);
+    const now = new Date();
     const updated = await transaction.projectPhase.update({
       where: { projectId_type: { projectId, type: phaseType } },
       data: {
         status,
         notes: notes?.trim() || undefined,
-        startedAt: status === "ACTIVE" ? new Date() : undefined,
-        completedAt: status === "COMPLETED" ? new Date() : undefined,
+        startedAt:
+          status === "ACTIVE" ? currentPhase?.startedAt ?? now : undefined,
+        completedAt: status === "COMPLETED" ? now : null,
       },
     });
+    const transition = deriveProjectTransition(project.phases, phaseType, status, now);
+    await transaction.project.update({
+      where: { id: projectId },
+      data: transition.project,
+    });
+    if (transition.nextPhaseActivation) {
+      await transaction.projectPhase.updateMany({
+        where: {
+          projectId,
+          type: transition.nextPhaseActivation.type,
+          status: ProjectPhaseStatus.PENDING,
+        },
+        data: transition.nextPhaseActivation,
+      });
+    }
     await transaction.auditLog.create({
       data: {
         actorId: userId,
@@ -201,7 +214,7 @@ export async function startProject(projectId: string, userId: string) {
     const completedAssessments = await transaction.projectAssessment.count({
       where: { projectId, status: ProjectPhaseStatus.COMPLETED },
     });
-    if (completedAssessments < assessmentTypes.length) {
+    if (completedAssessments < projectAssessmentTypes.length) {
       throw new Error("Complete all project assessments before starting");
     }
     const updated = await transaction.project.update({
