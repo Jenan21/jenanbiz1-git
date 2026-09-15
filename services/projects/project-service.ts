@@ -7,6 +7,7 @@ import {
 } from "@/generated/prisma/client";
 import { db } from "@/lib/db";
 import {
+  assertValidProjectPhaseUpdate,
   deriveProjectTransition,
   projectAssessmentTypes,
   projectPhasePlan,
@@ -105,6 +106,57 @@ export async function createProject(
   });
 }
 
+export async function updateProjectDetails(
+  projectId: string,
+  input: {
+    name: string;
+    description?: string;
+    sector?: string;
+    countryCode?: string;
+    currency?: string;
+  },
+  userId: string,
+) {
+  const name = input.name.trim();
+  if (name.length < 2) throw new Error("Project name is required");
+
+  return db.$transaction(async (transaction) => {
+    const existing = await transaction.project.findFirst({
+      where: { id: projectId, createdById: userId },
+      select: { id: true },
+    });
+    if (!existing) throw new Error("Project not found");
+
+    const project = await transaction.project.update({
+      where: { id: projectId },
+      data: {
+        name,
+        description: input.description?.trim() || null,
+        sector: input.sector?.trim() || null,
+        countryCode: input.countryCode?.trim().toUpperCase() || null,
+        currency: input.currency?.trim().toUpperCase() || "SAR",
+      },
+      include: projectInclude(),
+    });
+
+    await transaction.auditLog.create({
+      data: {
+        actorId: userId,
+        action: "project.updated",
+        entityType: "Project",
+        entityId: project.id,
+        metadata: {
+          countryCode: project.countryCode,
+          currency: project.currency,
+          sector: project.sector,
+        },
+      },
+    });
+
+    return project;
+  });
+}
+
 export async function updateProjectPhase(
   projectId: string,
   phaseType: ProjectPhaseType,
@@ -120,6 +172,15 @@ export async function updateProjectPhase(
       include: { phases: { orderBy: { sequence: "asc" } } },
     });
     if (!project) throw new Error("Project not found");
+    const completedAssessments = await transaction.projectAssessment.count({
+      where: { projectId, status: ProjectPhaseStatus.COMPLETED },
+    });
+    assertValidProjectPhaseUpdate(
+      project.phases,
+      phaseType,
+      status,
+      completedAssessments,
+    );
     const currentPhase = project.phases.find((item) => item.type === phaseType);
     const now = new Date();
     const updated = await transaction.projectPhase.update({

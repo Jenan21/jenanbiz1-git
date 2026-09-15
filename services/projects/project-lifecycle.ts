@@ -28,6 +28,10 @@ export const projectAssessmentTypes: readonly ProjectAssessmentType[] = [
   "COMPLIANCE",
 ] as const;
 
+function isResolvedPhase(status: ProjectPhaseStatus) {
+  return status === "COMPLETED" || status === "SKIPPED";
+}
+
 function resolveProjectStatus(
   phaseType: ProjectPhaseType,
   phaseStatus: ProjectPhaseStatus,
@@ -37,8 +41,9 @@ function resolveProjectStatus(
   if (phaseType === "FEASIBILITY") return ProjectStatus.FEASIBILITY;
   if (phaseType === "EVALUATION") return ProjectStatus.EVALUATION;
   if (phaseType === "PLANNING") return ProjectStatus.APPROVED;
-  if (phaseType === "EXECUTION" || phaseType === "REVIEW")
+  if (phaseType === "EXECUTION" || phaseType === "REVIEW") {
     return ProjectStatus.IN_PROGRESS;
+  }
   return phaseStatus === "COMPLETED"
     ? ProjectStatus.COMPLETED
     : ProjectStatus.IN_PROGRESS;
@@ -69,7 +74,6 @@ export function deriveProjectTransition(
   }
 
   const nextPhase = ordered[index + 1];
-
   if (!nextPhase) {
     return {
       project: {
@@ -94,4 +98,44 @@ export function deriveProjectTransition(
           }
         : undefined,
   } as const;
+}
+
+export function assertValidProjectPhaseUpdate(
+  phases: ReadonlyArray<{
+    type: ProjectPhaseType;
+    status: ProjectPhaseStatus;
+    sequence: number;
+  }>,
+  updatedPhaseType: ProjectPhaseType,
+  updatedStatus: ProjectPhaseStatus,
+  completedAssessmentCount: number,
+) {
+  const ordered = [...phases].sort((left, right) => left.sequence - right.sequence);
+  const index = ordered.findIndex((phase) => phase.type === updatedPhaseType);
+
+  if (index < 0) throw new Error("Unknown project phase");
+
+  const target = ordered[index];
+  const previous = ordered.slice(0, index);
+  const previousResolved = previous.every((phase) => isResolvedPhase(phase.status));
+
+  if (
+    !previousResolved &&
+    updatedStatus !== "PENDING" &&
+    !(index === 0 && updatedPhaseType === "ANALYSIS")
+  ) {
+    throw new Error("Complete earlier project phases before advancing this phase");
+  }
+
+  if (updatedStatus === "COMPLETED" && target.status === "PENDING") {
+    throw new Error("Activate a phase before marking it completed");
+  }
+
+  if (
+    (updatedStatus === "ACTIVE" || updatedStatus === "COMPLETED") &&
+    updatedPhaseType === "EXECUTION" &&
+    completedAssessmentCount < projectAssessmentTypes.length
+  ) {
+    throw new Error("Complete all project assessments before execution");
+  }
 }

@@ -2291,10 +2291,14 @@ a:focus-visible {
 }
 .project-operations-grid {
   display: grid;
-  grid-template-columns: minmax(240px, 0.9fr) minmax(0, 1fr) minmax(0, 1fr);
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 12px;
 }
+.project-details-card {
+  grid-column: 1 / -1;
+}
 .project-readiness-card,
+.project-details-card,
 .project-phase-card,
 .project-assessment-card {
   display: grid;

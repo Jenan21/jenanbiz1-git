@@ -7,6 +7,7 @@ import {
   listUserProjects,
   recordProjectAssessment,
   startProject,
+  updateProjectDetails,
   updateProjectPhase,
 } from "@/services/projects/project-service";
 import { calculateFeasibility, calculateRiskScore, calculateScenarios } from "@/services/projects/project-calculations";
@@ -29,6 +30,15 @@ const financialInputs = z.object({
 const commandSchema = z.discriminatedUnion("action", [
   z.object({
     action: z.literal("create"),
+    name: z.string().trim().min(2).max(160),
+    description: z.string().trim().max(4000).optional(),
+    sector: z.string().trim().max(120).optional(),
+    countryCode: z.string().trim().length(2).optional(),
+    currency: z.string().trim().length(3).optional(),
+  }),
+  z.object({
+    action: z.literal("update"),
+    projectId: z.string().cuid(),
     name: z.string().trim().min(2).max(160),
     description: z.string().trim().max(4000).optional(),
     sector: z.string().trim().max(120).optional(),
@@ -99,6 +109,8 @@ export async function POST(request: NextRequest) {
     const input = parsed.data;
     const result = input.action === "create"
       ? await createProject(input, user.id)
+      : input.action === "update"
+        ? await updateProjectDetails(input.projectId, input, user.id)
       : input.action === "updatePhase"
         ? await updateProjectPhase(input.projectId, input.phaseType, input.status, user.id, input.notes)
         : input.action === "recordAssessment"

@@ -1,7 +1,9 @@
 import { describe, expect, it } from "vitest";
 import { ProjectPhaseStatus } from "@/generated/prisma/client";
 import {
+  assertValidProjectPhaseUpdate,
   deriveProjectTransition,
+  projectAssessmentTypes,
   projectPhasePlan,
 } from "@/services/projects/project-lifecycle";
 
@@ -64,5 +66,40 @@ describe("project lifecycle transitions", () => {
       currentPhase: "COMPLETION",
       status: "COMPLETED",
     });
+  });
+
+  it("rejects activating a future phase before earlier phases complete", () => {
+    expect(() =>
+      assertValidProjectPhaseUpdate(
+        projectPhasePlan.map((phase, index) => ({
+          type: phase.type,
+          sequence: phase.sequence,
+          status: index === 0 ? ProjectPhaseStatus.ACTIVE : ProjectPhaseStatus.PENDING,
+        })),
+        "EVALUATION",
+        "ACTIVE",
+        0,
+      ),
+    ).toThrow("Complete earlier project phases");
+  });
+
+  it("rejects execution before all assessments complete", () => {
+    expect(() =>
+      assertValidProjectPhaseUpdate(
+        projectPhasePlan.map((phase, index) => ({
+          type: phase.type,
+          sequence: phase.sequence,
+          status:
+            index < 4
+              ? ProjectPhaseStatus.COMPLETED
+              : index === 4
+                ? ProjectPhaseStatus.PENDING
+                : ProjectPhaseStatus.PENDING,
+        })),
+        "EXECUTION",
+        "ACTIVE",
+        projectAssessmentTypes.length - 1,
+      ),
+    ).toThrow("Complete all project assessments before execution");
   });
 });

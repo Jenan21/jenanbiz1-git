@@ -242,10 +242,18 @@ export function ProjectsWorkspace({ locale }: { locale: Locale }) {
   const [submitting, setSubmitting] = useState(false);
   const [savingPhase, setSavingPhase] = useState(false);
   const [savingAssessment, setSavingAssessment] = useState(false);
+  const [savingDetails, setSavingDetails] = useState(false);
   const [startingProjectId, setStartingProjectId] = useState("");
   const [error, setError] = useState("");
   const [message, setMessage] = useState("");
   const [selectedProjectId, setSelectedProjectId] = useState("");
+  const [detailsDraft, setDetailsDraft] = useState({
+    name: "",
+    description: "",
+    sector: "",
+    countryCode: "",
+    currency: "SAR",
+  });
   const [phaseDraft, setPhaseDraft] = useState<{
     phaseType: ProjectPhaseType;
     status: ProjectPhaseStatus;
@@ -321,6 +329,13 @@ export function ProjectsWorkspace({ locale }: { locale: Locale }) {
     setSelectedProjectId(fallbackId);
     const current = nextProjects.find((project) => project.id === fallbackId);
     if (!current) return;
+    setDetailsDraft({
+      name: current.name,
+      description: current.description ?? "",
+      sector: current.sector ?? "",
+      countryCode: current.countryCode ?? "",
+      currency: current.currency,
+    });
     setPhaseDraft(createPhaseDraft(current));
     const assessmentType =
       preferredAssessmentType ??
@@ -392,6 +407,37 @@ export function ProjectsWorkspace({ locale }: { locale: Locale }) {
       setError(submitError instanceof Error ? submitError.message : text.error);
     } finally {
       setSubmitting(false);
+    }
+  }
+
+  async function saveDetails(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (!selectedProject) return;
+    setSavingDetails(true);
+    setError("");
+    setMessage("");
+    try {
+      const response = await fetch("/api/projects", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          action: "update",
+          projectId: selectedProject.id,
+          name: detailsDraft.name,
+          description: detailsDraft.description.trim() || undefined,
+          sector: detailsDraft.sector.trim() || undefined,
+          countryCode: detailsDraft.countryCode.trim() || undefined,
+          currency: detailsDraft.currency.trim() || undefined,
+        }),
+      });
+      const data = (await response.json()) as { message?: string };
+      if (!response.ok) throw new Error(data.message ?? text.error);
+      setMessage(text.projectSaved);
+      await loadProjects(selectedProject.id);
+    } catch (detailsError) {
+      setError(detailsError instanceof Error ? detailsError.message : text.error);
+    } finally {
+      setSavingDetails(false);
     }
   }
 
@@ -746,6 +792,93 @@ export function ProjectsWorkspace({ locale }: { locale: Locale }) {
           </div>
 
           <div className="project-operations-grid">
+            <section className="card project-details-card">
+              <div className="project-card-heading">
+                <h3>{text.manage}</h3>
+                <span>{selectedProject.id}</span>
+              </div>
+              <form className="project-operations-form" onSubmit={saveDetails}>
+                <label>
+                  <span>{text.name}</span>
+                  <input
+                    required
+                    minLength={2}
+                    maxLength={160}
+                    value={detailsDraft.name}
+                    onChange={(event) =>
+                      setDetailsDraft((current) => ({
+                        ...current,
+                        name: event.target.value,
+                      }))
+                    }
+                  />
+                </label>
+                <label>
+                  <span>{text.currency}</span>
+                  <input
+                    required
+                    maxLength={3}
+                    pattern="[A-Za-z]{3}"
+                    value={detailsDraft.currency}
+                    onChange={(event) =>
+                      setDetailsDraft((current) => ({
+                        ...current,
+                        currency: event.target.value.toUpperCase(),
+                      }))
+                    }
+                  />
+                </label>
+                <label>
+                  <span>{text.sector}</span>
+                  <input
+                    maxLength={120}
+                    value={detailsDraft.sector}
+                    onChange={(event) =>
+                      setDetailsDraft((current) => ({
+                        ...current,
+                        sector: event.target.value,
+                      }))
+                    }
+                  />
+                </label>
+                <label>
+                  <span>{text.country}</span>
+                  <input
+                    maxLength={2}
+                    pattern="[A-Za-z]{2}"
+                    value={detailsDraft.countryCode}
+                    onChange={(event) =>
+                      setDetailsDraft((current) => ({
+                        ...current,
+                        countryCode: event.target.value.toUpperCase(),
+                      }))
+                    }
+                  />
+                </label>
+                <label className="project-operations-form__full">
+                  <span>{text.description}</span>
+                  <textarea
+                    rows={4}
+                    maxLength={4000}
+                    value={detailsDraft.description}
+                    onChange={(event) =>
+                      setDetailsDraft((current) => ({
+                        ...current,
+                        description: event.target.value,
+                      }))
+                    }
+                  />
+                </label>
+                <button
+                  className="button button--secondary"
+                  type="submit"
+                  disabled={savingDetails}
+                >
+                  {savingDetails ? text.managing : text.manage}
+                </button>
+              </form>
+            </section>
+
             <section className="card project-readiness-card">
               <div className="project-readiness-card__top">
                 <div>
