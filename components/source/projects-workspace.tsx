@@ -7,6 +7,7 @@ import {
   projectAssessmentTypes,
   projectPhasePlan,
 } from "@/services/projects/project-lifecycle";
+import { buildFeasibilityAssessmentDraft } from "@/services/projects/project-review-data";
 
 type ProjectPhaseStatus =
   | "PENDING"
@@ -30,7 +31,14 @@ type ProjectAssessmentType =
   | "TECHNICAL"
   | "COMPLIANCE";
 
-type Project = {
+type ProjectsWorkspaceMode =
+  | "all"
+  | "analysis"
+  | "feasibility"
+  | "evaluation"
+  | "launch";
+
+export type Project = {
   id: string;
   name: string;
   description: string | null;
@@ -52,6 +60,16 @@ type Project = {
     score: number | null;
     summary: string | null;
     source: string | null;
+  }>;
+  intelligenceSnapshots?: Array<{
+    query: string;
+    location: unknown;
+    population: unknown;
+    purchasingPower: unknown;
+    competitors: unknown;
+    sources: unknown;
+    limitations: unknown;
+    fetchedAt: string | Date;
   }>;
 };
 
@@ -229,31 +247,62 @@ function createPhaseDraft(project: Project) {
   };
 }
 
-export function ProjectsWorkspace({ locale }: { locale: Locale }) {
+function createDetailsDraft(project: Project | null) {
+  return {
+    name: project?.name ?? "",
+    description: project?.description ?? "",
+    sector: project?.sector ?? "",
+    countryCode: project?.countryCode ?? "",
+    currency: project?.currency ?? "SAR",
+  };
+}
+
+export function ProjectsWorkspace({
+  locale,
+  focusMode = "all",
+  initialProjects = [],
+  initialSelectedProjectId,
+  title,
+  helper,
+  allowCreate = true,
+}: {
+  locale: Locale;
+  focusMode?: ProjectsWorkspaceMode;
+  initialProjects?: Project[];
+  initialSelectedProjectId?: string;
+  title?: string;
+  helper?: string;
+  allowCreate?: boolean;
+}) {
   const language = locale === "ar" ? "ar" : "en";
   const text = copy[language];
-  const [projects, setProjects] = useState<Project[]>([]);
+  const [projects, setProjects] = useState<Project[]>(initialProjects);
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
   const [sector, setSector] = useState("");
   const [countryCode, setCountryCode] = useState("");
   const [currency, setCurrency] = useState("SAR");
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(initialProjects.length === 0);
   const [submitting, setSubmitting] = useState(false);
   const [savingPhase, setSavingPhase] = useState(false);
   const [savingAssessment, setSavingAssessment] = useState(false);
   const [savingDetails, setSavingDetails] = useState(false);
+  const [savingFeasibility, setSavingFeasibility] = useState(false);
   const [startingProjectId, setStartingProjectId] = useState("");
   const [error, setError] = useState("");
   const [message, setMessage] = useState("");
-  const [selectedProjectId, setSelectedProjectId] = useState("");
-  const [detailsDraft, setDetailsDraft] = useState({
-    name: "",
-    description: "",
-    sector: "",
-    countryCode: "",
-    currency: "SAR",
-  });
+  const [selectedProjectId, setSelectedProjectId] = useState(
+    initialSelectedProjectId && initialProjects.some((project) => project.id === initialSelectedProjectId)
+      ? initialSelectedProjectId
+      : initialProjects[0]?.id ?? "",
+  );
+  const [detailsDraft, setDetailsDraft] = useState(() =>
+    createDetailsDraft(
+      initialProjects.find((project) => project.id === initialSelectedProjectId) ??
+        initialProjects[0] ??
+        null,
+    ),
+  );
   const [phaseDraft, setPhaseDraft] = useState<{
     phaseType: ProjectPhaseType;
     status: ProjectPhaseStatus;
@@ -316,6 +365,15 @@ export function ProjectsWorkspace({ locale }: { locale: Locale }) {
         : null,
     [selectedProject],
   );
+  const resolvedTitle = title ?? text.createTitle;
+  const resolvedHelper = helper ?? text.helper;
+  const showCreateForm = allowCreate && (focusMode === "all" || focusMode === "analysis");
+  const showDetailsCard = focusMode === "all" || focusMode === "analysis";
+  const showReadinessCard = focusMode === "all" || focusMode === "evaluation" || focusMode === "launch";
+  const showPhaseCard = focusMode === "all" || focusMode === "evaluation" || focusMode === "launch";
+  const showAssessmentCard = focusMode === "all" || focusMode === "evaluation" || focusMode === "feasibility";
+  const showCalculator = focusMode === "all" || focusMode === "feasibility";
+  const showIntelligence = focusMode === "all" || focusMode === "analysis" || focusMode === "feasibility";
 
   const syncSelectedProject = useCallback((
     nextProjects: Project[],
@@ -330,19 +388,17 @@ export function ProjectsWorkspace({ locale }: { locale: Locale }) {
     const current = nextProjects.find((project) => project.id === fallbackId);
     if (!current) return;
     setDetailsDraft({
-      name: current.name,
-      description: current.description ?? "",
-      sector: current.sector ?? "",
-      countryCode: current.countryCode ?? "",
-      currency: current.currency,
+      ...createDetailsDraft(current),
     });
     setPhaseDraft(createPhaseDraft(current));
     const assessmentType =
       preferredAssessmentType ??
+      (focusMode === "feasibility" ? "FINANCIAL" : undefined) ??
       assessmentDraft.type ??
       projectAssessmentTypes[0];
     setAssessmentDraft(createAssessmentDraft(current, assessmentType));
-  }, [assessmentDraft.type]);
+    setIntelligenceProjectId(current.id);
+  }, [assessmentDraft.type, focusMode]);
 
   const loadProjects = useCallback(async (preferredId?: string) => {
     setLoading(true);
@@ -365,6 +421,13 @@ export function ProjectsWorkspace({ locale }: { locale: Locale }) {
       setLoading(false);
     }
   }, [syncSelectedProject, text.error]);
+
+  useEffect(() => {
+    if (initialProjects.length > 0) {
+      syncSelectedProject(projects, selectedProjectId || initialSelectedProjectId);
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   useEffect(() => {
     const timer = window.setTimeout(() => {
@@ -555,6 +618,47 @@ export function ProjectsWorkspace({ locale }: { locale: Locale }) {
     }
   }
 
+  async function saveFeasibilityAssessment() {
+    if (!selectedProject || !calculation) return;
+    setSavingFeasibility(true);
+    setError("");
+    setMessage("");
+    try {
+      const draft = buildFeasibilityAssessmentDraft({
+        breakEvenUnits: calculation.base.breakEvenUnits,
+        monthlyProfit: calculation.base.monthlyProfit,
+        roiPercent: calculation.base.roiPercent,
+        paybackMonths: calculation.base.paybackMonths,
+      });
+      const response = await fetch("/api/projects", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          action: "recordAssessment",
+          projectId: selectedProject.id,
+          type: "FINANCIAL",
+          score: draft.score,
+          summary: draft.summary,
+          source: draft.source,
+        }),
+      });
+      const data = (await response.json()) as { message?: string };
+      if (!response.ok) throw new Error(data.message ?? text.error);
+      setAssessmentDraft({
+        type: "FINANCIAL",
+        score: String(draft.score),
+        summary: draft.summary,
+        source: draft.source,
+      });
+      setMessage(text.projectSaved);
+      await loadProjects(selectedProject.id);
+    } catch (saveError) {
+      setError(saveError instanceof Error ? saveError.message : text.error);
+    } finally {
+      setSavingFeasibility(false);
+    }
+  }
+
   async function searchIntelligence(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setIntelligenceLoading(true);
@@ -598,61 +702,63 @@ export function ProjectsWorkspace({ locale }: { locale: Locale }) {
     >
       <div className="section-heading">
         <span className="eyebrow eyebrow--small">{text.title}</span>
-        <h2 id="projects-workspace-title">{text.createTitle}</h2>
-        <p>{text.helper}</p>
+        <h2 id="projects-workspace-title">{resolvedTitle}</h2>
+        <p>{resolvedHelper}</p>
       </div>
 
-      <form className="card project-create-form" onSubmit={submit}>
-        <label>
-          <span>{text.name}</span>
-          <input
-            aria-required="true"
-            required
-            minLength={2}
-            maxLength={160}
-            value={name}
-            onChange={(event) => setName(event.target.value)}
-          />
-        </label>
-        <label>
-          <span>{text.description}</span>
-          <input
-            maxLength={4000}
-            value={description}
-            onChange={(event) => setDescription(event.target.value)}
-          />
-        </label>
-        <label>
-          <span>{text.sector}</span>
-          <input
-            maxLength={120}
-            value={sector}
-            onChange={(event) => setSector(event.target.value)}
-          />
-        </label>
-        <label>
-          <span>{text.country}</span>
-          <input
-            maxLength={2}
-            pattern="[A-Za-z]{2}"
-            value={countryCode}
-            onChange={(event) => setCountryCode(event.target.value.toUpperCase())}
-          />
-        </label>
-        <label>
-          <span>{text.currency}</span>
-          <input
-            required
-            maxLength={3}
-            pattern="[A-Za-z]{3}"
-            value={currency}
-            onChange={(event) => setCurrency(event.target.value.toUpperCase())}
-          />
-        </label>
-        <button className="button button--primary" type="submit" disabled={submitting}>
-          {submitting ? text.creating : text.create}
-        </button>
-      </form>
+      {showCreateForm && (
+        <form className="card project-create-form" onSubmit={submit}>
+          <label>
+            <span>{text.name}</span>
+            <input
+              aria-required="true"
+              required
+              minLength={2}
+              maxLength={160}
+              value={name}
+              onChange={(event) => setName(event.target.value)}
+            />
+          </label>
+          <label>
+            <span>{text.description}</span>
+            <input
+              maxLength={4000}
+              value={description}
+              onChange={(event) => setDescription(event.target.value)}
+            />
+          </label>
+          <label>
+            <span>{text.sector}</span>
+            <input
+              maxLength={120}
+              value={sector}
+              onChange={(event) => setSector(event.target.value)}
+            />
+          </label>
+          <label>
+            <span>{text.country}</span>
+            <input
+              maxLength={2}
+              pattern="[A-Za-z]{2}"
+              value={countryCode}
+              onChange={(event) => setCountryCode(event.target.value.toUpperCase())}
+            />
+          </label>
+          <label>
+            <span>{text.currency}</span>
+            <input
+              required
+              maxLength={3}
+              pattern="[A-Za-z]{3}"
+              value={currency}
+              onChange={(event) => setCurrency(event.target.value.toUpperCase())}
+            />
+          </label>
+          <button className="button button--primary" type="submit" disabled={submitting}>
+            {submitting ? text.creating : text.create}
+          </button>
+        </form>
+      )}
 
       {(error || message) && (
         <div
@@ -792,6 +898,7 @@ export function ProjectsWorkspace({ locale }: { locale: Locale }) {
           </div>
 
           <div className="project-operations-grid">
+            {showDetailsCard && (
             <section className="card project-details-card">
               <div className="project-card-heading">
                 <h3>{text.manage}</h3>
@@ -878,7 +985,9 @@ export function ProjectsWorkspace({ locale }: { locale: Locale }) {
                 </button>
               </form>
             </section>
+            )}
 
+            {showReadinessCard && (
             <section className="card project-readiness-card">
               <div className="project-readiness-card__top">
                 <div>
@@ -922,7 +1031,9 @@ export function ProjectsWorkspace({ locale }: { locale: Locale }) {
                   : text.startProject}
               </button>
             </section>
+            )}
 
+            {showPhaseCard && (
             <section className="card project-phase-card">
               <div className="project-card-heading">
                 <h3>{text.phaseUpdate}</h3>
@@ -995,7 +1106,9 @@ export function ProjectsWorkspace({ locale }: { locale: Locale }) {
                 ))}
               </div>
             </section>
+            )}
 
+            {showAssessmentCard && (
             <section className="card project-assessment-card">
               <div className="project-card-heading">
                 <h3>{text.assessmentUpdate}</h3>
@@ -1011,7 +1124,10 @@ export function ProjectsWorkspace({ locale }: { locale: Locale }) {
                       setAssessmentDraft(createAssessmentDraft(selectedProject, nextType));
                     }}
                   >
-                    {projectAssessmentTypes.map((type) => (
+                    {(focusMode === "feasibility"
+                      ? (["FINANCIAL"] as const)
+                      : projectAssessmentTypes
+                    ).map((type) => (
                       <option key={type} value={type}>
                         {type}
                       </option>
@@ -1070,10 +1186,12 @@ export function ProjectsWorkspace({ locale }: { locale: Locale }) {
                 </button>
               </form>
             </section>
+            )}
           </div>
         </section>
       )}
 
+      {showCalculator && (
       <section className="project-calculator" aria-labelledby="project-calculator-title">
         <div className="section-heading">
           <span className="eyebrow eyebrow--small">{text.calculator}</span>
@@ -1141,11 +1259,23 @@ export function ProjectsWorkspace({ locale }: { locale: Locale }) {
                   </strong>
                 </div>
               ))}
+              {selectedProject && (
+                <button
+                  className="button button--secondary"
+                  type="button"
+                  disabled={savingFeasibility}
+                  onClick={() => void saveFeasibilityAssessment()}
+                >
+                  {savingFeasibility ? text.managing : text.saveAssessment}
+                </button>
+              )}
             </div>
           </div>
         )}
       </section>
+      )}
 
+      {showIntelligence && (
       <section className="project-intelligence" aria-labelledby="project-intelligence-title">
         <div className="section-heading">
           <span className="eyebrow eyebrow--small">{text.intelligence}</span>
@@ -1265,6 +1395,7 @@ export function ProjectsWorkspace({ locale }: { locale: Locale }) {
           </div>
         )}
       </section>
+      )}
     </section>
   );
 }

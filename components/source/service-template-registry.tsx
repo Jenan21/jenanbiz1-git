@@ -19,6 +19,7 @@ export interface ServiceTemplateProps {
   locale: Locale;
   module: PlatformModuleDefinition;
   service: PlatformServiceDefinition;
+  userId: string;
   userLabel: string;
 }
 

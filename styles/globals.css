@@ -197,6 +197,132 @@ a {
   align-items: center;
   gap: 12px;
 }
+
+.projects-live-page {
+  display: grid;
+  gap: 1.5rem;
+}
+
+.projects-live-hero,
+.projects-live-panel,
+.projects-live-stat {
+  background: color-mix(in srgb, var(--panel) 90%, transparent);
+}
+
+.projects-live-hero {
+  display: grid;
+  gap: 1rem;
+  grid-template-columns: minmax(0, 2fr) minmax(260px, 1fr);
+  align-items: start;
+}
+
+.projects-live-hero h1 {
+  margin: 0.35rem 0 0.65rem;
+}
+
+.projects-live-hero p {
+  margin: 0;
+  color: var(--muted);
+}
+
+.projects-live-hero__actions {
+  display: grid;
+  gap: 1rem;
+  justify-items: start;
+}
+
+.projects-live-stats,
+.projects-live-grid {
+  display: grid;
+  gap: 1rem;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+
+.projects-live-stat span,
+.projects-live-score span,
+.projects-live-links span,
+.projects-live-meta dt {
+  color: var(--muted);
+}
+
+.projects-live-stat strong,
+.projects-live-score strong {
+  display: block;
+  margin-top: 0.45rem;
+  font-size: clamp(1.4rem, 2vw, 2rem);
+}
+
+.projects-live-panel {
+  display: grid;
+  gap: 0.9rem;
+}
+
+.projects-live-meta {
+  display: grid;
+  gap: 0.75rem;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  margin: 0;
+}
+
+.projects-live-meta div {
+  display: grid;
+  gap: 0.3rem;
+}
+
+.projects-live-meta dd,
+.projects-live-meta dt {
+  margin: 0;
+}
+
+.projects-live-score {
+  display: flex;
+  align-items: end;
+  gap: 1rem;
+}
+
+.projects-live-links {
+  display: grid;
+  gap: 0.65rem;
+}
+
+.projects-live-links > div,
+.projects-live-links--stack {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.65rem;
+}
+
+.projects-live-links a {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0.7rem 1rem;
+  border-radius: 999px;
+  border: 1px solid color-mix(in srgb, var(--brand) 32%, var(--border));
+  background: color-mix(in srgb, var(--brand) 10%, var(--panel));
+}
+
+.projects-live-list {
+  margin: 0;
+  padding-inline-start: 1rem;
+  color: var(--muted);
+}
+
+@media (max-width: 1100px) {
+  .projects-live-stats,
+  .projects-live-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 780px) {
+  .projects-live-hero,
+  .projects-live-stats,
+  .projects-live-grid,
+  .projects-live-meta {
+    grid-template-columns: 1fr;
+  }
+}
 .admin-content {
   min-width: 0;
 }

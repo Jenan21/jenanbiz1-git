@@ -1,3 +1,4 @@
+import dynamic from "next/dynamic";
 import {
   EmptyMetric,
   EmptyPanel,
@@ -9,7 +10,13 @@ import type { IconName } from "@/components/ui/icons";
 import { Icon } from "@/components/ui/icons";
 import Link from "next/link";
 import type { Locale } from "@/types/i18n";
-import { ProjectsWorkspace } from "@/components/source/projects-workspace";
+const ProjectsWorkspace = dynamic(
+  () =>
+    import("@/components/source/projects-workspace").then(
+      (module) => module.ProjectsWorkspace,
+    ),
+  { ssr: false },
+);
 
 type Pair = [string, string];
 const labels: Record<
