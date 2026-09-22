@@ -38,11 +38,15 @@
     "@prisma/client": "7.9.1",
     "@svg-maps/world": "^2.0.0",
     "exceljs": "^4.4.0",
-    "mammoth": "^1.12.2",
+    "leaflet": "^1.9.4",
+    "mammoth": "^1.12.1",
     "next": "16.3.0",
+    "node-vibrant": "^4.0.4",
     "pdf-lib": "^1.17.1",
     "react": "19.2.8",
     "react-dom": "19.2.8",
+    "react-leaflet": "^5.0.0",
+    "redis": "^6.2.1",
     "sharp": "^0.35.3",
     "svg-path-bbox": "^2.1.0",
     "world-countries": "^5.1.0",
@@ -51,6 +55,7 @@
   "devDependencies": {
     "@playwright/test": "^1.62.1",
     "@tailwindcss/postcss": "4.3.3",
+    "@types/leaflet": "^1.9.22",
     "@types/node": "^24.0.0",
     "@types/react": "^19.0.0",
     "@types/react-dom": "^19.0.0",
@@ -73,12 +78,5 @@
   ],
   "engines": {
     "node": ">=20.9.0"
-  },
-  "overrides": {
-    "@xmldom/xmldom": "0.8.15",
-    "fast-uri": "3.1.7",
-    "mysql2": "3.24.4",
-    "deepmerge-ts": "8.0.2",
-    "uuid": "11.1.1"
   }
 }

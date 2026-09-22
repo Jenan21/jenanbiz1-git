@@ -1,40 +1,39 @@
-import { NextRequest, NextResponse } from "next/server";
-import { getAdminPagination } from "@/lib/admin/pagination";
-import { getRobotDashboardSnapshot } from "@/lib/admin/robot-queries";
+import { NextResponse } from "next/server";
+import { db } from "@/lib/db";
+import { summarizeRobotMetrics } from "@/lib/admin/robot-intelligence";
 import { hasPlatformAdminAccess } from "@/lib/auth/authorization";
 import { getCurrentUser } from "@/lib/auth/session";
 
-export async function GET(request: NextRequest) {
+export async function GET() {
   const user = await getCurrentUser();
   if (!user || !hasPlatformAdminAccess(user.systemRole)) {
     return NextResponse.json({ success: false, message: "Admin access required" }, { status: 403 });
   }
   try {
-    const snapshot = await getRobotDashboardSnapshot(getAdminPagination(request, 20));
-    const visibleRobots = snapshot.robots
-      .filter((robot) => robot.status === "ACTIVE")
-      .map((robot) => ({
-        id: robot.id,
-        name: robot.name,
-        intelligence: robot.intelligence,
-        skill: robot.skill,
-        experience: robot.experience,
-        status: "ACTIVE" as const,
-      }));
+    const robots = await db.robot.findMany({
+      orderBy: { intelligence: "desc" },
+      take: 50,
+    });
+
+    const normalized: import("@/lib/admin/robot-intelligence").RobotRecord[] = robots.map((robot) => ({
+      id: robot.id,
+      name: robot.name,
+      intelligence: robot.intelligence,
+      skill: robot.skill,
+      experience: robot.experience,
+      status:
+        robot.status === "ARCHIVED"
+          ? "HIDDEN"
+          : robot.status === "REVIEW"
+            ? "REVIEW"
+            : robot.status === "HIDDEN"
+              ? "HIDDEN"
+              : "ACTIVE",
+    }));
 
     return NextResponse.json({
       success: true,
-      summary: {
-        totalRobots: snapshot.totalRobots,
-        visibleRobots,
-        hiddenRobots: snapshot.hiddenRobots,
-        averageIntelligence: snapshot.averageIntelligence,
-        dailyGeneration: snapshot.dailyGeneration,
-        approvalRate: snapshot.totalRobots
-          ? Math.round((snapshot.activeRobots / snapshot.totalRobots) * 100)
-          : 0,
-        pagination: snapshot.pagination,
-      },
+      summary: summarizeRobotMetrics(normalized),
     });
   } catch (error) {
     console.error("admin dashboard route error", error);

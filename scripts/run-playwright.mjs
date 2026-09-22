@@ -16,7 +16,7 @@ const server = spawn(
   [fileURLToPath(nextBin), "dev", "--hostname", "127.0.0.1", "--port", port],
   {
     cwd: projectRoot,
-    env: { ...process.env, NEXT_DIST_DIR: ".next-e2e", NODE_ENV: "development" },
+    env: { ...process.env, NODE_ENV: "development" },
     stdio: "inherit",
     detached: !isWindows,
   },

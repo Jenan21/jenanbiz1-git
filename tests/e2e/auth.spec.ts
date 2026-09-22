@@ -167,11 +167,12 @@ test.describe.serial("real authentication and server-side RBAC", () => {
 
   test("rate limits repeated login and register attempts", async ({ page }) => {
     let loginStatus = 0;
+    const limitedLoginEmail = `e2e.login.limit.${process.env.E2E_RUN_ID}@example.test`;
     for (let attempt = 0; attempt < 9; attempt += 1) {
       const response = await page.request.post("/api/auth/login", {
         headers: { origin: "http://127.0.0.1:3101" },
         data: {
-          email: e2eIdentity.admin.email,
+          email: limitedLoginEmail,
           password: "Repeated-wrong-password!",
           remember: false,
         },

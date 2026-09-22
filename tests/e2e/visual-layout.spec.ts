@@ -94,5 +94,29 @@ for (const path of ["/login", "/register"] as const) {
     });
     expect(layout.scrollWidth).toBeLessThanOrEqual(layout.viewportWidth);
     expect(layout.violations).toEqual([]);
+
+    if (testInfo.project.metadata.viewportKind !== "tablet" &&
+        testInfo.project.metadata.viewportKind !== "mobile") {
+      const composition = await page.evaluate(() => {
+        const rect = (selector: string) =>
+          document.querySelector<HTMLElement>(selector)?.getBoundingClientRect();
+        const story = rect(".access-page__story");
+        const form = rect(".access-page__form-panel");
+        const metrics = rect(".access-page__metrics");
+        const trust = rect(".access-page__trust");
+        const city = document.querySelector<HTMLElement>(".access-page__city");
+        return {
+          cityAsset: city ? getComputedStyle(city).backgroundImage : "",
+          ordered: Boolean(
+            story && form && metrics && trust &&
+            story.right < form.left &&
+            form.right < metrics.left &&
+            trust.top >= form.bottom,
+          ),
+        };
+      });
+      expect(composition.cityAsset).toContain("global-city-night.jpg");
+      expect(composition.ordered).toBe(true);
+    }
   });
 }

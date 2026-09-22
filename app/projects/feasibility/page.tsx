@@ -1,5 +1,10 @@
-import { ServicePage } from "@/components/custom/module-page";
+import { ProjectsLiveServicePage } from "@/components/projects/projects-live-service-page";
 
-export default function Page() {
-  return <ServicePage moduleId="projects" slug="feasibility-study" />;
+export default function ProjectFeasibilityPage() {
+  return (
+    <ProjectsLiveServicePage
+      title={["إعداد دراسة الجدوى", "Feasibility study"]}
+      description={["حسابات مالية وسيناريوهات مشتقة من المدخلات الفعلية فقط.", "Financial calculations and scenarios derived only from submitted inputs."]}
+    />
+  );
 }

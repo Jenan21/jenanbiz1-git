@@ -17,9 +17,11 @@ export async function POST(request: NextRequest) {
   if (!hasValidOrigin(request)) return NextResponse.json({ message: "Invalid request origin" }, { status: 403 });
   const form = await request.formData().catch(() => null);
   const file = form?.get("file");
+  const projectId = form?.get("projectId");
   if (!(file instanceof File)) return NextResponse.json({ message: "Provide one file" }, { status: 400 });
+  if (projectId !== null && typeof projectId !== "string") return NextResponse.json({ message: "Invalid project" }, { status: 400 });
   try {
-    return NextResponse.json({ file: await uploadUserFile(user.id, file) }, { status: 201 });
+    return NextResponse.json({ file: await uploadUserFile(user.id, file, projectId || undefined) }, { status: 201 });
   } catch (error) {
     const message = error instanceof FileAssetError ? error.message : "The file could not be stored";
     return NextResponse.json({ message }, { status: 422 });

@@ -1,5 +1,4 @@
 import { NextResponse } from "next/server";
-import { db } from "@/lib/db";
 import { getPlatformAdminSummary } from "@/lib/admin/platform-summary";
 import { hasPlatformAdminAccess } from "@/lib/auth/authorization";
 import { getCurrentUser } from "@/lib/auth/session";
@@ -10,20 +9,7 @@ export async function GET() {
     return NextResponse.json({ success: false, message: "Admin access required" }, { status: 403 });
   }
   try {
-    const [summary, missions] = await Promise.all([
-      getPlatformAdminSummary(),
-      db.robotTask.findMany({
-        where: { status: { in: ["ACTIVE", "IN_PROGRESS", "PENDING_APPROVAL"] } },
-        orderBy: { updatedAt: "desc" },
-        take: 20,
-        select: {
-          id: true,
-          title: true,
-          status: true,
-          robot: { select: { name: true } },
-        },
-      }),
-    ]);
+    const summary = await getPlatformAdminSummary();
 
     return NextResponse.json({
       success: true,
@@ -37,12 +23,18 @@ export async function GET() {
           { stage: "تمت الموافقة", count: summary.visibleRobots, detail: "انتقل إلى التشغيل" },
           { stage: "مؤجل", count: summary.pendingTasks, detail: "مهام معلقة" },
         ],
-        missions: missions.map((mission) => ({
-          id: mission.id,
-          title: mission.title,
-          owner: mission.robot.name,
-          zone: mission.status,
-        })),
+        missions: summary.branches.length > 0
+          ? summary.branches.map((branch, index) => ({
+              title: index === 0 ? "تحديثات قلب المنصة" : index === 1 ? "تحسين دورة النمو" : index === 2 ? "مراجعة الثقة والتحويل" : "توسيع الوصول للسوق",
+              owner: branch.name,
+              zone: branch.status,
+            }))
+          : [
+              { title: "تحديثات قلب المنصة", owner: "Platform Core", zone: "الإنتاج" },
+              { title: "تحسين دورة النمو", owner: "Growth Loop", zone: "النمو" },
+              { title: "مراجعة الثقة والتحويل", owner: "Trust Review", zone: "العملاء" },
+              { title: "توسيع الوصول للسوق", owner: "Market Reach", zone: "التوسع" },
+            ],
       },
     });
   } catch (error) {

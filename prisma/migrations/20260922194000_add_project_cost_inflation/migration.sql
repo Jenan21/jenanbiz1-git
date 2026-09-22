@@ -1,0 +1,1 @@
+ALTER TABLE "ProjectIntelligenceSnapshot" ADD COLUMN IF NOT EXISTS "costInflation" JSONB;

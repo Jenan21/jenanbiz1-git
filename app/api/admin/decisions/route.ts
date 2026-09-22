@@ -1,27 +1,21 @@
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { db } from "@/lib/db";
-import { getAdminPageMetadata, getAdminPagination } from "@/lib/admin/pagination";
 import { hasPlatformAdminAccess } from "@/lib/auth/authorization";
 import { hasValidOrigin } from "@/lib/auth/request";
 import { getCurrentUser } from "@/lib/auth/session";
 
 const decisionSchema = z.object({ id: z.string().cuid(), action: z.enum(["approve", "defer"]) });
 
-export async function GET(request: NextRequest) {
+export async function GET() {
   const user = await getCurrentUser();
   if (!user || !hasPlatformAdminAccess(user.systemRole)) return NextResponse.json({ success: false, message: "Admin access required" }, { status: 403 });
   try {
-    const { limit, offset } = getAdminPagination(request);
-    const [tasks, total] = await Promise.all([
-      db.robotTask.findMany({
+    const tasks = await db.robotTask.findMany({
       include: { robot: true },
       orderBy: [{ priority: "desc" }, { updatedAt: "desc" }],
-      skip: offset,
-      take: limit,
-      }),
-      db.robotTask.count(),
-    ]);
+      take: 20,
+    });
 
     return NextResponse.json({
       success: true,
@@ -33,7 +27,6 @@ export async function GET(request: NextRequest) {
         priority: task.priority,
         description: task.description,
       })),
-      pagination: getAdminPageMetadata(total, limit, offset),
     });
   } catch (error) {
     console.error("decision route failed", error);

@@ -26,13 +26,42 @@ export async function createProjectReport(projectId: string, userId: string, int
   let page = pdf.addPage([595, 842]);
   let y = 790;
   const margin = 42;
+  const contentWidth = 511;
   const addText = (value: string, size = 11, isBold = false) => {
-    if (y < 55) {
-      page = pdf.addPage([595, 842]);
-      y = 790;
+    const activeFont = isBold ? bold : font;
+    const words = value.split(/\s+/).filter(Boolean);
+    const lines: string[] = [];
+    let line = "";
+    for (const word of words) {
+      const next = line ? `${line} ${word}` : word;
+      if (line && activeFont.widthOfTextAtSize(next, size) > contentWidth) {
+        lines.push(line);
+        line = word;
+      } else {
+        line = next;
+      }
     }
-    page.drawText(value.slice(0, 105), { x: margin, y, size, font: isBold ? bold : font, color: rgb(0.05, 0.13, 0.25) });
-    y -= size + 9;
+    if (line || !lines.length) lines.push(line || "-");
+    for (const text of lines) {
+      if (y < 55) {
+        page = pdf.addPage([595, 842]);
+        y = 790;
+      }
+      page.drawText(text, { x: margin, y, size, font: activeFont, color: rgb(0.05, 0.13, 0.25) });
+      y -= size + 9;
+    }
+  };
+  const addKeyValueTable = (rows: Array<[string, string]>) => {
+    for (const [label, value] of rows) {
+      if (y < 55) {
+        page = pdf.addPage([595, 842]);
+        y = 790;
+      }
+      page.drawRectangle({ x: margin, y: y - 7, width: contentWidth, height: 25, color: rgb(0.96, 0.98, 1) });
+      page.drawText(label, { x: margin + 8, y, size: 10, font: bold, color: rgb(0.05, 0.13, 0.25) });
+      page.drawText(value.slice(0, 56), { x: margin + 175, y, size: 10, font, color: rgb(0.16, 0.24, 0.34) });
+      y -= 29;
+    }
   };
 
   page.drawImage(logo, { x: margin, y: 700, width: 86, height: 82 });
@@ -40,13 +69,15 @@ export async function createProjectReport(projectId: string, userId: string, int
   page.drawText("Generated from verified platform records", { x: 150, y: 738, size: 10, font, color: rgb(0.32, 0.4, 0.5) });
   y = 675;
   addText(`Project: ${formatValue(project.name)}`, 16, true);
-  addText(`Organization: ${formatValue(project.organization?.name)}`);
-  addText(`Project owner: ${formatValue(project.createdBy.profile?.displayName ?? project.createdBy.email)}`);
-  addText(`Sector: ${formatValue(project.sector)}`);
-  addText(`Country: ${formatValue(project.countryCode)}`);
-  addText(`Currency: ${formatValue(project.currency)}`);
-  addText(`Status: ${formatValue(project.status)}`);
-  addText(`Current phase: ${formatValue(project.currentPhase)}`);
+  addKeyValueTable([
+    ["Organization", formatValue(project.organization?.name)],
+    ["Project owner", formatValue(project.createdBy.profile?.displayName ?? project.createdBy.email)],
+    ["Sector", formatValue(project.sector)],
+    ["Country", formatValue(project.countryCode)],
+    ["Currency", formatValue(project.currency)],
+    ["Status", formatValue(project.status)],
+    ["Current phase", formatValue(project.currentPhase)],
+  ]);
   addText(`Description: ${formatValue(project.description)}`);
   y -= 10;
   addText("Project lifecycle", 14, true);
@@ -57,6 +88,27 @@ export async function createProjectReport(projectId: string, userId: string, int
   addText(`Evidence completeness: ${quality.completeness}%`);
   addText(`Decision readiness: ${quality.readyForDecision ? "Ready" : "Incomplete evidence"}`);
   for (const assessment of project.assessments) addText(`${assessment.type}: ${formatValue(assessment.score)}/100 | ${formatValue(assessment.source)}`);
+  y -= 10;
+  addText("Governance", 14, true);
+  const decision = project.decisions[0];
+  const financialPlan = project.financialPlans[0];
+  addText(`Recorded decision: ${formatValue(decision?.verdict)}`);
+  addText(`Decision score: ${formatValue(decision?.weightedScore)}/100`);
+  addText(`Decision rationale: ${formatValue(decision?.rationale)}`);
+  addText(`Financial plan version: ${financialPlan ? `v${financialPlan.version}` : "-"}`);
+  if (project.risks.length) {
+    addText("Risk register", 14, true);
+    for (const risk of project.risks) {
+      addText(`${risk.title} | ${risk.status} | score ${risk.score}/25 | owner: ${risk.ownerLabel}`);
+      addText(`Mitigation: ${risk.mitigation}`);
+    }
+  }
+  if (project.evidenceFiles.length) {
+    addText("Evidence files", 14, true);
+    for (const file of project.evidenceFiles) {
+      addText(`${file.fileName} | ${file.mimeType} | checksum: ${formatValue(file.checksum)}`);
+    }
+  }
   y -= 10;
   addText("Data integrity note", 14, true);
   if (reportIntelligence) {

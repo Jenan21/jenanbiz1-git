@@ -71,15 +71,56 @@ test.describe.serial("projects section acceptance", () => {
     expect(createdPayload.success).toBe(true);
     const projectId = createdPayload.result.id as string;
 
+    const companionProject = await page.request.post("/api/projects", {
+      headers: { origin, "Content-Type": "application/json" },
+      data: {
+        action: "create",
+        name: `Portfolio Project ${Date.now()}`,
+        description: "A second project validates multi-project workspace data.",
+        sector: "Services",
+        countryCode: "SA",
+        currency: "SAR",
+      },
+    });
+    expect(companionProject.status()).toBe(201);
+    const companionPayload = await companionProject.json();
+    const companionProjectId = companionPayload.result.id as string;
+
     const listed = await page.request.get("/api/projects");
     expect(listed.status()).toBe(200);
     const listedPayload = await listed.json();
     expect(listedPayload.projects.some((project: { id: string }) => project.id === projectId)).toBe(true);
+    expect(listedPayload.projects.some((project: { id: string }) => project.id === companionProjectId)).toBe(true);
+
+    const filtered = await page.request.get("/api/projects?status=DRAFT&search=E2E%20Project&limit=1&offset=0");
+    expect(filtered.status()).toBe(200);
+    const filteredPayload = await filtered.json();
+    expect(filteredPayload.page).toMatchObject({ limit: 1, offset: 0 });
+    expect(filteredPayload.projects).toHaveLength(1);
+    expect(filteredPayload.projects[0].id).toBe(projectId);
+
+    const detail = await page.request.get(`/api/projects/${projectId}`);
+    expect(detail.status()).toBe(200);
+    expect(detail.headers()["cache-control"]).toContain("private");
+    expect((await detail.json()).project.id).toBe(projectId);
+
+    const evidenceUpload = await page.request.post("/api/files", {
+      headers: { origin },
+      multipart: {
+        projectId,
+        file: { name: "market-evidence.txt", mimeType: "text/plain", buffer: Buffer.from("Verified project market evidence.") },
+      },
+    });
+    expect(evidenceUpload.status()).toBe(201);
+    const evidencePayload = await evidenceUpload.json();
+    expect(evidencePayload.file.projectId).toBe(projectId);
 
     const feasibility = await page.request.post("/api/projects", {
       headers: { origin, "Content-Type": "application/json" },
       data: {
         action: "calculateFeasibility",
+        projectId,
+        persist: true,
         inputs: {
           initialInvestment: 100000,
           monthlyFixedCosts: 10000,
@@ -92,6 +133,21 @@ test.describe.serial("projects section acceptance", () => {
     });
     expect(feasibility.status()).toBe(200);
     expect((await feasibility.json()).result.base.valid).toBe(true);
+
+    const persistedRisk = await page.request.post("/api/projects", {
+      headers: { origin, "Content-Type": "application/json" },
+      data: {
+        action: "createRisk",
+        projectId,
+        category: "MARKET",
+        title: "Demand fluctuation",
+        likelihood: 3,
+        impact: 4,
+        mitigation: "Review demand weekly and adjust delivery capacity.",
+        ownerLabel: "E2E project owner",
+      },
+    });
+    expect(persistedRisk.status()).toBe(200);
 
     const risk = await page.request.post("/api/projects", {
       headers: { origin, "Content-Type": "application/json" },
@@ -117,6 +173,38 @@ test.describe.serial("projects section acceptance", () => {
       expect(assessment.status(), `${type} assessment`).toBe(200);
     }
 
+    const prematureStart = await page.request.post("/api/projects", {
+      headers: { origin, "Content-Type": "application/json" },
+      data: { action: "start", projectId },
+    });
+    expect(prematureStart.status()).toBe(409);
+
+    for (const phaseType of ["FEASIBILITY", "EVALUATION", "PLANNING"]) {
+      const activated = await page.request.post("/api/projects", {
+        headers: { origin, "Content-Type": "application/json" },
+        data: { action: "updatePhase", projectId, phaseType, status: "ACTIVE", notes: "E2E phase activation" },
+      });
+      expect(activated.status(), `${phaseType} activation`).toBe(200);
+      if (phaseType === "EVALUATION") {
+        const decision = await page.request.post("/api/projects", {
+          headers: { origin, "Content-Type": "application/json" },
+          data: {
+            action: "recordDecision",
+            projectId,
+            verdict: "APPROVE",
+            rationale: "All documented evidence supports a controlled project launch.",
+          },
+        });
+        expect(decision.status()).toBe(200);
+        expect((await decision.json()).result.verdict).toBe("APPROVE");
+      }
+      const completed = await page.request.post("/api/projects", {
+        headers: { origin, "Content-Type": "application/json" },
+        data: { action: "updatePhase", projectId, phaseType, status: "COMPLETED", notes: "E2E phase completion" },
+      });
+      expect(completed.status(), `${phaseType} completion`).toBe(200);
+    }
+
     const started = await page.request.post("/api/projects", {
       headers: { origin, "Content-Type": "application/json" },
       data: { action: "start", projectId },
@@ -139,6 +227,45 @@ test.describe.serial("projects section acceptance", () => {
       await expect(page.locator(".projects-live-service")).toBeVisible();
       await expect(page.locator(".projects-workspace")).toBeVisible();
     }
+
+    const intelligence = await page.request.post("/api/projects", {
+      headers: { origin, "Content-Type": "application/json" },
+      data: {
+        action: "searchIntelligence",
+        projectId,
+        query: "Riyadh, Saudi Arabia",
+        latitude: 24.7136,
+        longitude: 46.6753,
+        countryCode: "SA",
+        sector: "Technology",
+      },
+    });
+    expect(intelligence.status()).toBe(200);
+    expect((await intelligence.json()).result.location).toMatchObject({ latitude: 24.7136, longitude: 46.6753 });
+
+    await page.goto("/projects/start", { waitUntil: "networkidle" });
+    const projectCard = page.locator(".project-list-item").filter({ hasText: "E2E Project" });
+    const openProject = projectCard.getByRole("button", { name: "Open" });
+    if (await openProject.count()) await openProject.click();
+    await expect(page.locator(".project-map__canvas")).toBeVisible();
+    await expect(page.locator(".project-evidence-library")).toContainText("market-evidence.txt");
+
+    await page.setViewportSize({ width: 390, height: 844 });
+    await page.goto("/projects/start", { waitUntil: "networkidle" });
+    await expect(page.locator(".projects-workspace")).toBeVisible();
+    const mobileLayout = await page.evaluate(() => {
+      const viewportWidth = document.documentElement.clientWidth;
+      const selectors = [".project-create-form", ".project-workflow__steps", ".project-evidence-list", ".project-evidence-library", ".project-actions"];
+      const overflows = selectors.flatMap((selector) =>
+        [...document.querySelectorAll<HTMLElement>(selector)]
+          .map((element) => ({ selector, rect: element.getBoundingClientRect() }))
+          .filter(({ rect }) => rect.left < -1 || rect.right > viewportWidth + 1)
+          .map(({ selector }) => selector),
+      );
+      return { scrollWidth: document.documentElement.scrollWidth, viewportWidth, overflows };
+    });
+    expect(mobileLayout.scrollWidth).toBeLessThanOrEqual(mobileLayout.viewportWidth);
+    expect(mobileLayout.overflows).toEqual([]);
 
     await page.request.post("/api/auth/logout", { headers: { origin } });
     const protectedReport = await page.request.get(`/api/projects/${projectId}/report`);

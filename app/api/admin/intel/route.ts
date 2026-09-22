@@ -11,7 +11,7 @@ export async function GET() {
   }
   try {
     const summary = await getPlatformAdminSummary();
-    const observations = buildPlatformObservations({
+    const insights = buildPlatformObservations({
       totalRobots: summary.totalRobots,
       visibleRobots: summary.visibleRobots,
       reviewRobots: summary.reviewRobots,
@@ -26,7 +26,7 @@ export async function GET() {
 
     return NextResponse.json({
       success: true,
-      observations,
+      insights,
     });
   } catch (error) {
     console.error("admin intel route failed", error);
