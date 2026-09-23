@@ -2,11 +2,12 @@ import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { getCurrentUser } from "@/lib/auth/session";
 import { hasValidOrigin } from "@/lib/auth/request";
-import { completeLearnerLesson, enrollLearner, getLearnerCourseProgress } from "@/services/academy/learner-progress-service";
+import { completeLearnerLesson, enrollLearner, getLearnerCourseProgress, submitLearnerExamAttempt } from "@/services/academy/learner-progress-service";
 
 const commandSchema = z.discriminatedUnion("action", [
   z.object({ action: z.literal("enroll"), courseId: z.string().cuid() }),
   z.object({ action: z.literal("completeLesson"), lessonId: z.string().cuid() }),
+  z.object({ action: z.literal("submitExam"), examId: z.string().cuid(), score: z.number().int().min(0).max(100) }),
 ]);
 
 export async function GET(request: NextRequest) {
@@ -24,7 +25,11 @@ export async function POST(request: NextRequest) {
   const parsed = commandSchema.safeParse(await request.json().catch(() => null));
   if (!parsed.success) return NextResponse.json({ success: false, message: "Invalid learning progress command" }, { status: 400 });
   try {
-    const result = parsed.data.action === "enroll" ? await enrollLearner(parsed.data.courseId, user.id) : await completeLearnerLesson(parsed.data.lessonId, user.id);
+    const result = parsed.data.action === "enroll"
+      ? await enrollLearner(parsed.data.courseId, user.id)
+      : parsed.data.action === "completeLesson"
+        ? await completeLearnerLesson(parsed.data.lessonId, user.id)
+        : await submitLearnerExamAttempt({ examId: parsed.data.examId, score: parsed.data.score, userId: user.id });
     return NextResponse.json({ success: true, result }, { status: parsed.data.action === "enroll" ? 201 : 200 });
   } catch (error) { return NextResponse.json({ success: false, message: error instanceof Error ? error.message : "Learning progress failed" }, { status: 409 }); }
 }

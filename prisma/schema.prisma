@@ -516,6 +516,8 @@ model User {
   fundingAssessments      FundingAssessment[]
   learnerEnrollments      LearnerEnrollment[]
   learnerLessonCompletions LearnerLessonCompletion[]
+  learnerExamAttempts     LearnerExamAttempt[]
+  learnerCertificates     LearnerCertificate[]
   createdJobPostings      JobPosting[]             @relation("JobPostingCreator")
   jobApplications         JobApplication[]         @relation("JobApplicant")
   marketingCampaigns      MarketingCampaign[]      @relation("MarketingCampaignCreator")
@@ -1207,6 +1209,7 @@ model AcademyCourse {
   skills              CourseSkill[]
   completions         CourseCompletion[]
   learnerEnrollments  LearnerEnrollment[]
+  learnerCertificates LearnerCertificate[]
   createdAt           DateTime           @default(now())
   updatedAt           DateTime           @updatedAt
 
@@ -1255,6 +1258,20 @@ model LearnerLessonCompletion {
   @@index([userId])
 }
 
+model LearnerExamAttempt {
+  id        String                    @id @default(cuid())
+  userId    String
+  examId    String
+  score     Int
+  outcome   AcademicAssessmentOutcome
+  evidence  Json?
+  user      User                      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  exam      AcademyExam               @relation(fields: [examId], references: [id], onDelete: Cascade)
+  createdAt DateTime                  @default(now())
+
+  @@index([userId, examId, createdAt])
+}
+
 model AcademyLab {
   id                String              @id @default(cuid())
   courseId          String
@@ -1285,6 +1302,7 @@ model AcademyExam {
   specialization   Specialization?            @relation(fields: [specializationId], references: [id], onDelete: SetNull)
   requirements     CertificationRequirement[]
   attempts         ExamAttempt[]
+  learnerAttempts  LearnerExamAttempt[]
   createdAt        DateTime                   @default(now())
   updatedAt        DateTime                   @updatedAt
 }
@@ -1307,8 +1325,27 @@ model AcademyCertification {
   specialization   Specialization             @relation(fields: [specializationId], references: [id], onDelete: Cascade)
   requirements     CertificationRequirement[]
   records          RobotCertification[]
+  learnerRecords   LearnerCertificate[]
   createdAt        DateTime                   @default(now())
   updatedAt        DateTime                   @updatedAt
+}
+
+model LearnerCertificate {
+  id              String                    @id @default(cuid())
+  userId          String
+  courseId        String
+  certificationId String?
+  status          CertificationRecordStatus @default(CERTIFIED)
+  awardedAt       DateTime                  @default(now())
+  expiresAt       DateTime?
+  user            User                      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  course          AcademyCourse             @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  certification   AcademyCertification?     @relation(fields: [certificationId], references: [id], onDelete: SetNull)
+  createdAt       DateTime                  @default(now())
+  updatedAt       DateTime                  @updatedAt
+
+  @@unique([userId, courseId])
+  @@index([status, expiresAt])
 }
 
 model CertificationRequirement {

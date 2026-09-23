@@ -40,7 +40,12 @@ export default async function AcademyCoursePage({
           <p>{course.description ?? (ar ? "مادة أكاديمية منظمة." : "A structured academy course.")}</p>
           <span className="academy-course-page__field">{course.field?.name ?? course.specialization?.name ?? (ar ? "مسار عام" : "General track")}</span>
         </header>
-        <CourseLearningProgress courseId={course.id} lessons={course.lessons.map((lesson) => ({ id: lesson.id, title: lesson.title }))} locale={locale as Locale} />
+        <CourseLearningProgress
+          courseId={course.id}
+          exams={course.exams.map((exam) => ({ id: exam.id, title: exam.title, passingScore: exam.passingScore, assessmentType: exam.assessmentType }))}
+          lessons={course.lessons.map((lesson) => ({ id: lesson.id, title: lesson.title }))}
+          locale={locale as Locale}
+        />
         <section aria-labelledby="lessons-title">
           <h2 id="lessons-title">{ar ? "الدروس" : "Lessons"}</h2>
           {course.lessons.map((lesson) => <article className="academy-course-page__item" key={lesson.id}><span>{String(lesson.sequence).padStart(2, "0")}</span><div><h3>{lesson.title}</h3><p>{lesson.content ?? (ar ? "لا يوجد نص للدرس بعد." : "Lesson content has not been added yet.")}</p></div></article>)}
