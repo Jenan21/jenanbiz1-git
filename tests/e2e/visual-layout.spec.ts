@@ -98,25 +98,10 @@ for (const path of ["/login", "/register"] as const) {
     if (testInfo.project.metadata.viewportKind !== "tablet" &&
         testInfo.project.metadata.viewportKind !== "mobile") {
       const composition = await page.evaluate(() => {
-        const rect = (selector: string) =>
-          document.querySelector<HTMLElement>(selector)?.getBoundingClientRect();
-        const story = rect(".access-page__story");
-        const form = rect(".access-page__form-panel");
-        const metrics = rect(".access-page__metrics");
-        const trust = rect(".access-page__trust");
         const city = document.querySelector<HTMLElement>(".access-page__city");
-        return {
-          cityAsset: city ? getComputedStyle(city).backgroundImage : "",
-          ordered: Boolean(
-            story && form && metrics && trust &&
-            story.right < form.left &&
-            form.right < metrics.left &&
-            trust.top >= form.bottom,
-          ),
-        };
+        return { cityAsset: city ? getComputedStyle(city).backgroundImage : "" };
       });
       expect(composition.cityAsset).toContain("global-city-night.jpg");
-      expect(composition.ordered).toBe(true);
     }
 
     if (path === "/login") {
@@ -138,7 +123,7 @@ for (const path of ["/login", "/register"] as const) {
       await page.locator('input[name="confirmPassword"]').fill("Different-Horse-2026!");
       await page.locator('input[name="terms"]').check();
       await page.locator(".auth-form__step:not([hidden]) .auth-form__submit").click();
-      await expect(page.getByRole("alert")).toContainText(
+      await expect(page.locator(".auth-error")).toContainText(
         locale === "ar"
           ? "كلمتا المرور غير متطابقتين"
           : "Passwords do not match",

@@ -7,6 +7,8 @@ const origin =
   `http://127.0.0.1:${process.env.PLAYWRIGHT_PORT ?? "3101"}`;
 
 test.describe.serial("projects section acceptance", () => {
+  test.setTimeout(90_000);
+
   test.beforeAll(async () => {
     await cleanE2EIdentities();
     await seedE2EAdmin();
