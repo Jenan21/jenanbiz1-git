@@ -53,7 +53,7 @@ export async function createOrganizationForUser(input: {
 }
 
 export async function listOrganizationPrograms(userId: string) {
-  return db.organizationMember.findMany({
+  const memberships = await db.organizationMember.findMany({
     where: { userId, status: OrganizationMemberStatus.ACTIVE },
     select: {
       organization: {
@@ -65,6 +65,41 @@ export async function listOrganizationPrograms(userId: string) {
       },
     },
   });
+  return Promise.all(memberships.map(async (membership) => ({
+    organization: {
+      ...membership.organization,
+      health: await getOrganizationProgramHealth(membership.organization.id, userId),
+    },
+  })));
+}
+
+export async function getOrganizationProgramHealth(organizationId: string, userId: string) {
+  await requireActiveMembership(organizationId, userId);
+  const [programs, members, entries, openAssignments, activeVehicles] = await Promise.all([
+    db.organizationProgram.findMany({ where: { organizationId }, select: { key: true, status: true } }),
+    db.organizationMember.count({ where: { organizationId, status: OrganizationMemberStatus.ACTIVE } }),
+    db.financialEntry.findMany({ where: { organizationId }, select: { amountMinor: true, type: true } }),
+    db.fieldAssignment.count({ where: { organizationId, status: { in: ["ACTIVE", "IN_PROGRESS"] } } }),
+    db.fleetVehicle.count({ where: { organizationId, status: "ACTIVE" } }),
+  ]);
+  const activePrograms = programs.filter((program) => program.status === OrganizationProgramStatus.ACTIVE).length;
+  const financeBalanceMinor = entries.reduce((total, entry) => total + (entry.type === "INCOME" ? entry.amountMinor : -entry.amountMinor), 0);
+  const readinessScore = Math.min(100,
+    (activePrograms / Object.keys(programCatalog).length) * 45 +
+    Math.min(members, 5) * 6 +
+    (entries.length ? 10 : 0) +
+    Math.min(openAssignments, 5) * 2 +
+    Math.min(activeVehicles, 5) * 1,
+  );
+  return {
+    activePrograms,
+    activeVehicles,
+    financeBalanceMinor,
+    members,
+    openAssignments,
+    readinessScore: Math.round(readinessScore),
+    totalPrograms: Object.keys(programCatalog).length,
+  };
 }
 
 export async function activateOrganizationProgram(input: {

@@ -7,7 +7,8 @@ import type { Locale } from "@/types/i18n";
 type ProgramKey = "FINANCE" | "PEOPLE" | "FIELD_OPERATIONS" | "FLEET";
 type ProgramStatus = "ACTIVE" | "SUSPENDED" | "ARCHIVED";
 type OrganizationProgram = { id: string; key: ProgramKey; status: ProgramStatus };
-type Organization = { id: string; name: string; businessPrograms: OrganizationProgram[] };
+type OrganizationHealth = { activePrograms: number; activeVehicles: number; financeBalanceMinor: number; members: number; openAssignments: number; readinessScore: number; totalPrograms: number };
+type Organization = { id: string; name: string; businessPrograms: OrganizationProgram[]; health: OrganizationHealth };
 
 const programs: Array<{ key: ProgramKey; ar: string; en: string; arDescription: string; enDescription: string }> = [
   { key: "FINANCE", ar: "العمليات المالية", en: "Financial operations", arDescription: "سجل تشغيلي للتقارير والعمليات المالية.", enDescription: "An operational record for financial reporting and activity." },
@@ -80,6 +81,14 @@ export function ProgramsWorkspace({ locale }: { locale: Locale }) {
 
       {organizations.length ? <label className="programs-organization">{ar ? "المنشأة النشطة" : "Active organization"}<select value={organizationId} onChange={(event) => setOrganizationId(event.target.value)}>{organizations.map((organization) => <option key={organization.id} value={organization.id}>{organization.name}</option>)}</select></label> : null}
       {message ? <p className="programs-message" role="status">{message}</p> : null}
+      {selectedOrganization ? <section className="programs-health" aria-label={ar ? "صحة برامج المنشأة" : "Organization program health"}>
+        <article><span>{ar ? "الجاهزية" : "Readiness"}</span><strong>{selectedOrganization.health.readinessScore}%</strong></article>
+        <article><span>{ar ? "البرامج النشطة" : "Active programs"}</span><strong>{selectedOrganization.health.activePrograms}/{selectedOrganization.health.totalPrograms}</strong></article>
+        <article><span>{ar ? "الأعضاء" : "Members"}</span><strong>{selectedOrganization.health.members}</strong></article>
+        <article><span>{ar ? "الرصيد" : "Balance"}</span><strong>{(selectedOrganization.health.financeBalanceMinor / 100).toLocaleString()} SAR</strong></article>
+        <article><span>{ar ? "مهام مفتوحة" : "Open field work"}</span><strong>{selectedOrganization.health.openAssignments}</strong></article>
+        <article><span>{ar ? "مركبات نشطة" : "Active vehicles"}</span><strong>{selectedOrganization.health.activeVehicles}</strong></article>
+      </section> : null}
       <div className="programs-grid">
         {programs.map((definition) => {
           const activeProgram = selectedOrganization?.businessPrograms.find((program) => program.key === definition.key);

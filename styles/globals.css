@@ -669,6 +669,116 @@ a {
     grid-template-columns: 1fr;
   }
 }
+
+.programs-workspace {
+  display: grid;
+  gap: 22px;
+}
+
+.programs-workspace__header,
+.programs-create,
+.programs-organization,
+.program-card,
+.programs-health article {
+  border: 1px solid color-mix(in srgb, var(--border) 78%, transparent);
+  border-radius: 16px;
+  background: color-mix(in srgb, var(--surface) 88%, transparent);
+  box-shadow: var(--shadow);
+}
+
+.programs-workspace__header {
+  display: flex;
+  justify-content: space-between;
+  gap: 18px;
+  padding: clamp(18px, 3vw, 30px);
+}
+
+.programs-workspace__header h1,
+.program-card h2 {
+  margin: 0;
+}
+
+.programs-workspace__header p,
+.program-card p,
+.programs-message,
+.programs-health span {
+  color: var(--muted);
+}
+
+.programs-create,
+.programs-organization {
+  display: grid;
+  gap: 10px;
+  padding: 16px;
+}
+
+.programs-create {
+  grid-template-columns: minmax(160px, auto) minmax(220px, 1fr) auto;
+  align-items: end;
+}
+
+.programs-create input,
+.programs-organization select {
+  min-height: 44px;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: var(--deep);
+  color: var(--text);
+  padding: 0 12px;
+}
+
+.programs-health,
+.programs-grid {
+  display: grid;
+  gap: 16px;
+}
+
+.programs-health {
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+}
+
+.programs-health article {
+  display: grid;
+  gap: 6px;
+  padding: 16px;
+}
+
+.programs-health strong {
+  font-size: 1.45rem;
+}
+
+.programs-grid {
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+}
+
+.program-card {
+  display: grid;
+  gap: 12px;
+  padding: 18px;
+}
+
+.program-card > span {
+  width: max-content;
+  border: 1px solid color-mix(in srgb, var(--brand) 28%, var(--border));
+  border-radius: 999px;
+  color: var(--brand);
+  font-size: 0.78rem;
+  padding: 5px 9px;
+}
+
+.program-card__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+@media (max-width: 760px) {
+  .programs-workspace__header,
+  .programs-create {
+    display: grid;
+    grid-template-columns: 1fr;
+  }
+}
 .app::before {
   content: "";
   position: fixed;
