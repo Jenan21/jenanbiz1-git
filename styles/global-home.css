@@ -82,43 +82,19 @@
 }
 
 .global-home__brand {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  width: max-content;
-  color: #f6fdff;
-  filter: drop-shadow(0 0 10px rgba(31, 231, 255, 0.18));
+  display: block;
+  width: clamp(150px, 13vw, 214px);
+  height: 100%;
 }
 
-.global-home__brand-image {
-  width: clamp(94px, 8vw, 138px);
-  aspect-ratio: 16 / 9;
-  border-radius: 14px;
-  object-fit: contain;
-}
-
-.global-home__brand-j {
-  font: 500 4.9rem/0.72 Georgia, serif;
-}
-
-.global-home__brand > span:last-child {
-  display: grid;
-  align-self: center;
-}
-
-.global-home__brand strong {
-  font: 600 2.2rem/1 Georgia, serif;
-}
-
-.global-home__brand b {
-  color: var(--jenan-cyan);
-  font: 800 2.15rem/1 "Alexandria Variable", sans-serif;
-}
-
-.global-home__brand small {
-  margin-top: 5px;
-  color: var(--jenan-muted);
-  font-size: 0.64rem;
+.global-home__brand-art {
+  display: block;
+  width: 100%;
+  height: 100%;
+  background: url("/assets/jenan-pro-logo.jpg") center / contain no-repeat;
+  filter: drop-shadow(0 0 12px rgba(80, 174, 255, 0.22));
+  -webkit-mask-image: radial-gradient(ellipse 94% 92% at center, #000 62%, transparent 100%);
+  mask-image: radial-gradient(ellipse 94% 92% at center, #000 62%, transparent 100%);
 }
 
 .global-home__header nav {
@@ -882,10 +858,7 @@
     padding: 0;
   }
 
-  .global-home__brand-j { font-size: 2.8rem; }
-  .global-home__brand strong,
-  .global-home__brand b { font-size: 1.25rem; }
-  .global-home__brand small { display: none; }
+  .global-home__brand { width: 150px; min-height: 58px; }
   .global-home__header nav { display: none; }
   .global-home__tools { margin-inline-start: auto; }
   .global-home__tools > a { display: none; }
