@@ -25,6 +25,7 @@
     "test": "node --env-file=.env ./node_modules/vitest/vitest.mjs run",
     "test:integration": "node --env-file=.env ./node_modules/vitest/vitest.mjs run tests/integration",
     "test:academy": "node --env-file=.env ./node_modules/vitest/vitest.mjs run tests/integration/academy-foundation.integration.test.ts tests/integration/academy-dashboard.integration.test.ts tests/integration/academy-rbac.integration.test.ts tests/integration/academy-queue-sandbox.integration.test.ts tests/integration/academy-learner-certification.integration.test.ts",
+    "test:account": "node --env-file=.env ./node_modules/vitest/vitest.mjs run tests/integration/account-overview.integration.test.ts",
     "test:marketing": "node --env-file=.env ./node_modules/vitest/vitest.mjs run tests/integration/marketing-domain.integration.test.ts",
     "test:market": "node --env-file=.env ./node_modules/vitest/vitest.mjs run tests/integration/market-domain.integration.test.ts",
     "test:programs": "node --env-file=.env ./node_modules/vitest/vitest.mjs run tests/integration/programs-domain.integration.test.ts",
