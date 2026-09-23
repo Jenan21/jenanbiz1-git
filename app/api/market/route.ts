@@ -5,16 +5,23 @@ import { hasValidOrigin } from "@/lib/auth/request";
 import { createMarketInquiry, createMarketListing, listMarketInquiries, listMarketListings, updateMarketInquiryStatus, updateMarketListingStatus } from "@/services/market/market-service";
 
 const commandSchema = z.discriminatedUnion("action", [
-  z.object({ action: z.literal("create"), kind: z.enum(["PROJECT", "BUSINESS"]), title: z.string().trim().min(2).max(160), summary: z.string().trim().min(20).max(4000), sector: z.string().trim().max(120).optional(), countryCode: z.string().trim().length(2).optional(), currency: z.string().trim().length(3).optional(), projectId: z.string().cuid().optional() }),
+  z.object({ action: z.literal("create"), kind: z.enum(["PROJECT", "BUSINESS"]), title: z.string().trim().min(2).max(160), summary: z.string().trim().min(20).max(4000), sector: z.string().trim().max(120).optional(), countryCode: z.string().trim().length(2).optional(), currency: z.string().trim().length(3).optional(), askingPriceMinor: z.number().int().positive().optional(), valuationNote: z.string().trim().max(1000).optional(), projectId: z.string().cuid().optional() }),
   z.object({ action: z.literal("updateStatus"), listingId: z.string().cuid(), status: z.enum(["PUBLISHED", "PAUSED", "ARCHIVED"]) }),
   z.object({ action: z.literal("createInquiry"), listingId: z.string().cuid(), message: z.string().trim().min(10).max(2_000) }),
   z.object({ action: z.literal("updateInquiryStatus"), inquiryId: z.string().cuid(), status: z.enum(["CONTACTED", "CLOSED"]) }),
 ]);
 
-export async function GET() {
+export async function GET(request: NextRequest) {
   const user = await getCurrentUser();
   if (!user) return NextResponse.json({ success: false, message: "Authentication required" }, { status: 401 });
-  const [listings, inquiries] = await Promise.all([listMarketListings(user.id), listMarketInquiries(user.id)]);
+  const [listings, inquiries] = await Promise.all([listMarketListings(user.id, {
+    countryCode: request.nextUrl.searchParams.get("countryCode") ?? undefined,
+    kind: (request.nextUrl.searchParams.get("kind") as "PROJECT" | "BUSINESS" | null) ?? undefined,
+    limit: Number(request.nextUrl.searchParams.get("limit") ?? 50),
+    offset: Number(request.nextUrl.searchParams.get("offset") ?? 0),
+    search: request.nextUrl.searchParams.get("search") ?? undefined,
+    status: (request.nextUrl.searchParams.get("status") as "DRAFT" | "PUBLISHED" | "PAUSED" | "ARCHIVED" | null) ?? undefined,
+  }), listMarketInquiries(user.id)]);
   return NextResponse.json({ success: true, listings, inquiries });
 }
 

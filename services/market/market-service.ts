@@ -7,6 +7,46 @@ const listingInclude = {
   organization: { select: { id: true, name: true } },
 } satisfies Prisma.MarketListingInclude;
 
+export type MarketListingFilters = {
+  countryCode?: string;
+  kind?: "PROJECT" | "BUSINESS";
+  limit?: number;
+  offset?: number;
+  search?: string;
+  status?: "DRAFT" | "PUBLISHED" | "PAUSED" | "ARCHIVED";
+};
+
+function assessListingQuality(input: {
+  askingPriceMinor?: number;
+  countryCode?: string;
+  projectId?: string;
+  sector?: string;
+  summary: string;
+  title: string;
+  valuationNote?: string;
+}) {
+  const signals = {
+    hasCountry: Boolean(input.countryCode?.trim()),
+    hasLinkedProject: Boolean(input.projectId),
+    hasPrice: typeof input.askingPriceMinor === "number" && input.askingPriceMinor > 0,
+    hasSector: Boolean(input.sector?.trim()),
+    hasValuationNote: Boolean(input.valuationNote?.trim()),
+    strongSummary: input.summary.trim().length >= 120,
+    strongTitle: input.title.trim().length >= 8,
+  };
+  const score = Math.min(100,
+    20 +
+    (signals.strongTitle ? 10 : 0) +
+    (signals.strongSummary ? 20 : 0) +
+    (signals.hasSector ? 12 : 0) +
+    (signals.hasCountry ? 12 : 0) +
+    (signals.hasPrice ? 16 : 0) +
+    (signals.hasValuationNote ? 12 : 0) +
+    (signals.hasLinkedProject ? 18 : 0),
+  );
+  return { score, signals };
+}
+
 function slugify(value: string) {
   const slug = value
     .normalize("NFKD")
@@ -18,11 +58,24 @@ function slugify(value: string) {
   return slug || "listing";
 }
 
-export async function listMarketListings(userId: string) {
+export async function listMarketListings(userId: string, filters: MarketListingFilters = {}) {
+  const limit = Math.min(Math.max(filters.limit ?? 50, 1), 100);
+  const offset = Math.max(filters.offset ?? 0, 0);
+  const query = filters.search?.trim();
   const listings = await db.marketListing.findMany({
-    where: { OR: [{ status: MarketListingStatus.PUBLISHED }, { createdById: userId }] },
+    where: {
+      AND: [
+        { OR: [{ status: MarketListingStatus.PUBLISHED }, { createdById: userId }] },
+        filters.status ? { status: MarketListingStatus[filters.status] } : {},
+        filters.kind ? { kind: filters.kind } : {},
+        filters.countryCode ? { countryCode: filters.countryCode.trim().toUpperCase() } : {},
+        query ? { OR: [{ title: { contains: query, mode: "insensitive" } }, { summary: { contains: query, mode: "insensitive" } }, { sector: { contains: query, mode: "insensitive" } }] } : {},
+      ],
+    },
     include: listingInclude,
-    orderBy: { updatedAt: "desc" },
+    orderBy: [{ qualityScore: "desc" }, { updatedAt: "desc" }],
+    skip: offset,
+    take: limit,
   });
   return listings.map((listing) => ({ ...listing, isOwner: listing.createdById === userId }));
 }
@@ -35,6 +88,8 @@ export async function createMarketListing(
     sector?: string;
     countryCode?: string;
     currency?: string;
+    askingPriceMinor?: number;
+    valuationNote?: string;
     projectId?: string;
   },
   userId: string,
@@ -46,6 +101,7 @@ export async function createMarketListing(
     });
     if (!project) throw new Error("Project not found");
   }
+  const quality = assessListingQuality(input);
   return db.$transaction(async (transaction) => {
     const listing = await transaction.marketListing.create({
       data: {
@@ -56,6 +112,11 @@ export async function createMarketListing(
         sector: input.sector?.trim() || undefined,
         countryCode: input.countryCode?.trim().toUpperCase() || undefined,
         currency: input.currency?.trim().toUpperCase() || "SAR",
+        askingPriceMinor: input.askingPriceMinor,
+        valuationNote: input.valuationNote?.trim() || undefined,
+        qualityScore: quality.score,
+        qualitySignals: quality.signals,
+        reviewedAt: new Date(),
         projectId: input.projectId,
         createdById: userId,
       },
@@ -76,9 +137,10 @@ export async function updateMarketListingStatus(
   return db.$transaction(async (transaction) => {
     const current = await transaction.marketListing.findFirst({
       where: { id: listingId, createdById: userId },
-      select: { id: true },
+      select: { id: true, qualityScore: true },
     });
     if (!current) throw new Error("Listing not found");
+    if (status === "PUBLISHED" && current.qualityScore < 50) throw new Error("Listing quality score is too low to publish");
     const listing = await transaction.marketListing.update({
       where: { id: listingId },
       data: { status },
