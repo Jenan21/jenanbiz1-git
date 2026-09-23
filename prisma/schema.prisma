@@ -1837,6 +1837,12 @@ model MarketingCampaign {
   status         MarketingCampaignStatus @default(DRAFT)
   budgetMinor    Int                     @default(0)
   currency       String                  @default("SAR")
+  targetAudience  String?
+  callToAction    String?
+  kpiTarget       Int?
+  qualityScore    Int                     @default(0)
+  qualitySignals  Json?
+  performanceSnapshot Json?
   paymentId      String?                 @unique
   robotTaskId    String?                 @unique
   startsAt       DateTime?
@@ -1851,6 +1857,7 @@ model MarketingCampaign {
 
   @@index([createdById, status])
   @@index([status, channel, createdAt])
+  @@index([qualityScore, status])
 }
 
 model MarketingLead {

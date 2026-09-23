@@ -2,11 +2,12 @@ import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { getCurrentUser } from "@/lib/auth/session";
 import { hasValidOrigin } from "@/lib/auth/request";
-import { confirmCampaignPaymentAndAssignRobot, createMarketingCampaign, createMarketingLead, listMarketingCampaigns, updateMarketingCampaignStatus } from "@/services/marketing/campaign-service";
+import { confirmCampaignPaymentAndAssignRobot, createMarketingCampaign, createMarketingLead, listMarketingCampaigns, refreshMarketingCampaignPerformance, updateMarketingCampaignStatus } from "@/services/marketing/campaign-service";
 
 const commandSchema = z.discriminatedUnion("action", [
-  z.object({ action: z.literal("createCampaign"), name: z.string().trim().min(2).max(160), objective: z.string().trim().min(10).max(1000), channel: z.enum(["CONTENT", "EMAIL", "SOCIAL", "PAID_SEARCH", "DIRECT"]), customerType: z.enum(["INDIVIDUAL", "ORGANIZATION"]), budgetMinor: z.number().int().min(0).max(1_000_000_000), currency: z.string().trim().length(3).optional() }),
+  z.object({ action: z.literal("createCampaign"), name: z.string().trim().min(2).max(160), objective: z.string().trim().min(10).max(1000), channel: z.enum(["CONTENT", "EMAIL", "SOCIAL", "PAID_SEARCH", "DIRECT"]), customerType: z.enum(["INDIVIDUAL", "ORGANIZATION"]), budgetMinor: z.number().int().min(0).max(1_000_000_000), callToAction: z.string().trim().max(300).optional(), currency: z.string().trim().length(3).optional(), kpiTarget: z.number().int().min(1).max(1_000_000).optional(), targetAudience: z.string().trim().max(500).optional() }),
   z.object({ action: z.literal("confirmPaymentAndAssign"), campaignId: z.string().cuid() }),
+  z.object({ action: z.literal("refreshPerformance"), campaignId: z.string().cuid() }),
   z.object({ action: z.literal("updateCampaignStatus"), campaignId: z.string().cuid(), status: z.enum(["PAUSED", "ARCHIVED"]) }),
   z.object({ action: z.literal("createLead"), campaignId: z.string().cuid(), label: z.string().trim().min(2).max(160), source: z.string().trim().max(160).optional(), status: z.enum(["NEW", "QUALIFIED", "CONTACTED", "CONVERTED", "LOST"]).optional(), valueMinor: z.number().int().min(0).max(1_000_000_000).optional() }),
 ]);
@@ -25,7 +26,15 @@ export async function POST(request: NextRequest) {
   if (!parsed.success) return NextResponse.json({ success: false, message: "Invalid marketing command" }, { status: 400 });
   try {
     const input = parsed.data;
-    const result = input.action === "createCampaign" ? await createMarketingCampaign(input, user.id) : input.action === "confirmPaymentAndAssign" ? await confirmCampaignPaymentAndAssignRobot(input.campaignId, user.id) : input.action === "updateCampaignStatus" ? await updateMarketingCampaignStatus(input.campaignId, input.status, user.id) : await createMarketingLead(input, user.id);
+    const result = input.action === "createCampaign"
+      ? await createMarketingCampaign(input, user.id)
+      : input.action === "confirmPaymentAndAssign"
+        ? await confirmCampaignPaymentAndAssignRobot(input.campaignId, user.id)
+        : input.action === "refreshPerformance"
+          ? await refreshMarketingCampaignPerformance(input.campaignId, user.id)
+          : input.action === "updateCampaignStatus"
+            ? await updateMarketingCampaignStatus(input.campaignId, input.status, user.id)
+            : await createMarketingLead(input, user.id);
     return NextResponse.json({ success: true, result }, { status: input.action === "createCampaign" ? 201 : 200 });
   } catch (error) {
     const message = error instanceof Error ? error.message : "Marketing command failed";
