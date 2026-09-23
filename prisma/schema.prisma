@@ -1788,6 +1788,12 @@ model JobPosting {
   department     String?
   countryCode    String?
   city           String?
+  currency       String           @default("SAR")
+  salaryMinMinor Int?
+  salaryMaxMinor Int?
+  requiredSkills Json?
+  qualityScore   Int              @default(0)
+  qualitySignals Json?
   workMode       JobWorkMode      @default(ON_SITE)
   status         JobPostingStatus @default(DRAFT)
   createdBy      User             @relation("JobPostingCreator", fields: [createdById], references: [id], onDelete: Restrict)
@@ -1806,6 +1812,8 @@ model JobApplication {
   jobPostingId String
   applicantId String
   message     String?
+  matchScore  Int       @default(0)
+  matchSignals Json?
   status      JobApplicationStatus @default(SUBMITTED)
   jobPosting  JobPosting           @relation(fields: [jobPostingId], references: [id], onDelete: Cascade)
   applicant   User                 @relation("JobApplicant", fields: [applicantId], references: [id], onDelete: Cascade)

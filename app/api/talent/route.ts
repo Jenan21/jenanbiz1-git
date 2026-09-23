@@ -5,16 +5,23 @@ import { hasValidOrigin } from "@/lib/auth/request";
 import { applyToJob, createJobPosting, listJobPostings, listOwnedJobApplications, updateJobApplicationStatus, updateJobPostingStatus } from "@/services/talent/job-service";
 
 const commandSchema = z.discriminatedUnion("action", [
-  z.object({ action: z.literal("create"), title: z.string().trim().min(2).max(160), description: z.string().trim().min(20).max(4000), department: z.string().trim().max(120).optional(), countryCode: z.string().trim().length(2).optional(), city: z.string().trim().max(120).optional(), workMode: z.enum(["ON_SITE", "HYBRID", "REMOTE"]) }),
+  z.object({ action: z.literal("create"), title: z.string().trim().min(2).max(160), description: z.string().trim().min(20).max(4000), department: z.string().trim().max(120).optional(), countryCode: z.string().trim().length(2).optional(), city: z.string().trim().max(120).optional(), currency: z.string().trim().length(3).optional(), salaryMinMinor: z.number().int().positive().optional(), salaryMaxMinor: z.number().int().positive().optional(), requiredSkills: z.string().trim().max(1000).optional(), workMode: z.enum(["ON_SITE", "HYBRID", "REMOTE"]) }),
   z.object({ action: z.literal("updateStatus"), jobPostingId: z.string().cuid(), status: z.enum(["PUBLISHED", "CLOSED", "ARCHIVED"]) }),
   z.object({ action: z.literal("apply"), jobPostingId: z.string().cuid(), message: z.string().trim().max(2000).optional() }),
   z.object({ action: z.literal("updateApplicationStatus"), applicationId: z.string().cuid(), status: z.enum(["UNDER_REVIEW", "ACCEPTED", "REJECTED"]) }),
 ]);
 
-export async function GET() {
+export async function GET(request: NextRequest) {
   const user = await getCurrentUser();
   if (!user) return NextResponse.json({ success: false, message: "Authentication required" }, { status: 401 });
-  const [postings, applications] = await Promise.all([listJobPostings(user.id), listOwnedJobApplications(user.id)]);
+  const [postings, applications] = await Promise.all([listJobPostings(user.id, {
+    countryCode: request.nextUrl.searchParams.get("countryCode") ?? undefined,
+    limit: Number(request.nextUrl.searchParams.get("limit") ?? 50),
+    offset: Number(request.nextUrl.searchParams.get("offset") ?? 0),
+    search: request.nextUrl.searchParams.get("search") ?? undefined,
+    status: (request.nextUrl.searchParams.get("status") as "DRAFT" | "PUBLISHED" | "CLOSED" | "ARCHIVED" | null) ?? undefined,
+    workMode: (request.nextUrl.searchParams.get("workMode") as "ON_SITE" | "HYBRID" | "REMOTE" | null) ?? undefined,
+  }), listOwnedJobApplications(user.id)]);
   return NextResponse.json({ success: true, viewerId: user.id, postings, applications });
 }
 

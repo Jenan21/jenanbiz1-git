@@ -362,6 +362,164 @@ a {
     grid-column: auto;
   }
 }
+
+.talent-workspace {
+  display: grid;
+  gap: 22px;
+}
+
+.talent-workspace__header,
+.talent-form,
+.talent-filters,
+.talent-posting,
+.talent-applications article {
+  border: 1px solid color-mix(in srgb, var(--border) 78%, transparent);
+  border-radius: 16px;
+  background: color-mix(in srgb, var(--surface) 88%, transparent);
+  box-shadow: var(--shadow);
+}
+
+.talent-workspace__header {
+  display: flex;
+  justify-content: space-between;
+  gap: 18px;
+  padding: clamp(18px, 3vw, 30px);
+}
+
+.talent-workspace__header h1,
+.talent-posting h2,
+.talent-applications h2 {
+  margin: 0;
+}
+
+.talent-workspace__header p,
+.talent-posting p,
+.talent-message,
+.talent-posting small,
+.talent-applications p,
+.talent-applications small {
+  color: var(--muted);
+}
+
+.talent-form,
+.talent-filters {
+  display: grid;
+  gap: 12px;
+  padding: 16px;
+}
+
+.talent-form {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+
+.talent-filters {
+  grid-template-columns: minmax(180px, 1fr) repeat(4, auto);
+}
+
+.talent-form textarea,
+.talent-form button {
+  grid-column: span 2;
+}
+
+.talent-form input,
+.talent-form select,
+.talent-form textarea,
+.talent-filters input,
+.talent-filters select {
+  width: 100%;
+  min-height: 44px;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: var(--deep);
+  color: var(--text);
+  padding: 0 12px;
+}
+
+.talent-form textarea,
+.talent-application textarea {
+  min-height: 110px;
+  padding-block: 12px;
+  resize: vertical;
+}
+
+.talent-postings {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 16px;
+}
+
+.talent-posting {
+  display: grid;
+  gap: 12px;
+  padding: 18px;
+}
+
+.talent-posting__meta,
+.talent-posting__skills {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.talent-posting__meta span,
+.talent-posting__skills span,
+.talent-posting__application,
+.talent-applications strong + span {
+  border: 1px solid color-mix(in srgb, var(--brand) 28%, var(--border));
+  border-radius: 999px;
+  color: var(--brand);
+  font-size: 0.78rem;
+  padding: 5px 9px;
+}
+
+.talent-application {
+  display: grid;
+  gap: 10px;
+}
+
+.talent-application textarea {
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: var(--deep);
+  color: var(--text);
+  padding-inline: 12px;
+}
+
+.talent-applications {
+  display: grid;
+  gap: 12px;
+}
+
+.talent-applications article {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 14px;
+  padding: 16px;
+}
+
+.talent-applications article > div:last-child {
+  display: grid;
+  gap: 8px;
+  justify-items: end;
+}
+
+@media (max-width: 860px) {
+  .talent-workspace__header,
+  .talent-applications article {
+    display: grid;
+    grid-template-columns: 1fr;
+  }
+
+  .talent-form,
+  .talent-filters {
+    grid-template-columns: 1fr;
+  }
+
+  .talent-form textarea,
+  .talent-form button {
+    grid-column: auto;
+  }
+}
 .app::before {
   content: "";
   position: fixed;
