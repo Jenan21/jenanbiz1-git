@@ -21,8 +21,8 @@ export async function createProjectReport(projectId: string, userId: string, int
   const pdf = await PDFDocument.create();
   const font = await pdf.embedFont(StandardFonts.Helvetica);
   const bold = await pdf.embedFont(StandardFonts.HelveticaBold);
-  const logoPath = path.join(process.cwd(), "public", "assets", "jenan-pro-logo.png");
-  const logo = await pdf.embedPng(await readFile(logoPath));
+  const logoPath = path.join(process.cwd(), "public", "assets", "jenan-pro-logo.jpg");
+  const logo = await pdf.embedJpg(await readFile(logoPath));
   let page = pdf.addPage([595, 842]);
   let y = 790;
   const margin = 42;

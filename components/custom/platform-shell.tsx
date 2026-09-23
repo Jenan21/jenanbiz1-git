@@ -10,7 +10,7 @@ import type { Locale } from "@/types/i18n";
 export function JenanLogo({ compact = false }: { compact?: boolean }) {
   return (
     <Link href="/" className="brandmark" aria-label="Jenan Pro home">
-      <img className="brandmark__logo brandmark__logo--image" src="/assets/jenan-pro-logo.png" alt="" />
+      <img className="brandmark__logo brandmark__logo--image" src="/assets/jenan-pro-logo.jpg" alt="" />
       <span className="brandmark__text">
         <strong>Jenan Pro</strong>
         {!compact && <small>Global business platform</small>}

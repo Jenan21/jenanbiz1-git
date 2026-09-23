@@ -132,7 +132,7 @@ export function GlobalCommandHome({
 
         <header className="global-home__header">
           <Link className="global-home__brand" href="/" aria-label="Jenan Pro">
-            <img className="global-home__brand-image" src="/assets/jenan-pro-logo.png" alt="" />
+            <img className="global-home__brand-image" src="/assets/jenan-pro-logo.jpg" alt="" />
             <span><strong>Jenan <b>Pro</b></strong><small>{ar ? "أعمال أنجح · فرص أكبر" : "Business Without Limits"}</small></span>
           </Link>
           <nav aria-label={ar ? "التنقل الرئيسي" : "Primary navigation"}>

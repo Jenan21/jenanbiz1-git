@@ -68,7 +68,7 @@ export function AuthAccessPage({ locale, mode, languageLabel, labels }: AuthAcce
       <div className="access-page__stage">
       <header className="access-page__header">
         <Link href="/" className="access-page__logo" aria-label="Jenan Pro">
-          <img className="access-page__logo-image" src="/assets/jenan-pro-logo.png" alt="" />
+          <img className="access-page__logo-image" src="/assets/jenan-pro-logo.jpg" alt="" />
           <span className="access-page__logo-copy"><strong>Jenan <b>Pro</b></strong><small>{ar ? "أعمال أنجح · فرص أكبر" : "Business without limits"}</small></span>
         </Link>
         <nav>
@@ -97,7 +97,7 @@ export function AuthAccessPage({ locale, mode, languageLabel, labels }: AuthAcce
       </section>
 
       <section className="access-page__form-panel" aria-labelledby="access-page-title">
-        <div className="access-page__form-brand" aria-label="Jenan Pro"><img src="/assets/jenan-pro-logo.png" alt="" /><strong>Jenan <b>Pro</b></strong></div>
+        <div className="access-page__form-brand" aria-label="Jenan Pro"><img src="/assets/jenan-pro-logo.jpg" alt="" /><strong>Jenan <b>Pro</b></strong></div>
         <span className="access-page__code">{registering ? (ar ? "إنشاء الهوية الذكية" : "SMART IDENTITY") : (ar ? "تسجيل الدخول الذكي" : "SMART ACCESS")}</span>
         <h2 id="access-page-title">{registering
           ? (ar ? "إنشاء حساب جديد" : "Create a new account")

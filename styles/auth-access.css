@@ -142,10 +142,10 @@
 }
 
 .access-page__logo-image {
-  width: clamp(58px, 5.4vw, 92px);
-  aspect-ratio: 1;
-  border-radius: 20px;
-  object-fit: cover;
+  width: clamp(96px, 8vw, 148px);
+  aspect-ratio: 16 / 9;
+  border-radius: 14px;
+  object-fit: contain;
 }
 
 .access-page__logo-j { font: 500 5.9rem/0.72 Georgia, serif; }
@@ -155,10 +155,10 @@
 .access-page__logo-copy small { margin-top: 5px; color: #aacbd2; font-size: 0.66rem; }
 
 .access-page__form-brand img {
-  width: 42px;
-  aspect-ratio: 1;
-  border-radius: 12px;
-  object-fit: cover;
+  width: 74px;
+  aspect-ratio: 16 / 9;
+  border-radius: 10px;
+  object-fit: contain;
 }
 
 .access-page__header nav {

@@ -31,7 +31,7 @@ export function AuthShell(props: AuthShellProps) {
         <header className="auth-top">
           <Link href="/" className="auth-logo" aria-label="Jenan Pro home">
             <Image
-              src="/assets/jenan-pro-logo.png"
+              src="/assets/jenan-pro-logo.jpg"
               alt="Jenan Pro"
               width={210}
               height={128}

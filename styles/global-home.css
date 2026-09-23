@@ -91,10 +91,10 @@
 }
 
 .global-home__brand-image {
-  width: clamp(56px, 5vw, 86px);
-  aspect-ratio: 1;
-  border-radius: 18px;
-  object-fit: cover;
+  width: clamp(94px, 8vw, 138px);
+  aspect-ratio: 16 / 9;
+  border-radius: 14px;
+  object-fit: contain;
 }
 
 .global-home__brand-j {

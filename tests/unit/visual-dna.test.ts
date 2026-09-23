@@ -3,7 +3,7 @@ import path from 'path';
 import { describe, it, expect } from 'vitest';
 import { extractPaletteFromBase64 } from '../../services/visual-dna/visual-dna.service';
 
-const imgPath = path.resolve(process.cwd(), 'public/assets/jenan-pro-logo.png');
+const imgPath = path.resolve(process.cwd(), 'public/assets/jenan-pro-logo.jpg');
 const buf = fs.readFileSync(imgPath);
 const base64 = `data:image/png;base64,${buf.toString('base64')}`;
 
