@@ -94,8 +94,7 @@ for (const locale of ["ar", "en"] as const) {
       await expect(page.locator(".global-home__stage")).toBeVisible();
       await expect(page.locator(".global-home__network i")).toHaveCount(6);
       await expect(page.locator(".global-home__quote cite")).toHaveText("Jenan Pro");
-      await expect(page.locator(".global-home__regions [data-state='live']")).toHaveCount(4);
-      await expect(page.locator(".global-home__regions [data-state='unavailable']")).toHaveCount(2);
+      await expect(page.locator(".global-home__region")).toHaveCount(0);
       await expect(page.locator(".global-home__kpis article:nth-child(2) strong")).toHaveText("28");
       await expect(page.locator(".global-home__kpis article:nth-child(3) strong")).toHaveText("5");
 
@@ -122,12 +121,6 @@ for (const locale of ["ar", "en"] as const) {
             selector,
           }));
           const orderedRects = mobileFlow.map(rect);
-          const regionRects = [
-            ...document.querySelectorAll<HTMLElement>(".global-home__region"),
-          ].map((region) => ({
-            name: region.textContent?.trim() ?? "region",
-            rect: region.getBoundingClientRect(),
-          }));
           const resources = performance
             .getEntriesByType("resource")
             .map((entry) => entry.name);
@@ -148,19 +141,6 @@ for (const locale of ["ar", "en"] as const) {
             ),
             referenceLoaded: resources.some((resource) =>
               resource.includes("reference-home.png"),
-            ),
-            regionOverlaps: regionRects.flatMap((first, index) =>
-              regionRects.slice(index + 1).flatMap((second) => {
-                const overlapWidth =
-                  Math.min(first.rect.right, second.rect.right) -
-                  Math.max(first.rect.left, second.rect.left);
-                const overlapHeight =
-                  Math.min(first.rect.bottom, second.rect.bottom) -
-                  Math.max(first.rect.top, second.rect.top);
-                return overlapWidth > 1 && overlapHeight > 1
-                  ? [`${first.name} / ${second.name}`]
-                  : [];
-              }),
             ),
             scrollWidth: document.documentElement.scrollWidth,
             stage,
@@ -184,7 +164,6 @@ for (const locale of ["ar", "en"] as const) {
 
       expect(layout.scrollWidth).toBeLessThanOrEqual(layout.viewportWidth + 1);
       expect(layout.violations).toEqual([]);
-      expect(layout.regionOverlaps).toEqual([]);
       expect(layout.referenceLoaded).toBe(false);
       expect(layout.stageBackground).not.toBe("none");
       expect(layout.earthBackground).toContain("earth-night-texture.jpg");
@@ -250,7 +229,7 @@ for (const locale of ["ar", "en"] as const) {
     await page.goto("/");
     await activityResponse;
 
-    await expect(page.locator(".global-home__regions [data-state='unavailable']")).toHaveCount(6);
+    await expect(page.locator(".global-home__region")).toHaveCount(0);
     await expect(page.locator(".global-home__distribution .global-home__empty")).toContainText(
       locale === "ar" ? "لا توجد جلسات نشطة حالياً" : "No active sessions now",
     );

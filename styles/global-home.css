@@ -269,13 +269,6 @@
   transform: scale(1.04);
 }
 
-.global-home__regions {
-  position: absolute;
-  inset: 0;
-  z-index: 4;
-  pointer-events: none;
-}
-
 .global-home__network {
   position: absolute;
   inset: 0;
@@ -312,47 +305,6 @@
 .global-home__network i:nth-child(4) { top: 47%; left: 5%; width: 38%; transform: rotate(17deg); }
 .global-home__network i:nth-child(5) { top: 47%; right: 6%; width: 38%; transform: rotate(-17deg); }
 .global-home__network i:nth-child(6) { top: 31%; left: 30%; width: 48%; transform: rotate(25deg); }
-
-.global-home__region {
-  position: absolute;
-  display: grid;
-  min-width: 104px;
-  padding: 8px 10px;
-  border: 1px solid rgba(31, 231, 255, 0.24);
-  border-radius: 8px;
-  color: #dff7fb;
-  background: rgba(2, 24, 37, 0.78);
-  -webkit-backdrop-filter: blur(9px);
-  backdrop-filter: blur(9px);
-  text-align: center;
-}
-
-.global-home__region b {
-  font-size: 0.58rem;
-}
-
-.global-home__region strong {
-  margin-top: 3px;
-  color: var(--jenan-teal);
-  font-size: 0.9rem;
-}
-
-.global-home__region small {
-  margin-top: 2px;
-  color: var(--jenan-muted);
-  font-size: 0.43rem;
-}
-
-.global-home__region[data-state="unavailable"] strong {
-  color: var(--jenan-muted);
-}
-
-.global-home__region--1 { top: 20%; left: 10%; }
-.global-home__region--2 { top: 13%; left: 40%; }
-.global-home__region--3 { top: 18%; right: 8%; }
-.global-home__region--4 { top: 57%; left: 13%; }
-.global-home__region--5 { top: 61%; left: 44%; }
-.global-home__region--6 { top: 51%; right: 13%; }
 
 .global-home__globe .gateway-world-map__credit {
   opacity: 0;
@@ -969,13 +921,6 @@
   .global-home__hero-copy h1 { font-size: 1.65rem; }
   .global-home__world { min-height: 360px; }
   .global-home__city { height: 42%; }
-  .global-home__region { width: 96px; min-width: 0; padding: 6px 7px; }
-  .global-home__region--1 { top: 27%; left: 1%; }
-  .global-home__region--2 { top: 8%; left: 50%; transform: translateX(-50%); }
-  .global-home__region--3 { top: 27%; right: 1%; }
-  .global-home__region--4 { top: 54%; left: 1%; }
-  .global-home__region--5 { top: 72%; left: 50%; transform: translateX(-50%); }
-  .global-home__region--6 { top: 54%; right: 1%; }
   .global-home__kpis { grid-template-columns: 1fr; }
   .global-home__capabilities { grid-template-columns: 1fr 1fr; gap: 14px 8px; }
   .global-home__quote { font-size: 0.85rem; }

@@ -2,8 +2,6 @@
 
 import Link from "next/link";
 import { useEffect, useState, type CSSProperties } from "react";
-import countries from "world-countries";
-
 import {
   GatewayWorldMap,
   type GatewayActivityLocation,
@@ -26,34 +24,6 @@ function copy(value: readonly [string, string], locale: Locale) {
 
 const distributionColors = ["#1fe7ff", "#59f3ff", "#4df6a2", "#8a63ff", "#f0c85b"];
 
-const countryRegions = new Map(
-  countries.map((country) => [
-    country.cca2,
-    { region: country.region, subregion: country.subregion },
-  ]),
-);
-
-const activityRegions = [
-  { id: "north-america", ar: "أمريكا الشمالية", en: "North America" },
-  { id: "europe", ar: "أوروبا", en: "Europe" },
-  { id: "asia", ar: "آسيا", en: "Asia" },
-  { id: "south-america", ar: "أمريكا الجنوبية", en: "South America" },
-  { id: "africa", ar: "أفريقيا", en: "Africa" },
-  { id: "middle-east", ar: "الشرق الأوسط", en: "Middle East" },
-] as const;
-
-function resolveActivityRegion(countryCode: string) {
-  const geography = countryRegions.get(countryCode);
-  if (!geography) return null;
-  if (geography.subregion === "South America") return "south-america";
-  if (geography.region === "Americas") return "north-america";
-  if (geography.subregion === "Western Asia") return "middle-east";
-  if (geography.region === "Europe") return "europe";
-  if (geography.region === "Asia") return "asia";
-  if (geography.region === "Africa") return "africa";
-  return null;
-}
-
 export function GlobalCommandHome({
   locale,
   modules,
@@ -73,16 +43,6 @@ export function GlobalCommandHome({
     0,
   );
   const topLocations = activity.locations.slice(0, 5);
-  const regionCounts = new Map(activityRegions.map((region) => [region.id, 0]));
-  for (const location of activity.locations) {
-    const regionId = resolveActivityRegion(location.countryCode);
-    if (regionId) regionCounts.set(regionId, (regionCounts.get(regionId) ?? 0) + location.activeUsers);
-  }
-  const regionSlots = activityRegions.map((region) => ({
-    activeUsers: regionCounts.get(region.id) || null,
-    countryCode: region.id,
-    countryName: { ar: region.ar, en: region.en },
-  }));
   const newsModules = ["projects", "academy", "software"]
     .map((moduleId) => modules.find((module) => module.id === moduleId))
     .filter((module): module is PlatformModuleDefinition => Boolean(module));
@@ -162,7 +122,6 @@ export function GlobalCommandHome({
             <div className="global-home__network" aria-hidden="true">
               <i /><i /><i /><i /><i /><i />
             </div>
-            <div className="global-home__regions">{regionSlots.map((region, index) => <span className={`global-home__region global-home__region--${index + 1}`} data-state={region.activeUsers == null ? "unavailable" : "live"} key={region.countryCode}><b>{copy([region.countryName.ar, region.countryName.en], locale)}</b><strong>{region.activeUsers == null ? "—" : region.activeUsers}</strong><small>{region.activeUsers == null ? (ar ? "بانتظار البيانات" : "Awaiting data") : (ar ? "نشط" : "active")}</small></span>)}</div>
           </div>
           <div className="global-home__city" aria-hidden="true" />
         </section>
