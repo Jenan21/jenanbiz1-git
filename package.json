@@ -30,6 +30,7 @@
     "test:market": "node --env-file=.env ./node_modules/vitest/vitest.mjs run tests/integration/market-domain.integration.test.ts",
     "test:programs": "node --env-file=.env ./node_modules/vitest/vitest.mjs run tests/integration/programs-domain.integration.test.ts",
     "test:projects": "node --env-file=.env ./node_modules/vitest/vitest.mjs run tests/integration/projects-domain.integration.test.ts",
+    "test:robots": "node --env-file=.env ./node_modules/vitest/vitest.mjs run tests/integration/robot-coverage.integration.test.ts tests/integration/academy-foundation.integration.test.ts",
     "test:software": "node --env-file=.env ./node_modules/vitest/vitest.mjs run tests/unit/pdf-engine.test.ts tests/unit/sheets-engine.test.ts tests/unit/visual-dna.test.ts",
     "test:talent": "node --env-file=.env ./node_modules/vitest/vitest.mjs run tests/integration/talent-domain.integration.test.ts",
     "test:live-acceptance": "node --env-file=.env ./node_modules/vitest/vitest.mjs run tests/integration/live-acceptance-001.integration.test.ts",

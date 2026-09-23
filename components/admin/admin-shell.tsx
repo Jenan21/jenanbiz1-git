@@ -12,6 +12,7 @@ const navItems = [
   { href: "/admin/branches", label: { ar: "الفروع", en: "Branches" }, icon: "▣" },
   { href: "/admin/users", label: { ar: "المستخدمون", en: "Users" }, icon: "◉" },
   { href: "/admin/robots", label: { ar: "صائدو الجوائز", en: "Bounty Scouts" }, icon: "◎" },
+  { href: "/admin/robot-coverage", label: { ar: "تغطية الروبوتات", en: "Robot Coverage" }, icon: "◉" },
   { href: "/admin/committee", label: { ar: "اللجنة", en: "Committee" }, icon: "◌" },
   { href: "/admin/decisions", label: { ar: "القرارات", en: "Decisions" }, icon: "✓" },
   { href: "/admin/reports", label: { ar: "التقارير", en: "Reports" }, icon: "◔" },
