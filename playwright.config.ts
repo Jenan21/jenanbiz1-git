@@ -34,6 +34,18 @@ export default defineConfig({
       })),
     ),
     {
+      name: "home-visual",
+      testMatch: /home-visual\.spec\.ts/,
+      use: { viewport: { width: 1661, height: 947 }, locale: "ar-SA" },
+      metadata: { appLocale: "ar" },
+    },
+    {
+      name: "auth-visual-acceptance",
+      testMatch: /auth-visual\.spec\.ts/,
+      use: { viewport: { width: 1661, height: 947 }, locale: "ar-SA" },
+      metadata: { appLocale: "ar" },
+    },
+    {
       name: "auth-chromium",
       testMatch: /auth\.spec\.ts/,
       use: { viewport: { width: 1280, height: 800 }, locale: "en-US" },

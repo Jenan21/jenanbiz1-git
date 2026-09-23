@@ -94,5 +94,55 @@ for (const path of ["/login", "/register"] as const) {
     });
     expect(layout.scrollWidth).toBeLessThanOrEqual(layout.viewportWidth);
     expect(layout.violations).toEqual([]);
+
+    if (testInfo.project.metadata.viewportKind !== "tablet" &&
+        testInfo.project.metadata.viewportKind !== "mobile") {
+      const composition = await page.evaluate(() => {
+        const rect = (selector: string) =>
+          document.querySelector<HTMLElement>(selector)?.getBoundingClientRect();
+        const story = rect(".access-page__story");
+        const form = rect(".access-page__form-panel");
+        const metrics = rect(".access-page__metrics");
+        const trust = rect(".access-page__trust");
+        const city = document.querySelector<HTMLElement>(".access-page__city");
+        return {
+          cityAsset: city ? getComputedStyle(city).backgroundImage : "",
+          ordered: Boolean(
+            story && form && metrics && trust &&
+            story.right < form.left &&
+            form.right < metrics.left &&
+            trust.top >= form.bottom,
+          ),
+        };
+      });
+      expect(composition.cityAsset).toContain("global-city-night.jpg");
+      expect(composition.ordered).toBe(true);
+    }
+
+    if (path === "/login") {
+      const password = page.locator('input[name="password"]');
+      await expect(password).toHaveAttribute("type", "password");
+      await page.locator(".field:has(input[name='password']) .field__action").click();
+      await expect(password).toHaveAttribute("type", "text");
+    } else {
+      await expect(page.locator('input[name="name"]')).toBeVisible();
+      await expect(page.locator('input[name="countryCode"]')).toBeHidden();
+      await page.locator('input[name="name"]').fill("Visual Test User");
+      await page.locator('input[name="email"]').fill("visual@example.test");
+      await page.locator(".auth-form__step:not([hidden]) .auth-form__submit").click();
+      await expect(page.locator('input[name="countryCode"]')).toBeVisible();
+      await expect(page.locator('input[name="confirmPassword"]')).toBeVisible();
+      await expect(page.locator('input[name="terms"]')).toBeVisible();
+      await page.locator('input[name="countryCode"]').fill("SA");
+      await page.locator('input[name="password"]').fill("Correct-Horse-2026!");
+      await page.locator('input[name="confirmPassword"]').fill("Different-Horse-2026!");
+      await page.locator('input[name="terms"]').check();
+      await page.locator(".auth-form__step:not([hidden]) .auth-form__submit").click();
+      await expect(page.getByRole("alert")).toContainText(
+        locale === "ar"
+          ? "كلمتا المرور غير متطابقتين"
+          : "Passwords do not match",
+      );
+    }
   });
 }

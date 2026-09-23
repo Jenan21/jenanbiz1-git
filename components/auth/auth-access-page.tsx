@@ -59,14 +59,22 @@ export function AuthAccessPage({ locale, mode, languageLabel, labels }: AuthAcce
 
   return (
     <main className="access-page" data-mode={mode}>
-      <div className="access-page__map" aria-hidden="true">
-        <GatewayWorldMap activity={activity.locations} locale={locale} />
+      <div className="access-page__scene" aria-hidden="true">
+        <div className="access-page__city" />
+        <div className="access-page__globe">
+          <GatewayWorldMap activity={activity.locations} locale={locale} />
+        </div>
       </div>
+      <div className="access-page__stage">
       <header className="access-page__header">
-        <Link href="/" className="access-page__logo" aria-label="Jenan BIZ" />
+        <Link href="/" className="access-page__logo" aria-label="Jenan BIZ">
+          <span className="access-page__logo-j">J</span>
+          <span className="access-page__logo-copy"><strong>enan <b>BIZ</b></strong><small>{ar ? "أعمال أنجح · فرص أكبر" : "Business without limits"}</small></span>
+        </Link>
         <nav>
           <Link href="/">{ar ? "الرئيسية" : "Home"}</Link>
           <Link href="/benefits">{ar ? "المزايا" : "Benefits"}</Link>
+          <Link href="/pricing">{ar ? "الباقات" : "Plans"}</Link>
           <LanguageSwitcher locale={locale} label={languageLabel} showChevron />
         </nav>
       </header>
@@ -74,46 +82,75 @@ export function AuthAccessPage({ locale, mode, languageLabel, labels }: AuthAcce
       <section className="access-page__story">
         <span className="access-page__signal"><i />{ar ? "منظومة أعمال عالمية" : "Global business ecosystem"}</span>
         <h1>{registering
-          ? (ar ? "ابدأ رحلتك نحو فرص أوسع" : "Begin your path to wider opportunity")
-          : (ar ? "عد إلى أعمالك من أي مكان" : "Return to your business from anywhere")}</h1>
+          ? (ar ? <>منصة جنان بيز<br />ابدأ أعمالك بذكاء</> : <>Jenan BIZ<br />Start building intelligently</>)
+          : (ar ? <>منصة جنان بيز<br />مركز الأعمال الذكي</> : <>Jenan BIZ<br />Intelligent Business Command</>)}</h1>
+        <strong className="access-page__story-lead">{ar ? "خدمات متكاملة · تحليلات ذكية · فرص عالمية" : "Integrated services · Smart analytics · Global opportunity"}</strong>
         <p>{registering
-          ? (ar ? "هوية واحدة تفتح لك خدمات المشاريع، المعرفة، السوق، والبرامج." : "One identity unlocks projects, knowledge, market, and programs.")
-          : (ar ? "وصول آمن إلى منظومة أعمالك وقراراتك وخدماتك المترابطة." : "Secure access to your connected operations, decisions, and services.")}</p>
+          ? (ar ? "أنشئ هويتك داخل منصة جنان بيز وابدأ الوصول إلى المشاريع والأكاديمية والسوق والبرمجيات والفرص الذكية." : "Create your Jenan BIZ identity and unlock projects, academy, market, software, and intelligent opportunities.")
+          : (ar ? "نمكّن الأفراد والشركات من النمو والتوسع ببيانات دقيقة ورؤى استشرافية وتقنية متقدمة تقودك إلى فرص أكبر." : "Helping people and organizations grow with precise data, forward insight, and advanced technology.")}</p>
         <div className="access-page__benefits">
-          <span><Icon name="globe" /><b>{ar ? "وصول عالمي" : "Global access"}</b></span>
-          <span><Icon name="shield" /><b>{ar ? "هوية محمية" : "Protected identity"}</b></span>
-          <span><Icon name="activity" /><b>{ar ? "بيانات مترابطة" : "Connected data"}</b></span>
+          <span><Icon name="rocket" /><b>{ar ? "وصول مباشر" : "Direct access"}</b><small>{ar ? "ابدأ دون تعقيد" : "Start without friction"}</small></span>
+          <span><Icon name="settings" /><b>{ar ? "إدارة موحدة" : "Unified control"}</b><small>{ar ? "كل أعمالك في مكان" : "One space for work"}</small></span>
+          <span><Icon name="globe" /><b>{ar ? "فرص عالمية" : "Global reach"}</b><small>{ar ? "منظومة قابلة للتوسع" : "Ready to scale"}</small></span>
         </div>
-        <div className="access-page__activity">
-          <i />
-          <strong>{activity.activeUsers}</strong>
-          <span>{ar ? `مستخدم نشط خلال ${activity.windowMinutes} دقيقة` : `active users in the last ${activity.windowMinutes} minutes`}</span>
-        </div>
+        <blockquote>{ar ? <>“نبني جسوراً بين الطموح<br />والفرص العالمية”<cite>Jenan BIZ</cite></> : <>“Building bridges between ambition<br />and global opportunity”<cite>Jenan BIZ</cite></>}</blockquote>
       </section>
 
       <section className="access-page__form-panel" aria-labelledby="access-page-title">
-        <div className="access-page__form-brand" aria-hidden="true" />
-        <span className="access-page__code">{registering ? "ONBOARD / 02" : "ACCESS / 01"}</span>
+        <div className="access-page__form-brand" aria-label="Jenan BIZ"><span>J</span><strong>enan <b>BIZ</b></strong></div>
+        <span className="access-page__code">{registering ? (ar ? "إنشاء الهوية الذكية" : "SMART IDENTITY") : (ar ? "تسجيل الدخول الذكي" : "SMART ACCESS")}</span>
         <h2 id="access-page-title">{registering
-          ? (ar ? "إنشاء حساب" : "Create account")
-          : (ar ? "تسجيل الدخول" : "Sign in")}</h2>
+          ? (ar ? "إنشاء حساب جديد" : "Create a new account")
+          : (ar ? "مرحباً بعودتك" : "Welcome back")}</h2>
         <p>{registering
-          ? (ar ? "أنشئ حسابك الأول وابدأ استخدام المنصة." : "Create your account and start using the platform.")
-          : (ar ? "أدخل بياناتك للوصول إلى مساحة أعمالك." : "Enter your details to access your workspace.")}</p>
+          ? (ar ? "أنشئ هويتك داخل منصة جنان بيز." : "Create your identity inside Jenan BIZ.")
+          : (ar ? "سجّل الدخول إلى حسابك لمتابعة أعمالك وفرصك." : "Sign in to continue your work and opportunities.")}</p>
         <AuthForm mode={mode} locale={locale} labels={labels} />
         <div className="access-page__alternate">
-          <span>{registering ? (ar ? "لديك حساب؟" : "Already registered?") : (ar ? "مستخدم جديد؟" : "New here?")}</span>
+          <span>{ar ? "أو" : "or"}</span>
           <Link href={registering ? "/login" : "/register"}>
-            {registering ? (ar ? "تسجيل الدخول" : "Sign in") : (ar ? "إنشاء حساب" : "Create account")}
+            {registering ? (ar ? "لديك حساب؟ تسجيل الدخول" : "Already registered? Sign in") : (ar ? "إنشاء حساب جديد" : "Create a new account")}
             <Icon name="arrow" />
           </Link>
         </div>
       </section>
 
+      <aside className="access-page__metrics" aria-label={ar ? "مؤشرات المنصة" : "Platform metrics"}>
+        <article>
+          <span className="access-page__metric-icon"><Icon name="globe" /></span>
+          <div><strong>{activity.locations.length}</strong><small>{ar ? "دول نشطة" : "Active countries"}</small></div>
+        </article>
+        <article>
+          <span className="access-page__metric-icon"><Icon name="people" /></span>
+          <div><strong>{activity.activeUsers}</strong><small>{ar ? "مستخدم نشط" : "Active users"}</small></div>
+        </article>
+        <article>
+          <span className="access-page__metric-icon"><Icon name="activity" /></span>
+          <div><strong>{activity.windowMinutes}</strong><small>{ar ? "دقيقة رصد" : "Minute window"}</small></div>
+        </article>
+        <blockquote className="access-page__metrics-quote">
+          {ar ? <>مستقبل<br />أكثر ازدهاراً<br />يبدأ من هنا</> : <>A more prosperous<br />future begins<br />here</>}
+        </blockquote>
+        <div className="access-page__metrics-summary">
+          <span><Icon name="globe" /><strong>{activity.locations.length}</strong><small>{ar ? "أسواق نشطة" : "Active markets"}</small></span>
+          <span><Icon name="trend" /><strong>{activity.activeUsers}</strong><small>{ar ? "جلسة نشطة" : "Active sessions"}</small></span>
+        </div>
+      </aside>
+
+      <section className="access-page__trust" aria-label={ar ? "خصائص المنصة" : "Platform capabilities"}>
+        <span><Icon name="shield" />{ar ? "هوية وجلسة محمية" : "Protected identity and session"}</span>
+        <span><Icon name="rocket" />{ar ? "أداء سريع وموثوق" : "Fast reliable performance"}</span>
+        <span><Icon name="globe" />{ar ? "وصول عالمي مرن" : "Flexible global access"}</span>
+        <span><Icon name="briefcase" />{ar ? "العمل من أي مكان" : "Work from anywhere"}</span>
+        <span><Icon name="activity" />{ar ? "بيانات تشغيل مترابطة" : "Connected operational data"}</span>
+        <span><Icon name="brain" />{ar ? "خدمات ذكية قابلة للتوسع" : "Scalable intelligent services"}</span>
+      </section>
+
       <footer className="access-page__footer">
-        <span><Icon name="shield" />{ar ? "اتصال مشفر وجلسة آمنة" : "Encrypted connection and secure session"}</span>
+        <span>{ar ? "© جنان بيز · جميع الحقوق محفوظة" : "© Jenan BIZ · All rights reserved"}</span>
         <Link href="/">Jenan BIZ</Link>
       </footer>
+      </div>
     </main>
   );
 }

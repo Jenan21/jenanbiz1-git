@@ -14,9 +14,9 @@ export default async function LoginPage() {
           countryCode: "",
           email: ar ? "البريد الإلكتروني" : "Email address",
           password: ar ? "كلمة المرور" : "Password",
-          submit: ar ? "دخول آمن" : "Secure sign in",
+          submit: ar ? "تسجيل الدخول" : "Sign in",
           remember: ar ? "تذكرني" : "Remember me",
-          forgot: ar ? "نسيت كلمة المرور؟" : "Forgot password?",
+          forgot: ar ? "استعادة الوصول" : "Recover access",
           loading: ar ? "جارٍ التحقق..." : "Verifying...",
           note: ar
             ? "اتصال مشفر وجلسة آمنة"

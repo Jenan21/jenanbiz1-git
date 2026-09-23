@@ -29,6 +29,8 @@
     "test:live-acceptance": "node --env-file=.env ./node_modules/vitest/vitest.mjs run tests/integration/live-acceptance-001.integration.test.ts",
     "test:e2e": "node --env-file=.env scripts/run-playwright.mjs",
     "test:e2e:visual": "node --env-file=.env scripts/run-playwright.mjs tests/e2e/visual-layout.spec.ts",
+    "test:e2e:home-visual": "node --env-file=.env scripts/run-playwright.mjs tests/e2e/home-visual.spec.ts --project=home-visual",
+    "test:e2e:auth-visual": "node --env-file=.env scripts/run-playwright.mjs tests/e2e/auth-visual.spec.ts --project=auth-visual-acceptance",
     "auth:bootstrap-super-admin": "node --env-file=.env scripts/bootstrap-super-admin.mjs"
   },
   "dependencies": {

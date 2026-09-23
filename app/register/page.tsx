@@ -14,7 +14,7 @@ export default async function RegisterPage() {
           countryCode: ar ? "رمز الدولة" : "Country code",
           email: ar ? "البريد الإلكتروني" : "Email address",
           password: ar ? "كلمة المرور" : "Password",
-          submit: ar ? "إنشاء الحساب" : "Create account",
+          submit: ar ? "إنشاء حساب" : "Create account",
           remember: "",
           forgot: "",
           loading: ar ? "جارٍ إنشاء الحساب..." : "Creating account...",
