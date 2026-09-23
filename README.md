@@ -104,7 +104,7 @@ Never place real values in Git. The command uses Argon2id, a serializable Postgr
 
 ## Authentication rate limiting
 
-`login` and `register` use a vendor-neutral `RateLimitProvider` contract. Development and tests default to the documented in-memory adapter. That adapter is process-local and is not suitable for production or multi-server deployments. Production fails closed until application startup supplies a distributed provider implementing atomic increment and expiry semantics; Redis or another distributed store can be integrated later without changing the auth routes.
+`login`, `register`, and sensitive project operations use a vendor-neutral `RateLimitProvider` contract. Development and tests default to the documented in-memory adapter. When `REDIS_URL` is configured, the application uses Redis with atomic increment and expiry semantics across instances. Production fails closed if no distributed provider is configured.
 
 ## Security posture
 

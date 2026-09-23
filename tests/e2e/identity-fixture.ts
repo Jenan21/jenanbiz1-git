@@ -27,7 +27,7 @@ export async function cleanE2EIdentities() {
   try {
     await client.query("BEGIN");
     const users = await client.query<{ id: string }>(
-      "SELECT id FROM \"User\" WHERE email LIKE 'e2e.user.%@example.test' OR email LIKE 'e2e.visual.%@example.test' OR email LIKE 'e2e.admin.%@example.test'",
+      "SELECT id FROM \"User\" WHERE email LIKE 'e2e.user.%@example.test' OR email LIKE 'e2e.admin.%@example.test'",
     );
     const ids = users.rows.map(({ id }) => id);
     if (ids.length) {

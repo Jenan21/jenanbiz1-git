@@ -18,6 +18,8 @@ describe("project calculations", () => {
     expect(result.totalProfit).toBe(20000);
     expect(result.roiPercent).toBe(200);
     expect(result.paybackMonths).toBe(4);
+    expect(result.netPresentValue).toBe(20000);
+    expect(result.internalRateReturn).not.toBeNull();
   });
 
   it("returns all controlled scenarios without inventing source data", () => {
@@ -30,5 +32,12 @@ describe("project calculations", () => {
   it("validates impossible financial inputs and computes risk transparently", () => {
     expect(() => calculateFeasibility({ ...inputs, pricePerUnit: 10 })).toThrow("pricePerUnit");
     expect(calculateRiskScore({ market: 20, financial: 40, operational: 30, technical: 10, compliance: 50 })).toEqual({ score: 30, level: "LOW" });
+  });
+
+  it("accounts for tax, inflation, and discounting when they are explicitly supplied", () => {
+    const result = calculateFeasibility({ ...inputs, taxRate: 15, annualInflationRate: 2, annualDiscountRate: 10 });
+    expect(result.monthlyProfit).toBe(2125);
+    expect(result.netPresentValue).toBeLessThan(20000);
+    expect(result.internalRateReturn).not.toBeNull();
   });
 });

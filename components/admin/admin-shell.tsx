@@ -3,7 +3,6 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useState, type ReactNode } from "react";
-import { JenanLogo } from "@/components/custom/platform-shell";
 
 const navItems = [
   { href: "/admin", label: { ar: "نظرة عامة", en: "Overview" }, icon: "▣" },
@@ -21,6 +20,7 @@ const navItems = [
   { href: "/admin/intel", label: { ar: "الذكاء", en: "Intelligence" }, icon: "◐" },
   { href: "/admin/data-center", label: { ar: "مركز البيانات", en: "Data Center" }, icon: "◭" },
   { href: "/admin/global-health", label: { ar: "الصحة العامة", en: "Global Health" }, icon: "◎" },
+  { href: "/admin/map-provider", label: { ar: "تكاملات الخرائط", en: "Map integrations" }, icon: "◉" },
   { href: "/admin/bounty-hunters", label: { ar: "لوحة الجوائز", en: "Reward Board" }, icon: "★" },
   { href: "/admin/social-growth", label: { ar: "النمو الاجتماعي", en: "Social Growth" }, icon: "◉" },
 ];
@@ -83,7 +83,7 @@ export function AdminShell({ children }: { children: ReactNode }) {
     <div className="admin-shell" dir={lang === "ar" ? "rtl" : "ltr"}>
       <aside className="admin-sidebar glass">
         <div className="admin-brand">
-          <JenanLogo compact />
+          <span aria-hidden="true">J</span>
           <div>
             <strong>{t.brand}</strong>
             <small>{t.layer}</small>
@@ -127,9 +127,9 @@ export function AdminShell({ children }: { children: ReactNode }) {
             >
               {t.toggle}
             </button>
-            <Link href="/admin/operations" className="btn small primary" aria-label={t.deploy}>
+            <button type="button" className="btn small primary" aria-label={t.deploy}>
               {t.deploy}
-            </Link>
+            </button>
           </div>
         </header>
 

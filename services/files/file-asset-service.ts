@@ -17,6 +17,7 @@ export class FileAssetError extends Error {}
 
 function serializeFileAsset(asset: {
   id: string;
+  projectId: string | null;
   fileName: string;
   mimeType: string;
   sizeBytes: bigint;
@@ -25,6 +26,7 @@ function serializeFileAsset(asset: {
 }) {
   return {
     id: asset.id,
+    projectId: asset.projectId,
     fileName: asset.fileName,
     mimeType: asset.mimeType,
     sizeBytes: asset.sizeBytes.toString(),
@@ -33,19 +35,33 @@ function serializeFileAsset(asset: {
   };
 }
 
-export async function uploadUserFile(userId: string, file: File) {
+export async function uploadUserFile(userId: string, file: File, projectId?: string) {
   if (!allowedMimeTypes.has(file.type))
     throw new FileAssetError("This file type is not supported");
   if (file.size <= 0 || file.size > maxFileBytes)
     throw new FileAssetError("The file must be between 1 byte and 10 MB");
 
   const bytes = new Uint8Array(await file.arrayBuffer());
+  if (projectId) {
+    const project = await db.project.findFirst({
+      where: {
+        id: projectId,
+        OR: [
+          { createdById: userId },
+          { members: { some: { userId, role: { in: ["OWNER", "EDITOR"] } } } },
+        ],
+      },
+      select: { id: true },
+    });
+    if (!project) throw new FileAssetError("Project not found");
+  }
   const storageKey = `users/${userId}/${randomUUID()}`;
   await localDocumentStorage.upload(storageKey, bytes, file.type);
   try {
     const asset = await db.fileAsset.create({
       data: {
         uploadedById: userId,
+        projectId,
         storageKey,
         fileName: file.name.slice(0, 255) || "upload",
         mimeType: file.type,
@@ -59,7 +75,7 @@ export async function uploadUserFile(userId: string, file: File) {
         action: "file.uploaded",
         entityType: "FileAsset",
         entityId: asset.id,
-        metadata: { mimeType: asset.mimeType, sizeBytes: file.size },
+        metadata: { mimeType: asset.mimeType, sizeBytes: file.size, projectId: projectId ?? null },
       },
     });
     return serializeFileAsset(asset);
@@ -78,7 +94,22 @@ export async function listUserFiles(userId: string) {
 }
 
 async function findUserFile(userId: string, fileId: string) {
-  return db.fileAsset.findFirst({ where: { id: fileId, uploadedById: userId } });
+  return db.fileAsset.findFirst({
+    where: {
+      id: fileId,
+      OR: [
+        { uploadedById: userId },
+        {
+          project: {
+            OR: [
+              { createdById: userId },
+              { members: { some: { userId } } },
+            ],
+          },
+        },
+      ],
+    },
+  });
 }
 
 export async function downloadUserFile(userId: string, fileId: string) {

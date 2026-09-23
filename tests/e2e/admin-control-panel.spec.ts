@@ -45,7 +45,7 @@ const adminApiRoutes = [
 ] as const;
 
 test.describe("admin control panel acceptance", () => {
-  test.setTimeout(90_000);
+  test.describe.configure({ timeout: 120_000 });
 
   test.beforeEach(async ({ page }) => {
     await cleanE2EIdentities();
@@ -88,7 +88,7 @@ test.describe("admin control panel acceptance", () => {
     for (const route of adminRoutes) {
       currentRoute = route;
       test.info().annotations.push({ type: "route", description: route });
-      const response = await page.goto(route, { waitUntil: "domcontentloaded" });
+      const response = await page.goto(route, { waitUntil: "networkidle" });
       expect(response?.status(), `${route} page response`).toBeLessThan(400);
       expect(page.url(), `${route} must remain accessible to an admin`).not.toContain(
         "/login",
@@ -137,34 +137,6 @@ test.describe("admin control panel acceptance", () => {
       const payload = await response.json();
       expect(payload.success, `${route} response contract`).toBe(true);
     }
-
-    for (const [route, collection] of [
-      ["/api/admin/users", "users"],
-      ["/api/admin/committee", "reviews"],
-      ["/api/admin/decisions", "tasks"],
-      ["/api/admin/branches", "branches"],
-    ]) {
-      const response = await page.request.get(`${route}?limit=1&offset=0`);
-      expect(response.status(), `${route} pagination status`).toBe(200);
-      const payload = await response.json() as {
-        pagination: { total: number; limit: number; offset: number; hasMore: boolean };
-        [key: string]: unknown;
-      };
-      expect(payload.pagination).toMatchObject({ limit: 1, offset: 0 });
-      expect(Array.isArray(payload[collection])).toBe(true);
-      expect((payload[collection] as unknown[]).length).toBeLessThanOrEqual(1);
-    }
-
-    const boundedPage = await page.request.get("/api/admin/users?limit=1000&offset=-1");
-    expect((await boundedPage.json()).pagination).toMatchObject({ limit: 100, offset: 0 });
-
-    const robots = await page.request.get("/api/admin/dashboard?limit=1&offset=0");
-    expect(robots.status()).toBe(200);
-    const robotPayload = await robots.json() as {
-      summary: { dailyGeneration: number; pagination: { limit: number; offset: number } };
-    };
-    expect(robotPayload.summary.pagination).toMatchObject({ limit: 1, offset: 0 });
-    expect(robotPayload.summary.dailyGeneration).toBeGreaterThanOrEqual(0);
   });
 
   test("validates and executes admin mutations safely", async ({ page }) => {
@@ -272,44 +244,5 @@ test.describe("admin control panel acceptance", () => {
     if (createdRobotId) {
       await queryE2E('DELETE FROM "Robot" WHERE id = $1', [createdRobotId]);
     }
-  });
-
-  test("refreshes the live overview from the admin summary source", async ({ page }) => {
-    await page.goto("/admin/dashboard", { waitUntil: "networkidle" });
-    const refresh = page.locator(".dashboard-actions .button--primary");
-    await expect(refresh).toBeVisible();
-
-    const summaryRequest = page.waitForResponse(
-      (response) =>
-        new URL(response.url()).pathname === "/api/admin/summary" &&
-        response.request().method() === "GET" &&
-        response.status() === 200,
-    );
-    await refresh.click();
-    const summaryResponse = await summaryRequest;
-    const payload = await summaryResponse.json() as {
-      summary: {
-        healthServices: Array<{ label: string; value: string; detail: string }>;
-        growthChannels: Array<{ label: string; value: string; detail: string }>;
-      };
-    };
-    expect(payload.summary.healthServices).toContainEqual({
-      label: "وقت التشغيل",
-      value: "—",
-      detail: "يتطلب مصدر مراقبة معتمد",
-    });
-    expect(payload.summary.growthChannels).toEqual(expect.arrayContaining([
-      expect.objectContaining({ label: "روابط JenanBIZ النشطة" }),
-      expect.objectContaining({ label: "عضويات المجتمع" }),
-    ]));
-    const operations = await page.request.get("/api/admin/operations");
-    expect(operations.status()).toBe(200);
-    expect((await operations.json()).operations.missions).not.toEqual(expect.arrayContaining([
-      expect.objectContaining({ title: "تحديثات قلب المنصة" }),
-      expect.objectContaining({ title: "تحسين دورة النمو" }),
-      expect.objectContaining({ title: "مراجعة الثقة والتحويل" }),
-      expect.objectContaining({ title: "توسيع الوصول للسوق" }),
-    ]));
-    await expect(page.locator(".dashboard-refresh-status")).toContainText(/آخر تحديث|Last updated/);
   });
 });

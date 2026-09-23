@@ -23,6 +23,11 @@ const standalonePages = {
     eyebrow: ["خيارات واضحة", "Clear options"],
     description: ["اختر نطاق الخدمات الملائم لمرحلة أعمالك.", "Choose the service scope that fits your business stage."],
   },
+  "/studio": {
+    title: ["استوديو جنان", "Jenan Studio"],
+    eyebrow: ["الهوية البصرية", "Visual identity"],
+    description: ["مساحة أدوات الهوية والتصميم البصري للمنصة.", "A workspace for the platform's visual identity and design tools."],
+  },
 } as const;
 
 function pick(copy: readonly [string, string], locale: "ar" | "en") {
