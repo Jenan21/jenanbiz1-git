@@ -62,6 +62,34 @@ a {
   text-decoration: none;
   color: inherit;
 }
+
+.brandmark {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.brandmark__logo--image {
+  width: 42px;
+  aspect-ratio: 1;
+  border-radius: 12px;
+  object-fit: cover;
+}
+
+.brandmark__text {
+  display: grid;
+  gap: 2px;
+}
+
+.brandmark__text small {
+  color: var(--muted);
+  font-size: 0.76rem;
+}
+
+.auth-logo img {
+  border-radius: 24px;
+  object-fit: cover;
+}
 .app {
   min-height: 100vh;
   background:

@@ -10,26 +10,26 @@ import "@/styles/auth-access.css";
 
 export const metadata: Metadata = {
   metadataBase: new URL("https://jenanbiz.com"),
-  applicationName: "Jenan BIZ",
+  applicationName: "Jenan Pro",
   title: {
-    default: "Jenan BIZ | Global Business Platform",
-    template: "%s | Jenan BIZ",
+    default: "Jenan Pro | Global Business Platform",
+    template: "%s | Jenan Pro",
   },
   description:
-    "Jenan BIZ is a global business platform for operations, data intelligence, smart workflows, and scalable collaboration across teams and regions.",
+    "Jenan Pro is a global business platform for operations, data intelligence, smart workflows, and scalable collaboration across teams and regions.",
   keywords: [
     "business platform",
     "global operations",
     "workflow automation",
     "smart enterprise",
     "digital business",
-    "Jenan BIZ",
+    "Jenan Pro",
   ],
   openGraph: {
-    title: "Jenan BIZ | Global Business Platform",
+    title: "Jenan Pro | Global Business Platform",
     description:
       "Modern operations, intelligent workflows, and a unified digital foundation for global teams.",
-    siteName: "Jenan BIZ",
+    siteName: "Jenan Pro",
     type: "website",
   },
 };

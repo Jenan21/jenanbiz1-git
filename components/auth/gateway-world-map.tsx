@@ -34,7 +34,7 @@ export function GatewayWorldMap({ activity, locale }: { activity: GatewayActivit
       className="gateway-world-map"
       viewBox={world.viewBox}
       role="img"
-      aria-label="Global Jenan BIZ network"
+      aria-label="Global Jenan Pro network"
       preserveAspectRatio="xMidYMid meet"
     >
       <defs>

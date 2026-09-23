@@ -93,7 +93,7 @@ for (const locale of ["ar", "en"] as const) {
       );
       await expect(page.locator(".global-home__stage")).toBeVisible();
       await expect(page.locator(".global-home__network i")).toHaveCount(6);
-      await expect(page.locator(".global-home__quote cite")).toHaveText("Jenan BIZ");
+      await expect(page.locator(".global-home__quote cite")).toHaveText("Jenan Pro");
       await expect(page.locator(".global-home__regions [data-state='live']")).toHaveCount(4);
       await expect(page.locator(".global-home__regions [data-state='unavailable']")).toHaveCount(2);
       await expect(page.locator(".global-home__kpis article:nth-child(2) strong")).toHaveText("28");

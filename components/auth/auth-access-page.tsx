@@ -67,9 +67,9 @@ export function AuthAccessPage({ locale, mode, languageLabel, labels }: AuthAcce
       </div>
       <div className="access-page__stage">
       <header className="access-page__header">
-        <Link href="/" className="access-page__logo" aria-label="Jenan BIZ">
-          <span className="access-page__logo-j">J</span>
-          <span className="access-page__logo-copy"><strong>enan <b>BIZ</b></strong><small>{ar ? "أعمال أنجح · فرص أكبر" : "Business without limits"}</small></span>
+        <Link href="/" className="access-page__logo" aria-label="Jenan Pro">
+          <img className="access-page__logo-image" src="/assets/jenan-pro-logo.png" alt="" />
+          <span className="access-page__logo-copy"><strong>Jenan <b>Pro</b></strong><small>{ar ? "أعمال أنجح · فرص أكبر" : "Business without limits"}</small></span>
         </Link>
         <nav>
           <Link href="/">{ar ? "الرئيسية" : "Home"}</Link>
@@ -82,28 +82,28 @@ export function AuthAccessPage({ locale, mode, languageLabel, labels }: AuthAcce
       <section className="access-page__story">
         <span className="access-page__signal"><i />{ar ? "منظومة أعمال عالمية" : "Global business ecosystem"}</span>
         <h1>{registering
-          ? (ar ? <>منصة جنان بيز<br />ابدأ أعمالك بذكاء</> : <>Jenan BIZ<br />Start building intelligently</>)
-          : (ar ? <>منصة جنان بيز<br />مركز الأعمال الذكي</> : <>Jenan BIZ<br />Intelligent Business Command</>)}</h1>
+          ? (ar ? <>منصة جنان برو<br />ابدأ أعمالك بذكاء</> : <>Jenan Pro<br />Start building intelligently</>)
+          : (ar ? <>منصة جنان برو<br />مركز الأعمال الذكي</> : <>Jenan Pro<br />Intelligent Business Command</>)}</h1>
         <strong className="access-page__story-lead">{ar ? "خدمات متكاملة · تحليلات ذكية · فرص عالمية" : "Integrated services · Smart analytics · Global opportunity"}</strong>
         <p>{registering
-          ? (ar ? "أنشئ هويتك داخل منصة جنان بيز وابدأ الوصول إلى المشاريع والأكاديمية والسوق والبرمجيات والفرص الذكية." : "Create your Jenan BIZ identity and unlock projects, academy, market, software, and intelligent opportunities.")
+          ? (ar ? "أنشئ هويتك داخل منصة جنان برو وابدأ الوصول إلى المشاريع والأكاديمية والسوق والبرمجيات والفرص الذكية." : "Create your Jenan Pro identity and unlock projects, academy, market, software, and intelligent opportunities.")
           : (ar ? "نمكّن الأفراد والشركات من النمو والتوسع ببيانات دقيقة ورؤى استشرافية وتقنية متقدمة تقودك إلى فرص أكبر." : "Helping people and organizations grow with precise data, forward insight, and advanced technology.")}</p>
         <div className="access-page__benefits">
           <span><Icon name="rocket" /><b>{ar ? "وصول مباشر" : "Direct access"}</b><small>{ar ? "ابدأ دون تعقيد" : "Start without friction"}</small></span>
           <span><Icon name="settings" /><b>{ar ? "إدارة موحدة" : "Unified control"}</b><small>{ar ? "كل أعمالك في مكان" : "One space for work"}</small></span>
           <span><Icon name="globe" /><b>{ar ? "فرص عالمية" : "Global reach"}</b><small>{ar ? "منظومة قابلة للتوسع" : "Ready to scale"}</small></span>
         </div>
-        <blockquote>{ar ? <>“نبني جسوراً بين الطموح<br />والفرص العالمية”<cite>Jenan BIZ</cite></> : <>“Building bridges between ambition<br />and global opportunity”<cite>Jenan BIZ</cite></>}</blockquote>
+        <blockquote>{ar ? <>“نبني جسوراً بين الطموح<br />والفرص العالمية”<cite>Jenan Pro</cite></> : <>“Building bridges between ambition<br />and global opportunity”<cite>Jenan Pro</cite></>}</blockquote>
       </section>
 
       <section className="access-page__form-panel" aria-labelledby="access-page-title">
-        <div className="access-page__form-brand" aria-label="Jenan BIZ"><span>J</span><strong>enan <b>BIZ</b></strong></div>
+        <div className="access-page__form-brand" aria-label="Jenan Pro"><img src="/assets/jenan-pro-logo.png" alt="" /><strong>Jenan <b>Pro</b></strong></div>
         <span className="access-page__code">{registering ? (ar ? "إنشاء الهوية الذكية" : "SMART IDENTITY") : (ar ? "تسجيل الدخول الذكي" : "SMART ACCESS")}</span>
         <h2 id="access-page-title">{registering
           ? (ar ? "إنشاء حساب جديد" : "Create a new account")
           : (ar ? "مرحباً بعودتك" : "Welcome back")}</h2>
         <p>{registering
-          ? (ar ? "أنشئ هويتك داخل منصة جنان بيز." : "Create your identity inside Jenan BIZ.")
+          ? (ar ? "أنشئ هويتك داخل منصة جنان برو." : "Create your identity inside Jenan Pro.")
           : (ar ? "سجّل الدخول إلى حسابك لمتابعة أعمالك وفرصك." : "Sign in to continue your work and opportunities.")}</p>
         <AuthForm mode={mode} locale={locale} labels={labels} />
         <div className="access-page__alternate">
@@ -147,8 +147,8 @@ export function AuthAccessPage({ locale, mode, languageLabel, labels }: AuthAcce
       </section>
 
       <footer className="access-page__footer">
-        <span>{ar ? "© جنان بيز · جميع الحقوق محفوظة" : "© Jenan BIZ · All rights reserved"}</span>
-        <Link href="/">Jenan BIZ</Link>
+        <span>{ar ? "© جنان برو · جميع الحقوق محفوظة" : "© Jenan Pro · All rights reserved"}</span>
+        <Link href="/">Jenan Pro</Link>
       </footer>
       </div>
     </main>

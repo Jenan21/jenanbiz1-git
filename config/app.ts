@@ -1,5 +1,5 @@
 export const appConfig = {
-  name: "Jenan BIZ",
+  name: "Jenan Pro",
   defaultLocale: "ar",
   supportedLocales: ["ar", "en"],
 } as const;

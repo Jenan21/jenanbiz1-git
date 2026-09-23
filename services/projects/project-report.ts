@@ -21,7 +21,7 @@ export async function createProjectReport(projectId: string, userId: string, int
   const pdf = await PDFDocument.create();
   const font = await pdf.embedFont(StandardFonts.Helvetica);
   const bold = await pdf.embedFont(StandardFonts.HelveticaBold);
-  const logoPath = path.join(process.cwd(), "public", "assets", "jenan-biz-logo.png");
+  const logoPath = path.join(process.cwd(), "public", "assets", "jenan-pro-logo.png");
   const logo = await pdf.embedPng(await readFile(logoPath));
   let page = pdf.addPage([595, 842]);
   let y = 790;
@@ -65,7 +65,7 @@ export async function createProjectReport(projectId: string, userId: string, int
   };
 
   page.drawImage(logo, { x: margin, y: 700, width: 86, height: 82 });
-  page.drawText("JENAN BIZ PROJECT REPORT", { x: 150, y: 760, size: 18, font: bold, color: rgb(0, 0.38, 0.65) });
+  page.drawText("JENAN PRO PROJECT REPORT", { x: 150, y: 760, size: 18, font: bold, color: rgb(0, 0.38, 0.65) });
   page.drawText("Generated from verified platform records", { x: 150, y: 738, size: 10, font, color: rgb(0.32, 0.4, 0.5) });
   y = 675;
   addText(`Project: ${formatValue(project.name)}`, 16, true);

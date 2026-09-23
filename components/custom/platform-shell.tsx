@@ -9,10 +9,10 @@ import type { Locale } from "@/types/i18n";
 
 export function JenanLogo({ compact = false }: { compact?: boolean }) {
   return (
-    <Link href="/" className="brandmark" aria-label="Jenan BIZ home">
-      <span className="brandmark__logo">J</span>
+    <Link href="/" className="brandmark" aria-label="Jenan Pro home">
+      <img className="brandmark__logo brandmark__logo--image" src="/assets/jenan-pro-logo.png" alt="" />
       <span className="brandmark__text">
-        <strong>Jenan BIZ</strong>
+        <strong>Jenan Pro</strong>
         {!compact && <small>Global business platform</small>}
       </span>
     </Link>
@@ -89,7 +89,7 @@ const services = [
 
 export function AuthServiceCarousel({ locale }: { locale: "ar" | "en" }) {
   return (
-    <aside className="auth-services" aria-label="Jenan BIZ services">
+    <aside className="auth-services" aria-label="Jenan Pro services">
       {services.slice(0, 4).map(([icon, arLabel, enLabel]) => (
         <div className="service-card card" key={icon}>
           <div className="service-orb">
@@ -99,8 +99,8 @@ export function AuthServiceCarousel({ locale }: { locale: "ar" | "en" }) {
             <h3>{locale === "ar" ? arLabel : enLabel}</h3>
             <p>
               {locale === "ar"
-                ? "واجهة مخصصة لمنصة Jenan BIZ مع تجربة أعمال متكاملة."
-                : "Custom interface for the Jenan BIZ platform with a unified business experience."}
+                ? "واجهة مخصصة لمنصة Jenan Pro مع تجربة أعمال متكاملة."
+                : "Custom interface for the Jenan Pro platform with a unified business experience."}
             </p>
           </div>
         </div>
@@ -182,7 +182,7 @@ export function PlatformShell({
             <span>{ar ? "واجهة مخصصة" : "Custom interface"}</span>
           </div>
           <div className="ticker-track">
-            {["Jenan BIZ", "Operations", "AI", "Growth", "Finance"].map((item) => (
+            {["Jenan Pro", "Operations", "AI", "Growth", "Finance"].map((item) => (
               <div className="ticker-item" key={item}>
                 <strong>{item}</strong>
                 <span>•</span>
@@ -204,7 +204,7 @@ export function MarketUnavailable({ locale }: { locale: Locale }) {
         <span>{ar ? "مخطط حقيقي" : "Real data"}</span>
       </div>
       <div className="ticker-track">
-        {"Jenan BIZ • Operations • AI • Growth • Finance".split(" • ").map((item) => (
+        {"Jenan Pro • Operations • AI • Growth • Finance".split(" • ").map((item) => (
           <div className="ticker-item" key={item}>
             <strong>{item}</strong>
             <span>—</span>

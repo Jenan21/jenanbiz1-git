@@ -84,9 +84,17 @@
 .global-home__brand {
   display: flex;
   align-items: center;
+  gap: 10px;
   width: max-content;
   color: #f6fdff;
   filter: drop-shadow(0 0 10px rgba(31, 231, 255, 0.18));
+}
+
+.global-home__brand-image {
+  width: clamp(56px, 5vw, 86px);
+  aspect-ratio: 1;
+  border-radius: 18px;
+  object-fit: cover;
 }
 
 .global-home__brand-j {

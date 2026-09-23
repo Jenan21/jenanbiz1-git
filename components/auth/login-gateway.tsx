@@ -448,7 +448,7 @@ export function LoginGateway({ locale, languageLabel, labels }: LoginGatewayProp
           </g>
         </svg>
         <header className="login-gateway__header">
-          <Link href="/login" className="login-gateway__brand" aria-label="Jenan BIZ">
+          <Link href="/login" className="login-gateway__brand" aria-label="Jenan Pro">
             <svg className="login-gateway__brand-circuit" viewBox="0 0 360 130" aria-hidden="true">
               <g fill="none" strokeLinecap="round" strokeLinejoin="round">
                 <path className="brand-trace brand-trace--cyan brand-trace--soft" d="M8 12h51l12 12h58" />
@@ -674,7 +674,7 @@ export function LoginGateway({ locale, languageLabel, labels }: LoginGatewayProp
                 <Icon name="arrow" />{ar ? "العودة إلى الخريطة" : "Back to map"}
               </button>
               <aside className="login-gateway__auth-identity">
-                <span className="login-gateway__auth-brand" aria-label="Jenan BIZ" />
+                <span className="login-gateway__auth-brand" aria-label="Jenan Pro" />
                 <div className="login-gateway__mode-icon" data-mode={state} aria-hidden="true">
                   <Icon name={state === "login" ? "user" : "plus"} />
                 </div>

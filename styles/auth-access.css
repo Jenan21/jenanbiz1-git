@@ -134,11 +134,18 @@
 .access-page__logo {
   display: flex;
   align-items: center;
-  gap: 1px;
+  gap: 10px;
   width: max-content;
   color: #f4fdff;
   filter: drop-shadow(0 0 10px rgba(76, 221, 244, 0.22));
   transform: translateY(28px);
+}
+
+.access-page__logo-image {
+  width: clamp(58px, 5.4vw, 92px);
+  aspect-ratio: 1;
+  border-radius: 20px;
+  object-fit: cover;
 }
 
 .access-page__logo-j { font: 500 5.9rem/0.72 Georgia, serif; }
@@ -146,6 +153,13 @@
 .access-page__logo-copy strong { font: 600 2.55rem/1 Georgia, serif; }
 .access-page__logo-copy b { color: #16d6df; font: 800 2.55rem/1 "Alexandria Variable", sans-serif; }
 .access-page__logo-copy small { margin-top: 5px; color: #aacbd2; font-size: 0.66rem; }
+
+.access-page__form-brand img {
+  width: 42px;
+  aspect-ratio: 1;
+  border-radius: 12px;
+  object-fit: cover;
+}
 
 .access-page__header nav {
   display: flex;

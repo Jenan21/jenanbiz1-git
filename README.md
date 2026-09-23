@@ -1,6 +1,6 @@
-# Jenan BIZ Core
+# Jenan Pro Core
 
-Production-oriented foundation and visual application shell for Jenan BIZ. Core workflows cover internal tools, AI Gateway execution, organization programs, academy learning, projects, market listings, talent, notifications, and local file storage. Real payments, external authentication providers, and third-party channel integrations remain separately configurable.
+Production-oriented foundation and visual application shell for Jenan Pro. Core workflows cover internal tools, AI Gateway execution, organization programs, academy learning, projects, market listings, talent, notifications, and local file storage. Real payments, external authentication providers, and third-party channel integrations remain separately configurable.
 
 ## Requirements and startup
 

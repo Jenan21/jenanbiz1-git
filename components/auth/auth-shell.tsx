@@ -29,10 +29,10 @@ export function AuthShell(props: AuthShellProps) {
     <main className="auth-page">
       <div className="shell auth-shell">
         <header className="auth-top">
-          <Link href="/" className="auth-logo" aria-label="Jenan BIZ home">
+          <Link href="/" className="auth-logo" aria-label="Jenan Pro home">
             <Image
-              src="/assets/jenan-biz-logo-transparent.png"
-              alt="Jenan BIZ"
+              src="/assets/jenan-pro-logo.png"
+              alt="Jenan Pro"
               width={210}
               height={128}
               priority

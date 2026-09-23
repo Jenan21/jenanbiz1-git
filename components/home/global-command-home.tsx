@@ -131,9 +131,9 @@ export function GlobalCommandHome({
         <div className="global-home__atmosphere" aria-hidden="true" />
 
         <header className="global-home__header">
-          <Link className="global-home__brand" href="/" aria-label="Jenan BIZ">
-            <span className="global-home__brand-j">J</span>
-            <span><strong>enan <b>BIZ</b></strong><small>{ar ? "أعمال أنجح · فرص أكبر" : "Business Without Limits"}</small></span>
+          <Link className="global-home__brand" href="/" aria-label="Jenan Pro">
+            <img className="global-home__brand-image" src="/assets/jenan-pro-logo.png" alt="" />
+            <span><strong>Jenan <b>Pro</b></strong><small>{ar ? "أعمال أنجح · فرص أكبر" : "Business Without Limits"}</small></span>
           </Link>
           <nav aria-label={ar ? "التنقل الرئيسي" : "Primary navigation"}>
             <Link href="/dashboard">{ar ? "مركز الأمر" : "Command center"}</Link>
@@ -150,7 +150,7 @@ export function GlobalCommandHome({
         </header>
 
         <section className="global-home__hero-copy">
-          <h1>{ar ? <>منصة جنان بيز<br />مركز الأعمال الذكي</> : <>Jenan BIZ<br />Intelligent Business Command</>}</h1>
+          <h1>{ar ? <>منصة جنان برو<br />مركز الأعمال الذكي</> : <>Jenan Pro<br />Intelligent Business Command</>}</h1>
           <strong>{ar ? "خدمات متكاملة · تحليلات ذكية · فرص عالمية" : "Integrated services · Smart analytics · Global opportunity"}</strong>
           <p>{ar ? "تمكّن الأفراد والشركات من النمو والتوسع ببيانات دقيقة ورؤى استشرافية وتقنية متقدمة تقودك إلى فرص أكبر." : "Helping people and organizations grow with precise data, forward insight, and advanced technology."}</p>
         </section>
@@ -180,7 +180,7 @@ export function GlobalCommandHome({
 
         <blockquote className="global-home__quote">
           {ar ? <>“نبني جسوراً بين الطموح<br />والفرص العالمية”</> : <>“Building bridges between ambition<br />and global opportunity”</>}
-          <cite>Jenan BIZ</cite>
+          <cite>Jenan Pro</cite>
         </blockquote>
 
         <section className="global-home__news">
@@ -207,7 +207,7 @@ export function GlobalCommandHome({
           ["brain", ar ? "ذكاء اصطناعي متقدم" : "Advanced AI", ar ? "يعمل من أجلك" : "Working for you"],
         ] as const).map(([icon, title, note]) => <article key={title}><Icon name={icon} /><span><strong>{title}</strong><small>{note}</small></span></article>)}</section>
 
-        <footer className="global-home__footer"><span className="global-home__footer-brand"><b>Jenan <em>BIZ</em></b><small>Business Without Limits</small></span><nav><Link href="/benefits">{ar ? "الخصوصية" : "Privacy"}</Link><Link href="/pricing">{ar ? "الشروط والأحكام" : "Terms"}</Link><Link href="/login">{ar ? "تسجيل الدخول" : "Sign in"}</Link></nav><span>{ar ? "© 2026 منصة جنان بيز. جميع الحقوق محفوظة." : "© 2026 Jenan BIZ. All rights reserved."}</span></footer>
+        <footer className="global-home__footer"><span className="global-home__footer-brand"><b>Jenan <em>Pro</em></b><small>Business Without Limits</small></span><nav><Link href="/benefits">{ar ? "الخصوصية" : "Privacy"}</Link><Link href="/pricing">{ar ? "الشروط والأحكام" : "Terms"}</Link><Link href="/login">{ar ? "تسجيل الدخول" : "Sign in"}</Link></nav><span>{ar ? "© 2026 منصة جنان برو. جميع الحقوق محفوظة." : "© 2026 Jenan Pro. All rights reserved."}</span></footer>
       </div>
     </main>
   );
