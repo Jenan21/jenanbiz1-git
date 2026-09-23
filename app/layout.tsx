@@ -17,6 +17,11 @@ export const metadata: Metadata = {
   },
   description:
     "Jenan Pro is a global business platform for operations, data intelligence, smart workflows, and scalable collaboration across teams and regions.",
+  icons: {
+    apple: "/apple-icon.png",
+    icon: "/icon.svg",
+    shortcut: "/assets/jenan-pro-app-icon-192.png",
+  },
   keywords: [
     "business platform",
     "global operations",
