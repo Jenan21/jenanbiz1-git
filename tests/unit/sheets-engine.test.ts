@@ -4,20 +4,22 @@ import { parseXlsx } from "@/packages/sheets-engine/src";
 
 async function makeWorkbook(): Promise<Uint8Array> {
   const workbook = new ExcelJS.Workbook();
-  const sheet = workbook.addWorksheet("KPIs");
-  sheet.addRow(["Metric", "Value"]);
-  sheet.addRow(["Revenue", 45890]);
-  sheet.addRow(["Users", 3247]);
+  const sheet = workbook.addWorksheet("Pipeline");
+  sheet.addRow(["Name", "Value", "Stage"]);
+  sheet.addRow(["Lead A", 1200, "Qualified"]);
+  sheet.addRow(["Lead B", 2400, "Converted"]);
   return new Uint8Array(await workbook.xlsx.writeBuffer());
 }
 
 describe("sheets-engine", () => {
-  it("parses xlsx and returns workbook metadata", async () => {
-    const file = await makeWorkbook();
-    const parsed = await parseXlsx(file, 3);
+  it("extracts sheet names, dimensions, and preview rows", async () => {
+    const parsed = await parseXlsx(await makeWorkbook(), 2);
 
-    expect(parsed.sheetNames).toEqual(["KPIs"]);
-    expect(parsed.sheets[0].rowCount).toBe(3);
-    expect(parsed.sheets[0].previewRows[0]).toEqual(["Metric", "Value"]);
+    expect(parsed.sheetNames).toEqual(["Pipeline"]);
+    expect(parsed.sheets[0]).toMatchObject({ columnCount: 3, name: "Pipeline", rowCount: 3 });
+    expect(parsed.sheets[0]?.previewRows).toEqual([
+      ["Name", "Value", "Stage"],
+      ["Lead A", "1200", "Qualified"],
+    ]);
   });
 });

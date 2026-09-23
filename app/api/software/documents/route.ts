@@ -4,6 +4,7 @@ import { parseDocx } from "@/packages/docs-engine/src";
 import { parseXlsx } from "@/packages/sheets-engine/src";
 import { getCurrentUser } from "@/lib/auth/session";
 import { hasValidOrigin } from "@/lib/auth/request";
+import { db } from "@/lib/db";
 
 export const runtime = "nodejs";
 
@@ -28,6 +29,17 @@ function parseRanges(value: FormDataEntryValue | null) {
   });
 }
 
+async function recordToolRun(input: { action: string; fileCount: number; metadata?: Record<string, unknown>; userId: string }) {
+  await db.auditLog.create({
+    data: {
+      actorId: input.userId,
+      action: `software.documents.${input.action}`,
+      entityType: "SoftwareTool",
+      metadata: { fileCount: input.fileCount, ...input.metadata },
+    },
+  });
+}
+
 export async function POST(request: NextRequest) {
   const user = await getCurrentUser();
   if (!user) return NextResponse.json({ success: false, message: "Authentication required" }, { status: 401 });
@@ -45,6 +57,7 @@ export async function POST(request: NextRequest) {
     if (action === "mergePdf") {
       if (!bytes.every(hasPdfSignature)) return NextResponse.json({ success: false, message: "Only valid PDF files can be merged" }, { status: 400 });
       const output = await mergePdfs(bytes);
+      await recordToolRun({ action, fileCount: files.length, metadata: { outputBytes: output.byteLength }, userId: user.id });
       const body = output.buffer.slice(output.byteOffset, output.byteOffset + output.byteLength) as ArrayBuffer;
       return new NextResponse(body, { headers: { "content-type": "application/pdf", "content-disposition": "attachment; filename=jenan-merged.pdf", "cache-control": "no-store" } });
     }
@@ -52,15 +65,20 @@ export async function POST(request: NextRequest) {
       if (files.length !== 1 || !hasPdfSignature(bytes[0])) return NextResponse.json({ success: false, message: "Provide one valid PDF file" }, { status: 400 });
       const outputs = await splitPdf(bytes[0], parseRanges(form.get("ranges")));
       if (!outputs.length) return NextResponse.json({ success: false, message: "The PDF has no pages to split" }, { status: 422 });
+      await recordToolRun({ action, fileCount: files.length, metadata: { outputDocuments: outputs.length }, userId: user.id });
       return NextResponse.json({ success: true, documents: outputs.map((output) => Buffer.from(output).toString("base64")) }, { headers: { "cache-control": "no-store" } });
     }
     if (action === "analyzeDocx") {
       if (files.length !== 1 || !hasZipSignature(bytes[0])) return NextResponse.json({ success: false, message: "Provide one valid DOCX file" }, { status: 400 });
-      return NextResponse.json({ success: true, document: await parseDocx(bytes[0]) });
+      const document = await parseDocx(bytes[0]);
+      await recordToolRun({ action, fileCount: files.length, metadata: { paragraphCount: document.paragraphCount, wordCount: document.wordCount }, userId: user.id });
+      return NextResponse.json({ success: true, document }, { headers: { "cache-control": "no-store" } });
     }
     if (action === "analyzeXlsx") {
       if (files.length !== 1 || !hasZipSignature(bytes[0])) return NextResponse.json({ success: false, message: "Provide one valid XLSX file" }, { status: 400 });
-      return NextResponse.json({ success: true, workbook: await parseXlsx(bytes[0]) }, { headers: { "cache-control": "no-store" } });
+      const workbook = await parseXlsx(bytes[0]);
+      await recordToolRun({ action, fileCount: files.length, metadata: { sheetCount: workbook.sheets.length, sheetNames: workbook.sheetNames }, userId: user.id });
+      return NextResponse.json({ success: true, workbook }, { headers: { "cache-control": "no-store" } });
     }
     return NextResponse.json({ success: false, message: "Unknown document action" }, { status: 400 });
   } catch {
