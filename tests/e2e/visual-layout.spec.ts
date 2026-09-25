@@ -34,6 +34,8 @@ for (const path of ["/login", "/register"] as const) {
     );
     await expect(page.locator(".access-page")).toBeVisible();
     await expect(page.locator(".access-page__logo")).toBeInViewport();
+    await expect(page.locator(".access-page__access-dock")).toBeInViewport();
+    await page.getByRole("button", { name: path === "/login" ? (locale === "ar" ? "دخول" : "Sign in") : (locale === "ar" ? "حساب جديد" : "New account") }).click();
     await expect(page.locator(".access-page__form-panel")).toBeInViewport();
     await expect(page.locator(".access-page__form-panel form")).toBeVisible();
     await expect(page.locator(".access-page__alternate a")).toHaveAttribute(
