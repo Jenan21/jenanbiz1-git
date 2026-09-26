@@ -1,4 +1,5 @@
 import { AcademyLibrary } from "@/components/academy/academy-library";
+import { AcademySectionNav } from "@/components/academy/academy-section-nav";
 import { PlatformShell } from "@/components/custom/platform-shell";
 import { requireUser } from "@/lib/auth/session";
 import { getRequestDictionary } from "@/lib/i18n/server";
@@ -11,6 +12,7 @@ export default async function Page() {
   ]);
   return (
     <PlatformShell locale={locale as Locale} activeRoute="/academy" userLabel={user.profile?.displayName ?? user.email}>
+      <AcademySectionNav activeRoute="/academy" locale={locale as Locale} />
       <AcademyLibrary locale={locale as Locale} />
     </PlatformShell>
   );

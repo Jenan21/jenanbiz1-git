@@ -88,6 +88,12 @@ export default defineConfig({
       metadata: { appLocale: "en" },
     },
     {
+      name: "academy-flow-routes",
+      testMatch: /academy-flow-routes\.spec\.ts/,
+      use: { viewport: { width: 1440, height: 1000 }, locale: "en-US" },
+      metadata: { appLocale: "en" },
+    },
+    {
       name: "platform-user-journey",
       testMatch: /platform-user-journey\.spec\.ts/,
       use: { viewport: { width: 1440, height: 1000 }, locale: "en-US" },

@@ -5,6 +5,7 @@ import { db } from "@/lib/db";
 import { getRequestDictionary } from "@/lib/i18n/server";
 import { PlatformShell } from "@/components/custom/platform-shell";
 import { CourseLearningProgress } from "@/components/academy/course-learning-progress";
+import { AcademySectionNav } from "@/components/academy/academy-section-nav";
 import type { Locale } from "@/types/i18n";
 
 export default async function AcademyCoursePage({
@@ -32,6 +33,7 @@ export default async function AcademyCoursePage({
   const ar = locale === "ar";
   return (
     <PlatformShell locale={locale as Locale} activeRoute="/academy" userLabel={user.profile?.displayName ?? user.email}>
+      <AcademySectionNav activeRoute="/academy/courses" locale={locale as Locale} />
       <article className="academy-course-page">
         <Link className="academy-course-page__back" href="/academy">{ar ? "العودة إلى الأكاديمية" : "Back to academy"}</Link>
         <header>
