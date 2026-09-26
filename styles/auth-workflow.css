@@ -1,0 +1,546 @@
+.auth-workflow {
+  min-height: 100dvh;
+  position: relative;
+  overflow-x: hidden;
+  display: grid;
+  grid-template-rows: auto 1fr auto;
+  color: #f4fbff;
+  background: #020814;
+}
+
+.auth-workflow__backdrop {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  background:
+    linear-gradient(90deg, rgba(2, 8, 20, 0.96), rgba(2, 12, 24, 0.8) 48%, rgba(2, 8, 20, 0.9)),
+    url("/assets/global-city-night.jpg") center bottom / cover no-repeat;
+}
+
+.auth-workflow__backdrop::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background-image:
+    linear-gradient(rgba(56, 232, 255, 0.04) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(56, 232, 255, 0.04) 1px, transparent 1px);
+  background-size: 48px 48px;
+  mask-image: linear-gradient(to bottom, transparent, black 24%, black 78%, transparent);
+}
+
+.auth-workflow__header,
+.auth-workflow__content,
+.auth-workflow__footer {
+  width: min(100% - 40px, 1440px);
+  margin-inline: auto;
+  position: relative;
+  z-index: 1;
+}
+
+.auth-workflow__header {
+  min-height: 82px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 20px;
+  border-bottom: 1px solid rgba(56, 232, 255, 0.2);
+}
+
+.auth-workflow__brand {
+  direction: ltr;
+  display: inline-flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.auth-workflow__brand > span {
+  width: 46px;
+  aspect-ratio: 1;
+  display: grid;
+  place-items: center;
+  border: 1px solid #38e8ff;
+  border-radius: 8px;
+  color: #38e8ff;
+  font-size: 1.45rem;
+  font-weight: 800;
+  box-shadow: 0 0 24px rgba(56, 232, 255, 0.18);
+}
+
+.auth-workflow__brand strong {
+  display: grid;
+  font-size: 1.25rem;
+}
+
+.auth-workflow__brand b {
+  color: #38e8ff;
+}
+
+.auth-workflow__brand small {
+  color: #8eb0c2;
+  font-size: 0.68rem;
+  font-weight: 500;
+}
+
+.auth-workflow__content {
+  display: grid;
+  grid-template-columns: minmax(0, 1.25fr) minmax(300px, 0.75fr);
+  align-items: center;
+  gap: 18px;
+  padding-block: clamp(28px, 5vh, 58px);
+}
+
+.auth-workflow__intro {
+  min-height: 250px;
+  align-content: center;
+  display: grid;
+  padding: clamp(24px, 4vw, 44px);
+  border: 1px solid rgba(56, 232, 255, 0.22);
+  border-radius: 16px;
+  background: linear-gradient(135deg, rgba(5, 24, 39, 0.9), rgba(5, 48, 63, 0.76));
+  box-shadow: inset 0 0 52px rgba(56, 232, 255, 0.04);
+}
+
+.auth-workflow__intro h1 {
+  max-width: 780px;
+  margin: 18px 0 14px;
+  font-size: clamp(2.25rem, 4.4vw, 4.4rem);
+  line-height: 1.05;
+}
+
+.auth-workflow__intro > p {
+  max-width: 640px;
+  margin: 0;
+  color: #a6c0ce;
+  font-size: clamp(0.95rem, 1.25vw, 1.1rem);
+  line-height: 1.9;
+}
+
+.auth-workflow__assurance {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-top: 28px;
+}
+
+.auth-workflow__assurance span {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 42px;
+  padding: 8px 12px;
+  border: 1px solid rgba(56, 232, 255, 0.2);
+  border-radius: 8px;
+  background: rgba(5, 27, 42, 0.72);
+  color: #cde7ef;
+  font-size: 0.78rem;
+}
+
+.auth-workflow__assurance .icon {
+  width: 18px;
+  color: #38e8ff;
+}
+
+.auth-workflow__visual {
+  min-height: 250px;
+  position: relative;
+  overflow: hidden;
+  display: grid;
+  place-items: center;
+  align-content: center;
+  gap: 8px;
+  border: 1px solid rgba(56, 232, 255, 0.22);
+  border-radius: 16px;
+  background:
+    linear-gradient(135deg, rgba(3, 15, 28, 0.94), rgba(4, 42, 56, 0.82)),
+    url("/assets/earth-night-texture.jpg") center / cover no-repeat;
+}
+
+.auth-workflow__visual::before,
+.auth-workflow__visual::after,
+.auth-workflow__visual-ring {
+  content: "";
+  position: absolute;
+  border: 1px solid rgba(56, 232, 255, 0.24);
+  transform: rotate(-16deg);
+}
+
+.auth-workflow__visual::before {
+  width: 220px;
+  height: 94px;
+  border-radius: 50%;
+}
+
+.auth-workflow__visual::after {
+  width: 170px;
+  height: 170px;
+  border-radius: 50%;
+}
+
+.auth-workflow__visual-ring {
+  width: 112px;
+  height: 200px;
+  border-radius: 50%;
+}
+
+.auth-workflow__visual strong {
+  position: relative;
+  z-index: 1;
+  display: grid;
+  place-items: center;
+  width: 94px;
+  aspect-ratio: 1;
+  border: 1px solid #58efff;
+  border-radius: 50%;
+  color: #dffcff;
+  background: rgba(2, 18, 31, 0.84);
+  box-shadow: 0 0 50px rgba(56, 232, 255, 0.3), inset 0 0 24px rgba(56, 232, 255, 0.15);
+  font-size: 3.6rem;
+  font-weight: 800;
+}
+
+.auth-workflow__visual small {
+  position: relative;
+  z-index: 1;
+  color: #8defff;
+  font-size: 0.68rem;
+  letter-spacing: 0;
+}
+
+.auth-workflow__milestones {
+  grid-column: 1 / -1;
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.auth-workflow__milestones article {
+  min-width: 0;
+  min-height: 84px;
+  display: grid;
+  grid-template-columns: auto 1fr;
+  align-items: center;
+  gap: 3px 10px;
+  padding: 14px;
+  border: 1px solid rgba(56, 232, 255, 0.18);
+  border-radius: 10px;
+  background: rgba(4, 26, 41, 0.82);
+}
+
+.auth-workflow__milestones article > span {
+  grid-row: span 2;
+  color: #38e8ff;
+  font-size: 1.25rem;
+  font-weight: 800;
+}
+
+.auth-workflow__milestones strong {
+  font-size: 0.88rem;
+}
+
+.auth-workflow__milestones small {
+  min-width: 0;
+  color: #819fad;
+  font-size: 0.72rem;
+}
+
+.auth-workflow__panel,
+.auth-workflow__status {
+  align-self: stretch;
+  border: 1px solid rgba(56, 232, 255, 0.24);
+  border-radius: 16px;
+  background: linear-gradient(145deg, rgba(8, 36, 52, 0.92), rgba(3, 14, 27, 0.94));
+  box-shadow: 0 28px 90px rgba(0, 0, 0, 0.38), inset 0 0 45px rgba(0, 217, 255, 0.04);
+  backdrop-filter: blur(20px);
+}
+
+.auth-workflow__panel {
+  padding: clamp(22px, 4vw, 36px);
+}
+
+.auth-workflow__status {
+  display: grid;
+  align-content: start;
+  gap: 18px;
+  padding: clamp(20px, 3vw, 30px);
+}
+
+.auth-workflow__status header {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  padding-bottom: 12px;
+  border-bottom: 1px solid rgba(56, 232, 255, 0.14);
+}
+
+.auth-workflow__status header b {
+  color: #64e7a2;
+  font-size: 0.7rem;
+}
+
+.auth-workflow__status ul {
+  display: grid;
+  gap: 10px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.auth-workflow__status li {
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px;
+  border: 1px solid rgba(56, 232, 255, 0.12);
+  border-radius: 8px;
+  background: rgba(4, 24, 38, 0.72);
+}
+
+.auth-workflow__status li .icon {
+  flex: 0 0 auto;
+  width: 19px;
+  color: #38e8ff;
+}
+
+.auth-workflow__status li span {
+  min-width: 0;
+  display: grid;
+  gap: 2px;
+}
+
+.auth-workflow__status li strong {
+  font-size: 0.78rem;
+}
+
+.auth-workflow__status li small,
+.auth-workflow__status > p {
+  color: #809eac;
+  font-size: 0.68rem;
+  line-height: 1.6;
+}
+
+.auth-workflow__status > p {
+  margin: 0;
+}
+
+.auth-workflow__form-stack,
+.auth-workflow__form-stack form,
+.onboarding-form {
+  display: grid;
+  gap: 18px;
+}
+
+.auth-workflow__form-stack label,
+.onboarding-form label {
+  display: grid;
+  gap: 7px;
+  color: #a8c2cf;
+  font-size: 0.82rem;
+}
+
+.auth-workflow__form-stack input,
+.onboarding-form input,
+.onboarding-form select {
+  width: 100%;
+  min-height: 48px;
+  padding: 10px 12px;
+  border: 1px solid #1b5269;
+  border-radius: 8px;
+  background: rgba(2, 13, 25, 0.82);
+  color: #f4fbff;
+}
+
+.auth-workflow__form-stack input:focus,
+.onboarding-form input:focus,
+.onboarding-form select:focus {
+  outline: none;
+  border-color: #38e8ff;
+  box-shadow: 0 0 0 3px rgba(56, 232, 255, 0.15);
+}
+
+.auth-workflow__actions,
+.onboarding-form__grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.onboarding-form__city {
+  grid-column: 1 / -1;
+}
+
+.onboarding-form fieldset {
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+
+.onboarding-form legend {
+  margin-bottom: 10px;
+  color: #d9f7ff;
+  font-weight: 700;
+}
+
+.onboarding-form__interests {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.onboarding-form__interests label {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  min-height: 44px;
+  padding: 9px 11px;
+  border: 1px solid rgba(56, 232, 255, 0.18);
+  border-radius: 8px;
+  background: rgba(4, 25, 40, 0.72);
+}
+
+.onboarding-form__interests input {
+  width: 17px;
+  min-height: 17px;
+  accent-color: #38e8ff;
+}
+
+.auth-workflow__dev-code,
+.auth-workflow__message,
+.auth-workflow__error {
+  margin: 0;
+  padding: 11px 13px;
+  border-radius: 8px;
+  font-size: 0.82rem;
+}
+
+.auth-workflow__dev-code {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  border: 1px solid rgba(227, 202, 114, 0.42);
+  background: rgba(227, 202, 114, 0.08);
+  color: #f5dd8e;
+}
+
+.auth-workflow__dev-code output {
+  font-weight: 800;
+  letter-spacing: 0;
+}
+
+.auth-workflow__message {
+  border: 1px solid rgba(34, 197, 94, 0.35);
+  background: rgba(34, 197, 94, 0.08);
+  color: #8ee7ad;
+}
+
+.auth-workflow__error {
+  border: 1px solid rgba(239, 68, 68, 0.4);
+  background: rgba(239, 68, 68, 0.08);
+  color: #ffafb4;
+}
+
+.auth-workflow__return {
+  justify-self: center;
+  color: #8ceeff;
+  font-size: 0.82rem;
+}
+
+.auth-workflow__footer {
+  min-height: 60px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 18px;
+  border-top: 1px solid rgba(56, 232, 255, 0.14);
+  color: #7f9ead;
+  font-size: 0.75rem;
+}
+
+@media (max-width: 820px) {
+  .auth-workflow__header,
+  .auth-workflow__content,
+  .auth-workflow__footer {
+    width: min(100% - 24px, 620px);
+  }
+
+  .auth-workflow__content {
+    grid-template-columns: 1fr;
+    align-items: start;
+    gap: 24px;
+    padding-block: 28px 40px;
+  }
+
+  .auth-workflow__intro,
+  .auth-workflow__visual,
+  .auth-workflow__milestones,
+  .auth-workflow__panel,
+  .auth-workflow__status {
+    grid-column: 1;
+  }
+
+  .auth-workflow__panel {
+    order: -1;
+  }
+
+  .auth-workflow__intro {
+    order: 0;
+  }
+
+  .auth-workflow__visual {
+    display: none;
+  }
+
+  .auth-workflow__milestones {
+    order: 1;
+  }
+
+  .auth-workflow__status {
+    order: 2;
+  }
+
+  .auth-workflow__intro h1 {
+    font-size: clamp(2rem, 10vw, 3rem);
+  }
+}
+
+@media (max-width: 480px) {
+  .auth-workflow__header {
+    min-height: 70px;
+  }
+
+  .auth-workflow__brand strong {
+    font-size: 1rem;
+  }
+
+  .auth-workflow__brand small {
+    display: none;
+  }
+
+  .auth-workflow__intro,
+  .auth-workflow__panel,
+  .auth-workflow__status {
+    padding: 18px;
+    border-radius: 12px;
+  }
+
+  .auth-workflow__actions,
+  .onboarding-form__grid,
+  .onboarding-form__interests,
+  .auth-workflow__milestones {
+    grid-template-columns: 1fr;
+  }
+
+  .auth-workflow__milestones article {
+    min-height: 68px;
+  }
+
+  .onboarding-form__city {
+    grid-column: auto;
+  }
+
+  .auth-workflow__footer {
+    align-items: flex-start;
+    flex-direction: column;
+    padding-block: 16px;
+  }
+}

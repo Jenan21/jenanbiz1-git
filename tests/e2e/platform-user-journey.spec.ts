@@ -11,6 +11,7 @@ const marketTitle = `Journey Market Opportunity ${runLabel}`;
 const jobTitle = `Journey Operations Lead ${runLabel}`;
 const organizationName = `Journey Organization ${runLabel}`;
 const campaignName = `Journey Growth Campaign ${runLabel}`;
+const replacementPassword = `${e2eIdentity.user.password}-Reset`;
 
 async function expectHealthyPage(page: Page, route: string) {
   const response = await page.goto(route, { waitUntil: "domcontentloaded" });
@@ -64,8 +65,18 @@ test.describe.serial("real Jenan Pro user journey", () => {
     await page.getByLabel("Confirm password").fill(e2eIdentity.user.password);
     await page.getByLabel("I accept the terms and conditions").check();
     await Promise.all([
-      page.waitForURL(/\/dashboard$/),
+      page.waitForURL(/\/user\/onboarding$/),
       page.locator(".auth-form button[type=submit]").click(),
+    ]);
+    await page.getByLabel("Account type").selectOption("ORGANIZATION");
+    await page.getByLabel("Country code").fill("SA");
+    await page.getByLabel("City").fill("Riyadh");
+    await page.getByLabel("Projects").check();
+    await page.getByLabel("Market", { exact: true }).check();
+    await page.getByLabel("Software").check();
+    await Promise.all([
+      page.waitForURL(/\/dashboard$/),
+      page.getByRole("button", { name: "Save and continue" }).click(),
     ]);
     await expect(page.locator(".user-chip")).toContainText(e2eIdentity.user.displayName);
 
@@ -76,8 +87,23 @@ test.describe.serial("real Jenan Pro user journey", () => {
     expect((await page.request.get("/api/account/overview")).status()).toBe(401);
 
     await page.getByRole("button", { name: "Sign in", exact: true }).click();
+    await page.getByRole("link", { name: "Recover access" }).click();
+    await expect(page).toHaveURL(/\/auth\/forgot$/);
     await page.getByLabel("Email address").fill(e2eIdentity.user.email);
-    await page.getByLabel("Password", { exact: true }).fill(e2eIdentity.user.password);
+    const resetRequest = page.waitForResponse((response) => response.url().endsWith("/api/auth/forgot") && response.request().method() === "POST");
+    await page.getByRole("button", { name: "Send verification code" }).click();
+    expect((await resetRequest).status()).toBe(200);
+    await expect(page.locator(".auth-workflow__dev-code output")).toHaveText(/^\d{6}$/);
+    await page.getByLabel("New password").fill(replacementPassword);
+    await page.getByLabel("Confirm password").fill(replacementPassword);
+    const resetConfirmation = page.waitForResponse((response) => response.url().endsWith("/api/auth/forgot") && response.request().method() === "POST");
+    await page.getByRole("button", { name: "Confirm password" }).click();
+    expect((await resetConfirmation).status()).toBe(200);
+    await page.waitForURL(/\/auth\/login\?reset=success$/);
+
+    await page.getByRole("button", { name: "Sign in", exact: true }).click();
+    await page.getByLabel("Email address").fill(e2eIdentity.user.email);
+    await page.getByLabel("Password", { exact: true }).fill(replacementPassword);
     await Promise.all([
       page.waitForURL(/\/dashboard$/),
       page.locator(".auth-form button[type=submit]").click(),

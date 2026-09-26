@@ -11,6 +11,8 @@ import {
   logoutSession,
   registerUser,
 } from "@/services/auth/auth.service";
+import { confirmPasswordReset, requestPasswordReset } from "@/services/auth/password-recovery-service";
+import { completeOnboarding } from "@/services/account/onboarding-service";
 
 const baseRegistration = {
   displayName: "Integration User",
@@ -81,6 +83,36 @@ describe.sequential("real PostgreSQL authentication integration", () => {
     ).rejects.toMatchObject({
       code: "DUPLICATE_EMAIL",
     });
+  });
+
+  it("completes account onboarding with persisted preferences and audit evidence", async () => {
+    const registered = await registerUser(baseRegistration);
+    const profile = await completeOnboarding({
+      accountType: "ORGANIZATION",
+      city: "Riyadh",
+      countryCode: "SA",
+      interests: ["PROJECTS", "MARKET", "SOFTWARE"],
+    }, registered.user.id);
+    expect(profile).toMatchObject({ accountType: "ORGANIZATION", city: "Riyadh", countryCode: "SA" });
+    expect(profile.interests).toEqual(["PROJECTS", "MARKET", "SOFTWARE"]);
+    expect(profile.onboardedAt).toBeInstanceOf(Date);
+    expect(await db.auditLog.count({ where: { actorId: registered.user.id, action: "user.onboarding.completed" } })).toBe(1);
+  });
+
+  it("resets a password with a single-use code and invalidates existing sessions", async () => {
+    const registered = await registerUser(baseRegistration);
+    const requested = await requestPasswordReset(baseRegistration.email);
+    expect(requested.delivery).toBe("development");
+    expect(requested.developmentCode).toMatch(/^\d{6}$/);
+    const code = requested.developmentCode;
+    if (!code) throw new Error("Development reset code was not returned");
+
+    await expect(confirmPasswordReset({ email: baseRegistration.email, code: "000000", password: "Replacement-Password-2026!" })).rejects.toMatchObject({ code: "INVALID_OR_EXPIRED_CODE" });
+    await confirmPasswordReset({ email: baseRegistration.email, code, password: "Replacement-Password-2026!" });
+    expect(await db.session.count({ where: { userId: registered.user.id } })).toBe(0);
+    await expect(loginUser({ email: baseRegistration.email, password: baseRegistration.password, remember: false })).rejects.toMatchObject({ code: "INVALID_CREDENTIALS" });
+    await expect(loginUser({ email: baseRegistration.email, password: "Replacement-Password-2026!", remember: false })).resolves.toMatchObject({ user: { id: registered.user.id } });
+    expect(await db.auditLog.count({ where: { actorId: registered.user.id, action: "authentication.password_reset.completed" } })).toBe(1);
   });
 
   it("rejects invalid registration input before database access", () => {

@@ -7,14 +7,16 @@ import type {
 import { MemoryRateLimitProvider } from "@/lib/rate-limit/memory-provider";
 import { RedisRateLimitProvider } from "@/lib/rate-limit/redis-provider";
 
-export type AuthRateLimitRoute = "login" | "register";
+export type AuthRateLimitRoute = "forgot" | "login" | "register" | "reset";
 
 const policies: Record<
   AuthRateLimitRoute,
   { limit: number; windowMs: number }
 > = {
+  forgot: { limit: 4, windowMs: 60_000 },
   login: { limit: 8, windowMs: 60_000 },
   register: { limit: 4, windowMs: 60_000 },
+  reset: { limit: 8, windowMs: 60_000 },
 };
 
 const globalForRateLimit = globalThis as typeof globalThis & {

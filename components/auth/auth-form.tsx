@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useState, type FormEvent, type MouseEvent } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Button } from "@/components/ui/button";
@@ -109,10 +110,11 @@ export function AuthForm({ mode, locale, labels }: AuthFormProps) {
       }
       const requested = searchParams.get("next");
       const destination =
-        mode === "login" &&
-        (requested === "/admin" || requested === "/dashboard")
-          ? requested
-          : "/dashboard";
+        mode === "register"
+          ? "/user/onboarding"
+          : requested?.startsWith("/") && !requested.startsWith("//")
+            ? requested
+            : "/dashboard";
       router.replace(destination);
       router.refresh();
     } catch {
@@ -233,9 +235,9 @@ export function AuthForm({ mode, locale, labels }: AuthFormProps) {
             <input name="remember" type="checkbox" disabled={loading} />
             <span>{labels.remember}</span>
           </label>
-          <button type="button" className="text-button" disabled>
+          <Link href="/auth/forgot" className="text-button">
             {labels.forgot}
-          </button>
+          </Link>
         </div>
       )}
       {mode === "login" && error && (

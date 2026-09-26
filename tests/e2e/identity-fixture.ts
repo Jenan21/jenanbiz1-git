@@ -1,4 +1,4 @@
-import { randomUUID } from "node:crypto";
+import { createHash, randomBytes, randomUUID } from "node:crypto";
 import { hash } from "@node-rs/argon2";
 import { Pool } from "pg";
 import { e2eIdentity } from "./test-identities";
@@ -87,6 +87,56 @@ export async function seedE2EAdmin() {
   } catch (error) {
     await client.query("ROLLBACK");
     throw error;
+  } finally {
+    client.release();
+    await e2eDb.end();
+  }
+}
+
+export async function seedE2EUser() {
+  const userId = randomUUID();
+  const profileId = randomUUID();
+  const passwordHash = await hash(e2eIdentity.user.password, {
+    memoryCost: 65_536,
+    timeCost: 3,
+    parallelism: 1,
+    outputLen: 32,
+  });
+  const e2eDb = createE2EDb();
+  const client = await e2eDb.connect();
+  try {
+    await client.query("BEGIN");
+    await client.query(
+      'INSERT INTO "User" (id, email, "passwordHash", status, "systemRole", "createdAt", "updatedAt") VALUES ($1, $2, $3, \'ACTIVE\', \'USER\', NOW(), NOW())',
+      [userId, e2eIdentity.user.email, passwordHash],
+    );
+    await client.query(
+      'INSERT INTO "Profile" (id, "userId", "displayName", locale, language, "countryCode", timezone, "createdAt", "updatedAt") VALUES ($1, $2, $3, \'en\', \'en\', \'SA\', \'Asia/Riyadh\', NOW(), NOW())',
+      [profileId, userId, e2eIdentity.user.displayName],
+    );
+    await client.query("COMMIT");
+  } catch (error) {
+    await client.query("ROLLBACK");
+    throw error;
+  } finally {
+    client.release();
+    await e2eDb.end();
+  }
+}
+
+export async function createE2ESession(email: string) {
+  const token = randomBytes(32).toString("base64url");
+  const tokenHash = createHash("sha256").update(token).digest("hex");
+  const e2eDb = createE2EDb();
+  const client = await e2eDb.connect();
+  try {
+    const user = await client.query<{ id: string }>('SELECT id FROM "User" WHERE email = $1', [email]);
+    if (!user.rows[0]) throw new Error("E2E user not found");
+    await client.query(
+      'INSERT INTO "Session" (id, "userId", "tokenHash", "expiresAt", "createdAt", "updatedAt") VALUES ($1, $2, $3, NOW() + INTERVAL \'1 hour\', NOW(), NOW())',
+      [randomUUID(), user.rows[0].id, tokenHash],
+    );
+    return token;
   } finally {
     client.release();
     await e2eDb.end();
