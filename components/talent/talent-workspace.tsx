@@ -145,7 +145,7 @@ export function TalentWorkspace({ locale }: { locale: Locale }) {
 
   return (
     <section className="talent-workspace" aria-busy={loading}>
-      <header className="talent-workspace__header"><div><span className="eyebrow eyebrow--small">JENAN TALENT</span><h1>{ar ? "الوظائف والفرص المهنية" : "Jobs and career opportunities"}</h1><p>{ar ? "إعلانات موثقة بدرجة جودة ومهارات مطلوبة ودرجة مطابقة للتقديمات." : "Quality-scored roles with required skills, salary ranges, and application match scoring."}</p></div><button className="button button--secondary" onClick={() => void load()} type="button">{ar ? "تحديث" : "Refresh"}</button></header>
+      <header className="talent-workspace__header"><div><span className="eyebrow eyebrow--small">JENAN PRO TALENT</span><h1>{ar ? "الوظائف والفرص المهنية" : "Jenan Pro jobs and career opportunities"}</h1><p>{ar ? "إعلانات موثقة بدرجة جودة ومهارات مطلوبة ودرجة مطابقة للتقديمات." : "Quality-scored roles with required skills, salary ranges, and application match scoring."}</p></div><button className="button button--secondary" onClick={() => void load()} type="button">{ar ? "تحديث" : "Refresh"}</button></header>
       <form className="talent-form" onSubmit={createPosting}>
         <input required minLength={2} maxLength={160} placeholder={ar ? "المسمى الوظيفي" : "Job title"} value={form.title} onChange={(event) => setForm({ ...form, title: event.target.value })} />
         <input maxLength={120} placeholder={ar ? "القسم أو المجال" : "Department or field"} value={form.department} onChange={(event) => setForm({ ...form, department: event.target.value })} />
