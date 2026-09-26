@@ -66,8 +66,8 @@ export function ProgramsWorkspace({ locale }: { locale: Locale }) {
     <section className="programs-workspace" aria-busy={loading}>
       <header className="programs-workspace__header">
         <div>
-          <span className="eyebrow eyebrow--small">JENAN PROGRAMS</span>
-          <h1>{ar ? "برامج جنان للمنشآت" : "Jenan organization programs"}</h1>
+          <span className="eyebrow eyebrow--small">JENAN PRO PROGRAMS</span>
+          <h1>{ar ? "برامج Jenan Pro للمنشآت" : "Jenan Pro organization programs"}</h1>
           <p>{ar ? "فعّل وحدات العمل لمنشأتك وأدر حالتها من حساب الأعضاء المخولين." : "Activate operational modules for your organization and manage their status through authorized members."}</p>
         </div>
         <button className="button button--secondary" onClick={() => void load()} type="button">{ar ? "تحديث" : "Refresh"}</button>

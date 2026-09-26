@@ -1,0 +1,81 @@
+.programs-workspace {
+  position: relative;
+  isolation: isolate;
+}
+
+.programs-workspace__header {
+  position: relative;
+  overflow: hidden;
+  background:
+    radial-gradient(circle at 86% 0, color-mix(in srgb, var(--brand) 18%, transparent), transparent 30%),
+    linear-gradient(135deg, color-mix(in srgb, var(--surface2) 78%, transparent), color-mix(in srgb, var(--surface) 92%, transparent));
+}
+
+.programs-workspace__header::after {
+  content: "";
+  width: 190px;
+  height: 190px;
+  position: absolute;
+  inset-inline-end: -82px;
+  inset-block-start: -96px;
+  border: 1px solid color-mix(in srgb, var(--brand) 32%, transparent);
+  border-radius: 50%;
+  box-shadow: 0 0 0 22px color-mix(in srgb, var(--brand) 5%, transparent), 0 0 60px color-mix(in srgb, var(--brand) 14%, transparent);
+  pointer-events: none;
+}
+
+.programs-workspace__header > div,
+.programs-workspace__header > button {
+  position: relative;
+  z-index: 1;
+}
+
+.programs-create,
+.programs-organization {
+  border-inline-start: 2px solid color-mix(in srgb, var(--brand) 45%, var(--border));
+  background: color-mix(in srgb, var(--surface) 78%, transparent);
+}
+
+.programs-health article {
+  min-height: 104px;
+  align-content: center;
+  background: linear-gradient(145deg, color-mix(in srgb, var(--surface2) 72%, transparent), color-mix(in srgb, var(--surface) 86%, transparent));
+}
+
+.programs-health article:first-child {
+  border-color: color-mix(in srgb, var(--success) 46%, var(--border));
+}
+
+.programs-health article:first-child strong {
+  color: var(--success);
+  text-shadow: 0 0 22px color-mix(in srgb, var(--success) 28%, transparent);
+}
+
+.program-card {
+  min-height: 190px;
+  transition: transform 180ms ease, border-color 180ms ease, box-shadow 180ms ease;
+}
+
+.program-card:hover {
+  transform: translateY(-3px);
+  border-color: color-mix(in srgb, var(--brand) 52%, var(--border));
+  box-shadow: 0 24px 60px color-mix(in srgb, var(--brand) 9%, transparent);
+}
+
+.program-card > span {
+  background: color-mix(in srgb, var(--brand) 6%, transparent);
+}
+
+.program-card__actions {
+  margin-top: auto;
+}
+
+@media (max-width: 760px) {
+  .programs-workspace__header {
+    padding: 18px;
+  }
+
+  .programs-workspace__header h1 {
+    font-size: 1.45rem;
+  }
+}
