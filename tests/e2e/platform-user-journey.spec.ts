@@ -196,19 +196,6 @@ test.describe.serial("real Jenan Pro user journey", () => {
     expect((await leadResponse).status()).toBe(200);
     await expect(page.getByRole("status")).toContainText("Lead added");
 
-    await expectHealthyPage(page, "/funding-eligibility");
-    const fundingForm = page.locator(".funding-form");
-    await fundingForm.getByLabel("Country").selectOption("SA");
-    await fundingForm.getByLabel("Applicant type").selectOption("ORGANIZATION");
-    await fundingForm.getByLabel("Growth stage").selectOption("GROWING");
-    await fundingForm.getByPlaceholder("Funding requested (SAR)").fill("500000");
-    await fundingForm.getByPlaceholder("Average monthly revenue (SAR)").fill("125000");
-    await fundingForm.getByPlaceholder("Years operating").fill("4");
-    const fundingResponse = page.waitForResponse((response) => response.url().endsWith("/api/funding") && response.request().method() === "POST");
-    await fundingForm.getByRole("button", { name: "Complete assessment" }).click();
-    expect((await fundingResponse).status()).toBe(201);
-    await expect(page.getByRole("status")).toContainText("self-assessment was saved");
-
     await expectHealthyPage(page, "/software");
     const mergeForm = page.locator(".software-tool").filter({ hasText: "Merge PDF files" });
     await mergeForm.locator('input[type="file"]').setInputFiles([
@@ -236,8 +223,6 @@ test.describe.serial("real Jenan Pro user journey", () => {
     await expect(page.locator(".account-overview")).toContainText(jobTitle);
     await expect(page.locator(".account-overview")).toContainText(campaignName);
     await expect(page.locator(".account-overview")).toContainText(courseTitle);
-    await expect(page.locator(".account-overview")).toContainText("Funding assessment");
-
     for (const route of [
       "/projects",
       "/projects/feasibility",
@@ -254,6 +239,11 @@ test.describe.serial("real Jenan Pro user journey", () => {
     ]) {
       await expectHealthyPage(page, route);
     }
+
+    const removedFundingRoute = await page.goto("/funding-eligibility");
+    expect(removedFundingRoute?.status()).toBe(404);
+    const removedFundingApi = await page.request.get("/api/funding");
+    expect(removedFundingApi.status()).toBe(404);
 
     const serviceRoutes = new Set(
       builtInPlatformCatalog.modules.flatMap((module) =>

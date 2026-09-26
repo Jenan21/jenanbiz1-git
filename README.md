@@ -34,10 +34,9 @@ Quality commands: `npm run lint`, `npm run typecheck`, `npm test`, `npm run test
 
 ## Visual routes
 
-Authenticated visual shells include Dashboard, Projects, Academy, Studio, Talent, Market, Software, Jenan Robotics, Funding Eligibility, Marketing, Account, Pricing, and Benefits. Administrative shells include Command, Data Center, Global Health, Bounty Hunters, and Social Growth. These routes intentionally show explicit empty, unavailable, or concept states instead of fabricated operational data.
+Authenticated visual shells include Dashboard, Projects, Academy, Studio, Talent, Market, Software, Jenan Robotics, Marketing, Account, Pricing, and Benefits. Administrative shells include Command, Data Center, Global Health, Bounty Hunters, and Social Growth. These routes intentionally show explicit empty, unavailable, or concept states instead of fabricated operational data.
 
 - `/software/robotics` is the Jenan Robotics visual catalog. Purchasing, renting, quotations, media, availability, and specifications are not active.
-- `/funding-eligibility` is an informational eligibility shell. It does not calculate a financial decision or submit an application.
 - `/admin/bounty-hunters` presents the Evolution Command Center and Jenan Collective Intelligence Core concept without running agents or an intelligence engine.
 
 ## Architecture notes
@@ -60,7 +59,7 @@ The access grant is based on a clear user acknowledgement after opening a config
 
 ## User Dashboard Data
 
-`GET /api/dashboard` returns the authenticated user's private dashboard data. Its metrics are computed from persisted records, not UI lists: projects, organization memberships, open market and job requests, funding assessments, learning progress, services, files, unread notifications, and community access. `recentActivity` contains only the authenticated user's audit events. The existing dashboard UI can consume this endpoint without exposing another user's records.
+`GET /api/dashboard` returns the authenticated user's private dashboard data. Its metrics are computed from persisted records, not UI lists: projects, organization memberships, open market and job requests, learning progress, services, files, unread notifications, and community access. `recentActivity` contains only the authenticated user's audit events. The existing dashboard UI can consume this endpoint without exposing another user's records.
 
 Integration tests use the real local PostgreSQL database and clean up their records:
 

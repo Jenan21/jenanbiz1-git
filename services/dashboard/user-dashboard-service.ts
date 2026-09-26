@@ -2,7 +2,7 @@ import { db } from "@/lib/db";
 import { getAccountOverview } from "@/services/account/account-overview-service";
 
 export async function getUserDashboard(userId: string) {
-  const [account, unreadNotifications, recentActivity, projectTotal, activeProjects, organizationTotal, activeMemberships, openMarketInquiries, openJobApplications, fundingAssessments, enrolledCourses, completedCourses, marketListings, marketingCampaigns, jobPostings, fileCount] = await Promise.all([
+  const [account, unreadNotifications, recentActivity, projectTotal, activeProjects, organizationTotal, activeMemberships, openMarketInquiries, openJobApplications, enrolledCourses, completedCourses, marketListings, marketingCampaigns, jobPostings, fileCount] = await Promise.all([
     getAccountOverview(userId),
     db.notification.count({ where: { userId, status: "UNREAD" } }),
     db.auditLog.findMany({
@@ -17,7 +17,6 @@ export async function getUserDashboard(userId: string) {
     db.organizationMember.count({ where: { userId, status: "ACTIVE" } }),
     db.marketInquiry.count({ where: { requesterId: userId, status: { not: "CLOSED" } } }),
     db.jobApplication.count({ where: { applicantId: userId, status: { in: ["SUBMITTED", "UNDER_REVIEW"] } } }),
-    db.fundingAssessment.count({ where: { userId } }),
     db.learnerEnrollment.count({ where: { userId } }),
     db.learnerEnrollment.count({ where: { userId, status: "COMPLETED" } }),
     db.marketListing.count({ where: { createdById: userId } }),
@@ -32,7 +31,7 @@ export async function getUserDashboard(userId: string) {
     metrics: {
       projects: { total: projectTotal, active: activeProjects },
       organizations: { total: organizationTotal, activeMemberships },
-      requests: { open: openRequests, fundingAssessments },
+      requests: { open: openRequests },
       learning: { enrolled: enrolledCourses, completed: completedCourses },
       services: { total: servicesCount, files: fileCount },
       notifications: { unread: unreadNotifications },

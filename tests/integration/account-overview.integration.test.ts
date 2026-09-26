@@ -11,7 +11,6 @@ let planId: string | undefined;
 
 afterAll(async () => {
   if (userId) {
-    await db.fundingAssessment.deleteMany({ where: { userId } });
     await db.marketingCampaign.deleteMany({ where: { createdById: userId } });
     await db.jobPosting.deleteMany({ where: { createdById: userId } });
     await db.marketListing.deleteMany({ where: { createdById: userId } });
@@ -43,8 +42,6 @@ describe("account overview", () => {
     await db.marketListing.create({ data: { createdById: user.id, kind: "PROJECT", title: `Account listing ${suffix}`, slug: `account-listing-${suffix}`, summary: "A valid listing summary for account overview testing." } });
     await db.jobPosting.create({ data: { createdById: user.id, title: `Account role ${suffix}`, slug: `account-role-${suffix}`, description: "A valid job posting description for account overview testing." } });
     await db.marketingCampaign.create({ data: { createdById: user.id, name: `Account campaign ${suffix}`, slug: `account-campaign-${suffix}`, objective: "A valid campaign objective for account overview testing.", channel: "CONTENT" } });
-    await db.fundingAssessment.create({ data: { countryCode: "SA", growthStage: "early", monthlyRevenueMinor: 10_000, organizationType: "company", requestedAmountMinor: 100_000, score: 72, userId: user.id, yearsOperating: 1 } });
-
     const overview = await getAccountOverview(user.id);
 
     expect(overview.projects[0]?.name).toContain("Account project");
@@ -52,7 +49,7 @@ describe("account overview", () => {
     expect(overview.services.marketListings).toHaveLength(1);
     expect(overview.services.jobPostings).toHaveLength(1);
     expect(overview.services.marketingCampaigns).toHaveLength(1);
-    expect(overview.requests.fundingAssessments[0]?.score).toBe(72);
+    expect(overview.requests.marketInquiries).toHaveLength(0);
     expect(overview.learning[0]?.course.title).toContain("Account course");
   });
 });

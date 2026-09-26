@@ -120,7 +120,6 @@ const platformNav = [
   ["/programs", "البرامج", "Programs"],
   ["/talent", "المواهب", "Talent"],
   ["/marketing", "التسويق", "Marketing"],
-  ["/funding-eligibility", "برامج جنان", "Jenan Programs"],
 ] as const;
 
 const adminNav = [

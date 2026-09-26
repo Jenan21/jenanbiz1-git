@@ -13,7 +13,6 @@ It then exercises the live platform by:
 - creating an organization and activating finance, people, field, and fleet programs;
 - recording a financial ledger entry;
 - creating a marketing campaign and qualified lead;
-- completing a funding-readiness assessment;
 - merging two generated PDF files and downloading the result;
 - extracting a palette from the Jenan Pro logo;
 - verifying all created records in the account overview;

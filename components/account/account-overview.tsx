@@ -68,8 +68,7 @@ export function AccountOverview({ locale, overview }: { locale: Locale; overview
           <h2>{ar ? "طلباتي" : "My requests"}</h2>
           {overview.requests.marketInquiries.map((request) => <article key={request.id}><strong>{request.listing.title}</strong><span>{ar ? "طلب سوق" : "Market inquiry"} · {request.status}</span><small>{formatDate(request.createdAt, locale)}</small></article>)}
           {overview.requests.jobApplications.map((application) => <article key={application.id}><strong>{application.jobPosting.title}</strong><span>{ar ? "تقديم وظيفة" : "Job application"} · {application.status}</span><small>{formatDate(application.createdAt, locale)}</small></article>)}
-          {overview.requests.fundingAssessments.map((assessment) => <article key={assessment.id}><strong>{ar ? "تقييم تمويل" : "Funding assessment"}</strong><span>{assessment.status} · {assessment.score}%</span><small>{formatDate(assessment.createdAt, locale)}</small></article>)}
-          {!overview.requests.marketInquiries.length && !overview.requests.jobApplications.length && !overview.requests.fundingAssessments.length ? <p>{ar ? "لا توجد طلبات مفتوحة." : "No requests yet."}</p> : null}
+          {!overview.requests.marketInquiries.length && !overview.requests.jobApplications.length ? <p>{ar ? "لا توجد طلبات مفتوحة." : "No requests yet."}</p> : null}
         </section>
 
         <section>

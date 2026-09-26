@@ -159,7 +159,7 @@ export function MarketWorkspace({ locale }: { locale: Locale }) {
         <input min="1" placeholder={ar ? "السعر المطلوب" : "Asking price"} type="number" value={form.askingPrice} onChange={(event) => setForm({ ...form, askingPrice: event.target.value })} />
         <textarea required minLength={20} maxLength={4000} placeholder={ar ? "ملخص واضح للفرصة" : "A clear opportunity summary"} value={form.summary} onChange={(event) => setForm({ ...form, summary: event.target.value })} />
         <textarea maxLength={1000} placeholder={ar ? "ملاحظة تقييم أو مبرر السعر" : "Valuation note or price rationale"} value={form.valuationNote} onChange={(event) => setForm({ ...form, valuationNote: event.target.value })} />
-        <button className="button button--primary" disabled={submitting} type="submit">{submitting ? (ar ? "جارٍ الحفظ..." : "Saving...") : (ar ? "إنشاء إدراج" : "Create listing")}</button>
+        <button className="button button--primary" disabled={submitting || loading} type="submit">{submitting ? (ar ? "جارٍ الحفظ..." : "Saving...") : (ar ? "إنشاء إدراج" : "Create listing")}</button>
       </form>
 
       <div className="market-filters">
