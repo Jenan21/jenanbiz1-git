@@ -1,0 +1,24 @@
+Jenan PRO — Page Reference
+Page: 115
+Category: الوظائف والمواهب
+Route: /talent/apply/sample
+Title: التقديم على وظيفة
+Kind: form
+Description: رحلة توظيف كاملة.
+
+Sections:
+- السيرة
+- الأسئلة
+- الرسالة
+- المرفقات
+
+Outputs:
+- طلب توظيف
+
+Actions:
+- إرسال
+
+Next routes:
+- —
+
+Target: 60–70% baseline; responsive; Git checkpoint + local copy.

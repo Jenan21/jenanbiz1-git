@@ -1,0 +1,24 @@
+Jenan PRO — Page Reference
+Page: 140
+Category: Jenan Robotics
+Route: /robotics
+Title: Jenan Robotics — الروبوتات الذكية
+Kind: dashboard
+Description: رحلة Robotics كاملة.
+
+Sections:
+- المستشار
+- التصنيفات
+- الروبوتات المميزة
+- القطاعات
+
+Outputs:
+- Recommendations
+
+Actions:
+- ابحث عن روبوت
+
+Next routes:
+- /robotics/search
+
+Target: 60–70% baseline; responsive; Git checkpoint + local copy.

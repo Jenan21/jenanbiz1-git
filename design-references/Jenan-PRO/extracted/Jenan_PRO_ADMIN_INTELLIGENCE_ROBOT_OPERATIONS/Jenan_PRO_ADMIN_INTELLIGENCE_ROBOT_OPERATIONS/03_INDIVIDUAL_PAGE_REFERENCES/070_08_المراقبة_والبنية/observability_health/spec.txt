@@ -1,0 +1,36 @@
+Jenan PRO — Admin Intelligence Robot Operations
+Page: 070
+Group: 08 — المراقبة والبنية
+Route: /observability/health
+Title: صحة الأنظمة
+Kind: command
+Purpose: حالة قواعد البيانات وRedis والـAPIs والـWorkers.
+
+Modules:
+- Database
+- Redis
+- API
+- Worker
+- Storage
+- Backups
+- Metrics
+
+Actions:
+- فتح المكون
+- تشخيص
+
+Outputs:
+- —
+
+Next Routes:
+- —
+
+Implementation:
+- Jenan PRO only.
+- Real React/CSS/SVG/components.
+- Responsive Desktop/Laptop/Tablet/Mobile.
+- No screenshot as production background.
+- No fake production values.
+- Reach ≥70% visual match before moving to next section.
+- Functional QA + responsive QA required.
+- Commit + save locally after PASS.

@@ -1,0 +1,35 @@
+Jenan PRO — Admin Intelligence Robot Operations
+Page: 042
+Group: 04 — مركز المهام
+Route: /missions/sample/approvals
+Title: الموافقات والتصعيد
+Kind: timeline
+Purpose: بوابات الموافقة حسب مستوى المخاطر.
+
+Modules:
+- المستوى
+- الموافق
+- السبب
+- الأدلة
+- القرار
+
+Actions:
+- اعتماد
+- رفض
+- تصعيد
+
+Outputs:
+- —
+
+Next Routes:
+- —
+
+Implementation:
+- Jenan PRO only.
+- Real React/CSS/SVG/components.
+- Responsive Desktop/Laptop/Tablet/Mobile.
+- No screenshot as production background.
+- No fake production values.
+- Reach ≥70% visual match before moving to next section.
+- Functional QA + responsive QA required.
+- Commit + save locally after PASS.

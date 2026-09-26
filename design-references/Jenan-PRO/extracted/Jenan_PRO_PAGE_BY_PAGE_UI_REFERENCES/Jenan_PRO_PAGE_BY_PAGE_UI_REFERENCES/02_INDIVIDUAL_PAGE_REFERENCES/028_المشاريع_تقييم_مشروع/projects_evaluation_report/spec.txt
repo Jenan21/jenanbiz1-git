@@ -1,0 +1,32 @@
+Jenan PRO — Page Reference
+Page: 028
+Category: المشاريع/تقييم مشروع
+Route: /projects/evaluation/report
+Title: تقرير تقييم المشروع
+Kind: report
+Description: رحلة تقييم مشروع كاملة.
+
+Sections:
+- الغلاف
+- النتيجة
+- المحاور
+- المخاطر
+- العائد
+- التوصيات
+
+Outputs:
+- PDF
+- طباعة
+- مشاركة
+- بريد
+
+Actions:
+- طباعة
+- PDF
+- مشاركة
+- بريد
+
+Next routes:
+- /reports/print/project-evaluation
+
+Target: 60–70% baseline; responsive; Git checkpoint + local copy.

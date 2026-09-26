@@ -1,0 +1,25 @@
+Jenan PRO — Page Reference
+Page: 001
+Category: الدخول والتسجيل
+Route: /auth
+Title: بوابة الدخول
+Kind: landing
+Description: اختيار تسجيل الدخول أو إنشاء حساب.
+
+Sections:
+- Jenan PRO
+- اللغة
+- الأمان
+
+Outputs:
+- —
+
+Actions:
+- تسجيل الدخول
+- إنشاء حساب
+
+Next routes:
+- /auth/login
+- /auth/register
+
+Target: 60–70% baseline; responsive; Git checkpoint + local copy.

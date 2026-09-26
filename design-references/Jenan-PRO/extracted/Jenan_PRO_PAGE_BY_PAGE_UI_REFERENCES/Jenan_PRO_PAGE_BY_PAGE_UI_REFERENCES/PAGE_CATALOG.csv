@@ -1,0 +1,160 @@
+﻿No,Category,Route,Title,Kind,Folder
+1,الدخول والتسجيل,/auth,بوابة الدخول,landing,02_INDIVIDUAL_PAGE_REFERENCES/001_الدخول_والتسجيل/auth
+2,الدخول والتسجيل,/auth/login,تسجيل الدخول,form,02_INDIVIDUAL_PAGE_REFERENCES/002_الدخول_والتسجيل/auth_login
+3,الدخول والتسجيل,/auth/register,إنشاء حساب,form,02_INDIVIDUAL_PAGE_REFERENCES/003_الدخول_والتسجيل/auth_register
+4,الدخول والتسجيل,/auth/forgot,استعادة كلمة المرور,form,02_INDIVIDUAL_PAGE_REFERENCES/004_الدخول_والتسجيل/auth_forgot
+5,الدخول والتسجيل,/user/onboarding,تهيئة الحساب,wizard,02_INDIVIDUAL_PAGE_REFERENCES/005_الدخول_والتسجيل/user_onboarding
+6,الرئيسية,/home,الصفحة الرئيسية,dashboard,02_INDIVIDUAL_PAGE_REFERENCES/006_الرئيسية/home
+7,صفحة المستخدم,/user,لوحة المستخدم,dashboard,02_INDIVIDUAL_PAGE_REFERENCES/007_صفحة_المستخدم/user
+8,صفحة المستخدم,/user/investments,بياناتي الاستثمارية,dashboard,02_INDIVIDUAL_PAGE_REFERENCES/008_صفحة_المستخدم/user_investments
+9,صفحة المستخدم,/user/investment/detail,تفاصيل استثمار,detail,02_INDIVIDUAL_PAGE_REFERENCES/009_صفحة_المستخدم/user_investment_detail
+10,صفحة المستخدم,/user/unlocks,اشترك وافتح الخدمات,dashboard,02_INDIVIDUAL_PAGE_REFERENCES/010_صفحة_المستخدم/user_unlocks
+11,صفحة المستخدم,/user/payments,المدفوعات والفواتير,list,02_INDIVIDUAL_PAGE_REFERENCES/011_صفحة_المستخدم/user_payments
+12,صفحة المستخدم,/user/payments/invoice,تفاصيل فاتورة,report,02_INDIVIDUAL_PAGE_REFERENCES/012_صفحة_المستخدم/user_payments_invoice
+13,صفحة المستخدم,/user/reports,تقاريري,list,02_INDIVIDUAL_PAGE_REFERENCES/013_صفحة_المستخدم/user_reports
+14,المشاريع,/projects,قسم المشاريع,dashboard,02_INDIVIDUAL_PAGE_REFERENCES/014_المشاريع/projects
+15,المشاريع/تحليل مشروع,/projects/analysis/new,تحليل مشروع — إدخال البيانات,form,02_INDIVIDUAL_PAGE_REFERENCES/015_المشاريع_تحليل_مشروع/projects_analysis_new
+16,المشاريع/تحليل مشروع,/projects/analysis/progress,تحليل مشروع — جاري التحليل,progress,02_INDIVIDUAL_PAGE_REFERENCES/016_المشاريع_تحليل_مشروع/projects_analysis_progress
+17,المشاريع/تحليل مشروع,/projects/analysis/result,نتيجة تحليل المشروع,dashboard,02_INDIVIDUAL_PAGE_REFERENCES/017_المشاريع_تحليل_مشروع/projects_analysis_result
+18,المشاريع/تحليل مشروع,/projects/analysis/details,تفاصيل تحليل السوق,detail,02_INDIVIDUAL_PAGE_REFERENCES/018_المشاريع_تحليل_مشروع/projects_analysis_details
+19,المشاريع/تحليل مشروع,/projects/analysis/map,الخريطة الجغرافية للفرص,dashboard,02_INDIVIDUAL_PAGE_REFERENCES/019_المشاريع_تحليل_مشروع/projects_analysis_map
+20,المشاريع/تحليل مشروع,/projects/analysis/recommendations,الرؤى والتوصيات,detail,02_INDIVIDUAL_PAGE_REFERENCES/020_المشاريع_تحليل_مشروع/projects_analysis_recommendations
+21,المشاريع/تحليل مشروع,/projects/analysis/report,تقرير تحليل المشروع,report,02_INDIVIDUAL_PAGE_REFERENCES/021_المشاريع_تحليل_مشروع/projects_analysis_report
+22,المشاريع/تقييم مشروع,/projects/evaluation/new,تقييم مشروع — إدخال البيانات,form,02_INDIVIDUAL_PAGE_REFERENCES/022_المشاريع_تقييم_مشروع/projects_evaluation_new
+23,المشاريع/تقييم مشروع,/projects/evaluation/progress,تقييم مشروع — جاري التقييم,progress,02_INDIVIDUAL_PAGE_REFERENCES/023_المشاريع_تقييم_مشروع/projects_evaluation_progress
+24,المشاريع/تقييم مشروع,/projects/evaluation/result,نتيجة تقييم المشروع,dashboard,02_INDIVIDUAL_PAGE_REFERENCES/024_المشاريع_تقييم_مشروع/projects_evaluation_result
+25,المشاريع/تقييم مشروع,/projects/evaluation/details,تفاصيل نقاط التقييم,detail,02_INDIVIDUAL_PAGE_REFERENCES/025_المشاريع_تقييم_مشروع/projects_evaluation_details
+26,المشاريع/تقييم مشروع,/projects/evaluation/risks,تحليل المخاطر والعائد,dashboard,02_INDIVIDUAL_PAGE_REFERENCES/026_المشاريع_تقييم_مشروع/projects_evaluation_risks
+27,المشاريع/تقييم مشروع,/projects/evaluation/recommendations,التوصيات النهائية,detail,02_INDIVIDUAL_PAGE_REFERENCES/027_المشاريع_تقييم_مشروع/projects_evaluation_recommendations
+28,المشاريع/تقييم مشروع,/projects/evaluation/report,تقرير تقييم المشروع,report,02_INDIVIDUAL_PAGE_REFERENCES/028_المشاريع_تقييم_مشروع/projects_evaluation_report
+29,المشاريع/بدء مشروع,/projects/start/new,بدء مشروع — بيانات البداية,form,02_INDIVIDUAL_PAGE_REFERENCES/029_المشاريع_بدء_مشروع/projects_start_new
+30,المشاريع/بدء مشروع,/projects/start/roadmap,خارطة تنفيذ المشروع,timeline,02_INDIVIDUAL_PAGE_REFERENCES/030_المشاريع_بدء_مشروع/projects_start_roadmap
+31,المشاريع/بدء مشروع,/projects/start/licenses,التراخيص والإجراءات,checklist,02_INDIVIDUAL_PAGE_REFERENCES/031_المشاريع_بدء_مشروع/projects_start_licenses
+32,المشاريع/بدء مشروع,/projects/start/setup,التجهيز والميزانية,dashboard,02_INDIVIDUAL_PAGE_REFERENCES/032_المشاريع_بدء_مشروع/projects_start_setup
+33,المشاريع/بدء مشروع,/projects/start/team,الفريق والمهام,dashboard,02_INDIVIDUAL_PAGE_REFERENCES/033_المشاريع_بدء_مشروع/projects_start_team
+34,المشاريع/بدء مشروع,/projects/start/vendors,الموردون والشركاء,list,02_INDIVIDUAL_PAGE_REFERENCES/034_المشاريع_بدء_مشروع/projects_start_vendors
+35,المشاريع/بدء مشروع,/projects/start/launch,الإطلاق والنمو,dashboard,02_INDIVIDUAL_PAGE_REFERENCES/035_المشاريع_بدء_مشروع/projects_start_launch
+36,المشاريع/بدء مشروع,/projects/start/report,تقرير خطة بدء المشروع,report,02_INDIVIDUAL_PAGE_REFERENCES/036_المشاريع_بدء_مشروع/projects_start_report
+37,المشاريع/دراسات الجدوى,/projects/feasibility,اختيار نوع دراسة الجدوى,landing,02_INDIVIDUAL_PAGE_REFERENCES/037_المشاريع_دراسات_الجدوى/projects_feasibility
+38,المشاريع/دراسات الجدوى,/projects/feasibility/simple/new,الدراسة المبسطة — البيانات,form,02_INDIVIDUAL_PAGE_REFERENCES/038_المشاريع_دراسات_الجدوى/projects_feasibility_simple_new
+39,المشاريع/دراسات الجدوى,/projects/feasibility/simple/result,نتيجة الدراسة المبسطة,dashboard,02_INDIVIDUAL_PAGE_REFERENCES/039_المشاريع_دراسات_الجدوى/projects_feasibility_simple_result
+40,المشاريع/دراسات الجدوى,/projects/feasibility/simple/report,تقرير الدراسة المبسطة,report,02_INDIVIDUAL_PAGE_REFERENCES/040_المشاريع_دراسات_الجدوى/projects_feasibility_simple_report
+41,المشاريع/دراسات الجدوى,/projects/feasibility/pro/new,الدراسة الاحترافية — البداية,wizard,02_INDIVIDUAL_PAGE_REFERENCES/041_المشاريع_دراسات_الجدوى/projects_feasibility_pro_new
+42,المشاريع/دراسات الجدوى,/projects/feasibility/pro/market,الدراسة السوقية,dashboard,02_INDIVIDUAL_PAGE_REFERENCES/042_المشاريع_دراسات_الجدوى/projects_feasibility_pro_market
+43,المشاريع/دراسات الجدوى,/projects/feasibility/pro/financial,الدراسة المالية,dashboard,02_INDIVIDUAL_PAGE_REFERENCES/043_المشاريع_دراسات_الجدوى/projects_feasibility_pro_financial
+44,المشاريع/دراسات الجدوى,/projects/feasibility/pro/technical,الدراسة الفنية والتقنية,detail,02_INDIVIDUAL_PAGE_REFERENCES/044_المشاريع_دراسات_الجدوى/projects_feasibility_pro_technical
+45,المشاريع/دراسات الجدوى,/projects/feasibility/pro/operational,الدراسة التشغيلية,detail,02_INDIVIDUAL_PAGE_REFERENCES/045_المشاريع_دراسات_الجدوى/projects_feasibility_pro_operational
+46,المشاريع/دراسات الجدوى,/projects/feasibility/pro/swot,SWOT والمخاطر والحساسية,dashboard,02_INDIVIDUAL_PAGE_REFERENCES/046_المشاريع_دراسات_الجدوى/projects_feasibility_pro_swot
+47,المشاريع/دراسات الجدوى,/projects/feasibility/pro/timeline,الجدول الزمني والتنفيذ,timeline,02_INDIVIDUAL_PAGE_REFERENCES/047_المشاريع_دراسات_الجدوى/projects_feasibility_pro_timeline
+48,المشاريع/دراسات الجدوى,/projects/feasibility/pro/result,النتيجة الاحترافية,dashboard,02_INDIVIDUAL_PAGE_REFERENCES/048_المشاريع_دراسات_الجدوى/projects_feasibility_pro_result
+49,المشاريع/دراسات الجدوى,/projects/feasibility/pro/report,تقرير الدراسة الاحترافية,report,02_INDIVIDUAL_PAGE_REFERENCES/049_المشاريع_دراسات_الجدوى/projects_feasibility_pro_report
+50,الأكاديمية,/academy,أكاديمية جنان,dashboard,02_INDIVIDUAL_PAGE_REFERENCES/050_الأكاديمية/academy
+51,الأكاديمية,/academy/courses,الدورات,list,02_INDIVIDUAL_PAGE_REFERENCES/051_الأكاديمية/academy_courses
+52,الأكاديمية,/academy/course/sample,تفاصيل الدورة,detail,02_INDIVIDUAL_PAGE_REFERENCES/052_الأكاديمية/academy_course_sample
+53,الأكاديمية,/academy/course/sample/lesson/1,مشغل الدرس,player,02_INDIVIDUAL_PAGE_REFERENCES/053_الأكاديمية/academy_course_sample_lesson_1
+54,الأكاديمية,/academy/course/sample/quiz,اختبار الدورة,form,02_INDIVIDUAL_PAGE_REFERENCES/054_الأكاديمية/academy_course_sample_quiz
+55,الأكاديمية,/academy/course/sample/result,نتيجة الدورة,dashboard,02_INDIVIDUAL_PAGE_REFERENCES/055_الأكاديمية/academy_course_sample_result
+56,الأكاديمية,/academy/webinars,الندوات,list,02_INDIVIDUAL_PAGE_REFERENCES/056_الأكاديمية/academy_webinars
+57,الأكاديمية,/academy/webinar/sample,تفاصيل الندوة,detail,02_INDIVIDUAL_PAGE_REFERENCES/057_الأكاديمية/academy_webinar_sample
+58,الأكاديمية,/academy/webinar/sample/live,الندوة المباشرة,live,02_INDIVIDUAL_PAGE_REFERENCES/058_الأكاديمية/academy_webinar_sample_live
+59,الأكاديمية,/academy/studies,الدراسات,list,02_INDIVIDUAL_PAGE_REFERENCES/059_الأكاديمية/academy_studies
+60,الأكاديمية,/academy/study/sample,تفاصيل دراسة,reader,02_INDIVIDUAL_PAGE_REFERENCES/060_الأكاديمية/academy_study_sample
+61,الأكاديمية,/academy/research,الأبحاث,list,02_INDIVIDUAL_PAGE_REFERENCES/061_الأكاديمية/academy_research
+62,الأكاديمية,/academy/research/sample,تفاصيل بحث,reader,02_INDIVIDUAL_PAGE_REFERENCES/062_الأكاديمية/academy_research_sample
+63,الأكاديمية,/academy/paths,المسارات التعليمية,list,02_INDIVIDUAL_PAGE_REFERENCES/063_الأكاديمية/academy_paths
+64,الأكاديمية,/academy/path/sample,تفاصيل المسار,timeline,02_INDIVIDUAL_PAGE_REFERENCES/064_الأكاديمية/academy_path_sample
+65,الأكاديمية,/academy/certificates/sample,شهادة إتمام,report,02_INDIVIDUAL_PAGE_REFERENCES/065_الأكاديمية/academy_certificates_sample
+66,سوق جنان,/market,سوق جنان,dashboard,02_INDIVIDUAL_PAGE_REFERENCES/066_سوق_جنان/market
+67,سوق جنان,/market/listings,قائمة العروض,list,02_INDIVIDUAL_PAGE_REFERENCES/067_سوق_جنان/market_listings
+68,سوق جنان,/market/listing/sample,تفاصيل إعلان/فرصة,detail,02_INDIVIDUAL_PAGE_REFERENCES/068_سوق_جنان/market_listing_sample
+69,سوق جنان,/market/nda/sample,اتفاقية السرية,form,02_INDIVIDUAL_PAGE_REFERENCES/069_سوق_جنان/market_nda_sample
+70,سوق جنان,/market/listing/sample/secure,التفاصيل المحمية,detail,02_INDIVIDUAL_PAGE_REFERENCES/070_سوق_جنان/market_listing_sample_secure
+71,سوق جنان,/market/viewing/sample,حجز المعاينة,form,02_INDIVIDUAL_PAGE_REFERENCES/071_سوق_جنان/market_viewing_sample
+72,سوق جنان,/market/offer/sample,تقديم عرض شراء,form,02_INDIVIDUAL_PAGE_REFERENCES/072_سوق_جنان/market_offer_sample
+73,سوق جنان,/market/deal/sample,مسار الصفقة,timeline,02_INDIVIDUAL_PAGE_REFERENCES/073_سوق_جنان/market_deal_sample
+74,سوق جنان,/market/deal/sample/report,تقرير الصفقة,report,02_INDIVIDUAL_PAGE_REFERENCES/074_سوق_جنان/market_deal_sample_report
+75,سوق جنان,/market/sell,إنشاء إعلان بيع,wizard,02_INDIVIDUAL_PAGE_REFERENCES/075_سوق_جنان/market_sell
+76,سوق جنان,/market/sell/media,صور ومستندات الإعلان,form,02_INDIVIDUAL_PAGE_REFERENCES/076_سوق_جنان/market_sell_media
+77,سوق جنان,/market/sell/review,مراجعة ونشر الإعلان,detail,02_INDIVIDUAL_PAGE_REFERENCES/077_سوق_جنان/market_sell_review
+78,البرمجيات والأدوات,/studio,برمجيات وأدوات Jenan PRO,dashboard,02_INDIVIDUAL_PAGE_REFERENCES/078_البرمجيات_والأدوات/studio
+79,البرمجيات والأدوات,/studio/pdf,Jenan PDF,tool,02_INDIVIDUAL_PAGE_REFERENCES/079_البرمجيات_والأدوات/studio_pdf
+80,البرمجيات والأدوات,/studio/pdf/editor,محرر PDF,editor,02_INDIVIDUAL_PAGE_REFERENCES/080_البرمجيات_والأدوات/studio_pdf_editor
+81,البرمجيات والأدوات,/studio/docs,Jenan Docs,editor,02_INDIVIDUAL_PAGE_REFERENCES/081_البرمجيات_والأدوات/studio_docs
+82,البرمجيات والأدوات,/studio/sheets,Jenan Sheets,editor,02_INDIVIDUAL_PAGE_REFERENCES/082_البرمجيات_والأدوات/studio_sheets
+83,البرمجيات والأدوات,/studio/presentations,Jenan Presentations,editor,02_INDIVIDUAL_PAGE_REFERENCES/083_البرمجيات_والأدوات/studio_presentations
+84,البرمجيات والأدوات,/studio/logo,مصمم الشعار والهوية,wizard,02_INDIVIDUAL_PAGE_REFERENCES/084_البرمجيات_والأدوات/studio_logo
+85,البرمجيات والأدوات,/studio/letterhead,تصميم الورق الرسمي,editor,02_INDIVIDUAL_PAGE_REFERENCES/085_البرمجيات_والأدوات/studio_letterhead
+86,البرمجيات والأدوات,/studio/cv,منشئ السيرة الذاتية,wizard,02_INDIVIDUAL_PAGE_REFERENCES/086_البرمجيات_والأدوات/studio_cv
+87,البرمجيات والأدوات,/studio/history,سجل الملفات,list,02_INDIVIDUAL_PAGE_REFERENCES/087_البرمجيات_والأدوات/studio_history
+88,Jenan Software,/software,Jenan Software,dashboard,02_INDIVIDUAL_PAGE_REFERENCES/088_Jenan_Software/software
+89,Jenan Software/Sales,/software/sales,Jenan Sales,dashboard,02_INDIVIDUAL_PAGE_REFERENCES/089_Jenan_Software_Sales/software_sales
+90,Jenan Software/Sales,/software/sales/customers,العملاء,list,02_INDIVIDUAL_PAGE_REFERENCES/090_Jenan_Software_Sales/software_sales_customers
+91,Jenan Software/Sales,/software/sales/quotes,عروض الأسعار,list,02_INDIVIDUAL_PAGE_REFERENCES/091_Jenan_Software_Sales/software_sales_quotes
+92,Jenan Software/Sales,/software/sales/orders,أوامر البيع,list,02_INDIVIDUAL_PAGE_REFERENCES/092_Jenan_Software_Sales/software_sales_orders
+93,Jenan Software/Sales,/software/sales/invoices,فواتير المبيعات,list,02_INDIVIDUAL_PAGE_REFERENCES/093_Jenan_Software_Sales/software_sales_invoices
+94,Jenan Software/Sales,/software/sales/receipts,سندات القبض,list,02_INDIVIDUAL_PAGE_REFERENCES/094_Jenan_Software_Sales/software_sales_receipts
+95,Jenan Software/Sales,/software/sales/products,المنتجات,list,02_INDIVIDUAL_PAGE_REFERENCES/095_Jenan_Software_Sales/software_sales_products
+96,Jenan Software/Sales,/software/sales/returns,المرتجعات,list,02_INDIVIDUAL_PAGE_REFERENCES/096_Jenan_Software_Sales/software_sales_returns
+97,Jenan Software/Sales,/software/sales/reports,تقارير المبيعات,dashboard,02_INDIVIDUAL_PAGE_REFERENCES/097_Jenan_Software_Sales/software_sales_reports
+98,Jenan Software,/software/accounting,المحاسبة,dashboard,02_INDIVIDUAL_PAGE_REFERENCES/098_Jenan_Software/software_accounting
+99,Jenan Software/HR,/software/hr,Jenan HR,dashboard,02_INDIVIDUAL_PAGE_REFERENCES/099_Jenan_Software_HR/software_hr
+100,Jenan Software/HR,/software/hr/employees,الموظفون,list,02_INDIVIDUAL_PAGE_REFERENCES/100_Jenan_Software_HR/software_hr_employees
+101,Jenan Software/HR,/software/hr/attendance,الحضور والانصراف,list,02_INDIVIDUAL_PAGE_REFERENCES/101_Jenan_Software_HR/software_hr_attendance
+102,Jenan Software/HR,/software/hr/leave,الإجازات,list,02_INDIVIDUAL_PAGE_REFERENCES/102_Jenan_Software_HR/software_hr_leave
+103,Jenan Software/HR,/software/hr/payroll,الرواتب,list,02_INDIVIDUAL_PAGE_REFERENCES/103_Jenan_Software_HR/software_hr_payroll
+104,Jenan Software/HR,/software/hr/performance,الأداء,list,02_INDIVIDUAL_PAGE_REFERENCES/104_Jenan_Software_HR/software_hr_performance
+105,Jenan Software,/software/inventory,المخزون,dashboard,02_INDIVIDUAL_PAGE_REFERENCES/105_Jenan_Software/software_inventory
+106,Jenan Software,/software/crm,CRM,dashboard,02_INDIVIDUAL_PAGE_REFERENCES/106_Jenan_Software/software_crm
+107,Jenan Software,/software/projects,إدارة المشاريع التشغيلية,dashboard,02_INDIVIDUAL_PAGE_REFERENCES/107_Jenan_Software/software_projects
+108,Jenan Software,/software/pos,نقاط البيع,dashboard,02_INDIVIDUAL_PAGE_REFERENCES/108_Jenan_Software/software_pos
+109,Jenan Software,/software/purchases,المشتريات,dashboard,02_INDIVIDUAL_PAGE_REFERENCES/109_Jenan_Software/software_purchases
+110,Jenan Software,/software/company,إدارة الشركات,dashboard,02_INDIVIDUAL_PAGE_REFERENCES/110_Jenan_Software/software_company
+111,Jenan Software,/software/reports,التقارير الموحدة,dashboard,02_INDIVIDUAL_PAGE_REFERENCES/111_Jenan_Software/software_reports
+112,الوظائف والمواهب,/talent,الوظائف والمواهب,dashboard,02_INDIVIDUAL_PAGE_REFERENCES/112_الوظائف_والمواهب/talent
+113,الوظائف والمواهب,/talent/jobs,البحث عن وظائف,list,02_INDIVIDUAL_PAGE_REFERENCES/113_الوظائف_والمواهب/talent_jobs
+114,الوظائف والمواهب,/talent/job/sample,تفاصيل الوظيفة,detail,02_INDIVIDUAL_PAGE_REFERENCES/114_الوظائف_والمواهب/talent_job_sample
+115,الوظائف والمواهب,/talent/apply/sample,التقديم على وظيفة,form,02_INDIVIDUAL_PAGE_REFERENCES/115_الوظائف_والمواهب/talent_apply_sample
+116,الوظائف والمواهب,/talent/profile,ملف الباحث عن عمل,detail,02_INDIVIDUAL_PAGE_REFERENCES/116_الوظائف_والمواهب/talent_profile
+117,الوظائف والمواهب,/talent/employer,لوحة صاحب العمل,dashboard,02_INDIVIDUAL_PAGE_REFERENCES/117_الوظائف_والمواهب/talent_employer
+118,الوظائف والمواهب,/talent/employer/post,نشر وظيفة,form,02_INDIVIDUAL_PAGE_REFERENCES/118_الوظائف_والمواهب/talent_employer_post
+119,الوظائف والمواهب,/talent/employer/applicants,إدارة المتقدمين,list,02_INDIVIDUAL_PAGE_REFERENCES/119_الوظائف_والمواهب/talent_employer_applicants
+120,الوظائف والمواهب,/talent/candidate/sample,ملف المرشح,detail,02_INDIVIDUAL_PAGE_REFERENCES/120_الوظائف_والمواهب/talent_candidate_sample
+121,الوظائف والمواهب,/talent/search,البحث في المواهب,list,02_INDIVIDUAL_PAGE_REFERENCES/121_الوظائف_والمواهب/talent_search
+122,الوظائف والمواهب,/talent/matching,المطابقة الذكية,dashboard,02_INDIVIDUAL_PAGE_REFERENCES/122_الوظائف_والمواهب/talent_matching
+123,الوظائف والمواهب,/talent/reports,تقارير التوظيف,dashboard,02_INDIVIDUAL_PAGE_REFERENCES/123_الوظائف_والمواهب/talent_reports
+124,التسويق والإعلانات,/marketing,التسويق والإعلانات,dashboard,02_INDIVIDUAL_PAGE_REFERENCES/124_التسويق_والإعلانات/marketing
+125,التسويق والإعلانات,/marketing/campaigns,الحملات,list,02_INDIVIDUAL_PAGE_REFERENCES/125_التسويق_والإعلانات/marketing_campaigns
+126,التسويق والإعلانات,/marketing/campaign/new,إنشاء حملة,wizard,02_INDIVIDUAL_PAGE_REFERENCES/126_التسويق_والإعلانات/marketing_campaign_new
+127,التسويق والإعلانات,/marketing/campaign/sample,تفاصيل الحملة,dashboard,02_INDIVIDUAL_PAGE_REFERENCES/127_التسويق_والإعلانات/marketing_campaign_sample
+128,التسويق والإعلانات,/marketing/audience,الجمهور,dashboard,02_INDIVIDUAL_PAGE_REFERENCES/128_التسويق_والإعلانات/marketing_audience
+129,التسويق والإعلانات,/marketing/channels,القنوات,dashboard,02_INDIVIDUAL_PAGE_REFERENCES/129_التسويق_والإعلانات/marketing_channels
+130,التسويق والإعلانات,/marketing/leads,العملاء المحتملون,list,02_INDIVIDUAL_PAGE_REFERENCES/130_التسويق_والإعلانات/marketing_leads
+131,التسويق والإعلانات,/marketing/analytics,تحليلات التسويق,dashboard,02_INDIVIDUAL_PAGE_REFERENCES/131_التسويق_والإعلانات/marketing_analytics
+132,التسويق والإعلانات,/marketing/report/sample,تقرير الحملة,report,02_INDIVIDUAL_PAGE_REFERENCES/132_التسويق_والإعلانات/marketing_report_sample
+133,أهلية التمويل,/funding,مركز أهلية التمويل الذكي,dashboard,02_INDIVIDUAL_PAGE_REFERENCES/133_أهلية_التمويل/funding
+134,أهلية التمويل,/funding/readiness,تقييم الجاهزية,form,02_INDIVIDUAL_PAGE_REFERENCES/134_أهلية_التمويل/funding_readiness
+135,أهلية التمويل,/funding/result,نتيجة الجاهزية,dashboard,02_INDIVIDUAL_PAGE_REFERENCES/135_أهلية_التمويل/funding_result
+136,أهلية التمويل,/funding/company,ملف المنشأة,detail,02_INDIVIDUAL_PAGE_REFERENCES/136_أهلية_التمويل/funding_company
+137,أهلية التمويل,/funding/opportunities,فرص تمويل محتملة,list,02_INDIVIDUAL_PAGE_REFERENCES/137_أهلية_التمويل/funding_opportunities
+138,أهلية التمويل,/funding/advisor,Jenan AI Advisor,detail,02_INDIVIDUAL_PAGE_REFERENCES/138_أهلية_التمويل/funding_advisor
+139,أهلية التمويل,/funding/report,تقرير أهلية التمويل,report,02_INDIVIDUAL_PAGE_REFERENCES/139_أهلية_التمويل/funding_report
+140,Jenan Robotics,/robotics,Jenan Robotics — الروبوتات الذكية,dashboard,02_INDIVIDUAL_PAGE_REFERENCES/140_Jenan_Robotics/robotics
+141,Jenan Robotics,/robotics/search,البحث عن روبوت,form,02_INDIVIDUAL_PAGE_REFERENCES/141_Jenan_Robotics/robotics_search
+142,Jenan Robotics,/robotics/results,نتائج الروبوتات,list,02_INDIVIDUAL_PAGE_REFERENCES/142_Jenan_Robotics/robotics_results
+143,Jenan Robotics,/robotics/item/sample,تفاصيل روبوت,detail,02_INDIVIDUAL_PAGE_REFERENCES/143_Jenan_Robotics/robotics_item_sample
+144,Jenan Robotics,/robotics/recommendations,التوصيات,dashboard,02_INDIVIDUAL_PAGE_REFERENCES/144_Jenan_Robotics/robotics_recommendations
+145,الأدمن,/admin,لوحة تحكم الأدمن,dashboard,02_INDIVIDUAL_PAGE_REFERENCES/145_الأدمن/admin
+146,الأدمن,/admin/users,المستخدمون,list,02_INDIVIDUAL_PAGE_REFERENCES/146_الأدمن/admin_users
+147,الأدمن,/admin/subscriptions,الاشتراكات,list,02_INDIVIDUAL_PAGE_REFERENCES/147_الأدمن/admin_subscriptions
+148,الأدمن,/admin/services,الخدمات والأقسام,dashboard,02_INDIVIDUAL_PAGE_REFERENCES/148_الأدمن/admin_services
+149,الأدمن,/admin/finance,الإيرادات والتكاليف,dashboard,02_INDIVIDUAL_PAGE_REFERENCES/149_الأدمن/admin_finance
+150,الأدمن,/admin/ai,تكاليف الذكاء والنماذج,dashboard,02_INDIVIDUAL_PAGE_REFERENCES/150_الأدمن/admin_ai
+151,الأدمن,/admin/agents,الوكلاء والروبوتات,dashboard,02_INDIVIDUAL_PAGE_REFERENCES/151_الأدمن/admin_agents
+152,الأدمن,/admin/audit,سجل التدقيق,list,02_INDIVIDUAL_PAGE_REFERENCES/152_الأدمن/admin_audit
+153,الأدمن,/admin/health,صحة النظام,dashboard,02_INDIVIDUAL_PAGE_REFERENCES/153_الأدمن/admin_health
+154,الأدمن,/admin/reports,تقارير الأدمن,dashboard,02_INDIVIDUAL_PAGE_REFERENCES/154_الأدمن/admin_reports
+155,المخرجات المشتركة,/reports/view/general,عارض التقرير,report,02_INDIVIDUAL_PAGE_REFERENCES/155_المخرجات_المشتركة/reports_view_general
+156,المخرجات المشتركة,/reports/print/project-analysis,طباعة تقرير تحليل المشروع,report,02_INDIVIDUAL_PAGE_REFERENCES/156_المخرجات_المشتركة/reports_print_project_analysis
+157,المخرجات المشتركة,/reports/print/project-evaluation,طباعة تقرير تقييم المشروع,report,02_INDIVIDUAL_PAGE_REFERENCES/157_المخرجات_المشتركة/reports_print_project_evaluation
+158,المخرجات المشتركة,/reports/view/portfolio,تقرير المحفظة الاستثمارية,report,02_INDIVIDUAL_PAGE_REFERENCES/158_المخرجات_المشتركة/reports_view_portfolio
+159,المخرجات المشتركة,/reports/view/investment,تقرير استثمار,report,02_INDIVIDUAL_PAGE_REFERENCES/159_المخرجات_المشتركة/reports_view_investment

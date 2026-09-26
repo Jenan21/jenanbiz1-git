@@ -1,0 +1,26 @@
+Jenan PRO — Page Reference
+Page: 060
+Category: الأكاديمية
+Route: /academy/study/sample
+Title: تفاصيل دراسة
+Kind: reader
+Description: رحلة أكاديمية كاملة.
+
+Sections:
+- الملخص
+- المحتوى
+- الجداول
+- المراجع
+- المصادر
+
+Outputs:
+- PDF عند التوفر
+
+Actions:
+- حفظ
+- مشاركة
+
+Next routes:
+- —
+
+Target: 60–70% baseline; responsive; Git checkpoint + local copy.

@@ -1,0 +1,25 @@
+Jenan PRO — Page Reference
+Page: 070
+Category: سوق جنان
+Route: /market/listing/sample/secure
+Title: التفاصيل المحمية
+Kind: detail
+Description: رحلة سوق كاملة.
+
+Sections:
+- القوائم
+- المستندات
+- الصور
+- معلومات إضافية
+
+Outputs:
+- ملف فحص أولي
+
+Actions:
+- طلب معاينة
+- تقديم عرض
+
+Next routes:
+- —
+
+Target: 60–70% baseline; responsive; Git checkpoint + local copy.

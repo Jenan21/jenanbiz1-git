@@ -1,0 +1,35 @@
+Jenan PRO — Admin Intelligence Robot Operations
+Page: 064
+Group: 07 — الإيرادات والتكاليف
+Route: /finance/service-profitability
+Title: ربحية الخدمات
+Kind: matrix
+Purpose: الإيراد والتكلفة والهامش لكل خدمة.
+
+Modules:
+- الخدمة
+- الإيراد
+- التكلفة
+- الهامش
+- الاستخدام
+- الاتجاه
+
+Actions:
+- فتح الخدمة
+- تصدير
+
+Outputs:
+- —
+
+Next Routes:
+- —
+
+Implementation:
+- Jenan PRO only.
+- Real React/CSS/SVG/components.
+- Responsive Desktop/Laptop/Tablet/Mobile.
+- No screenshot as production background.
+- No fake production values.
+- Reach ≥70% visual match before moving to next section.
+- Functional QA + responsive QA required.
+- Commit + save locally after PASS.

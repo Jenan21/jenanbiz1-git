@@ -1,0 +1,34 @@
+Jenan PRO — Admin Intelligence Robot Operations
+Page: 058
+Group: 06 — النماذج والأدوات
+Route: /tools/permissions
+Title: صلاحيات الأدوات
+Kind: matrix
+Purpose: من يستطيع استخدام ماذا وتحت أي شروط.
+
+Modules:
+- الأداة
+- الدور
+- العملية
+- الموافقة
+- النطاق
+
+Actions:
+- تعديل
+- مراجعة
+
+Outputs:
+- —
+
+Next Routes:
+- —
+
+Implementation:
+- Jenan PRO only.
+- Real React/CSS/SVG/components.
+- Responsive Desktop/Laptop/Tablet/Mobile.
+- No screenshot as production background.
+- No fake production values.
+- Reach ≥70% visual match before moving to next section.
+- Functional QA + responsive QA required.
+- Commit + save locally after PASS.

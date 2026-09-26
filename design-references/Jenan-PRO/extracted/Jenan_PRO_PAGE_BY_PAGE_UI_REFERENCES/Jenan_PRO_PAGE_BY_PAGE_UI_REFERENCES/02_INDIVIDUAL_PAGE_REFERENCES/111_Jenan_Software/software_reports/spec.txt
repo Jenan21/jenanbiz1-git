@@ -1,0 +1,27 @@
+Jenan PRO — Page Reference
+Page: 111
+Category: Jenan Software
+Route: /software/reports
+Title: التقارير الموحدة
+Kind: dashboard
+Description: واجهة التقارير الموحدة.
+
+Sections:
+- مبيعات
+- مالية
+- HR
+- مخزون
+- CRM
+- مشاريع
+
+Outputs:
+- تقارير/تصدير
+
+Actions:
+- فتح
+- تصدير
+
+Next routes:
+- —
+
+Target: 60–70% baseline; responsive; Git checkpoint + local copy.

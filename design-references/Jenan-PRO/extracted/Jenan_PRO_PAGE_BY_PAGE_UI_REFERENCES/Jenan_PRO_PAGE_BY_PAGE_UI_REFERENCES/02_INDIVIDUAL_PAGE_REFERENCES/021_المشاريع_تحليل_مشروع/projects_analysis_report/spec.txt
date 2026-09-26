@@ -1,0 +1,33 @@
+Jenan PRO — Page Reference
+Page: 021
+Category: المشاريع/تحليل مشروع
+Route: /projects/analysis/report
+Title: تقرير تحليل المشروع
+Kind: report
+Description: رحلة تحليل مشروع كاملة.
+
+Sections:
+- الغلاف
+- الملخص
+- السوق
+- المنافسة
+- الجغرافيا
+- المخاطر
+- التوصيات
+
+Outputs:
+- PDF
+- طباعة
+- مشاركة
+- بريد
+
+Actions:
+- طباعة
+- PDF
+- مشاركة
+- بريد
+
+Next routes:
+- /reports/print/project-analysis
+
+Target: 60–70% baseline; responsive; Git checkpoint + local copy.

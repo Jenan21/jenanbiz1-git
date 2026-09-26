@@ -1,0 +1,29 @@
+Jenan PRO — Page Reference
+Page: 039
+Category: المشاريع/دراسات الجدوى
+Route: /projects/feasibility/simple/result
+Title: نتيجة الدراسة المبسطة
+Kind: dashboard
+Description: دراسات جدوى متكاملة.
+
+Sections:
+- ملخص السوق
+- تقدير التكلفة
+- الإيراد
+- نقطة التعادل
+- SWOT مختصر
+- التوصية
+
+Outputs:
+- تقرير مبسط
+
+Actions:
+- طباعة
+- PDF
+- ترقية
+
+Next routes:
+- /projects/feasibility/simple/report
+- /projects/feasibility/pro/new
+
+Target: 60–70% baseline; responsive; Git checkpoint + local copy.

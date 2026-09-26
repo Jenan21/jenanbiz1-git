@@ -1,0 +1,27 @@
+Jenan PRO — Page Reference
+Page: 012
+Category: صفحة المستخدم
+Route: /user/payments/invoice
+Title: تفاصيل فاتورة
+Kind: report
+Description: فاتورة مفصلة.
+
+Sections:
+- بنود الفاتورة
+- الضريبة
+- الإجمالي
+- الحالة
+
+Outputs:
+- PDF
+- طباعة
+
+Actions:
+- تنزيل
+- طباعة
+- بريد
+
+Next routes:
+- —
+
+Target: 60–70% baseline; responsive; Git checkpoint + local copy.

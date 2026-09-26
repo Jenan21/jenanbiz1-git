@@ -1,0 +1,34 @@
+Jenan PRO — Admin Intelligence Robot Operations
+Page: 035
+Group: 03 — الهيكل الإداري للروبوتات
+Route: /robot-org/escalations
+Title: مركز التصعيدات
+Kind: list
+Purpose: التصعيدات من الموظفين والمشرفين والمديرين واللجنة.
+
+Modules:
+- المصدر
+- السبب
+- الخطورة
+- الحالة
+- المستوى الحالي
+
+Actions:
+- فتح التصعيد
+- تحويل المستوى
+
+Outputs:
+- —
+
+Next Routes:
+- —
+
+Implementation:
+- Jenan PRO only.
+- Real React/CSS/SVG/components.
+- Responsive Desktop/Laptop/Tablet/Mobile.
+- No screenshot as production background.
+- No fake production values.
+- Reach ≥70% visual match before moving to next section.
+- Functional QA + responsive QA required.
+- Commit + save locally after PASS.

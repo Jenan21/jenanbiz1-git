@@ -1,0 +1,26 @@
+Jenan PRO — Page Reference
+Page: 143
+Category: Jenan Robotics
+Route: /robotics/item/sample
+Title: تفاصيل روبوت
+Kind: detail
+Description: رحلة Robotics كاملة.
+
+Sections:
+- الصور
+- المواصفات
+- المهام
+- القطاع
+- المقارنة
+
+Outputs:
+- Specification Sheet
+
+Actions:
+- طلب معلومات
+- مقارنة
+
+Next routes:
+- —
+
+Target: 60–70% baseline; responsive; Git checkpoint + local copy.

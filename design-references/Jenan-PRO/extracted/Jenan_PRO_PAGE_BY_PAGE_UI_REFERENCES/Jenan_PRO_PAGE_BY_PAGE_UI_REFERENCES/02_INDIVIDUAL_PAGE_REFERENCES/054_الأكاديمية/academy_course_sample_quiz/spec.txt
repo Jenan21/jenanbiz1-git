@@ -1,0 +1,23 @@
+Jenan PRO — Page Reference
+Page: 054
+Category: الأكاديمية
+Route: /academy/course/sample/quiz
+Title: اختبار الدورة
+Kind: form
+Description: رحلة أكاديمية كاملة.
+
+Sections:
+- الأسئلة
+- الإجابات
+- التقدم
+
+Outputs:
+- النتيجة
+
+Actions:
+- إرسال
+
+Next routes:
+- /academy/course/sample/result
+
+Target: 60–70% baseline; responsive; Git checkpoint + local copy.

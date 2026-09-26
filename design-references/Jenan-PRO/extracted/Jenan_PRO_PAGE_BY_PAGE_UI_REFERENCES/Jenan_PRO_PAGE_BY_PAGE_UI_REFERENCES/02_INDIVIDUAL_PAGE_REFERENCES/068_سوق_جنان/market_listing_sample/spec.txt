@@ -1,0 +1,32 @@
+Jenan PRO — Page Reference
+Page: 068
+Category: سوق جنان
+Route: /market/listing/sample
+Title: تفاصيل إعلان/فرصة
+Kind: detail
+Description: رحلة سوق كاملة.
+
+Sections:
+- صور
+- الوصف
+- المؤشرات المالية المصرح بها
+- الموقع
+- المستندات المتاحة
+- البائع
+- السرية
+
+Outputs:
+- ملخص فرصة
+
+Actions:
+- طلب تفاصيل
+- توقيع NDA
+- حجز معاينة
+- تقديم عرض
+
+Next routes:
+- /market/nda/sample
+- /market/viewing/sample
+- /market/offer/sample
+
+Target: 60–70% baseline; responsive; Git checkpoint + local copy.

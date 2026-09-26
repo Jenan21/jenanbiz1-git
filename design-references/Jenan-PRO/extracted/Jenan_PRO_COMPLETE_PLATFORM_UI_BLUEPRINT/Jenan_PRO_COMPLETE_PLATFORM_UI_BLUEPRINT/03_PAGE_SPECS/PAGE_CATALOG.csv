@@ -1,0 +1,160 @@
+﻿Category,Route,Title,Kind,Subtitle,Sections,Outputs,Actions,NextRoutes
+الدخول والتسجيل,/auth,بوابة الدخول,landing,اختيار تسجيل الدخول أو إنشاء حساب.,Jenan PRO | اللغة | الأمان,,تسجيل الدخول | إنشاء حساب,/auth/login | /auth/register
+الدخول والتسجيل,/auth/login,تسجيل الدخول,form,وصول آمن إلى الحساب.,البريد الإلكتروني | كلمة المرور | تذكرني | نسيت كلمة المرور,,دخول,/home
+الدخول والتسجيل,/auth/register,إنشاء حساب,form,إنشاء حساب Jenan PRO.,الاسم | البريد | الجوال عند الحاجة | كلمة المرور | تأكيد كلمة المرور | الشروط,,إنشاء الحساب,/user/onboarding
+الدخول والتسجيل,/auth/forgot,استعادة كلمة المرور,form,استعادة الوصول.,البريد | رمز التحقق | كلمة مرور جديدة,,إرسال | تأكيد,/auth/login
+الدخول والتسجيل,/user/onboarding,تهيئة الحساب,wizard,استكمال بيانات البداية.,نوع المستخدم | الدولة | المدينة | الاهتمامات,,حفظ,/home
+الرئيسية,/home,الصفحة الرئيسية,dashboard,مركز أعمال Jenan PRO العالمي.,Hero عالمي | الأقسام | الأخبار والفرص | الإحصائيات | توزيع المستخدمين | شريط الثقة | الفوتر,روابط جميع الأقسام,فتح قسم,/projects | /academy | /market | /studio | /software | /talent | /marketing | /funding
+صفحة المستخدم,/user,لوحة المستخدم,dashboard,مركز المستخدم الشخصي.,الحساب | الاستثمارات | الخدمات المفتوحة | الإشعارات | النشاط,ملخصات,إدارة,/user/investments | /user/unlocks | /user/payments | /user/reports
+صفحة المستخدم,/user/investments,بياناتي الاستثمارية,dashboard,إدارة ومتابعة الاستثمارات.,إجمالي الاستثمارات | العائد | القيمة السوقية | توزيع المحفظة | الأداء | الفرص | التحديثات,تقرير المحفظة,عرض التفاصيل | تصدير,/user/investment/detail | /reports/view/portfolio
+صفحة المستخدم,/user/investment/detail,تفاصيل استثمار,detail,تفصيل استثمار منفرد.,بيانات الأصل | العائد | الأداء الزمني | التحديثات | المستندات,تقرير الاستثمار,طباعة | PDF | مشاركة | بريد,/reports/view/investment
+صفحة المستخدم,/user/unlocks,اشترك وافتح الخدمات,dashboard,كل متابعة تفتح خدمة مجانية محددة.,YouTube | X | Instagram | Facebook | TikTok | Snapchat | حالة الفتح,حالة الاستحقاق,اشترك | تحقق | فتح الخدمة,/academy | /talent | /studio | /projects/analysis/new
+صفحة المستخدم,/user/payments,المدفوعات والفواتير,list,المدفوعات من لوحة المستخدم.,الفواتير | المدفوعات | طرق الدفع | السجل,فاتورة PDF | إيصال,عرض | تنزيل,/user/payments/invoice
+صفحة المستخدم,/user/payments/invoice,تفاصيل فاتورة,report,فاتورة مفصلة.,بنود الفاتورة | الضريبة | الإجمالي | الحالة,PDF | طباعة,تنزيل | طباعة | بريد,
+صفحة المستخدم,/user/reports,تقاريري,list,جميع التقارير المحفوظة.,مشاريع | استثمار | فواتير | تقارير محفوظة,PDF/Print/Share,عرض | تنزيل,/reports/view/general
+المشاريع,/projects,قسم المشاريع,dashboard,تحليل، تقييم، بدء، ودراسات جدوى.,تحليل مشروع | تقييم مشروع | بدء مشروع | دراسات الجدوى | مشروعاتي | الإحصائيات,تقارير المشاريع,بدء خدمة,/projects/analysis/new | /projects/evaluation/new | /projects/start/new | /projects/feasibility
+المشاريع/تحليل مشروع,/projects/analysis/new,تحليل مشروع — إدخال البيانات,form,رحلة تحليل مشروع كاملة.,فكرة المشروع | القطاع | المدينة | الفئة المستهدفة | رفع ملفات,,ابدأ التحليل,/projects/analysis/progress
+المشاريع/تحليل مشروع,/projects/analysis/progress,تحليل مشروع — جاري التحليل,progress,رحلة تحليل مشروع كاملة.,السوق | الطلب | المنافسة | الموقع | المخاطر | التوصيات,,متابعة,/projects/analysis/result
+المشاريع/تحليل مشروع,/projects/analysis/result,نتيجة تحليل المشروع,dashboard,رحلة تحليل مشروع كاملة.,مؤشر الفرصة | حجم الطلب | المنافسة | القوة الشرائية | المخاطر | اتجاه الطلب,ملخص التحليل,تفاصيل | الخريطة | التوصيات | التقرير,/projects/analysis/details | /projects/analysis/map | /projects/analysis/recommendations | /projects/analysis/report
+المشاريع/تحليل مشروع,/projects/analysis/details,تفاصيل تحليل السوق,detail,رحلة تحليل مشروع كاملة.,السوق | المنافسون | العملاء | التسعير | الفجوات | اتجاهات النمو,جداول ورسوم,مقارنة,
+المشاريع/تحليل مشروع,/projects/analysis/map,الخريطة الجغرافية للفرص,dashboard,رحلة تحليل مشروع كاملة.,الخريطة | القوة الشرائية | الطلب | المنافسة | المناطق الأعلى فرصة,تقرير جغرافي,تغيير الموقع,
+المشاريع/تحليل مشروع,/projects/analysis/recommendations,الرؤى والتوصيات,detail,رحلة تحليل مشروع كاملة.,نقاط القوة | التحديات | التوصيات | الخطوة التالية,ملخص تنفيذي,اعتماد | حفظ,
+المشاريع/تحليل مشروع,/projects/analysis/report,تقرير تحليل المشروع,report,رحلة تحليل مشروع كاملة.,الغلاف | الملخص | السوق | المنافسة | الجغرافيا | المخاطر | التوصيات,PDF | طباعة | مشاركة | بريد,طباعة | PDF | مشاركة | بريد,/reports/print/project-analysis
+المشاريع/تقييم مشروع,/projects/evaluation/new,تقييم مشروع — إدخال البيانات,form,رحلة تقييم مشروع كاملة.,اسم المشروع | القطاع | المرحلة | الموقع | السوق المستهدف | الميزانية,,ابدأ التقييم,/projects/evaluation/progress
+المشاريع/تقييم مشروع,/projects/evaluation/progress,تقييم مشروع — جاري التقييم,progress,رحلة تقييم مشروع كاملة.,الجاهزية | السوق | التنفيذ | المالية | الفريق | التوسع,,متابعة,/projects/evaluation/result
+المشاريع/تقييم مشروع,/projects/evaluation/result,نتيجة تقييم المشروع,dashboard,رحلة تقييم مشروع كاملة.,النتيجة الإجمالية | الجاهزية | جاذبية السوق | القدرة التنفيذية | الجدوى المالية | المخاطر | الفريق | قابلية التوسع,ملخص التقييم,تفاصيل | مخاطر | توصيات | التقرير,/projects/evaluation/details | /projects/evaluation/risks | /projects/evaluation/recommendations | /projects/evaluation/report
+المشاريع/تقييم مشروع,/projects/evaluation/details,تفاصيل نقاط التقييم,detail,رحلة تقييم مشروع كاملة.,Radar | المحاور | الأدلة | الملاحظات | المقارنات,جداول تقييم,عرض الأدلة,
+المشاريع/تقييم مشروع,/projects/evaluation/risks,تحليل المخاطر والعائد,dashboard,رحلة تقييم مشروع كاملة.,مستوى المخاطر | العائد المتوقع | سيناريوهات | مصفوفة المخاطر,تقرير مخاطر,عرض,
+المشاريع/تقييم مشروع,/projects/evaluation/recommendations,التوصيات النهائية,detail,رحلة تقييم مشروع كاملة.,نقاط القوة | نقاط التحسين | التوصية النهائية | الخطوات التالية,ملخص توصيات,حفظ | تحويل إلى بدء مشروع,/projects/start/new
+المشاريع/تقييم مشروع,/projects/evaluation/report,تقرير تقييم المشروع,report,رحلة تقييم مشروع كاملة.,الغلاف | النتيجة | المحاور | المخاطر | العائد | التوصيات,PDF | طباعة | مشاركة | بريد,طباعة | PDF | مشاركة | بريد,/reports/print/project-evaluation
+المشاريع/بدء مشروع,/projects/start/new,بدء مشروع — بيانات البداية,form,رحلة بدء مشروع كاملة.,فكرة المشروع | الكيان القانوني | المدينة | رأس المال | المدة | الفريق,,ابدأ المشروع,/projects/start/roadmap
+المشاريع/بدء مشروع,/projects/start/roadmap,خارطة تنفيذ المشروع,timeline,رحلة بدء مشروع كاملة.,الفكرة | التسجيل والتأسيس | التجهيز | الفريق | الموردون | الإطلاق والنمو,خارطة زمنية,فتح المرحلة,/projects/start/licenses | /projects/start/setup | /projects/start/team | /projects/start/vendors | /projects/start/launch
+المشاريع/بدء مشروع,/projects/start/licenses,التراخيص والإجراءات,checklist,رحلة بدء مشروع كاملة.,حجز الاسم | السجل | الزكاة/الضريبة | البلدية | التراخيص القطاعية | التأمينات,Checklist,تحديث الحالة,
+المشاريع/بدء مشروع,/projects/start/setup,التجهيز والميزانية,dashboard,رحلة بدء مشروع كاملة.,التراخيص | التجهيزات | الموارد البشرية | التسويق | المخزون | مصاريف أخرى,ميزانية,تعديل | حفظ,
+المشاريع/بدء مشروع,/projects/start/team,الفريق والمهام,dashboard,رحلة بدء مشروع كاملة.,أعضاء الفريق | الأدوار | المهام | التقدم,خطة فريق,إضافة عضو | إسناد مهمة,
+المشاريع/بدء مشروع,/projects/start/vendors,الموردون والشركاء,list,رحلة بدء مشروع كاملة.,المورد | التصنيف | العرض | الحالة | المستندات,قائمة موردين,إضافة | مقارنة | اعتماد,
+المشاريع/بدء مشروع,/projects/start/launch,الإطلاق والنمو,dashboard,رحلة بدء مشروع كاملة.,الإطلاق التجريبي | التسويق | التوظيف | الافتتاح | النمو,خطة إطلاق,تحديث,/projects/start/report
+المشاريع/بدء مشروع,/projects/start/report,تقرير خطة بدء المشروع,report,رحلة بدء مشروع كاملة.,الخطة | الميزانية | الجدول | الفريق | الموردون | المخاطر | المعالم,PDF | طباعة | مشاركة | بريد,طباعة | PDF | مشاركة | بريد,
+المشاريع/دراسات الجدوى,/projects/feasibility,اختيار نوع دراسة الجدوى,landing,دراسات جدوى متكاملة.,دراسة مبسطة | دراسة احترافية دقيقة ومفصلة,,اختيار النوع,/projects/feasibility/simple/new | /projects/feasibility/pro/new
+المشاريع/دراسات الجدوى,/projects/feasibility/simple/new,الدراسة المبسطة — البيانات,form,دراسات جدوى متكاملة.,الفكرة | الموقع | القطاع | رأس المال | السوق,,إنشاء الدراسة,/projects/feasibility/simple/result
+المشاريع/دراسات الجدوى,/projects/feasibility/simple/result,نتيجة الدراسة المبسطة,dashboard,دراسات جدوى متكاملة.,ملخص السوق | تقدير التكلفة | الإيراد | نقطة التعادل | SWOT مختصر | التوصية,تقرير مبسط,طباعة | PDF | ترقية,/projects/feasibility/simple/report | /projects/feasibility/pro/new
+المشاريع/دراسات الجدوى,/projects/feasibility/simple/report,تقرير الدراسة المبسطة,report,دراسات جدوى متكاملة.,الغلاف | الملخص | السوق | التكاليف | التوصية,PDF | Print | Share | Email,طباعة | PDF | مشاركة | بريد,
+المشاريع/دراسات الجدوى,/projects/feasibility/pro/new,الدراسة الاحترافية — البداية,wizard,دراسات جدوى متكاملة.,بيانات المشروع | السوق | المالية | الفنية | التشغيلية,,ابدأ,/projects/feasibility/pro/market
+المشاريع/دراسات الجدوى,/projects/feasibility/pro/market,الدراسة السوقية,dashboard,دراسات جدوى متكاملة.,حجم السوق | الطلب | المنافسة | التسعير | العملاء | الحصة المستهدفة,جداول ورسوم,التالي,/projects/feasibility/pro/financial
+المشاريع/دراسات الجدوى,/projects/feasibility/pro/financial,الدراسة المالية,dashboard,دراسات جدوى متكاملة.,CAPEX | OPEX | الإيرادات | التدفقات | Break-even | ROI | NPV | IRR | Payback,جداول مالية,التالي,/projects/feasibility/pro/technical
+المشاريع/دراسات الجدوى,/projects/feasibility/pro/technical,الدراسة الفنية والتقنية,detail,دراسات جدوى متكاملة.,الموقع | المساحة | المعدات | التقنية | المواد | الطاقة,قائمة متطلبات,التالي,/projects/feasibility/pro/operational
+المشاريع/دراسات الجدوى,/projects/feasibility/pro/operational,الدراسة التشغيلية,detail,دراسات جدوى متكاملة.,العمليات | الفريق | الموردون | الجودة | المخزون | السياسات,خطة تشغيل,التالي,/projects/feasibility/pro/swot
+المشاريع/دراسات الجدوى,/projects/feasibility/pro/swot,SWOT والمخاطر والحساسية,dashboard,دراسات جدوى متكاملة.,SWOT | المخاطر | المتحفظ | الأساسي | المتفائل | الحساسية,تحليل سيناريوهات,التالي,/projects/feasibility/pro/timeline
+المشاريع/دراسات الجدوى,/projects/feasibility/pro/timeline,الجدول الزمني والتنفيذ,timeline,دراسات جدوى متكاملة.,مراحل التنفيذ | الاعتماديات | المعالم | المسؤوليات,Timeline,إنهاء,/projects/feasibility/pro/result
+المشاريع/دراسات الجدوى,/projects/feasibility/pro/result,النتيجة الاحترافية,dashboard,دراسات جدوى متكاملة.,معدل الربحية | فترة الاسترداد | NPV | ROI | التدفقات | التوصية,Executive Summary,عرض التقرير,/projects/feasibility/pro/report
+المشاريع/دراسات الجدوى,/projects/feasibility/pro/report,تقرير الدراسة الاحترافية,report,دراسات جدوى متكاملة.,الغلاف | الملخص التنفيذي | السوق | المالية | الفنية | التشغيلية | SWOT | المخاطر | الجدول | التوصيات,PDF | Word | Excel | PowerPoint عند دعمها | Print | Share | Email,تنزيل | طباعة | مشاركة | بريد,
+الأكاديمية,/academy,أكاديمية جنان,dashboard,رحلة أكاديمية كاملة.,الدورات | الدروس | الدراسات | الأبحاث | الندوات | المسارات | الشهادات | التقدم,شهادات | تقارير تعلم,استكشف,/academy/courses | /academy/webinars | /academy/studies | /academy/research | /academy/paths
+الأكاديمية,/academy/courses,الدورات,list,رحلة أكاديمية كاملة.,بحث | فلترة | بطاقات الدورات | المحفوظة | التقدم,,عرض الدورة,/academy/course/sample
+الأكاديمية,/academy/course/sample,تفاصيل الدورة,detail,رحلة أكاديمية كاملة.,الغلاف | الوصف | المدرب | المستوى | المدة | الدروس | المراجعات | المخرجات,خطة الدورة,ابدأ/تابع الدورة,/academy/course/sample/lesson/1
+الأكاديمية,/academy/course/sample/lesson/1,مشغل الدرس,player,رحلة أكاديمية كاملة.,فيديو/محتوى | قائمة الدروس | الملاحظات | المرفقات | اختبار قصير,ملخص الدرس,التالي | حفظ ملاحظة,/academy/course/sample/quiz
+الأكاديمية,/academy/course/sample/quiz,اختبار الدورة,form,رحلة أكاديمية كاملة.,الأسئلة | الإجابات | التقدم,النتيجة,إرسال,/academy/course/sample/result
+الأكاديمية,/academy/course/sample/result,نتيجة الدورة,dashboard,رحلة أكاديمية كاملة.,نسبة الإكمال | نتيجة الاختبار | المهارات المكتسبة,شهادة,عرض الشهادة,/academy/certificates/sample
+الأكاديمية,/academy/webinars,الندوات,list,رحلة أكاديمية كاملة.,القادمة | المباشرة | المسجلة | التصنيفات,,عرض الندوة,/academy/webinar/sample
+الأكاديمية,/academy/webinar/sample,تفاصيل الندوة,detail,رحلة أكاديمية كاملة.,العنوان | المتحدث | الموعد | المحاور | التسجيل,,سجل | ادخل البث,/academy/webinar/sample/live
+الأكاديمية,/academy/webinar/sample/live,الندوة المباشرة,live,رحلة أكاديمية كاملة.,البث | الأسئلة | المرفقات | الملاحظات,تسجيل/ملخص,إرسال سؤال,
+الأكاديمية,/academy/studies,الدراسات,list,رحلة أكاديمية كاملة.,البحث | التصنيف | البطاقات | المحفوظة,,فتح الدراسة,/academy/study/sample
+الأكاديمية,/academy/study/sample,تفاصيل دراسة,reader,رحلة أكاديمية كاملة.,الملخص | المحتوى | الجداول | المراجع | المصادر,PDF عند التوفر,حفظ | مشاركة,
+الأكاديمية,/academy/research,الأبحاث,list,رحلة أكاديمية كاملة.,البحث | التصنيف | الباحث | التاريخ,,فتح البحث,/academy/research/sample
+الأكاديمية,/academy/research/sample,تفاصيل بحث,reader,رحلة أكاديمية كاملة.,الملخص | المنهج | النتائج | المراجع,PDF/Reference,حفظ | مشاركة,
+الأكاديمية,/academy/paths,المسارات التعليمية,list,رحلة أكاديمية كاملة.,المسارات | المراحل | التقدم,,فتح المسار,/academy/path/sample
+الأكاديمية,/academy/path/sample,تفاصيل المسار,timeline,رحلة أكاديمية كاملة.,المراحل | المتطلبات | التقدم | الشهادة,خطة تعلم,ابدأ,
+الأكاديمية,/academy/certificates/sample,شهادة إتمام,report,رحلة أكاديمية كاملة.,اسم المتعلم | اسم الدورة | التاريخ | التحقق,PDF | Print | Share,تنزيل | طباعة | مشاركة,
+سوق جنان,/market,سوق جنان,dashboard,رحلة سوق كاملة.,العروض المميزة | التصنيفات | نشاط السوق | رحلة المشتري | الأمان والسرية,ملخصات السوق,عرض الفرص | أضف عرضك,/market/listings | /market/sell
+سوق جنان,/market/listings,قائمة العروض,list,رحلة سوق كاملة.,بحث | فلترة | السعر | الموقع | النوع | الحالة,,عرض التفاصيل,/market/listing/sample
+سوق جنان,/market/listing/sample,تفاصيل إعلان/فرصة,detail,رحلة سوق كاملة.,صور | الوصف | المؤشرات المالية المصرح بها | الموقع | المستندات المتاحة | البائع | السرية,ملخص فرصة,طلب تفاصيل | توقيع NDA | حجز معاينة | تقديم عرض,/market/nda/sample | /market/viewing/sample | /market/offer/sample
+سوق جنان,/market/nda/sample,اتفاقية السرية,form,رحلة سوق كاملة.,نص الاتفاقية | بيانات الأطراف | الموافقة,نسخة الاتفاقية,توقيع/موافقة,/market/listing/sample/secure
+سوق جنان,/market/listing/sample/secure,التفاصيل المحمية,detail,رحلة سوق كاملة.,القوائم | المستندات | الصور | معلومات إضافية,ملف فحص أولي,طلب معاينة | تقديم عرض,
+سوق جنان,/market/viewing/sample,حجز المعاينة,form,رحلة سوق كاملة.,التاريخ | الوقت | الحضور | الملاحظات,تأكيد موعد,حجز,/market/deal/sample
+سوق جنان,/market/offer/sample,تقديم عرض شراء,form,رحلة سوق كاملة.,القيمة | الشروط | المدة | الملاحظات,عرض شراء,إرسال العرض,/market/deal/sample
+سوق جنان,/market/deal/sample,مسار الصفقة,timeline,رحلة سوق كاملة.,تواصل | NDA | فحص | معاينة | عرض | تفاوض | إغلاق,سجل الصفقة,تحديث | عرض المستندات,/market/deal/sample/report
+سوق جنان,/market/deal/sample/report,تقرير الصفقة,report,رحلة سوق كاملة.,الأطراف | المراحل | المستندات | العروض | الحالة,PDF | Print | Share,تنزيل | طباعة,
+سوق جنان,/market/sell,إنشاء إعلان بيع,wizard,رحلة سوق كاملة.,نوع الأصل | المعلومات الأساسية | التقييم | الصور | المستندات | السرية,,التالي,/market/sell/media
+سوق جنان,/market/sell/media,صور ومستندات الإعلان,form,رحلة سوق كاملة.,الصور | الملفات | المستندات | إعدادات السرية,,التالي,/market/sell/review
+سوق جنان,/market/sell/review,مراجعة ونشر الإعلان,detail,رحلة سوق كاملة.,المعاينة | البيانات | الصور | السرية,نسخة الإعلان,نشر,
+البرمجيات والأدوات,/studio,برمجيات وأدوات Jenan PRO,dashboard,أدوات Jenan PRO الأصلية.,Jenan PDF | Jenan Docs | Jenan Sheets | Presentations | الشعار | الورق الرسمي | السيرة الذاتية,ملفات ومخرجات,فتح الأداة,/studio/pdf | /studio/docs | /studio/sheets | /studio/presentations | /studio/logo | /studio/cv
+البرمجيات والأدوات,/studio/pdf,Jenan PDF,tool,أدوات Jenan PRO الأصلية.,دمج | تقسيم | استخراج | حذف | ترتيب | تدوير | ضغط | صور↔PDF | Watermark | Page numbers | Redaction,PDF,اختيار أداة,/studio/pdf/editor
+البرمجيات والأدوات,/studio/pdf/editor,محرر PDF,editor,أدوات Jenan PRO الأصلية.,صفحات | معاينة | ترتيب | أدوات | تقدم العملية,PDF,حفظ | تنزيل,
+البرمجيات والأدوات,/studio/docs,Jenan Docs,editor,أدوات Jenan PRO الأصلية.,العناوين | الفقرات | الجداول | الصور | Header/Footer | أنماط | قوالب,DOCX | PDF,حفظ | تصدير,
+البرمجيات والأدوات,/studio/sheets,Jenan Sheets,editor,أدوات Jenan PRO الأصلية.,Sheets | Cells | Formulas | Filters | Charts | KPI,XLSX | CSV | PDF,حفظ | تصدير,
+البرمجيات والأدوات,/studio/presentations,Jenan Presentations,editor,أدوات Jenan PRO الأصلية.,Slides | Layouts | Themes | Charts | Images,PPTX عند الدعم | PDF,حفظ | تصدير,
+البرمجيات والأدوات,/studio/logo,مصمم الشعار والهوية,wizard,أدوات Jenan PRO الأصلية.,الاسم | النشاط | الأسلوب | الألوان | المقترحات,PNG/SVG/PDF عند الدعم,توليد | حفظ,
+البرمجيات والأدوات,/studio/letterhead,تصميم الورق الرسمي,editor,أدوات Jenan PRO الأصلية.,الشعار | بيانات الشركة | Header/Footer | المقاس,PDF/DOCX عند الدعم,حفظ | تنزيل,
+البرمجيات والأدوات,/studio/cv,منشئ السيرة الذاتية,wizard,أدوات Jenan PRO الأصلية.,البيانات | الخبرة | التعليم | المهارات | القالب,PDF,معاينة | تنزيل,
+البرمجيات والأدوات,/studio/history,سجل الملفات,list,أدوات Jenan PRO الأصلية.,الملف | النوع | التاريخ | الحالة,إصدارات,فتح | استعادة,
+Jenan Software,/software,Jenan Software,dashboard,نظام تشغيل أعمال متكامل.,Sales | Accounting | HR | Inventory | CRM | Projects | POS | Purchases | Invoices | Company,تقارير تشغيلية,فتح,/software/sales | /software/accounting | /software/hr | /software/inventory | /software/crm
+Jenan Software/Sales,/software/sales,Jenan Sales,dashboard,إدارة دورة المبيعات.,العملاء | العروض | أوامر البيع | الفواتير | سندات القبض | المنتجات | المرتجعات | التقارير,Sales Reports,فتح,/software/sales/customers | /software/sales/quotes | /software/sales/invoices
+Jenan Software/Sales,/software/sales/customers,العملاء,list,إدارة العملاء.,بحث | فلترة | جدول | حالات | إجراءات,تقرير/تصدير,إضافة | عرض | تعديل,
+Jenan Software/Sales,/software/sales/quotes,عروض الأسعار,list,إدارة عروض الأسعار.,بحث | فلترة | جدول | حالات | إجراءات,تقرير/تصدير,إضافة | عرض | تعديل,
+Jenan Software/Sales,/software/sales/orders,أوامر البيع,list,إدارة أوامر البيع.,بحث | فلترة | جدول | حالات | إجراءات,تقرير/تصدير,إضافة | عرض | تعديل,
+Jenan Software/Sales,/software/sales/invoices,فواتير المبيعات,list,إدارة فواتير المبيعات.,بحث | فلترة | جدول | حالات | إجراءات,تقرير/تصدير,إضافة | عرض | تعديل,
+Jenan Software/Sales,/software/sales/receipts,سندات القبض,list,إدارة سندات القبض.,بحث | فلترة | جدول | حالات | إجراءات,تقرير/تصدير,إضافة | عرض | تعديل,
+Jenan Software/Sales,/software/sales/products,المنتجات,list,إدارة المنتجات.,بحث | فلترة | جدول | حالات | إجراءات,تقرير/تصدير,إضافة | عرض | تعديل,
+Jenan Software/Sales,/software/sales/returns,المرتجعات,list,إدارة المرتجعات.,بحث | فلترة | جدول | حالات | إجراءات,تقرير/تصدير,إضافة | عرض | تعديل,
+Jenan Software/Sales,/software/sales/reports,تقارير المبيعات,dashboard,تقارير وتحليلات المبيعات.,الإيرادات | العملاء | المنتجات | التحصيل | الاتجاهات,PDF/Excel,تصدير,
+Jenan Software,/software/accounting,المحاسبة,dashboard,الحسابات والقيود والتقارير المالية.,دليل الحسابات | القيود | المصروفات | الإيرادات | الضرائب | القوائم المالية,P&L | Balance Sheet | Cash Flow,فتح التقرير,
+Jenan Software/HR,/software/hr,Jenan HR,dashboard,إدارة الموارد البشرية.,الموظفون | الحضور | الإجازات | الرواتب | الملفات | الأداء,HR Reports,فتح,/software/hr/employees | /software/hr/attendance | /software/hr/payroll
+Jenan Software/HR,/software/hr/employees,الموظفون,list,إدارة الموظفون.,بحث | جدول | حالات | إجراءات,تقرير,إضافة | عرض | تعديل,
+Jenan Software/HR,/software/hr/attendance,الحضور والانصراف,list,إدارة الحضور والانصراف.,بحث | جدول | حالات | إجراءات,تقرير,إضافة | عرض | تعديل,
+Jenan Software/HR,/software/hr/leave,الإجازات,list,إدارة الإجازات.,بحث | جدول | حالات | إجراءات,تقرير,إضافة | عرض | تعديل,
+Jenan Software/HR,/software/hr/payroll,الرواتب,list,إدارة الرواتب.,بحث | جدول | حالات | إجراءات,تقرير,إضافة | عرض | تعديل,
+Jenan Software/HR,/software/hr/performance,الأداء,list,إدارة الأداء.,بحث | جدول | حالات | إجراءات,تقرير,إضافة | عرض | تعديل,
+Jenan Software,/software/inventory,المخزون,dashboard,واجهة المخزون.,الأصناف | الكميات | الحركات | إعادة الطلب | الجرد,تقارير/تصدير,فتح | تصدير,
+Jenan Software,/software/crm,CRM,dashboard,واجهة CRM.,Leads | Pipeline | Activities | Customers | Forecast,تقارير/تصدير,فتح | تصدير,
+Jenan Software,/software/projects,إدارة المشاريع التشغيلية,dashboard,واجهة إدارة المشاريع التشغيلية.,المشاريع | المهام | الوقت | الميزانية | الفريق,تقارير/تصدير,فتح | تصدير,
+Jenan Software,/software/pos,نقاط البيع,dashboard,واجهة نقاط البيع.,المبيعات | الورديات | الفروع | المنتجات | المدفوعات,تقارير/تصدير,فتح | تصدير,
+Jenan Software,/software/purchases,المشتريات,dashboard,واجهة المشتريات.,الموردون | طلبات الشراء | الفواتير | الاستلام,تقارير/تصدير,فتح | تصدير,
+Jenan Software,/software/company,إدارة الشركات,dashboard,واجهة إدارة الشركات.,الشركة | الفروع | المستخدمون | الصلاحيات | الإعدادات,تقارير/تصدير,فتح | تصدير,
+Jenan Software,/software/reports,التقارير الموحدة,dashboard,واجهة التقارير الموحدة.,مبيعات | مالية | HR | مخزون | CRM | مشاريع,تقارير/تصدير,فتح | تصدير,
+الوظائف والمواهب,/talent,الوظائف والمواهب,dashboard,رحلة توظيف كاملة.,وظائف | مواهب | المطابقة | أدوات أصحاب العمل | الإحصائيات,تقارير,ابحث | ابدأ التوظيف,/talent/jobs | /talent/employer
+الوظائف والمواهب,/talent/jobs,البحث عن وظائف,list,رحلة توظيف كاملة.,بحث | فلترة | الموقع | الخبرة | الدوام,,عرض الوظيفة,/talent/job/sample
+الوظائف والمواهب,/talent/job/sample,تفاصيل الوظيفة,detail,رحلة توظيف كاملة.,الوصف | المتطلبات | المزايا | الموقع | الشركة,,قدم الآن,/talent/apply/sample
+الوظائف والمواهب,/talent/apply/sample,التقديم على وظيفة,form,رحلة توظيف كاملة.,السيرة | الأسئلة | الرسالة | المرفقات,طلب توظيف,إرسال,
+الوظائف والمواهب,/talent/profile,ملف الباحث عن عمل,detail,رحلة توظيف كاملة.,النبذة | الخبرة | التعليم | المهارات | CV,CV,تعديل | مشاركة,
+الوظائف والمواهب,/talent/employer,لوحة صاحب العمل,dashboard,رحلة توظيف كاملة.,الوظائف المنشورة | المتقدمون | المطابقة | الإحصائيات,Hiring Report,نشر وظيفة | عرض المتقدمين,/talent/employer/post | /talent/employer/applicants
+الوظائف والمواهب,/talent/employer/post,نشر وظيفة,form,رحلة توظيف كاملة.,المسمى | الوصف | المهارات | الموقع | النطاق المالي إن وجد | الشروط,,نشر,
+الوظائف والمواهب,/talent/employer/applicants,إدارة المتقدمين,list,رحلة توظيف كاملة.,المرشح | المطابقة | المرحلة | الملاحظات,Applicant Report,عرض المرشح,/talent/candidate/sample
+الوظائف والمواهب,/talent/candidate/sample,ملف المرشح,detail,رحلة توظيف كاملة.,الخبرة | المهارات | CV | المطابقة | الملاحظات,Candidate Summary,نقل المرحلة | مراسلة,
+الوظائف والمواهب,/talent/search,البحث في المواهب,list,رحلة توظيف كاملة.,المهارات | الخبرة | الموقع | التوفر,,عرض المرشح,
+الوظائف والمواهب,/talent/matching,المطابقة الذكية,dashboard,رحلة توظيف كاملة.,نسبة المطابقة | الأسباب | الفجوات | الترتيب,Matching Report,عرض,
+الوظائف والمواهب,/talent/reports,تقارير التوظيف,dashboard,رحلة توظيف كاملة.,الوظائف | المتقدمون | الوقت للتوظيف | المطابقة,PDF/Excel,تصدير,
+التسويق والإعلانات,/marketing,التسويق والإعلانات,dashboard,رحلة تسويق كاملة.,الحملات | القنوات | الجمهور | العملاء المحتملون | التحليلات,Marketing Reports,إنشاء حملة,/marketing/campaign/new
+التسويق والإعلانات,/marketing/campaigns,الحملات,list,رحلة تسويق كاملة.,الحالة | القناة | الميزانية | النتائج,Campaign Report,عرض,/marketing/campaign/sample
+التسويق والإعلانات,/marketing/campaign/new,إنشاء حملة,wizard,رحلة تسويق كاملة.,الهدف | الجمهور | القنوات | الميزانية | المحتوى | المدة,,إطلاق,/marketing/campaign/sample
+التسويق والإعلانات,/marketing/campaign/sample,تفاصيل الحملة,dashboard,رحلة تسويق كاملة.,الإنفاق | الوصول | النقرات | العملاء | التحويل | العائد,Campaign Report,تعديل | إيقاف | التقرير,/marketing/report/sample
+التسويق والإعلانات,/marketing/audience,الجمهور,dashboard,رحلة تسويق كاملة.,الشرائح | الموقع | الاهتمامات | الأداء,Audience Report,إنشاء شريحة,
+التسويق والإعلانات,/marketing/channels,القنوات,dashboard,رحلة تسويق كاملة.,Social | Search | Email | Referral | Direct,Channel Report,عرض,
+التسويق والإعلانات,/marketing/leads,العملاء المحتملون,list,رحلة تسويق كاملة.,الاسم | المصدر | الحالة | القيمة,Lead Export,عرض | تحديث,
+التسويق والإعلانات,/marketing/analytics,تحليلات التسويق,dashboard,رحلة تسويق كاملة.,Funnel | CAC | CPL | ROAS | Conversion | Trend,Analytics Report,تصدير,
+التسويق والإعلانات,/marketing/report/sample,تقرير الحملة,report,رحلة تسويق كاملة.,الملخص | القنوات | الجمهور | النتائج | التوصيات,PDF | Print | Share | Email,تنزيل | طباعة | مشاركة | بريد,
+أهلية التمويل,/funding,مركز أهلية التمويل الذكي,dashboard,قياس الجاهزية دون ضمان التمويل.,درجة الجاهزية | الجهات المناسبة | المنتجات | المخاطر | الملف,Readiness Report,ابدأ التقييم,/funding/readiness
+أهلية التمويل,/funding/readiness,تقييم الجاهزية,form,قياس الجاهزية دون ضمان التمويل.,بيانات المنشأة | التدفقات | الالتزامات | مدة النشاط | المستندات,,احسب الجاهزية,/funding/result
+أهلية التمويل,/funding/result,نتيجة الجاهزية,dashboard,قياس الجاهزية دون ضمان التمويل.,الدرجة | العوامل | القوة | التحسين | الجهات المحتملة,Readiness Summary,التفاصيل | الفرص | التقرير,/funding/company | /funding/opportunities | /funding/report
+أهلية التمويل,/funding/company,ملف المنشأة,detail,قياس الجاهزية دون ضمان التمويل.,السجل | التأسيس | القطاع | المدينة | الإيرادات | المستندات,Company File,تعديل | رفع مستند,
+أهلية التمويل,/funding/opportunities,فرص تمويل محتملة,list,قياس الجاهزية دون ضمان التمويل.,الجهة | المنتج | المتطلبات | الملاءمة,Opportunity List,عرض,
+أهلية التمويل,/funding/advisor,Jenan AI Advisor,detail,قياس الجاهزية دون ضمان التمويل.,نقاط التحسين | المستندات الناقصة | مجالات التحسين,Advice Summary,حفظ,
+أهلية التمويل,/funding/report,تقرير أهلية التمويل,report,قياس الجاهزية دون ضمان التمويل.,الدرجة | العوامل | القوة | التحسين | الفرص | المستندات,PDF | Print | Share | Email,تنزيل | طباعة | مشاركة | بريد,
+Jenan Robotics,/robotics,Jenan Robotics — الروبوتات الذكية,dashboard,رحلة Robotics كاملة.,المستشار | التصنيفات | الروبوتات المميزة | القطاعات,Recommendations,ابحث عن روبوت,/robotics/search
+Jenan Robotics,/robotics/search,البحث عن روبوت,form,رحلة Robotics كاملة.,المهمة | القطاع | الموقع | البيئة | الميزانية,Matching,بحث,/robotics/results
+Jenan Robotics,/robotics/results,نتائج الروبوتات,list,رحلة Robotics كاملة.,البطاقات | المطابقة | المواصفات | الاستخدام,,عرض,/robotics/item/sample
+Jenan Robotics,/robotics/item/sample,تفاصيل روبوت,detail,رحلة Robotics كاملة.,الصور | المواصفات | المهام | القطاع | المقارنة,Specification Sheet,طلب معلومات | مقارنة,
+Jenan Robotics,/robotics/recommendations,التوصيات,dashboard,رحلة Robotics كاملة.,الخيارات | الأسباب | المقارنة | المخاطر,Recommendation Report,تصدير,
+الأدمن,/admin,لوحة تحكم الأدمن,dashboard,إدارة Jenan PRO.,المستخدمون | الاشتراكات | الإيرادات | الخدمات | النشاط | الصحة | التكلفة,Admin Reports,فتح,/admin/users | /admin/subscriptions | /admin/finance | /admin/health
+الأدمن,/admin/users,المستخدمون,list,إدارة المستخدمون.,بحث | مؤشرات | جداول | حالات | إجراءات,تقارير/تصدير,عرض,
+الأدمن,/admin/subscriptions,الاشتراكات,list,إدارة الاشتراكات.,بحث | مؤشرات | جداول | حالات | إجراءات,تقارير/تصدير,عرض,
+الأدمن,/admin/services,الخدمات والأقسام,dashboard,إدارة الخدمات والأقسام.,بحث | مؤشرات | جداول | حالات | إجراءات,تقارير/تصدير,عرض,
+الأدمن,/admin/finance,الإيرادات والتكاليف,dashboard,إدارة الإيرادات والتكاليف.,بحث | مؤشرات | جداول | حالات | إجراءات,تقارير/تصدير,عرض,
+الأدمن,/admin/ai,تكاليف الذكاء والنماذج,dashboard,إدارة تكاليف الذكاء والنماذج.,بحث | مؤشرات | جداول | حالات | إجراءات,تقارير/تصدير,عرض,
+الأدمن,/admin/agents,الوكلاء والروبوتات,dashboard,إدارة الوكلاء والروبوتات.,بحث | مؤشرات | جداول | حالات | إجراءات,تقارير/تصدير,عرض,
+الأدمن,/admin/audit,سجل التدقيق,list,إدارة سجل التدقيق.,بحث | مؤشرات | جداول | حالات | إجراءات,تقارير/تصدير,عرض,
+الأدمن,/admin/health,صحة النظام,dashboard,إدارة صحة النظام.,بحث | مؤشرات | جداول | حالات | إجراءات,تقارير/تصدير,عرض,
+الأدمن,/admin/reports,تقارير الأدمن,dashboard,إدارة تقارير الأدمن.,بحث | مؤشرات | جداول | حالات | إجراءات,تقارير/تصدير,عرض,
+المخرجات المشتركة,/reports/view/general,عارض التقرير,report,صفحة مخرج موحدة.,العنوان | الفهرس | المحتوى | الجداول | الرسوم | المصادر,PDF | Print | Share | Email,تنزيل | طباعة | مشاركة | بريد,
+المخرجات المشتركة,/reports/print/project-analysis,طباعة تقرير تحليل المشروع,report,صفحة مخرج موحدة.,العنوان | الفهرس | المحتوى | الجداول | الرسوم | المصادر,PDF | Print | Share | Email,تنزيل | طباعة | مشاركة | بريد,
+المخرجات المشتركة,/reports/print/project-evaluation,طباعة تقرير تقييم المشروع,report,صفحة مخرج موحدة.,العنوان | الفهرس | المحتوى | الجداول | الرسوم | المصادر,PDF | Print | Share | Email,تنزيل | طباعة | مشاركة | بريد,
+المخرجات المشتركة,/reports/view/portfolio,تقرير المحفظة الاستثمارية,report,صفحة مخرج موحدة.,العنوان | الفهرس | المحتوى | الجداول | الرسوم | المصادر,PDF | Print | Share | Email,تنزيل | طباعة | مشاركة | بريد,
+المخرجات المشتركة,/reports/view/investment,تقرير استثمار,report,صفحة مخرج موحدة.,العنوان | الفهرس | المحتوى | الجداول | الرسوم | المصادر,PDF | Print | Share | Email,تنزيل | طباعة | مشاركة | بريد,

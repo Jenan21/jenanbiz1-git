@@ -1,0 +1,25 @@
+Jenan PRO — Page Reference
+Page: 020
+Category: المشاريع/تحليل مشروع
+Route: /projects/analysis/recommendations
+Title: الرؤى والتوصيات
+Kind: detail
+Description: رحلة تحليل مشروع كاملة.
+
+Sections:
+- نقاط القوة
+- التحديات
+- التوصيات
+- الخطوة التالية
+
+Outputs:
+- ملخص تنفيذي
+
+Actions:
+- اعتماد
+- حفظ
+
+Next routes:
+- —
+
+Target: 60–70% baseline; responsive; Git checkpoint + local copy.

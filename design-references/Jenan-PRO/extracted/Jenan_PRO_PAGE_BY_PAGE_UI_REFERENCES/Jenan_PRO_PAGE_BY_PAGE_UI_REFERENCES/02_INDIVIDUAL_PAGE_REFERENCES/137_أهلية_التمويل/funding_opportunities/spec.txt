@@ -1,0 +1,24 @@
+Jenan PRO — Page Reference
+Page: 137
+Category: أهلية التمويل
+Route: /funding/opportunities
+Title: فرص تمويل محتملة
+Kind: list
+Description: قياس الجاهزية دون ضمان التمويل.
+
+Sections:
+- الجهة
+- المنتج
+- المتطلبات
+- الملاءمة
+
+Outputs:
+- Opportunity List
+
+Actions:
+- عرض
+
+Next routes:
+- —
+
+Target: 60–70% baseline; responsive; Git checkpoint + local copy.

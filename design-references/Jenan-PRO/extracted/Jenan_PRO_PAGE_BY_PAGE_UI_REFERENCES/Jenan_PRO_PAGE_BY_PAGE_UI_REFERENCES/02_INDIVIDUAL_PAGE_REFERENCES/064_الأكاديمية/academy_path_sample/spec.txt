@@ -1,0 +1,24 @@
+Jenan PRO — Page Reference
+Page: 064
+Category: الأكاديمية
+Route: /academy/path/sample
+Title: تفاصيل المسار
+Kind: timeline
+Description: رحلة أكاديمية كاملة.
+
+Sections:
+- المراحل
+- المتطلبات
+- التقدم
+- الشهادة
+
+Outputs:
+- خطة تعلم
+
+Actions:
+- ابدأ
+
+Next routes:
+- —
+
+Target: 60–70% baseline; responsive; Git checkpoint + local copy.

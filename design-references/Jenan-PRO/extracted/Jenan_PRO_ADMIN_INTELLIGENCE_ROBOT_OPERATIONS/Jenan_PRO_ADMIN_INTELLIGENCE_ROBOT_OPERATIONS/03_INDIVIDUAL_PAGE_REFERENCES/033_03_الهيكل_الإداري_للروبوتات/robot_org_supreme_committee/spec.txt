@@ -1,0 +1,35 @@
+Jenan PRO — Admin Intelligence Robot Operations
+Page: 033
+Group: 03 — الهيكل الإداري للروبوتات
+Route: /robot-org/supreme-committee
+Title: اللجنة العليا — 50 روبوت
+Kind: committee
+Purpose: لجنة المراجعة العليا للقرارات والتقارير عالية الأثر.
+
+Modules:
+- أعضاء اللجنة
+- ملفات المراجعة
+- التصويت/الإجماع
+- الأدلة
+- القرارات
+- التصعيد للأدمن
+
+Actions:
+- فتح ملف مراجعة
+- إنشاء جلسة
+
+Outputs:
+- —
+
+Next Routes:
+- —
+
+Implementation:
+- Jenan PRO only.
+- Real React/CSS/SVG/components.
+- Responsive Desktop/Laptop/Tablet/Mobile.
+- No screenshot as production background.
+- No fake production values.
+- Reach ≥70% visual match before moving to next section.
+- Functional QA + responsive QA required.
+- Commit + save locally after PASS.

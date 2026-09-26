@@ -1,0 +1,163 @@
+# Jenan PRO Complete Platform Execution Master
+
+This file records the binding implementation rules supplied on 2026-09-26. The original archives and all extracted contents beside this file remain the detailed source of truth and must not be deleted or edited.
+
+## Official Reference Library
+
+Use all three packages as one library:
+
+1. `Jenan_PRO_COMPLETE_PLATFORM_UI_BLUEPRINT.zip`
+2. `Jenan_PRO_PAGE_BY_PAGE_UI_REFERENCES.zip`
+3. `Jenan_PRO_ADMIN_INTELLIGENCE_ROBOT_OPERATIONS.zip`
+
+Archives are stored under `archives/`; immutable extracted copies are under `extracted/`. Read `BROWSER_INDEX.html`, `spec.txt`, `PAGE_CATALOG.csv`, `route_manifest.json`, `MASTER_PAGE_MAP.md`, and package instructions before implementing each section.
+
+Reference priority:
+
+1. Newest approved Jenan PRO design.
+2. Detailed page visual reference.
+3. `reference.html`.
+4. Page `spec.txt`.
+5. General blueprint.
+
+Legacy `Jenan BIZ` or `جنان بيز` names are visual-history references only. New UI uses `Jenan PRO` and `جنان برو` exclusively.
+
+## Permanent Product Decisions
+
+- Funding Eligibility is cancelled. Ignore funding pages in legacy manifests and remove all visible routes, navigation, cards, search, actions, reports, and links for it.
+- Inspect dependencies before backend/schema cleanup. Never reset databases, remove production data, alter secrets, or replace core architecture for UI work.
+- Keep Auth, Sessions, RBAC, rate limiting, audit, Prisma/data access, PostgreSQL, Redis, APIs, workers, and security controls intact unless fixing a verified defect.
+- Reference screenshots are not production canvases. Build layouts with real React, CSS, SVG, forms, tables, charts, maps, and data.
+- Never claim demo numbers are live. Label demo/placeholder/estimated data and show source, date, confidence, and review state where relevant.
+- Deterministic totals, taxes, ROI, break-even, invoice totals, and financial formulas stay in deterministic code.
+- Every visible action must work, navigate to a real route, or be explicitly disabled. Unsupported exports must not appear active.
+
+## Design System
+
+- Dark premium futuristic foundation.
+- Deep navy and black-blue surfaces.
+- Electric cyan and teal primary signals.
+- Controlled emerald, gold, and purple accents.
+- Glass depth, restrained glow, premium cards, clear hierarchy, strong typography, and professional business/data/AI presentation.
+- Each section may have its own accent and visual emphasis while remaining in the Jenan PRO family.
+- No stretching, distortion, `object-fit: fill` for important assets, overlap, unintended horizontal scrolling, clipped text, or large fixed-image gutters.
+- Recompose by device priority. Use Grid, Flexbox, `minmax()`, `clamp()`, percentages, viewport units when justified, and content-driven breakpoints.
+
+Required responsive checks: 2560x1440, 1920x1080, 1440x900, 1366x768, 1280x800, 1024x1366, 820x1180, 430x932, 390x844, and 360x800.
+
+## Required User Flows
+
+### Authentication and Home
+
+- Auth gateway, login, registration, password recovery, and onboarding.
+- Home with real navigation, opportunity/news states, platform statistics, distribution, trust strip, footer, and truthful unavailable states.
+
+### User Center
+
+- Account/dashboard, investment data and detail, voluntary social unlocks, payments, invoice, reports, notifications, and activity.
+- Social unlocks must follow platform policies. Use official APIs only where allowed; otherwise use claim/manual/periodic verification. Never use bots or fake followers.
+
+### Projects
+
+- Hub, project creation, processing/progress, result, details, indicators, geographic intelligence, risks, recommendations, final report, print/PDF/share/email when genuinely supported.
+- Include project analysis, evaluation, launch, and exactly two feasibility types: simplified and professional detailed.
+- Professional feasibility may include market, financial, technical, operational, SWOT, risk, sensitivity, break-even, ROI/NPV/IRR, timeline, executive summary, and final report when supported by real inputs.
+
+### User Academy
+
+- Academy, courses, course details, lessons, player, attachments/notes, quiz, result, completion, and certificate.
+- Webinars with details, registration, and live/recorded content.
+- Studies with list/detail/reader; research with list/detail/sources; learning paths with progress; certificates with verification and supported print/PDF/share.
+
+### Jenan Market
+
+- Buyer: listings, detail, NDA/confidentiality, protected details, documents, viewing request, offer, negotiation/deal stages, closing, and report.
+- Seller: create listing, basic/financial/asset information, media, documents, confidentiality, preview, review, publish, and inquiry/offer management.
+- Never expose confidential data before required confidentiality steps.
+
+### Tools and Jenan Software
+
+- Tools: Jenan PDF, Docs, Sheets, Presentations, logo/branding, letterhead, CV builder, and history/versioning where supported.
+- Jenan Software: Sales, Accounting, HR, Inventory, CRM, Project Management, POS, Purchases, Invoices, Company Management, and Reports.
+- Sales includes customers, quotations, sales orders, invoices, receipts, products, returns, discounts, taxes, and reports.
+- HR includes employees, profiles, attendance, leave, payroll, performance, and reports.
+- Do not leave these as card-only shells.
+
+### Talent and Jobs
+
+- Job seeker: jobs, detail, apply, profile, CV, and application status.
+- Employer: dashboard, create job, applicants, candidate detail, matching, pipeline, and reports.
+- Include talent search and matching. Never promise guaranteed employment.
+
+### Marketing
+
+- Dashboard, campaigns, create flow, campaign detail, channels, audience, leads, analytics, and performance report.
+- Display actual campaign outputs only when sourced.
+
+### Jenan Robotics
+
+- User-facing robotics search, results, item detail, and recommendations where specified by page references.
+
+## Required Admin and Intelligence Flows
+
+### Admin Command Center
+
+- Users, subscriptions, services, RBAC, audit, platform activity, costs, revenue, system health, operations, and reports.
+
+### Robot Factory
+
+- Dashboard, batch creation, registry, batch detail, generation/selection rules, robot registry, and persistent individual robot profiles.
+- Runtime workers are allocated on demand; do not create permanent workers without need.
+
+### Robot Academy
+
+- Dashboard, batches, batch detail, curriculum, theory, practical training, exams, results, review, graduation, intelligence, department distribution, failures/exclusions, retraining, skill matrix, specializations, geography, and reports.
+- Cover current disciplines including programming, design, interaction, marketing, advertising, investment, e-commerce, contracting, maintenance/operations, food sectors, and engineering.
+
+### Robot Organization
+
+- Workers, supervisors, managers, the 50-robot Supreme Intelligence Committee, committee review, and escalations.
+- Escalation is risk-based; not every task passes through every level.
+
+### Mission Engine
+
+- Mission Control, create, queue, detail, subtasks, dependencies, retries, fallbacks, approvals, escalations, evidence pack, cost, and reports.
+- Mission records carry objective, department, priority, SLA, assignee, model, tools, dependencies, attempts, evidence, cost, status, logs, and output where applicable.
+- Preserve idempotency, concurrency controls, locks, retry policies, fallbacks, and queue state.
+
+### Intelligence Center
+
+- Shared knowledge, experiences, skills, learning logs, evidence, reviews, versions, and rollback.
+- Knowledge requiring verification carries source, date, evidence, confidence, version, and review state.
+
+### Model and Tool Registries
+
+- Model registry/detail/provider/capabilities/status/cost/latency/quality/routing/fallback/execution history.
+- Routing balances task type, quality, cost, risk, availability, and latency rather than always choosing the strongest model.
+- Tool registry/detail/permissions/execution history/risk rules with least privilege and approval requirements.
+
+### Revenue, Cost, Observability, and Reports
+
+- Revenue dashboard and period/service views; cost dashboard, AI/model/infrastructure/tool/worker/mission costs, service profitability, cost ledger, and finance reports.
+- Show daily/monthly revenue, cost by model/mission/department, top revenue/cost services, and margin only when data is sufficient.
+- Observability includes workers, queues, health, logs, alerts/incidents, database, Redis, APIs, backups, restore-drill state, and metrics.
+- Executive reports include platform, robot performance, robot academy, missions, intelligence, finance, and system health, with print/export layouts distinct from dashboards.
+
+## UI State and Acceptance Rules
+
+Every applicable page includes loading, empty, success, error, permission-denied, disabled, processing, completed, and failed states. Reuse shared components rather than cloning headers, navigation, controls, cards, tables, chart wrappers, report actions, modals, and state treatments.
+
+Current delivery target is a strong, stable 60-70% baseline for each complete section. Do not chase pixel perfection until every section flow exists. For each section:
+
+1. Inspect existing code and improve rather than rebuild without cause.
+2. Complete all child pages and the full service flow.
+3. Run functional QA.
+4. Run responsive QA.
+5. Compare implementation beside the reference.
+6. Reach approximately 70% visual direction fidelity.
+7. Run lint, typecheck, relevant unit/integration/E2E tests, build, and route checks.
+8. Commit with a clear `[70% BASELINE][PASS] ... Full Flow` message.
+9. Preserve the same approved version in the repository and local desktop project copy.
+10. Report pages, routes, functionality, QA results, approximate visual match, remaining differences, checks, commit, archive status, and blockers.
+
+Recommended implementation order: Auth/Register, Home, User Dashboard, Projects, Academy, Jenan Market, Tools, Jenan Software, Talent/Jobs, Marketing, user-facing Robotics, Admin, Robot Factory, Robot Academy, Robot Organization, Mission Control, Intelligence Center, Models/Tools, Revenue & Costs, Observability, and Reports.

@@ -1,0 +1,23 @@
+Jenan PRO — Page Reference
+Page: 069
+Category: سوق جنان
+Route: /market/nda/sample
+Title: اتفاقية السرية
+Kind: form
+Description: رحلة سوق كاملة.
+
+Sections:
+- نص الاتفاقية
+- بيانات الأطراف
+- الموافقة
+
+Outputs:
+- نسخة الاتفاقية
+
+Actions:
+- توقيع/موافقة
+
+Next routes:
+- /market/listing/sample/secure
+
+Target: 60–70% baseline; responsive; Git checkpoint + local copy.

@@ -1,0 +1,27 @@
+Jenan PRO — Page Reference
+Page: 094
+Category: Jenan Software/Sales
+Route: /software/sales/receipts
+Title: سندات القبض
+Kind: list
+Description: إدارة سندات القبض.
+
+Sections:
+- بحث
+- فلترة
+- جدول
+- حالات
+- إجراءات
+
+Outputs:
+- تقرير/تصدير
+
+Actions:
+- إضافة
+- عرض
+- تعديل
+
+Next routes:
+- —
+
+Target: 60–70% baseline; responsive; Git checkpoint + local copy.

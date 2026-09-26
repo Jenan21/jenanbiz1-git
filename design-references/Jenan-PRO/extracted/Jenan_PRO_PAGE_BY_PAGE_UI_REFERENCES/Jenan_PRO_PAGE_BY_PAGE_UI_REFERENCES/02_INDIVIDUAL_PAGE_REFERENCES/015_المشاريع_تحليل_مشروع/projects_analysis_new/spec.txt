@@ -1,0 +1,25 @@
+Jenan PRO — Page Reference
+Page: 015
+Category: المشاريع/تحليل مشروع
+Route: /projects/analysis/new
+Title: تحليل مشروع — إدخال البيانات
+Kind: form
+Description: رحلة تحليل مشروع كاملة.
+
+Sections:
+- فكرة المشروع
+- القطاع
+- المدينة
+- الفئة المستهدفة
+- رفع ملفات
+
+Outputs:
+- —
+
+Actions:
+- ابدأ التحليل
+
+Next routes:
+- /projects/analysis/progress
+
+Target: 60–70% baseline; responsive; Git checkpoint + local copy.

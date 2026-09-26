@@ -1,0 +1,25 @@
+Jenan PRO — Page Reference
+Page: 130
+Category: التسويق والإعلانات
+Route: /marketing/leads
+Title: العملاء المحتملون
+Kind: list
+Description: رحلة تسويق كاملة.
+
+Sections:
+- الاسم
+- المصدر
+- الحالة
+- القيمة
+
+Outputs:
+- Lead Export
+
+Actions:
+- عرض
+- تحديث
+
+Next routes:
+- —
+
+Target: 60–70% baseline; responsive; Git checkpoint + local copy.

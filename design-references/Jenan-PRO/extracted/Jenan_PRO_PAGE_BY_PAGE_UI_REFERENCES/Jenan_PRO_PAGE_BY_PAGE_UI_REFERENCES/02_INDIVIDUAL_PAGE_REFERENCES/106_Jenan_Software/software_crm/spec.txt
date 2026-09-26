@@ -1,0 +1,26 @@
+Jenan PRO — Page Reference
+Page: 106
+Category: Jenan Software
+Route: /software/crm
+Title: CRM
+Kind: dashboard
+Description: واجهة CRM.
+
+Sections:
+- Leads
+- Pipeline
+- Activities
+- Customers
+- Forecast
+
+Outputs:
+- تقارير/تصدير
+
+Actions:
+- فتح
+- تصدير
+
+Next routes:
+- —
+
+Target: 60–70% baseline; responsive; Git checkpoint + local copy.

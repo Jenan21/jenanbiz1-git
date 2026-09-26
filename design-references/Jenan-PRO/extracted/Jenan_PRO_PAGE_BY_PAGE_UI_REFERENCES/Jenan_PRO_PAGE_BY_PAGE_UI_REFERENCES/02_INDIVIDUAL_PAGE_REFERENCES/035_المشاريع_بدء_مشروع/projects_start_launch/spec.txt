@@ -1,0 +1,25 @@
+Jenan PRO — Page Reference
+Page: 035
+Category: المشاريع/بدء مشروع
+Route: /projects/start/launch
+Title: الإطلاق والنمو
+Kind: dashboard
+Description: رحلة بدء مشروع كاملة.
+
+Sections:
+- الإطلاق التجريبي
+- التسويق
+- التوظيف
+- الافتتاح
+- النمو
+
+Outputs:
+- خطة إطلاق
+
+Actions:
+- تحديث
+
+Next routes:
+- /projects/start/report
+
+Target: 60–70% baseline; responsive; Git checkpoint + local copy.

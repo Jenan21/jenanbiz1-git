@@ -1,0 +1,26 @@
+Jenan PRO — Page Reference
+Page: 053
+Category: الأكاديمية
+Route: /academy/course/sample/lesson/1
+Title: مشغل الدرس
+Kind: player
+Description: رحلة أكاديمية كاملة.
+
+Sections:
+- فيديو/محتوى
+- قائمة الدروس
+- الملاحظات
+- المرفقات
+- اختبار قصير
+
+Outputs:
+- ملخص الدرس
+
+Actions:
+- التالي
+- حفظ ملاحظة
+
+Next routes:
+- /academy/course/sample/quiz
+
+Target: 60–70% baseline; responsive; Git checkpoint + local copy.

@@ -1,0 +1,30 @@
+Jenan PRO — Page Reference
+Page: 030
+Category: المشاريع/بدء مشروع
+Route: /projects/start/roadmap
+Title: خارطة تنفيذ المشروع
+Kind: timeline
+Description: رحلة بدء مشروع كاملة.
+
+Sections:
+- الفكرة
+- التسجيل والتأسيس
+- التجهيز
+- الفريق
+- الموردون
+- الإطلاق والنمو
+
+Outputs:
+- خارطة زمنية
+
+Actions:
+- فتح المرحلة
+
+Next routes:
+- /projects/start/licenses
+- /projects/start/setup
+- /projects/start/team
+- /projects/start/vendors
+- /projects/start/launch
+
+Target: 60–70% baseline; responsive; Git checkpoint + local copy.

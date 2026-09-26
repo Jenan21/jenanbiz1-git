@@ -1,0 +1,25 @@
+Jenan PRO — Page Reference
+Page: 129
+Category: التسويق والإعلانات
+Route: /marketing/channels
+Title: القنوات
+Kind: dashboard
+Description: رحلة تسويق كاملة.
+
+Sections:
+- Social
+- Search
+- Email
+- Referral
+- Direct
+
+Outputs:
+- Channel Report
+
+Actions:
+- عرض
+
+Next routes:
+- —
+
+Target: 60–70% baseline; responsive; Git checkpoint + local copy.

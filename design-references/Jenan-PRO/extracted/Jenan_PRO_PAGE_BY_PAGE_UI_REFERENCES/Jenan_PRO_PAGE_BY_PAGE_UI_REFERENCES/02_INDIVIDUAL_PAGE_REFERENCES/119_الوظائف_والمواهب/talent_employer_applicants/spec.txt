@@ -1,0 +1,24 @@
+Jenan PRO — Page Reference
+Page: 119
+Category: الوظائف والمواهب
+Route: /talent/employer/applicants
+Title: إدارة المتقدمين
+Kind: list
+Description: رحلة توظيف كاملة.
+
+Sections:
+- المرشح
+- المطابقة
+- المرحلة
+- الملاحظات
+
+Outputs:
+- Applicant Report
+
+Actions:
+- عرض المرشح
+
+Next routes:
+- /talent/candidate/sample
+
+Target: 60–70% baseline; responsive; Git checkpoint + local copy.

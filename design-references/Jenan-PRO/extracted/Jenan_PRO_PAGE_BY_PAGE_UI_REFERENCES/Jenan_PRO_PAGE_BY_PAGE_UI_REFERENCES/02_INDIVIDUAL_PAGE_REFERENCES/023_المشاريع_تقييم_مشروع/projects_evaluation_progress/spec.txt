@@ -1,0 +1,26 @@
+Jenan PRO — Page Reference
+Page: 023
+Category: المشاريع/تقييم مشروع
+Route: /projects/evaluation/progress
+Title: تقييم مشروع — جاري التقييم
+Kind: progress
+Description: رحلة تقييم مشروع كاملة.
+
+Sections:
+- الجاهزية
+- السوق
+- التنفيذ
+- المالية
+- الفريق
+- التوسع
+
+Outputs:
+- —
+
+Actions:
+- متابعة
+
+Next routes:
+- /projects/evaluation/result
+
+Target: 60–70% baseline; responsive; Git checkpoint + local copy.

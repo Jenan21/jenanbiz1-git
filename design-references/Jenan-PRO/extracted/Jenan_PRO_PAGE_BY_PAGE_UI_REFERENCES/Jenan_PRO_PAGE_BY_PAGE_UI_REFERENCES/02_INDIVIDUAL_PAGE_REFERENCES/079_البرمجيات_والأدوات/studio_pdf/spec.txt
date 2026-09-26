@@ -1,0 +1,31 @@
+Jenan PRO — Page Reference
+Page: 079
+Category: البرمجيات والأدوات
+Route: /studio/pdf
+Title: Jenan PDF
+Kind: tool
+Description: أدوات Jenan PRO الأصلية.
+
+Sections:
+- دمج
+- تقسيم
+- استخراج
+- حذف
+- ترتيب
+- تدوير
+- ضغط
+- صور↔PDF
+- Watermark
+- Page numbers
+- Redaction
+
+Outputs:
+- PDF
+
+Actions:
+- اختيار أداة
+
+Next routes:
+- /studio/pdf/editor
+
+Target: 60–70% baseline; responsive; Git checkpoint + local copy.

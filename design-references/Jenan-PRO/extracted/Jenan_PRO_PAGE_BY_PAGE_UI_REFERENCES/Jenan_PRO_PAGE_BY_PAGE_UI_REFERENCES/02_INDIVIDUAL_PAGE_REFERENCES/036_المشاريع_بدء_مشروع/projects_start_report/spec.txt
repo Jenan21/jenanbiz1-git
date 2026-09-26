@@ -1,0 +1,33 @@
+Jenan PRO — Page Reference
+Page: 036
+Category: المشاريع/بدء مشروع
+Route: /projects/start/report
+Title: تقرير خطة بدء المشروع
+Kind: report
+Description: رحلة بدء مشروع كاملة.
+
+Sections:
+- الخطة
+- الميزانية
+- الجدول
+- الفريق
+- الموردون
+- المخاطر
+- المعالم
+
+Outputs:
+- PDF
+- طباعة
+- مشاركة
+- بريد
+
+Actions:
+- طباعة
+- PDF
+- مشاركة
+- بريد
+
+Next routes:
+- —
+
+Target: 60–70% baseline; responsive; Git checkpoint + local copy.

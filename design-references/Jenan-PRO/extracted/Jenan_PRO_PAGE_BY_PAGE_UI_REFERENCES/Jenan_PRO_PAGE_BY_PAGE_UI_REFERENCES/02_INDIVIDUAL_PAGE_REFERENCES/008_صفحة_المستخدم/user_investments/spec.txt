@@ -1,0 +1,29 @@
+Jenan PRO — Page Reference
+Page: 008
+Category: صفحة المستخدم
+Route: /user/investments
+Title: بياناتي الاستثمارية
+Kind: dashboard
+Description: إدارة ومتابعة الاستثمارات.
+
+Sections:
+- إجمالي الاستثمارات
+- العائد
+- القيمة السوقية
+- توزيع المحفظة
+- الأداء
+- الفرص
+- التحديثات
+
+Outputs:
+- تقرير المحفظة
+
+Actions:
+- عرض التفاصيل
+- تصدير
+
+Next routes:
+- /user/investment/detail
+- /reports/view/portfolio
+
+Target: 60–70% baseline; responsive; Git checkpoint + local copy.

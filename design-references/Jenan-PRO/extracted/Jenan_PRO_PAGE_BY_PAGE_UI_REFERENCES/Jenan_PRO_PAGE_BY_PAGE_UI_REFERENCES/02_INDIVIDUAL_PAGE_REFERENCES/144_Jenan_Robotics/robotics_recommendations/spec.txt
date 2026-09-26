@@ -1,0 +1,24 @@
+Jenan PRO — Page Reference
+Page: 144
+Category: Jenan Robotics
+Route: /robotics/recommendations
+Title: التوصيات
+Kind: dashboard
+Description: رحلة Robotics كاملة.
+
+Sections:
+- الخيارات
+- الأسباب
+- المقارنة
+- المخاطر
+
+Outputs:
+- Recommendation Report
+
+Actions:
+- تصدير
+
+Next routes:
+- —
+
+Target: 60–70% baseline; responsive; Git checkpoint + local copy.

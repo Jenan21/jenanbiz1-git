@@ -1,0 +1,27 @@
+Jenan PRO — Page Reference
+Page: 066
+Category: سوق جنان
+Route: /market
+Title: سوق جنان
+Kind: dashboard
+Description: رحلة سوق كاملة.
+
+Sections:
+- العروض المميزة
+- التصنيفات
+- نشاط السوق
+- رحلة المشتري
+- الأمان والسرية
+
+Outputs:
+- ملخصات السوق
+
+Actions:
+- عرض الفرص
+- أضف عرضك
+
+Next routes:
+- /market/listings
+- /market/sell
+
+Target: 60–70% baseline; responsive; Git checkpoint + local copy.

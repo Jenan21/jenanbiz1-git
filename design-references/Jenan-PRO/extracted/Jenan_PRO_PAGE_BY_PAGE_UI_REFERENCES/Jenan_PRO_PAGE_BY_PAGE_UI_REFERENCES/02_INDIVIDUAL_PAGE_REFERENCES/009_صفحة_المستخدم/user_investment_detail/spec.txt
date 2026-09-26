@@ -1,0 +1,28 @@
+Jenan PRO — Page Reference
+Page: 009
+Category: صفحة المستخدم
+Route: /user/investment/detail
+Title: تفاصيل استثمار
+Kind: detail
+Description: تفصيل استثمار منفرد.
+
+Sections:
+- بيانات الأصل
+- العائد
+- الأداء الزمني
+- التحديثات
+- المستندات
+
+Outputs:
+- تقرير الاستثمار
+
+Actions:
+- طباعة
+- PDF
+- مشاركة
+- بريد
+
+Next routes:
+- /reports/view/investment
+
+Target: 60–70% baseline; responsive; Git checkpoint + local copy.

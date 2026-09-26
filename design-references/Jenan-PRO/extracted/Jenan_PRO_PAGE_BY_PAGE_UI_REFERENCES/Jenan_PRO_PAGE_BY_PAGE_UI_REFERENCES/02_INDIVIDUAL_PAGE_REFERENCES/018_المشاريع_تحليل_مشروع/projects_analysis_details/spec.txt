@@ -1,0 +1,26 @@
+Jenan PRO — Page Reference
+Page: 018
+Category: المشاريع/تحليل مشروع
+Route: /projects/analysis/details
+Title: تفاصيل تحليل السوق
+Kind: detail
+Description: رحلة تحليل مشروع كاملة.
+
+Sections:
+- السوق
+- المنافسون
+- العملاء
+- التسعير
+- الفجوات
+- اتجاهات النمو
+
+Outputs:
+- جداول ورسوم
+
+Actions:
+- مقارنة
+
+Next routes:
+- —
+
+Target: 60–70% baseline; responsive; Git checkpoint + local copy.

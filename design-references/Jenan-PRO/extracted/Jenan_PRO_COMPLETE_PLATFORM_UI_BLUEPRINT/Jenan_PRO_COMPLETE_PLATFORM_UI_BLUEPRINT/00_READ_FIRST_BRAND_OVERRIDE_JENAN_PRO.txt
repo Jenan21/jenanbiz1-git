@@ -1,0 +1,6 @@
+Jenan PRO — BRAND OVERRIDE
+==========================
+Current official brand: Jenan PRO / جنان برو.
+Any Jenan BIZ / جنان بيز visible inside older images is LEGACY VISUAL REFERENCE ONLY.
+Never implement the old name. Always use Jenan PRO / جنان برو.
+Old images may guide layout, proportions, hierarchy, colors, glow, cards, and flow ideas only.

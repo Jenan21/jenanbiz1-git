@@ -1,0 +1,25 @@
+Jenan PRO — Page Reference
+Page: 038
+Category: المشاريع/دراسات الجدوى
+Route: /projects/feasibility/simple/new
+Title: الدراسة المبسطة — البيانات
+Kind: form
+Description: دراسات جدوى متكاملة.
+
+Sections:
+- الفكرة
+- الموقع
+- القطاع
+- رأس المال
+- السوق
+
+Outputs:
+- —
+
+Actions:
+- إنشاء الدراسة
+
+Next routes:
+- /projects/feasibility/simple/result
+
+Target: 60–70% baseline; responsive; Git checkpoint + local copy.

@@ -1,0 +1,28 @@
+Jenan PRO — Page Reference
+Page: 099
+Category: Jenan Software/HR
+Route: /software/hr
+Title: Jenan HR
+Kind: dashboard
+Description: إدارة الموارد البشرية.
+
+Sections:
+- الموظفون
+- الحضور
+- الإجازات
+- الرواتب
+- الملفات
+- الأداء
+
+Outputs:
+- HR Reports
+
+Actions:
+- فتح
+
+Next routes:
+- /software/hr/employees
+- /software/hr/attendance
+- /software/hr/payroll
+
+Target: 60–70% baseline; responsive; Git checkpoint + local copy.

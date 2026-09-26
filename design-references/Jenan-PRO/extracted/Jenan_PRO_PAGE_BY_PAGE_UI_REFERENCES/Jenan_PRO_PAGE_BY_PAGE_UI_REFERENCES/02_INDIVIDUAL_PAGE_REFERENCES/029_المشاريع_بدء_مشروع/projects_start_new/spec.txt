@@ -1,0 +1,26 @@
+Jenan PRO — Page Reference
+Page: 029
+Category: المشاريع/بدء مشروع
+Route: /projects/start/new
+Title: بدء مشروع — بيانات البداية
+Kind: form
+Description: رحلة بدء مشروع كاملة.
+
+Sections:
+- فكرة المشروع
+- الكيان القانوني
+- المدينة
+- رأس المال
+- المدة
+- الفريق
+
+Outputs:
+- —
+
+Actions:
+- ابدأ المشروع
+
+Next routes:
+- /projects/start/roadmap
+
+Target: 60–70% baseline; responsive; Git checkpoint + local copy.

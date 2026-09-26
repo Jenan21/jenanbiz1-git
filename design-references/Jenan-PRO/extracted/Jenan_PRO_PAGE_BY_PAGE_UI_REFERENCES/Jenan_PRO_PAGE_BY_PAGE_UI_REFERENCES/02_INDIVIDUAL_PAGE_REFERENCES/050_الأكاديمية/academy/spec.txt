@@ -1,0 +1,33 @@
+Jenan PRO — Page Reference
+Page: 050
+Category: الأكاديمية
+Route: /academy
+Title: أكاديمية جنان
+Kind: dashboard
+Description: رحلة أكاديمية كاملة.
+
+Sections:
+- الدورات
+- الدروس
+- الدراسات
+- الأبحاث
+- الندوات
+- المسارات
+- الشهادات
+- التقدم
+
+Outputs:
+- شهادات
+- تقارير تعلم
+
+Actions:
+- استكشف
+
+Next routes:
+- /academy/courses
+- /academy/webinars
+- /academy/studies
+- /academy/research
+- /academy/paths
+
+Target: 60–70% baseline; responsive; Git checkpoint + local copy.

@@ -1,0 +1,25 @@
+Jenan PRO — Page Reference
+Page: 051
+Category: الأكاديمية
+Route: /academy/courses
+Title: الدورات
+Kind: list
+Description: رحلة أكاديمية كاملة.
+
+Sections:
+- بحث
+- فلترة
+- بطاقات الدورات
+- المحفوظة
+- التقدم
+
+Outputs:
+- —
+
+Actions:
+- عرض الدورة
+
+Next routes:
+- /academy/course/sample
+
+Target: 60–70% baseline; responsive; Git checkpoint + local copy.

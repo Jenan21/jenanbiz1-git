@@ -1,0 +1,38 @@
+Jenan PRO — Admin Intelligence Robot Operations
+Page: 013
+Group: 01 — مصنع الروبوتات
+Route: /robots/registry
+Title: سجل هويات الروبوتات
+Kind: registry
+Purpose: السجل المركزي لكل هوية روبوتية دائمة.
+
+Modules:
+- Robot ID
+- التخصص
+- المستوى
+- الحالة
+- المشرف
+- آخر مهمة
+- الجودة
+- التكلفة
+
+Actions:
+- فتح الملف
+- فلترة
+- تصدير
+
+Outputs:
+- —
+
+Next Routes:
+- —
+
+Implementation:
+- Jenan PRO only.
+- Real React/CSS/SVG/components.
+- Responsive Desktop/Laptop/Tablet/Mobile.
+- No screenshot as production background.
+- No fake production values.
+- Reach ≥70% visual match before moving to next section.
+- Functional QA + responsive QA required.
+- Commit + save locally after PASS.

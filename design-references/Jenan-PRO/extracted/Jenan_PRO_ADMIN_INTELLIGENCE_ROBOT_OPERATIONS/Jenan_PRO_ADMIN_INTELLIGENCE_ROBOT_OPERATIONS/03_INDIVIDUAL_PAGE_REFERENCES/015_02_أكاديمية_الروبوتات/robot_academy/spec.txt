@@ -1,0 +1,41 @@
+Jenan PRO — Admin Intelligence Robot Operations
+Page: 015
+Group: 02 — أكاديمية الروبوتات
+Route: /robot-academy
+Title: أكاديمية روبوتات Jenan PRO
+Kind: academy
+Purpose: التعلم النظري والعملي والاختبارات والتخرج لكل روبوت.
+
+Modules:
+- الدفعات الحالية
+- المسارات
+- التخصصات
+- المتدربون
+- الاختبارات
+- نسبة النجاح
+- الخريجون
+- المستبعدون
+
+Actions:
+- فتح الدفعات
+- المناهج
+- الاختبارات
+- التخرج
+
+Outputs:
+- —
+
+Next Routes:
+- /robot-academy/batches
+- /robot-academy/curriculum
+- /robot-academy/exams
+
+Implementation:
+- Jenan PRO only.
+- Real React/CSS/SVG/components.
+- Responsive Desktop/Laptop/Tablet/Mobile.
+- No screenshot as production background.
+- No fake production values.
+- Reach ≥70% visual match before moving to next section.
+- Functional QA + responsive QA required.
+- Commit + save locally after PASS.

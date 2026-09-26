@@ -1,0 +1,30 @@
+Jenan PRO — Page Reference
+Page: 089
+Category: Jenan Software/Sales
+Route: /software/sales
+Title: Jenan Sales
+Kind: dashboard
+Description: إدارة دورة المبيعات.
+
+Sections:
+- العملاء
+- العروض
+- أوامر البيع
+- الفواتير
+- سندات القبض
+- المنتجات
+- المرتجعات
+- التقارير
+
+Outputs:
+- Sales Reports
+
+Actions:
+- فتح
+
+Next routes:
+- /software/sales/customers
+- /software/sales/quotes
+- /software/sales/invoices
+
+Target: 60–70% baseline; responsive; Git checkpoint + local copy.

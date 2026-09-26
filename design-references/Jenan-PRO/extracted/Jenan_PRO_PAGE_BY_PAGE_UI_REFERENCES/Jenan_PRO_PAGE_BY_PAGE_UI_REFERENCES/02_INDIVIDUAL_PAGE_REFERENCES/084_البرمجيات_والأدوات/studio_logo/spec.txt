@@ -1,0 +1,26 @@
+Jenan PRO — Page Reference
+Page: 084
+Category: البرمجيات والأدوات
+Route: /studio/logo
+Title: مصمم الشعار والهوية
+Kind: wizard
+Description: أدوات Jenan PRO الأصلية.
+
+Sections:
+- الاسم
+- النشاط
+- الأسلوب
+- الألوان
+- المقترحات
+
+Outputs:
+- PNG/SVG/PDF عند الدعم
+
+Actions:
+- توليد
+- حفظ
+
+Next routes:
+- —
+
+Target: 60–70% baseline; responsive; Git checkpoint + local copy.

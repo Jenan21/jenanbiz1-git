@@ -1,0 +1,24 @@
+Jenan PRO — Page Reference
+Page: 005
+Category: الدخول والتسجيل
+Route: /user/onboarding
+Title: تهيئة الحساب
+Kind: wizard
+Description: استكمال بيانات البداية.
+
+Sections:
+- نوع المستخدم
+- الدولة
+- المدينة
+- الاهتمامات
+
+Outputs:
+- —
+
+Actions:
+- حفظ
+
+Next routes:
+- /home
+
+Target: 60–70% baseline; responsive; Git checkpoint + local copy.

@@ -1,0 +1,34 @@
+Jenan PRO — Page Reference
+Page: 088
+Category: Jenan Software
+Route: /software
+Title: Jenan Software
+Kind: dashboard
+Description: نظام تشغيل أعمال متكامل.
+
+Sections:
+- Sales
+- Accounting
+- HR
+- Inventory
+- CRM
+- Projects
+- POS
+- Purchases
+- Invoices
+- Company
+
+Outputs:
+- تقارير تشغيلية
+
+Actions:
+- فتح
+
+Next routes:
+- /software/sales
+- /software/accounting
+- /software/hr
+- /software/inventory
+- /software/crm
+
+Target: 60–70% baseline; responsive; Git checkpoint + local copy.

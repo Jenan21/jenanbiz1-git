@@ -1,0 +1,28 @@
+Jenan PRO — Page Reference
+Page: 052
+Category: الأكاديمية
+Route: /academy/course/sample
+Title: تفاصيل الدورة
+Kind: detail
+Description: رحلة أكاديمية كاملة.
+
+Sections:
+- الغلاف
+- الوصف
+- المدرب
+- المستوى
+- المدة
+- الدروس
+- المراجعات
+- المخرجات
+
+Outputs:
+- خطة الدورة
+
+Actions:
+- ابدأ/تابع الدورة
+
+Next routes:
+- /academy/course/sample/lesson/1
+
+Target: 60–70% baseline; responsive; Git checkpoint + local copy.

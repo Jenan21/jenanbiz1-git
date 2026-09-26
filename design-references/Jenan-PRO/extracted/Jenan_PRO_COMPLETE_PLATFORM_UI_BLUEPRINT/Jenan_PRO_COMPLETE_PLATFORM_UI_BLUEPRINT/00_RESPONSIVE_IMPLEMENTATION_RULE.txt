@@ -1,0 +1,9 @@
+RESPONSIVE RULE — MANDATORY
+===========================
+Do NOT use the dimensions of a reference image as a fixed canvas.
+Reference images define visual language and relative proportions only.
+Implement real responsive layouts for Desktop/Laptop/Tablet/Mobile.
+No fixed 1661x947/1672x941 canvas, no stretch, no object-fit:fill, no dead side spaces, no shrinking desktop into mobile.
+Use Grid/Flex, minmax(), clamp(), percentages, viewport-aware sizing and content breakpoints.
+Backgrounds can extend full-bleed. Icons/cards/hero keep aspect ratios. Tablet/mobile must reflow/recompose content.
+Test at least: 2560x1440, 1920x1080, 1440x900, 1366x768, 1280x800, 1024x1366, 820x1180, 430x932, 390x844, 360x800.

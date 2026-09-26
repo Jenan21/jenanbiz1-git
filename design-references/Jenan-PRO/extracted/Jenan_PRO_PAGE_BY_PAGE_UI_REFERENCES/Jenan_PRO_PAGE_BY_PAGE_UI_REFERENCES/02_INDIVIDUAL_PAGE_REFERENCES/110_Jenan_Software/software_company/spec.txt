@@ -1,0 +1,26 @@
+Jenan PRO — Page Reference
+Page: 110
+Category: Jenan Software
+Route: /software/company
+Title: إدارة الشركات
+Kind: dashboard
+Description: واجهة إدارة الشركات.
+
+Sections:
+- الشركة
+- الفروع
+- المستخدمون
+- الصلاحيات
+- الإعدادات
+
+Outputs:
+- تقارير/تصدير
+
+Actions:
+- فتح
+- تصدير
+
+Next routes:
+- —
+
+Target: 60–70% baseline; responsive; Git checkpoint + local copy.

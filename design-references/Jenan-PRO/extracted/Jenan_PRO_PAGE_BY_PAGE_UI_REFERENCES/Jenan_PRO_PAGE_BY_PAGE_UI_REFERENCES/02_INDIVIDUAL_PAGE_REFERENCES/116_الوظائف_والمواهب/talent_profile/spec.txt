@@ -1,0 +1,26 @@
+Jenan PRO — Page Reference
+Page: 116
+Category: الوظائف والمواهب
+Route: /talent/profile
+Title: ملف الباحث عن عمل
+Kind: detail
+Description: رحلة توظيف كاملة.
+
+Sections:
+- النبذة
+- الخبرة
+- التعليم
+- المهارات
+- CV
+
+Outputs:
+- CV
+
+Actions:
+- تعديل
+- مشاركة
+
+Next routes:
+- —
+
+Target: 60–70% baseline; responsive; Git checkpoint + local copy.

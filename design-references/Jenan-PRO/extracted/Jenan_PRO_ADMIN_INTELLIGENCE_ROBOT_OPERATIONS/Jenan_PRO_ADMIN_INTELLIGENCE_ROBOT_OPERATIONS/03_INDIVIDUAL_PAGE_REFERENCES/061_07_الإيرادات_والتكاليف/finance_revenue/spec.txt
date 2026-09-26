@@ -1,0 +1,35 @@
+Jenan PRO — Admin Intelligence Robot Operations
+Page: 061
+Group: 07 — الإيرادات والتكاليف
+Route: /finance/revenue
+Title: الإيرادات
+Kind: finance
+Purpose: الإيرادات حسب الفترة والخدمة والمصدر.
+
+Modules:
+- يومي
+- شهري
+- حسب القسم
+- حسب الخدمة
+- حسب الخطة
+- الاتجاه
+
+Actions:
+- فلترة
+- تصدير
+
+Outputs:
+- Revenue Report
+
+Next Routes:
+- —
+
+Implementation:
+- Jenan PRO only.
+- Real React/CSS/SVG/components.
+- Responsive Desktop/Laptop/Tablet/Mobile.
+- No screenshot as production background.
+- No fake production values.
+- Reach ≥70% visual match before moving to next section.
+- Functional QA + responsive QA required.
+- Commit + save locally after PASS.

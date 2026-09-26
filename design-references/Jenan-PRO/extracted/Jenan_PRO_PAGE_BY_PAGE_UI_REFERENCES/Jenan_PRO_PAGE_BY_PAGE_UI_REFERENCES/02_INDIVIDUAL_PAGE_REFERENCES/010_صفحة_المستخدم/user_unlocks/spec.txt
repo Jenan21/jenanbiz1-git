@@ -1,0 +1,32 @@
+Jenan PRO — Page Reference
+Page: 010
+Category: صفحة المستخدم
+Route: /user/unlocks
+Title: اشترك وافتح الخدمات
+Kind: dashboard
+Description: كل متابعة تفتح خدمة مجانية محددة.
+
+Sections:
+- YouTube
+- X
+- Instagram
+- Facebook
+- TikTok
+- Snapchat
+- حالة الفتح
+
+Outputs:
+- حالة الاستحقاق
+
+Actions:
+- اشترك
+- تحقق
+- فتح الخدمة
+
+Next routes:
+- /academy
+- /talent
+- /studio
+- /projects/analysis/new
+
+Target: 60–70% baseline; responsive; Git checkpoint + local copy.

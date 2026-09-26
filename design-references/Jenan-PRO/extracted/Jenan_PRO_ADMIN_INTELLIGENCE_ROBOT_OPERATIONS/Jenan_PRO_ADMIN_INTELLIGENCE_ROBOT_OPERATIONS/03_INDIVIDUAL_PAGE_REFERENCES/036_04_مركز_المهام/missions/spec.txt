@@ -1,0 +1,39 @@
+Jenan PRO — Admin Intelligence Robot Operations
+Page: 036
+Group: 04 — مركز المهام
+Route: /missions
+Title: Mission Control — مركز المهام
+Kind: mission
+Purpose: تشغيل وتتبع جميع مهام الوكلاء والروبوتات.
+
+Modules:
+- الجارية
+- بالانتظار
+- مكتملة
+- فاشلة
+- متعثرة
+- تحتاج موافقة
+- متوسط الزمن
+- التكلفة
+
+Actions:
+- إنشاء مهمة
+- فتح Queue
+- فتح مهمة
+
+Outputs:
+- —
+
+Next Routes:
+- /missions/create
+- /missions/queue
+
+Implementation:
+- Jenan PRO only.
+- Real React/CSS/SVG/components.
+- Responsive Desktop/Laptop/Tablet/Mobile.
+- No screenshot as production background.
+- No fake production values.
+- Reach ≥70% visual match before moving to next section.
+- Functional QA + responsive QA required.
+- Commit + save locally after PASS.

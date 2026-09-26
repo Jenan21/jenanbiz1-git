@@ -1,0 +1,28 @@
+Jenan PRO — Page Reference
+Page: 073
+Category: سوق جنان
+Route: /market/deal/sample
+Title: مسار الصفقة
+Kind: timeline
+Description: رحلة سوق كاملة.
+
+Sections:
+- تواصل
+- NDA
+- فحص
+- معاينة
+- عرض
+- تفاوض
+- إغلاق
+
+Outputs:
+- سجل الصفقة
+
+Actions:
+- تحديث
+- عرض المستندات
+
+Next routes:
+- /market/deal/sample/report
+
+Target: 60–70% baseline; responsive; Git checkpoint + local copy.

@@ -1,0 +1,41 @@
+Jenan PRO — Admin Intelligence Robot Operations
+Page: 018
+Group: 02 — أكاديمية الروبوتات
+Route: /robot-academy/curriculum
+Title: المناهج والمسارات
+Kind: academy
+Purpose: إدارة المناهج حسب التخصصات المختلفة.
+
+Modules:
+- برمجة
+- تصميم
+- تفاعل
+- تسويق
+- إعلان
+- استثمار
+- تجارة إلكترونية
+- مقاولات
+- هندسة
+- صيانة وتشغيل
+- مواد غذائية
+- تخصصات إضافية
+
+Actions:
+- فتح المنهج
+- إنشاء إصدار
+
+Outputs:
+- —
+
+Next Routes:
+- —
+
+Implementation:
+- Jenan PRO only.
+- Real React/CSS/SVG/components.
+- Responsive Desktop/Laptop/Tablet/Mobile.
+- No screenshot as production background.
+- No fake production values.
+- Reach ≥70% visual match before moving to next section.
+- Functional QA + responsive QA required.
+- Commit + save locally after PASS.

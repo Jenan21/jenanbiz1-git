@@ -1,0 +1,26 @@
+Jenan PRO — Page Reference
+Page: 011
+Category: صفحة المستخدم
+Route: /user/payments
+Title: المدفوعات والفواتير
+Kind: list
+Description: المدفوعات من لوحة المستخدم.
+
+Sections:
+- الفواتير
+- المدفوعات
+- طرق الدفع
+- السجل
+
+Outputs:
+- فاتورة PDF
+- إيصال
+
+Actions:
+- عرض
+- تنزيل
+
+Next routes:
+- /user/payments/invoice
+
+Target: 60–70% baseline; responsive; Git checkpoint + local copy.
