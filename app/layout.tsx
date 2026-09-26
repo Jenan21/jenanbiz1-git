@@ -11,6 +11,8 @@ import "@/styles/market-stage.css";
 import "@/styles/projects-stage.css";
 import "@/styles/programs-stage.css";
 import "@/styles/talent-stage.css";
+import "@/styles/software-stage.css";
+import "@/styles/growth-stage.css";
 
 export const metadata: Metadata = {
   metadataBase: new URL("https://jenanbiz.com"),

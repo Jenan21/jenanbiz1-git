@@ -1,0 +1,45 @@
+.software-workspace {
+  position: relative;
+  isolation: isolate;
+}
+
+.software-workspace__header {
+  position: relative;
+  overflow: hidden;
+  background:
+    radial-gradient(circle at 86% 0, color-mix(in srgb, var(--brand) 18%, transparent), transparent 30%),
+    linear-gradient(135deg, color-mix(in srgb, var(--surface2) 78%, transparent), color-mix(in srgb, var(--surface) 92%, transparent));
+}
+
+.software-tool {
+  min-height: 230px;
+  border-inline-start: 2px solid color-mix(in srgb, var(--brand) 48%, var(--border));
+  transition: transform 180ms ease, border-color 180ms ease, box-shadow 180ms ease;
+}
+
+.software-tool:hover {
+  transform: translateY(-3px);
+  border-color: color-mix(in srgb, var(--brand) 58%, var(--border));
+  box-shadow: 0 24px 60px color-mix(in srgb, var(--brand) 9%, transparent);
+}
+
+.software-tool__tag {
+  background: color-mix(in srgb, var(--brand) 10%, transparent);
+  border-color: color-mix(in srgb, var(--brand) 38%, var(--border));
+}
+
+.software-analysis,
+.software-palette {
+  border-color: color-mix(in srgb, var(--brand) 32%, var(--border));
+  background: linear-gradient(145deg, color-mix(in srgb, var(--surface2) 72%, transparent), color-mix(in srgb, var(--surface) 90%, transparent));
+}
+
+@media (max-width: 680px) {
+  .software-workspace__header {
+    padding: 18px;
+  }
+
+  .software-workspace__header h1 {
+    font-size: 1.45rem;
+  }
+}
