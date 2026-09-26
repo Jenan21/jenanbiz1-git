@@ -1,4 +1,4 @@
-import { MarketInquiryStatus, MarketListingStatus, Prisma } from "@/generated/prisma/client";
+import { MarketInquiryStatus, MarketListingStatus, MarketOfferStatus, MarketViewingStatus, Prisma } from "@/generated/prisma/client";
 import { db } from "@/lib/db";
 
 const listingInclude = {
@@ -72,12 +72,29 @@ export async function listMarketListings(userId: string, filters: MarketListingF
         query ? { OR: [{ title: { contains: query, mode: "insensitive" } }, { summary: { contains: query, mode: "insensitive" } }, { sector: { contains: query, mode: "insensitive" } }] } : {},
       ],
     },
-    include: listingInclude,
+    include: {
+      ...listingInclude,
+      files: { orderBy: { createdAt: "desc" } },
+      ndaAcceptances: { where: { userId }, select: { acceptedAt: true, termsVersion: true } },
+    },
     orderBy: [{ qualityScore: "desc" }, { updatedAt: "desc" }],
     skip: offset,
     take: limit,
   });
-  return listings.map((listing) => ({ ...listing, isOwner: listing.createdById === userId }));
+  return listings.map((listing) => {
+    const { ndaAcceptances, files, ...record } = listing;
+    const isOwner = listing.createdById === userId;
+    const ndaAccepted = isOwner || !listing.requiresNda || ndaAcceptances.length > 0;
+    return {
+      ...record,
+      confidentialDetails: ndaAccepted ? listing.confidentialDetails : null,
+      files: files
+        .filter((file) => isOwner || file.marketVisibility === "PUBLIC" || ndaAccepted)
+        .map((file) => ({ id: file.id, fileName: file.fileName, mimeType: file.mimeType, sizeBytes: file.sizeBytes.toString(), marketVisibility: file.marketVisibility, createdAt: file.createdAt.toISOString() })),
+      isOwner,
+      ndaAccepted,
+    };
+  });
 }
 
 export async function createMarketListing(
@@ -90,6 +107,8 @@ export async function createMarketListing(
     currency?: string;
     askingPriceMinor?: number;
     valuationNote?: string;
+    confidentialDetails?: string;
+    requiresNda?: boolean;
     projectId?: string;
   },
   userId: string,
@@ -114,6 +133,8 @@ export async function createMarketListing(
         currency: input.currency?.trim().toUpperCase() || "SAR",
         askingPriceMinor: input.askingPriceMinor,
         valuationNote: input.valuationNote?.trim() || undefined,
+        confidentialDetails: input.confidentialDetails?.trim() || undefined,
+        requiresNda: input.requiresNda ?? true,
         qualityScore: quality.score,
         qualitySignals: quality.signals,
         reviewedAt: new Date(),
@@ -125,7 +146,7 @@ export async function createMarketListing(
     await transaction.auditLog.create({
       data: { actorId: userId, action: "market.listing.created", entityType: "MarketListing", entityId: listing.id },
     });
-    return { ...listing, isOwner: true };
+    return { ...listing, files: [], isOwner: true, ndaAccepted: true };
   });
 }
 
@@ -149,7 +170,7 @@ export async function updateMarketListingStatus(
     await transaction.auditLog.create({
       data: { actorId: userId, action: "market.listing.status.updated", entityType: "MarketListing", entityId: listing.id, metadata: { status } },
     });
-    return { ...listing, isOwner: true };
+    return { ...listing, files: [], isOwner: true, ndaAccepted: true };
   });
 }
 
@@ -211,4 +232,103 @@ export async function updateMarketInquiryStatus(inquiryId: string, status: "CONT
     });
     return updated;
   });
+}
+
+async function requireProtectedMarketAccess(listingId: string, userId: string, transaction: Prisma.TransactionClient) {
+  const listing = await transaction.marketListing.findFirst({
+    where: { id: listingId, status: MarketListingStatus.PUBLISHED },
+    select: { id: true, createdById: true, requiresNda: true, currency: true },
+  });
+  if (!listing) throw new Error("Published listing not found");
+  if (listing.createdById === userId) throw new Error("Listing owner cannot perform a buyer action");
+  if (listing.requiresNda) {
+    const acceptance = await transaction.marketNdaAcceptance.findUnique({ where: { listingId_userId: { listingId, userId } }, select: { id: true } });
+    if (!acceptance) throw new Error("NDA acceptance is required");
+  }
+  return listing;
+}
+
+export async function acceptMarketNda(listingId: string, userId: string) {
+  return db.$transaction(async (transaction) => {
+    const listing = await transaction.marketListing.findFirst({ where: { id: listingId, status: MarketListingStatus.PUBLISHED }, select: { id: true, createdById: true } });
+    if (!listing) throw new Error("Published listing not found");
+    if (listing.createdById === userId) throw new Error("Listing owner does not need an NDA acceptance");
+    const acceptance = await transaction.marketNdaAcceptance.upsert({
+      where: { listingId_userId: { listingId, userId } },
+      update: { acceptedAt: new Date(), termsVersion: "v1" },
+      create: { listingId, userId, termsVersion: "v1" },
+    });
+    await transaction.auditLog.create({ data: { actorId: userId, action: "market.nda.accepted", entityType: "MarketNdaAcceptance", entityId: acceptance.id, metadata: { listingId, termsVersion: "v1" } } });
+    return acceptance;
+  });
+}
+
+export async function createMarketViewingRequest(input: { listingId: string; preferredAt: Date; attendees: number; notes?: string }, userId: string) {
+  return db.$transaction(async (transaction) => {
+    await requireProtectedMarketAccess(input.listingId, userId, transaction);
+    if (input.preferredAt <= new Date()) throw new Error("Viewing date must be in the future");
+    const viewing = await transaction.marketViewingRequest.create({ data: { listingId: input.listingId, requesterId: userId, preferredAt: input.preferredAt, attendees: input.attendees, notes: input.notes?.trim() || undefined } });
+    await transaction.auditLog.create({ data: { actorId: userId, action: "market.viewing.requested", entityType: "MarketViewingRequest", entityId: viewing.id, metadata: { listingId: input.listingId } } });
+    return viewing;
+  });
+}
+
+export async function createMarketOffer(input: { listingId: string; amountMinor: number; currency?: string; terms: string; message?: string; validUntil?: Date }, userId: string) {
+  return db.$transaction(async (transaction) => {
+    const listing = await requireProtectedMarketAccess(input.listingId, userId, transaction);
+    const offer = await transaction.marketOffer.create({ data: { listingId: input.listingId, buyerId: userId, amountMinor: input.amountMinor, currency: input.currency?.trim().toUpperCase() || listing.currency, terms: input.terms.trim(), message: input.message?.trim() || undefined, validUntil: input.validUntil } });
+    await transaction.auditLog.create({ data: { actorId: userId, action: "market.offer.submitted", entityType: "MarketOffer", entityId: offer.id, metadata: { listingId: input.listingId, amountMinor: input.amountMinor } } });
+    return offer;
+  });
+}
+
+export async function updateMarketOfferStatus(offerId: string, status: "NEGOTIATING" | "ACCEPTED" | "REJECTED" | "WITHDRAWN" | "CLOSED", userId: string) {
+  return db.$transaction(async (transaction) => {
+    const offer = await transaction.marketOffer.findUnique({ where: { id: offerId }, include: { listing: { select: { createdById: true } } } });
+    if (!offer) throw new Error("Market offer not found");
+    const owner = offer.listing.createdById === userId;
+    const buyer = offer.buyerId === userId;
+    if ((!owner && !buyer) || (status === "WITHDRAWN" ? !buyer : !owner)) throw new Error("Market offer not found");
+    const finalStatuses = new Set<MarketOfferStatus>([MarketOfferStatus.ACCEPTED, MarketOfferStatus.REJECTED, MarketOfferStatus.WITHDRAWN, MarketOfferStatus.CLOSED]);
+    if (finalStatuses.has(offer.status)) throw new Error("Market offer is already final");
+    const updated = await transaction.marketOffer.update({ where: { id: offer.id }, data: { status: MarketOfferStatus[status] } });
+    if (status === "ACCEPTED") await transaction.marketOffer.updateMany({ where: { listingId: offer.listingId, id: { not: offer.id }, status: { in: [MarketOfferStatus.SUBMITTED, MarketOfferStatus.NEGOTIATING] } }, data: { status: MarketOfferStatus.REJECTED } });
+    await transaction.auditLog.create({ data: { actorId: userId, action: "market.offer.status.updated", entityType: "MarketOffer", entityId: offer.id, metadata: { listingId: offer.listingId, status } } });
+    return updated;
+  });
+}
+
+export async function updateMarketViewingStatus(viewingId: string, status: "CONFIRMED" | "COMPLETED" | "CANCELLED", userId: string) {
+  return db.$transaction(async (transaction) => {
+    const viewing = await transaction.marketViewingRequest.findFirst({ where: { id: viewingId, listing: { createdById: userId } }, select: { id: true, listingId: true } });
+    if (!viewing) throw new Error("Market viewing not found");
+    const updated = await transaction.marketViewingRequest.update({ where: { id: viewing.id }, data: { status: MarketViewingStatus[status] } });
+    await transaction.auditLog.create({ data: { actorId: userId, action: "market.viewing.status.updated", entityType: "MarketViewingRequest", entityId: viewing.id, metadata: { listingId: viewing.listingId, status } } });
+    return updated;
+  });
+}
+
+export async function listMarketDeals(userId: string) {
+  const [viewings, offers] = await Promise.all([
+    db.marketViewingRequest.findMany({
+      where: { OR: [{ requesterId: userId }, { listing: { createdById: userId } }] },
+      include: {
+        listing: { select: { id: true, title: true, createdById: true } },
+        requester: { select: { email: true, profile: { select: { displayName: true } } } },
+      },
+      orderBy: { updatedAt: "desc" },
+    }),
+    db.marketOffer.findMany({
+      where: { OR: [{ buyerId: userId }, { listing: { createdById: userId } }] },
+      include: {
+        listing: { select: { id: true, title: true, createdById: true } },
+        buyer: { select: { email: true, profile: { select: { displayName: true } } } },
+      },
+      orderBy: { updatedAt: "desc" },
+    }),
+  ]);
+  return {
+    viewings: viewings.map((item) => ({ ...item, isListingOwner: item.listing.createdById === userId })),
+    offers: offers.map((item) => ({ ...item, isListingOwner: item.listing.createdById === userId, isBuyer: item.buyerId === userId })),
+  };
 }

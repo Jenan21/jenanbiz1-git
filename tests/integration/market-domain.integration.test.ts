@@ -1,12 +1,18 @@
 import { afterAll, describe, expect, it } from "vitest";
 import { db } from "@/lib/db";
 import {
+  acceptMarketNda,
   createMarketInquiry,
   createMarketListing,
+  createMarketOffer,
+  createMarketViewingRequest,
+  listMarketDeals,
   listMarketInquiries,
   listMarketListings,
   updateMarketInquiryStatus,
   updateMarketListingStatus,
+  updateMarketOfferStatus,
+  updateMarketViewingStatus,
 } from "@/services/market/market-service";
 
 const suffix = crypto.randomUUID().slice(0, 8);
@@ -44,6 +50,8 @@ describe("market domain", () => {
       summary: "A documented profitable cafe business with audited monthly demand, repeat customers, trained staff, lease clarity, inventory controls, and expansion potential across nearby districts.",
       title: `Premium cafe opportunity ${suffix}`,
       valuationNote: "Price is based on current revenue, equipment, lease position, and verified demand indicators.",
+      confidentialDetails: "Verified lease terms and audited monthly statements are available after NDA acceptance.",
+      requiresNda: true,
     }, owner.id);
     listingIds.push(strong.id);
     expect(strong.qualityScore).toBeGreaterThanOrEqual(80);
@@ -52,6 +60,23 @@ describe("market domain", () => {
     const visible = await listMarketListings(buyer.id, { countryCode: "SA", kind: "BUSINESS", search: "cafe" });
     expect(visible.map((listing) => listing.id)).toContain(strong.id);
     expect(visible.map((listing) => listing.id)).not.toContain(weak.id);
+    expect(visible.find((listing) => listing.id === strong.id)?.confidentialDetails).toBeNull();
+    expect(visible.find((listing) => listing.id === strong.id)?.ndaAccepted).toBe(false);
+
+    await expect(createMarketViewingRequest({ listingId: strong.id, preferredAt: new Date(Date.now() + 86_400_000), attendees: 2 }, buyer.id)).rejects.toThrow("NDA acceptance");
+    await acceptMarketNda(strong.id, buyer.id);
+    const protectedListing = (await listMarketListings(buyer.id)).find((listing) => listing.id === strong.id);
+    expect(protectedListing?.ndaAccepted).toBe(true);
+    expect(protectedListing?.confidentialDetails).toContain("audited monthly statements");
+
+    const viewing = await createMarketViewingRequest({ listingId: strong.id, preferredAt: new Date(Date.now() + 86_400_000), attendees: 2, notes: "Two decision makers will attend." }, buyer.id);
+    expect((await updateMarketViewingStatus(viewing.id, "CONFIRMED", owner.id)).status).toBe("CONFIRMED");
+    const offer = await createMarketOffer({ listingId: strong.id, amountMinor: 2_350_000, terms: "Subject to document verification and final inventory reconciliation." }, buyer.id);
+    expect((await updateMarketOfferStatus(offer.id, "NEGOTIATING", owner.id)).status).toBe("NEGOTIATING");
+    expect((await updateMarketOfferStatus(offer.id, "ACCEPTED", owner.id)).status).toBe("ACCEPTED");
+    const deals = await listMarketDeals(owner.id);
+    expect(deals.viewings.some((item) => item.id === viewing.id)).toBe(true);
+    expect(deals.offers.some((item) => item.id === offer.id && item.status === "ACCEPTED")).toBe(true);
 
     await expect(createMarketInquiry(strong.id, "I am interested and want to review the documents.", owner.id)).rejects.toThrow("owner");
     const inquiry = await createMarketInquiry(strong.id, "I am interested and want to review the documents.", buyer.id);

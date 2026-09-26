@@ -166,6 +166,27 @@ enum MarketInquiryStatus {
   CLOSED
 }
 
+enum MarketViewingStatus {
+  REQUESTED
+  CONFIRMED
+  COMPLETED
+  CANCELLED
+}
+
+enum MarketOfferStatus {
+  SUBMITTED
+  NEGOTIATING
+  ACCEPTED
+  REJECTED
+  WITHDRAWN
+  CLOSED
+}
+
+enum MarketFileVisibility {
+  PUBLIC
+  NDA_REQUIRED
+}
+
 enum FundingAssessmentStatus {
   COMPLETED
   ARCHIVED
@@ -514,6 +535,9 @@ model User {
   projectFinancialPlans   ProjectFinancialPlan[]   @relation("ProjectFinancialPlanAuthor")
   marketListings          MarketListing[]          @relation("MarketListingCreator")
   marketInquiries         MarketInquiry[]          @relation("MarketInquiryRequester")
+  marketNdaAcceptances    MarketNdaAcceptance[]
+  marketViewingRequests   MarketViewingRequest[]
+  marketOffers            MarketOffer[]
   fundingAssessments      FundingAssessment[]
   learnerEnrollments      LearnerEnrollment[]
   learnerLessonCompletions LearnerLessonCompletion[]
@@ -853,8 +877,10 @@ model FileAsset {
   id             String        @id @default(cuid())
   organizationId String?
   projectId      String?
+  marketListingId String?
   organization   Organization? @relation(fields: [organizationId], references: [id], onDelete: Cascade)
   project        Project?      @relation("ProjectEvidenceFiles", fields: [projectId], references: [id], onDelete: Cascade)
+  marketListing  MarketListing? @relation(fields: [marketListingId], references: [id], onDelete: Cascade)
   uploadedById   String?
   uploadedBy     User?         @relation("FileUploader", fields: [uploadedById], references: [id], onDelete: SetNull)
   storageKey     String        @unique
@@ -862,12 +888,14 @@ model FileAsset {
   mimeType       String
   sizeBytes      BigInt
   checksum       String?
+  marketVisibility MarketFileVisibility?
   metadata       Json?
   createdAt      DateTime      @default(now())
   updatedAt      DateTime      @updatedAt
 
   @@index([organizationId])
   @@index([projectId])
+  @@index([marketListingId])
   @@index([uploadedById])
 }
 
@@ -1746,6 +1774,8 @@ model MarketListing {
   currency      String              @default("SAR")
   askingPriceMinor Int?
   valuationNote String?
+  confidentialDetails String?
+  requiresNda    Boolean             @default(true)
   qualityScore  Int                 @default(0)
   qualitySignals Json?
   reviewedAt    DateTime?
@@ -1753,6 +1783,10 @@ model MarketListing {
   project       Project?            @relation(fields: [projectId], references: [id], onDelete: SetNull)
   organization  Organization?       @relation(fields: [organizationId], references: [id], onDelete: SetNull)
   inquiries     MarketInquiry[]
+  ndaAcceptances MarketNdaAcceptance[]
+  viewingRequests MarketViewingRequest[]
+  offers        MarketOffer[]
+  files         FileAsset[]
   createdAt     DateTime            @default(now())
   updatedAt     DateTime            @updatedAt
 
@@ -1775,6 +1809,55 @@ model MarketInquiry {
   @@unique([listingId, requesterId])
   @@index([requesterId, status])
   @@index([listingId, status])
+}
+
+model MarketNdaAcceptance {
+  id           String        @id @default(cuid())
+  listingId    String
+  userId       String
+  termsVersion String        @default("v1")
+  acceptedAt   DateTime      @default(now())
+  listing      MarketListing @relation(fields: [listingId], references: [id], onDelete: Cascade)
+  user         User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([listingId, userId])
+  @@index([userId, acceptedAt])
+}
+
+model MarketViewingRequest {
+  id          String              @id @default(cuid())
+  listingId   String
+  requesterId String
+  preferredAt DateTime
+  attendees   Int                 @default(1)
+  notes       String?
+  status      MarketViewingStatus @default(REQUESTED)
+  listing     MarketListing       @relation(fields: [listingId], references: [id], onDelete: Cascade)
+  requester   User                @relation(fields: [requesterId], references: [id], onDelete: Cascade)
+  createdAt   DateTime            @default(now())
+  updatedAt   DateTime            @updatedAt
+
+  @@index([listingId, status])
+  @@index([requesterId, status])
+}
+
+model MarketOffer {
+  id          String            @id @default(cuid())
+  listingId   String
+  buyerId     String
+  amountMinor Int
+  currency    String            @default("SAR")
+  terms       String
+  message     String?
+  validUntil  DateTime?
+  status      MarketOfferStatus @default(SUBMITTED)
+  listing     MarketListing     @relation(fields: [listingId], references: [id], onDelete: Cascade)
+  buyer       User              @relation(fields: [buyerId], references: [id], onDelete: Cascade)
+  createdAt   DateTime          @default(now())
+  updatedAt   DateTime          @updatedAt
+
+  @@index([listingId, status])
+  @@index([buyerId, status])
 }
 
 model FundingAssessment {

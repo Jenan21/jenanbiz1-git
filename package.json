@@ -29,6 +29,7 @@
     "test:account": "node --env-file=.env ./node_modules/vitest/vitest.mjs run tests/integration/account-overview.integration.test.ts",
     "test:marketing": "node --env-file=.env ./node_modules/vitest/vitest.mjs run tests/integration/marketing-domain.integration.test.ts",
     "test:market": "node --env-file=.env ./node_modules/vitest/vitest.mjs run tests/integration/market-domain.integration.test.ts",
+    "test:e2e:market-flow": "node --env-file=.env scripts/run-playwright.mjs tests/e2e/market-full-flow.spec.ts --project=market-full-flow",
     "test:programs": "node --env-file=.env ./node_modules/vitest/vitest.mjs run tests/integration/programs-domain.integration.test.ts",
     "test:projects": "node --env-file=.env ./node_modules/vitest/vitest.mjs run tests/integration/projects-domain.integration.test.ts",
     "test:e2e:project-flows": "node --env-file=.env scripts/run-playwright.mjs tests/e2e/projects-flow-routes.spec.ts --project=projects-flow-routes",

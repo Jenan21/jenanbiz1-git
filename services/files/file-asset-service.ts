@@ -18,6 +18,8 @@ export class FileAssetError extends Error {}
 function serializeFileAsset(asset: {
   id: string;
   projectId: string | null;
+  marketListingId: string | null;
+  marketVisibility: "PUBLIC" | "NDA_REQUIRED" | null;
   fileName: string;
   mimeType: string;
   sizeBytes: bigint;
@@ -27,6 +29,8 @@ function serializeFileAsset(asset: {
   return {
     id: asset.id,
     projectId: asset.projectId,
+    marketListingId: asset.marketListingId,
+    marketVisibility: asset.marketVisibility,
     fileName: asset.fileName,
     mimeType: asset.mimeType,
     sizeBytes: asset.sizeBytes.toString(),
@@ -35,7 +39,7 @@ function serializeFileAsset(asset: {
   };
 }
 
-export async function uploadUserFile(userId: string, file: File, projectId?: string) {
+export async function uploadUserFile(userId: string, file: File, projectId?: string, marketListingId?: string, marketVisibility: "PUBLIC" | "NDA_REQUIRED" = "NDA_REQUIRED") {
   if (!allowedMimeTypes.has(file.type))
     throw new FileAssetError("This file type is not supported");
   if (file.size <= 0 || file.size > maxFileBytes)
@@ -55,6 +59,10 @@ export async function uploadUserFile(userId: string, file: File, projectId?: str
     });
     if (!project) throw new FileAssetError("Project not found");
   }
+  if (marketListingId) {
+    const listing = await db.marketListing.findFirst({ where: { id: marketListingId, createdById: userId }, select: { id: true } });
+    if (!listing) throw new FileAssetError("Market listing not found");
+  }
   const storageKey = `users/${userId}/${randomUUID()}`;
   await localDocumentStorage.upload(storageKey, bytes, file.type);
   try {
@@ -62,6 +70,8 @@ export async function uploadUserFile(userId: string, file: File, projectId?: str
       data: {
         uploadedById: userId,
         projectId,
+        marketListingId,
+        marketVisibility: marketListingId ? marketVisibility : undefined,
         storageKey,
         fileName: file.name.slice(0, 255) || "upload",
         mimeType: file.type,
@@ -75,7 +85,7 @@ export async function uploadUserFile(userId: string, file: File, projectId?: str
         action: "file.uploaded",
         entityType: "FileAsset",
         entityId: asset.id,
-        metadata: { mimeType: asset.mimeType, sizeBytes: file.size, projectId: projectId ?? null },
+        metadata: { mimeType: asset.mimeType, sizeBytes: file.size, projectId: projectId ?? null, marketListingId: marketListingId ?? null, marketVisibility: marketListingId ? marketVisibility : null },
       },
     });
     return serializeFileAsset(asset);
@@ -93,7 +103,7 @@ export async function listUserFiles(userId: string) {
   return assets.map(serializeFileAsset);
 }
 
-async function findUserFile(userId: string, fileId: string) {
+async function findUserDownloadFile(userId: string, fileId: string) {
   return db.fileAsset.findFirst({
     where: {
       id: fileId,
@@ -107,13 +117,36 @@ async function findUserFile(userId: string, fileId: string) {
             ],
           },
         },
+        {
+          marketListing: {
+            OR: [
+              { createdById: userId },
+              { status: "PUBLISHED", files: { some: { id: fileId, marketVisibility: "PUBLIC" } } },
+              { status: "PUBLISHED", requiresNda: false },
+              { status: "PUBLISHED", ndaAcceptances: { some: { userId } } },
+            ],
+          },
+        },
+      ],
+    },
+  });
+}
+
+async function findUserManagedFile(userId: string, fileId: string) {
+  return db.fileAsset.findFirst({
+    where: {
+      id: fileId,
+      OR: [
+        { uploadedById: userId },
+        { project: { OR: [{ createdById: userId }, { members: { some: { userId, role: { in: ["OWNER", "EDITOR"] } } } }] } },
+        { marketListing: { createdById: userId } },
       ],
     },
   });
 }
 
 export async function downloadUserFile(userId: string, fileId: string) {
-  const asset = await findUserFile(userId, fileId);
+  const asset = await findUserDownloadFile(userId, fileId);
   if (!asset) return null;
   try {
     return { asset, bytes: await localDocumentStorage.download(asset.storageKey) };
@@ -123,7 +156,7 @@ export async function downloadUserFile(userId: string, fileId: string) {
 }
 
 export async function deleteUserFile(userId: string, fileId: string) {
-  const asset = await findUserFile(userId, fileId);
+  const asset = await findUserManagedFile(userId, fileId);
   if (!asset) return false;
   await db.fileAsset.delete({ where: { id: asset.id } });
   await localDocumentStorage.delete(asset.storageKey);
