@@ -1,0 +1,105 @@
+.market-workspace {
+  position: relative;
+  isolation: isolate;
+}
+
+.market-workspace__header {
+  position: relative;
+  overflow: hidden;
+  background:
+    radial-gradient(circle at 86% 0, color-mix(in srgb, var(--brand) 18%, transparent), transparent 30%),
+    linear-gradient(135deg, color-mix(in srgb, var(--surface2) 78%, transparent), color-mix(in srgb, var(--surface) 92%, transparent));
+}
+
+.market-workspace__header::after {
+  content: "";
+  width: 180px;
+  height: 180px;
+  position: absolute;
+  inset-inline-end: -74px;
+  inset-block-start: -88px;
+  border: 1px solid color-mix(in srgb, var(--brand) 32%, transparent);
+  border-radius: 50%;
+  box-shadow: 0 0 0 22px color-mix(in srgb, var(--brand) 5%, transparent), 0 0 60px color-mix(in srgb, var(--brand) 14%, transparent);
+  pointer-events: none;
+}
+
+.market-form,
+.market-filters {
+  background: color-mix(in srgb, var(--surface) 78%, transparent);
+}
+
+.market-form {
+  border-inline-start: 2px solid color-mix(in srgb, var(--brand) 60%, var(--border));
+}
+
+.market-filters {
+  align-items: center;
+  border-color: color-mix(in srgb, var(--brand) 22%, var(--border));
+}
+
+.market-form input,
+.market-form select,
+.market-form textarea,
+.market-filters input,
+.market-filters select,
+.market-inquiry-form textarea {
+  transition: border-color 160ms ease, box-shadow 160ms ease, background 160ms ease;
+}
+
+.market-form input:focus,
+.market-form select:focus,
+.market-form textarea:focus,
+.market-filters input:focus,
+.market-filters select:focus,
+.market-inquiry-form textarea:focus {
+  outline: none;
+  border-color: var(--brand);
+  background: color-mix(in srgb, var(--surface2) 78%, var(--deep));
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--brand) 18%, transparent);
+}
+
+.market-listings {
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 300px), 1fr));
+}
+
+.market-listing {
+  min-width: 0;
+  transition: transform 180ms ease, border-color 180ms ease, box-shadow 180ms ease;
+}
+
+.market-listing:hover {
+  transform: translateY(-3px);
+  border-color: color-mix(in srgb, var(--brand) 55%, var(--border));
+  box-shadow: 0 24px 64px color-mix(in srgb, var(--brand) 10%, transparent);
+}
+
+.market-listing h2 {
+  font-size: clamp(1.05rem, 1.5vw, 1.3rem);
+  line-height: 1.35;
+}
+
+@media (max-width: 560px) {
+  .market-workspace {
+    gap: 14px;
+  }
+
+  .market-workspace__header {
+    padding: 18px;
+  }
+
+  .market-workspace__header h1 {
+    font-size: 1.45rem;
+  }
+
+  .market-form,
+  .market-filters,
+  .market-listing,
+  .market-inquiries article {
+    border-radius: 12px;
+  }
+
+  .market-inquiries article > div:last-child {
+    justify-items: stretch;
+  }
+}

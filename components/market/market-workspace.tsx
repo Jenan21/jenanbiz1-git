@@ -141,8 +141,8 @@ export function MarketWorkspace({ locale }: { locale: Locale }) {
     <section className="market-workspace" aria-busy={loading}>
       <header className="market-workspace__header">
         <div>
-          <span className="eyebrow eyebrow--small">JENAN MARKET</span>
-          <h1>{ar ? "سوق جنان للفرص" : "Jenan Market opportunities"}</h1>
+          <span className="eyebrow eyebrow--small">JENAN PRO MARKET</span>
+          <h1>{ar ? "سوق Jenan Pro للفرص" : "Jenan Pro market opportunities"}</h1>
           <p>{ar ? "سوق فرص موثّق بدرجة جودة، سعر معلن، وطلبات اهتمام قابلة للمتابعة." : "A quality-scored opportunity market with pricing, discovery filters, and trackable buyer interest."}</p>
         </div>
         <button className="button button--secondary" onClick={() => void load()} type="button">{ar ? "تحديث" : "Refresh"}</button>

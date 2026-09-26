@@ -7,6 +7,7 @@ import "@/styles/globals.css";
 import "@/styles/login-gateway.css";
 import "@/styles/global-home.css";
 import "@/styles/auth-access.css";
+import "@/styles/market-stage.css";
 
 export const metadata: Metadata = {
   metadataBase: new URL("https://jenanbiz.com"),
