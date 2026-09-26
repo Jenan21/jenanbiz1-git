@@ -3,6 +3,7 @@
 import { ChangeEvent, FormEvent, useEffect, useEffectEvent, useState } from "react";
 import dynamic from "next/dynamic";
 import type { Locale } from "@/types/i18n";
+import type { ProjectFocus } from "@/lib/projects/project-flow-routes";
 
 const ProjectIntelligenceMap = dynamic(
   () => import("@/components/projects/project-intelligence-map").then((module) => module.ProjectIntelligenceMap),
@@ -70,6 +71,19 @@ const riskLabels: Record<string, [string, string]> = {
   market: ["مخاطر السوق", "Market risk"], financial: ["مخاطر مالية", "Financial risk"], operational: ["مخاطر تشغيلية", "Operational risk"],
   technical: ["مخاطر تقنية", "Technical risk"], compliance: ["مخاطر امتثال", "Compliance risk"],
 };
+const focusSelectors: Record<ProjectFocus, string> = {
+  assessment: ".project-evidence-list",
+  create: ".project-create-form",
+  evidence: ".project-evidence-library",
+  feasibility: ".project-calculator",
+  governance: ".project-governance",
+  intelligence: ".project-intelligence",
+  launch: ".project-flow > .project-actions:last-child",
+  report: ".project-workflow a[href$='/report']",
+  risk: ".project-risk",
+  team: ".project-members",
+  workflow: ".project-workflow",
+};
 
 function qualityFor(project: Project | undefined): Quality {
   if (!project) return { score: 0, completeness: 0, readyForDecision: false, verdict: "INCOMPLETE" };
@@ -85,7 +99,7 @@ function statusClass(status: PhaseStatus) {
   return status === "COMPLETED" ? "is-complete" : status === "ACTIVE" ? "is-active" : "is-pending";
 }
 
-export function ProjectsWorkspace({ locale }: { locale: Locale }) {
+export function ProjectsWorkspace({ focus = "workflow", locale }: { focus?: ProjectFocus; locale: Locale }) {
   const ar = locale === "ar";
   const [projects, setProjects] = useState<Project[]>([]);
   const [hasMoreProjects, setHasMoreProjects] = useState(false);
@@ -158,6 +172,14 @@ export function ProjectsWorkspace({ locale }: { locale: Locale }) {
     const timeout = window.setTimeout(reloadForFilters, 250);
     return () => window.clearTimeout(timeout);
   }, [projectSearch, projectStatusFilter]);
+
+  useEffect(() => {
+    if (loading) return;
+    const timeout = window.setTimeout(() => {
+      document.querySelector<HTMLElement>(focusSelectors[focus])?.scrollIntoView({ behavior: "smooth", block: "start" });
+    }, 120);
+    return () => window.clearTimeout(timeout);
+  }, [focus, loading, selectedId]);
 
   const selected = projects.find((project) => project.id === selectedId);
   const intelligence = selected ? intelligenceByProject[selected.id] ?? null : null;
@@ -301,9 +323,9 @@ export function ProjectsWorkspace({ locale }: { locale: Locale }) {
     }
   }
 
-  return <section className="projects-workspace" aria-busy={loading || busy}>
+  return <section className="projects-workspace" aria-busy={loading || busy} data-project-view={focus}>
     <header className="section-heading"><h2>{ar ? "مساحة القرار والتنفيذ" : "Decision and delivery workspace"}</h2><p>{ar ? "تظهر السجلات الفعلية فقط. لا يبدأ التنفيذ إلا بعد اكتمال الأدلة والمراحل المطلوبة." : "Only live records are shown. Execution begins only after evidence and prerequisite phases are complete."}</p></header>
-    <form className="project-create-form card" onSubmit={createProject}>
+    <form className="project-create-form card" data-project-focus="create" onSubmit={createProject}>
       <label>{ar ? "اسم المشروع" : "Project name"}<input required minLength={2} maxLength={160} value={projectName} onChange={(event) => setProjectName(event.target.value)} /></label>
       <label>{ar ? "القطاع" : "Sector"}<input maxLength={120} value={sector} onChange={(event) => setSector(event.target.value)} /></label>
       <label>{ar ? "الدولة" : "Country"}<input maxLength={2} value={countryCode} onChange={(event) => setCountryCode(event.target.value.toUpperCase())} /></label>

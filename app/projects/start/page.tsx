@@ -5,6 +5,9 @@ export default function ProjectStartPage() {
     <ProjectsLiveServicePage
       title={["بدء المشروع", "Start project"]}
       description={["لا يبدأ المشروع إلا بعد اكتمال الأدلة واعتماد قرار التقييم.", "A project starts only after evidence is complete and the evaluation decision is approved."]}
+      focus="workflow"
+      flowGroup="start"
+      route="/projects/start"
     />
   );
 }

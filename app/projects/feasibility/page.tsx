@@ -5,6 +5,9 @@ export default function ProjectFeasibilityPage() {
     <ProjectsLiveServicePage
       title={["إعداد دراسة الجدوى", "Feasibility study"]}
       description={["حسابات مالية وسيناريوهات مشتقة من المدخلات الفعلية فقط.", "Financial calculations and scenarios derived only from submitted inputs."]}
+      focus="feasibility"
+      flowGroup="feasibility"
+      route="/projects/feasibility"
     />
   );
 }

@@ -2,10 +2,12 @@ import { PlatformShell } from "@/components/custom/platform-shell";
 import { requireUser } from "@/lib/auth/session";
 import { getRequestDictionary } from "@/lib/i18n/server";
 import { ProjectsWorkspace } from "@/components/projects/projects-workspace";
+import { ProjectFlowNavigation } from "@/components/projects/project-flow-navigation";
+import type { ProjectFlowGroup, ProjectFocus } from "@/lib/projects/project-flow-routes";
 
 type BilingualCopy = readonly [string, string];
 
-export async function ProjectsLiveServicePage({ title, description }: { title: BilingualCopy; description: BilingualCopy }) {
+export async function ProjectsLiveServicePage({ title, description, focus = "workflow", flowGroup, kind = "workspace", route = "/projects" }: { title: BilingualCopy; description: BilingualCopy; focus?: ProjectFocus; flowGroup?: ProjectFlowGroup; kind?: string; route?: string }) {
   const [{ locale }, user] = await Promise.all([getRequestDictionary(), requireUser("/projects")]);
   const ar = locale === "ar";
 
@@ -17,7 +19,8 @@ export async function ProjectsLiveServicePage({ title, description }: { title: B
           <h1>{ar ? title[0] : title[1]}</h1>
           <p>{ar ? description[0] : description[1]}</p>
         </header>
-        <ProjectsWorkspace locale={locale} />
+        {flowGroup ? <ProjectFlowNavigation activeRoute={route} group={flowGroup} kind={kind} locale={locale} /> : null}
+        <ProjectsWorkspace focus={focus} locale={locale} />
       </section>
     </PlatformShell>
   );

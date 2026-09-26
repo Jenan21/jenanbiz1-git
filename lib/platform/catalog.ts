@@ -213,7 +213,7 @@ const modules: readonly PlatformModuleDefinition[] = [
           "شاشة مرتبة لأقسام دراسة الجدوى ومخرجاتها.",
           "A structured screen for feasibility study sections and outputs.",
         ],
-        { template: "projects-feasibility" },
+        { href: "/projects/feasibility", template: "projects-feasibility" },
       ),
       service(
         "projects",

@@ -5,6 +5,9 @@ export default function ProjectEvaluationPage() {
     <ProjectsLiveServicePage
       title={["تقييم المشروع", "Project evaluation"]}
       description={["قرار تقييم موزون لا يعتمد إلا على الأدلة المكتملة ومصادرها.", "A weighted evaluation decision based only on complete evidence and its sources."]}
+      focus="assessment"
+      flowGroup="evaluation"
+      route="/projects/evaluation"
     />
   );
 }
