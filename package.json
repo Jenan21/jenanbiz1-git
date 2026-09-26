@@ -38,6 +38,7 @@
     "test:e2e:visual": "node --env-file=.env scripts/run-playwright.mjs tests/e2e/visual-layout.spec.ts",
     "test:e2e:home-visual": "node --env-file=.env scripts/run-playwright.mjs tests/e2e/home-visual.spec.ts --project=home-visual",
     "test:e2e:auth-visual": "node --env-file=.env scripts/run-playwright.mjs tests/e2e/auth-visual.spec.ts --project=auth-visual-acceptance",
+    "test:e2e:journey": "node --env-file=.env scripts/run-playwright.mjs tests/e2e/platform-user-journey.spec.ts --project=platform-user-journey",
     "auth:bootstrap-super-admin": "node --env-file=.env scripts/bootstrap-super-admin.mjs"
   },
   "dependencies": {

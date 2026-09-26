@@ -1,8 +1,10 @@
 "use client";
 
+import Image from "next/image";
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import type { ReactNode } from "react";
+import { LogoutButton } from "@/components/auth/logout-button";
 import { Icon, type IconName } from "@/components/ui/icons";
 import { LanguageSwitcher } from "@/components/ui/language-switcher";
 import type { Locale } from "@/types/i18n";
@@ -10,7 +12,7 @@ import type { Locale } from "@/types/i18n";
 export function JenanLogo({ compact = false }: { compact?: boolean }) {
   return (
     <Link href="/" className="brandmark" aria-label="Jenan Pro home">
-      <img className="brandmark__logo brandmark__logo--image" src="/assets/jenan-pro-logo.jpg" alt="" />
+      <Image className="brandmark__logo brandmark__logo--image" src="/assets/jenan-pro-logo.jpg" alt="" width={160} height={98} />
       <span className="brandmark__text">
         <strong>Jenan Pro</strong>
         {!compact && <small>Global business platform</small>}
@@ -168,9 +170,7 @@ export function PlatformShell({
             <ThemeToggle label={ar ? "المظهر" : "Theme"} />
             <LanguageSwitcher locale={locale} label={ar ? "Switch to English" : "التبديل إلى العربية"} />
             <span className="user-chip">{userLabel}</span>
-            <Link href="/login" className="btn small secondary">
-              {ar ? "خروج" : "Logout"}
-            </Link>
+            <LogoutButton label={ar ? "خروج" : "Logout"} />
           </div>
         </header>
 

@@ -28,6 +28,11 @@ const standalonePages = {
     eyebrow: ["الهوية البصرية", "Visual identity"],
     description: ["مساحة أدوات الهوية والتصميم البصري للمنصة.", "A workspace for the platform's visual identity and design tools."],
   },
+  "/software/robotics": {
+    title: ["الروبوتات والأتمتة", "Robotics and automation"],
+    eyebrow: ["أدوات Jenan Pro", "Jenan Pro tools"],
+    description: ["مساحة لخدمات الروبوتات والأتمتة المرتبطة بعمليات الأعمال.", "A workspace for robotics and automation services connected to business operations."],
+  },
 } as const;
 
 function pick(copy: readonly [string, string], locale: "ar" | "en") {

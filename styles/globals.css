@@ -71,7 +71,7 @@ a {
 
 .brandmark__logo--image {
   width: 74px;
-  aspect-ratio: 16 / 9;
+  height: auto;
   border-radius: 10px;
   object-fit: contain;
 }

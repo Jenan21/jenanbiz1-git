@@ -4,17 +4,19 @@ import { getCurrentUser } from "@/lib/auth/session";
 import { hasValidOrigin } from "@/lib/auth/request";
 import { completeLearnerLesson, enrollLearner, getLearnerCourseProgress, submitLearnerExamAttempt } from "@/services/academy/learner-progress-service";
 
+const academyIdSchema = z.string().trim().min(1).max(191).regex(/^[A-Za-z0-9_-]+$/);
+
 const commandSchema = z.discriminatedUnion("action", [
-  z.object({ action: z.literal("enroll"), courseId: z.string().cuid() }),
-  z.object({ action: z.literal("completeLesson"), lessonId: z.string().cuid() }),
-  z.object({ action: z.literal("submitExam"), examId: z.string().cuid(), score: z.number().int().min(0).max(100) }),
+  z.object({ action: z.literal("enroll"), courseId: academyIdSchema }),
+  z.object({ action: z.literal("completeLesson"), lessonId: academyIdSchema }),
+  z.object({ action: z.literal("submitExam"), examId: academyIdSchema, score: z.number().int().min(0).max(100) }),
 ]);
 
 export async function GET(request: NextRequest) {
   const user = await getCurrentUser();
   if (!user) return NextResponse.json({ success: false, message: "Authentication required" }, { status: 401 });
   const courseId = request.nextUrl.searchParams.get("courseId");
-  if (!courseId || !z.string().cuid().safeParse(courseId).success) return NextResponse.json({ success: false, message: "Valid courseId required" }, { status: 400 });
+  if (!courseId || !academyIdSchema.safeParse(courseId).success) return NextResponse.json({ success: false, message: "Valid courseId required" }, { status: 400 });
   return NextResponse.json({ success: true, ...(await getLearnerCourseProgress(courseId, user.id)) });
 }
 

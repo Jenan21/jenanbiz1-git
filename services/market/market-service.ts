@@ -125,7 +125,7 @@ export async function createMarketListing(
     await transaction.auditLog.create({
       data: { actorId: userId, action: "market.listing.created", entityType: "MarketListing", entityId: listing.id },
     });
-    return listing;
+    return { ...listing, isOwner: true };
   });
 }
 
@@ -149,7 +149,7 @@ export async function updateMarketListingStatus(
     await transaction.auditLog.create({
       data: { actorId: userId, action: "market.listing.status.updated", entityType: "MarketListing", entityId: listing.id, metadata: { status } },
     });
-    return listing;
+    return { ...listing, isOwner: true };
   });
 }
 
