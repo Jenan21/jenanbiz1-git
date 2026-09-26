@@ -28,7 +28,7 @@ const navItems = [
 
 const texts = {
   ar: {
-    brand: "إدارة جينان",
+    brand: "إدارة Jenan Pro",
     layer: "طبقة التحكم",
     eyebrow: "عمليات الذكاء",
     heading: "مركز التحكم",
@@ -37,7 +37,7 @@ const texts = {
     toggle: "EN",
   },
   en: {
-    brand: "Jenan Admin",
+    brand: "Jenan Pro Admin",
     layer: "Control Layer",
     eyebrow: "INTELLIGENCE OPS",
     heading: "Admin command center",

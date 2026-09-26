@@ -1,0 +1,96 @@
+.admin-shell {
+  position: relative;
+  isolation: isolate;
+  background:
+    radial-gradient(circle at 76% 0, color-mix(in srgb, var(--brand) 10%, transparent), transparent 28%),
+    linear-gradient(135deg, color-mix(in srgb, var(--deep) 92%, black), var(--deep));
+}
+
+.admin-sidebar,
+.admin-topbar {
+  border-color: color-mix(in srgb, var(--brand) 24%, var(--border));
+  background: linear-gradient(160deg, color-mix(in srgb, var(--surface2) 76%, transparent), color-mix(in srgb, var(--surface) 84%, transparent));
+  box-shadow: 0 22px 68px color-mix(in srgb, var(--deep) 40%, transparent);
+}
+
+.admin-brand {
+  border-bottom-color: color-mix(in srgb, var(--brand) 24%, var(--border));
+}
+
+.admin-brand-mark {
+  box-shadow: 0 0 26px color-mix(in srgb, var(--brand) 30%, transparent);
+}
+
+.admin-nav-item {
+  transition: transform 160ms ease, background 160ms ease, border-color 160ms ease, color 160ms ease;
+}
+
+.admin-nav-item:hover,
+.admin-nav-item.active {
+  transform: translateX(-2px);
+  border-color: color-mix(in srgb, var(--brand) 42%, var(--border));
+  background: linear-gradient(90deg, color-mix(in srgb, var(--brand) 12%, transparent), color-mix(in srgb, var(--surface2) 66%, transparent));
+  box-shadow: inset 3px 0 0 var(--brand), 0 8px 22px color-mix(in srgb, var(--brand) 7%, transparent);
+}
+
+.admin-topbar {
+  position: relative;
+  overflow: hidden;
+}
+
+.admin-topbar::after {
+  content: "";
+  width: 170px;
+  height: 170px;
+  position: absolute;
+  inset-inline-end: -78px;
+  inset-block-start: -94px;
+  border: 1px solid color-mix(in srgb, var(--brand) 30%, transparent);
+  border-radius: 50%;
+  pointer-events: none;
+}
+
+.admin-topbar > div {
+  position: relative;
+  z-index: 1;
+}
+
+.admin-content {
+  min-width: 0;
+}
+
+@media (max-width: 900px) {
+  .admin-shell {
+    grid-template-columns: 1fr;
+    padding: 10px;
+  }
+
+  .admin-sidebar {
+    position: static;
+    height: auto;
+  }
+
+  .admin-nav {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .admin-nav-item:hover,
+  .admin-nav-item.active {
+    transform: none;
+  }
+}
+
+@media (max-width: 560px) {
+  .admin-topbar {
+    display: grid;
+    gap: 12px;
+  }
+
+  .admin-topbar__actions {
+    flex-wrap: wrap;
+  }
+
+  .admin-nav {
+    grid-template-columns: 1fr;
+  }
+}

@@ -14,13 +14,6 @@ export default function RobotCoveragePage() {
   const [message, setMessage] = useState("");
   const [busy, setBusy] = useState(false);
 
-  async function load() {
-    const response = await fetch("/api/admin/robot-coverage", { cache: "no-store" });
-    const payload = await response.json().catch(() => null) as { coverage?: CoveragePayload; message?: string; success?: boolean } | null;
-    if (response.ok && payload?.coverage) setCoverage(payload.coverage);
-    else setMessage(payload?.message ?? "تعذر تحميل تغطية الروبوتات.");
-  }
-
   async function ensureCoverage() {
     setBusy(true);
     setMessage("");
@@ -35,7 +28,27 @@ export default function RobotCoveragePage() {
     setBusy(false);
   }
 
-  useEffect(() => { void load(); }, []);
+  useEffect(() => {
+    const controller = new AbortController();
+
+    async function loadCoverage() {
+      try {
+        const response = await fetch("/api/admin/robot-coverage", {
+          cache: "no-store",
+          signal: controller.signal,
+        });
+        const payload = await response.json().catch(() => null) as { coverage?: CoveragePayload; message?: string; success?: boolean } | null;
+        if (response.ok && payload?.coverage) setCoverage(payload.coverage);
+        else setMessage(payload?.message ?? "تعذر تحميل تغطية الروبوتات.");
+      } catch (error) {
+        if (error instanceof DOMException && error.name === "AbortError") return;
+        setMessage("تعذر تحميل تغطية الروبوتات.");
+      }
+    }
+
+    void loadCoverage();
+    return () => controller.abort();
+  }, []);
 
   return (
     <AdminShell>
