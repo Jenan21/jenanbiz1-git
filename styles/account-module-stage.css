@@ -1,0 +1,111 @@
+.workspace-overview,
+.account-overview {
+  position: relative;
+  isolation: isolate;
+}
+
+.workspace-overview__header,
+.account-overview__header {
+  position: relative;
+  overflow: hidden;
+  background:
+    radial-gradient(circle at 86% 0, color-mix(in srgb, var(--brand) 18%, transparent), transparent 30%),
+    linear-gradient(135deg, color-mix(in srgb, var(--surface2) 78%, transparent), color-mix(in srgb, var(--surface) 92%, transparent));
+}
+
+.workspace-overview__header::after,
+.account-overview__header::after {
+  content: "";
+  width: 210px;
+  height: 210px;
+  position: absolute;
+  inset-inline-end: -94px;
+  inset-block-start: -106px;
+  border: 1px solid color-mix(in srgb, var(--brand) 32%, transparent);
+  border-radius: 50%;
+  box-shadow: 0 0 0 24px color-mix(in srgb, var(--brand) 5%, transparent), 0 0 70px color-mix(in srgb, var(--brand) 14%, transparent);
+  pointer-events: none;
+}
+
+.workspace-overview__header > div,
+.workspace-overview__header > span,
+.account-overview__header > div,
+.account-overview__header > strong {
+  position: relative;
+  z-index: 1;
+}
+
+.workspace-overview__status {
+  border-color: color-mix(in srgb, var(--success) 42%, var(--border));
+  background: color-mix(in srgb, var(--success) 8%, transparent);
+}
+
+.workspace-steps {
+  padding: 12px;
+  border-color: color-mix(in srgb, var(--brand) 24%, var(--border));
+  background: color-mix(in srgb, var(--surface) 62%, transparent);
+}
+
+.workspace-steps li {
+  transition: transform 180ms ease, border-color 180ms ease, background 180ms ease;
+}
+
+.workspace-steps li:hover {
+  transform: translateY(-2px);
+  border-color: color-mix(in srgb, var(--brand) 52%, var(--border));
+  background: color-mix(in srgb, var(--brand) 8%, transparent);
+}
+
+.workspace-service {
+  transition: transform 180ms ease, border-color 180ms ease, box-shadow 180ms ease;
+}
+
+.workspace-service:hover {
+  transform: translateY(-3px);
+  border-color: color-mix(in srgb, var(--brand) 52%, var(--border));
+  box-shadow: 0 22px 56px color-mix(in srgb, var(--brand) 9%, transparent);
+}
+
+.account-overview__header > strong {
+  color: var(--brand);
+  text-shadow: 0 0 28px color-mix(in srgb, var(--brand) 30%, transparent);
+}
+
+.account-overview__metrics a,
+.account-overview__grid section {
+  transition: transform 180ms ease, border-color 180ms ease, box-shadow 180ms ease;
+}
+
+.account-overview__metrics a:hover,
+.account-overview__grid section:hover {
+  transform: translateY(-3px);
+  border-color: color-mix(in srgb, var(--brand) 46%, var(--border));
+  box-shadow: 0 22px 56px color-mix(in srgb, var(--brand) 8%, transparent);
+}
+
+.account-overview__metrics strong {
+  color: var(--brand);
+}
+
+.visual-dna {
+  display: grid;
+  gap: 18px;
+}
+
+.visual-dna .card,
+.visual-dna .glass {
+  border-color: color-mix(in srgb, var(--brand) 28%, var(--border));
+  box-shadow: var(--shadow);
+}
+
+@media (max-width: 760px) {
+  .workspace-overview__header,
+  .account-overview__header {
+    padding: 18px;
+  }
+
+  .workspace-overview__header h1,
+  .account-overview__header h1 {
+    font-size: 1.45rem;
+  }
+}

@@ -13,6 +13,7 @@ import "@/styles/programs-stage.css";
 import "@/styles/talent-stage.css";
 import "@/styles/software-stage.css";
 import "@/styles/growth-stage.css";
+import "@/styles/account-module-stage.css";
 
 export const metadata: Metadata = {
   metadataBase: new URL("https://jenanbiz.com"),
