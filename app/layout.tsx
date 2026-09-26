@@ -17,6 +17,7 @@ import "@/styles/account-module-stage.css";
 import "@/styles/admin-stage.css";
 import "@/styles/auth-workflow.css";
 import "@/styles/user-center.css";
+import "@/styles/academy-flow.css";
 
 export const metadata: Metadata = {
   metadataBase: new URL("https://jenanbiz.com"),
