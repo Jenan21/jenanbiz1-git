@@ -51,6 +51,12 @@ export default defineConfig({
       metadata: { appLocale: "ar" },
     },
     {
+      name: "user-center-responsive",
+      testMatch: /user-center-responsive\.spec\.ts/,
+      use: { viewport: { width: 1440, height: 900 }, locale: "ar-SA" },
+      metadata: { appLocale: "ar" },
+    },
+    {
       name: "auth-chromium",
       testMatch: /auth\.spec\.ts/,
       use: { viewport: { width: 1280, height: 800 }, locale: "en-US" },

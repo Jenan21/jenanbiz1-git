@@ -1,0 +1,382 @@
+.user-center-nav {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 18px;
+  padding: 10px;
+  border: 1px solid color-mix(in srgb, var(--brand) 22%, var(--border));
+  border-radius: 12px;
+  background: color-mix(in srgb, var(--surface) 72%, transparent);
+}
+
+.user-center-nav a {
+  min-height: 40px;
+  display: inline-flex;
+  align-items: center;
+  padding: 8px 13px;
+  border: 1px solid transparent;
+  border-radius: 8px;
+  color: var(--muted);
+}
+
+.user-center-nav a.is-active,
+.user-center-nav a:hover {
+  border-color: color-mix(in srgb, var(--brand) 45%, var(--border));
+  color: var(--text);
+  background: color-mix(in srgb, var(--brand) 9%, transparent);
+}
+
+.user-center-page {
+  display: grid;
+  gap: 20px;
+}
+
+.user-section-header {
+  min-height: 190px;
+  position: relative;
+  overflow: hidden;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 24px;
+  padding: clamp(22px, 4vw, 38px);
+  border: 1px solid color-mix(in srgb, var(--brand) 30%, var(--border));
+  border-radius: 16px;
+  background:
+    radial-gradient(circle at 88% 0, color-mix(in srgb, var(--brand) 16%, transparent), transparent 28%),
+    linear-gradient(135deg, color-mix(in srgb, var(--surface2) 78%, transparent), color-mix(in srgb, var(--surface) 92%, transparent));
+  box-shadow: var(--shadow);
+}
+
+.user-section-header h1 {
+  margin: 8px 0;
+  font-size: clamp(1.8rem, 4vw, 3.4rem);
+}
+
+.user-section-header p {
+  max-width: 720px;
+  margin: 0;
+  color: var(--muted);
+  line-height: 1.8;
+}
+
+.user-center-metrics,
+.user-center-detail-grid,
+.community-access__grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
+  gap: 14px;
+}
+
+.user-center-metrics article,
+.user-center-detail-grid article,
+.community-access__grid article,
+.user-investment-modules article,
+.user-center-empty,
+.user-payments-table,
+.user-report-grid > section,
+.user-invoice__sheet {
+  border: 1px solid color-mix(in srgb, var(--border) 78%, transparent);
+  border-radius: 12px;
+  background: color-mix(in srgb, var(--surface) 88%, transparent);
+  box-shadow: var(--shadow);
+}
+
+.user-center-metrics article,
+.user-center-detail-grid article {
+  min-height: 120px;
+  display: grid;
+  align-content: center;
+  gap: 6px;
+  padding: 18px;
+}
+
+.user-center-metrics span,
+.user-center-metrics small,
+.user-center-detail-grid span,
+.user-center-detail-grid small {
+  color: var(--muted);
+}
+
+.user-center-metrics strong {
+  color: var(--brand);
+  font-size: 1.8rem;
+}
+
+.user-center-empty {
+  display: grid;
+  justify-items: start;
+  gap: 10px;
+  padding: clamp(22px, 4vw, 34px);
+}
+
+.user-center-empty p,
+.community-access__grid p,
+.user-investment-modules p,
+.user-center-message,
+.user-report-grid p {
+  margin: 0;
+  color: var(--muted);
+  line-height: 1.7;
+}
+
+.user-investment-modules {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 14px;
+}
+
+.user-investment-modules article {
+  min-width: 0;
+  min-height: 170px;
+  display: grid;
+  align-content: start;
+  gap: 8px;
+  padding: 18px;
+}
+
+.user-investment-modules article > span {
+  color: var(--brand);
+  font-size: 1.5rem;
+}
+
+.user-investment-modules h2 {
+  margin: 0;
+  font-size: 1rem;
+}
+
+.user-investment-modules small {
+  margin-top: auto;
+  color: var(--warning);
+}
+
+.user-investment-modules__report {
+  grid-column: 1 / -1;
+  grid-template-columns: auto 1fr auto;
+  align-items: center;
+}
+
+.user-investment-modules__report p {
+  grid-column: 2;
+}
+
+.user-investment-modules__report .button {
+  grid-column: 3;
+  grid-row: 1 / span 2;
+}
+
+.community-access__grid article {
+  min-width: 0;
+  display: grid;
+  align-content: start;
+  gap: 12px;
+  padding: 18px;
+}
+
+.community-access__grid article header {
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.community-access__grid article header span {
+  color: var(--muted);
+  font-size: 0.75rem;
+}
+
+.community-access__grid article header span.is-active {
+  color: var(--success);
+}
+
+.community-access__grid article label {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  color: var(--muted);
+  font-size: 0.78rem;
+}
+
+.community-access__grid article label input {
+  flex: 0 0 auto;
+  margin-top: 3px;
+  accent-color: var(--brand);
+}
+
+.user-center-message {
+  padding: 12px 14px;
+  border: 1px solid color-mix(in srgb, var(--brand) 32%, var(--border));
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--brand) 7%, transparent);
+}
+
+.user-payments-table {
+  overflow: hidden;
+}
+
+.user-payments-table__head,
+.user-payments-table article {
+  display: grid;
+  grid-template-columns: 1.1fr 1.5fr 0.8fr 1fr auto;
+  gap: 14px;
+  align-items: center;
+  padding: 14px 16px;
+}
+
+.user-payments-table__head {
+  color: var(--muted);
+  font-size: 0.75rem;
+  background: color-mix(in srgb, var(--deep) 48%, transparent);
+}
+
+.user-payments-table article {
+  border-top: 1px solid color-mix(in srgb, var(--border) 55%, transparent);
+}
+
+.user-payments-table article > * {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.user-payments-table article a {
+  color: var(--brand);
+}
+
+.user-invoice__sheet {
+  width: min(100%, 860px);
+  justify-self: center;
+  padding: clamp(22px, 4vw, 42px);
+}
+
+.user-invoice__sheet header {
+  display: flex;
+  justify-content: space-between;
+  gap: 20px;
+  padding-bottom: 18px;
+  border-bottom: 1px solid var(--border);
+}
+
+.user-invoice__sheet dl {
+  display: grid;
+  gap: 0;
+  margin: 20px 0 0;
+}
+
+.user-invoice__sheet dl div {
+  display: flex;
+  justify-content: space-between;
+  gap: 20px;
+  padding: 14px 0;
+  border-bottom: 1px solid color-mix(in srgb, var(--border) 52%, transparent);
+}
+
+.user-invoice__sheet dd {
+  margin: 0;
+  text-align: end;
+}
+
+.user-invoice__total {
+  color: var(--brand);
+  font-size: 1.15rem;
+  font-weight: 800;
+}
+
+.user-report-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px;
+}
+
+.user-report-grid > section {
+  min-width: 0;
+  display: grid;
+  align-content: start;
+  gap: 10px;
+  padding: 18px;
+}
+
+.user-report-grid h2 {
+  margin: 0 0 6px;
+}
+
+.user-report-grid article {
+  min-width: 0;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  padding: 12px;
+  border: 1px solid color-mix(in srgb, var(--border) 55%, transparent);
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--deep) 48%, transparent);
+}
+
+.user-report-grid article div {
+  min-width: 0;
+  display: grid;
+  gap: 4px;
+}
+
+.user-report-grid article span {
+  color: var(--muted);
+  font-size: 0.75rem;
+  overflow-wrap: anywhere;
+}
+
+@media (max-width: 760px) {
+  .user-section-header,
+  .user-payments-table__head,
+  .user-payments-table article,
+  .user-report-grid,
+  .user-investment-modules,
+  .user-investment-modules__report {
+    display: grid;
+    grid-template-columns: 1fr;
+  }
+
+  .user-section-header {
+    align-items: start;
+    min-height: 0;
+  }
+
+  .user-payments-table__head {
+    display: none;
+  }
+
+  .user-payments-table article {
+    gap: 7px;
+  }
+
+  .user-investment-modules__report p,
+  .user-investment-modules__report .button {
+    grid-column: 1;
+    grid-row: auto;
+  }
+}
+
+@media print {
+  .platform-header,
+  .bottom-ticker,
+  .user-center-nav,
+  .user-section-header,
+  .user-invoice > .button {
+    display: none !important;
+  }
+
+  .custom-platform,
+  .custom-shell,
+  .platform-body,
+  .user-center-page {
+    min-height: 0;
+    padding: 0;
+    background: white;
+    color: black;
+  }
+
+  .user-invoice__sheet {
+    width: 100%;
+    border: 0;
+    box-shadow: none;
+    background: white;
+    color: black;
+  }
+}
