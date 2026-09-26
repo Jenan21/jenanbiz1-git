@@ -13,7 +13,7 @@ export async function ProjectsLiveServicePage({ title, description }: { title: B
     <PlatformShell locale={locale} activeRoute="/projects" userLabel={user.profile?.displayName ?? user.email}>
       <section className="projects-live-service">
         <header className="section-heading">
-          <span className="eyebrow eyebrow--small">JENAN PROJECTS</span>
+          <span className="eyebrow eyebrow--small">JENAN PRO PROJECTS</span>
           <h1>{ar ? title[0] : title[1]}</h1>
           <p>{ar ? description[0] : description[1]}</p>
         </header>

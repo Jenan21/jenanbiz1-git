@@ -1,0 +1,122 @@
+.projects-live-service,
+.projects-workspace {
+  position: relative;
+  isolation: isolate;
+}
+
+.projects-live-service > .section-heading {
+  position: relative;
+  overflow: hidden;
+  padding: clamp(20px, 4vw, 34px);
+  border: 1px solid color-mix(in srgb, var(--brand) 30%, var(--border));
+  border-radius: 18px;
+  background:
+    radial-gradient(circle at 88% 0, color-mix(in srgb, var(--brand) 18%, transparent), transparent 28%),
+    linear-gradient(135deg, color-mix(in srgb, var(--surface2) 78%, transparent), color-mix(in srgb, var(--surface) 88%, transparent));
+  box-shadow: var(--shadow);
+}
+
+.projects-live-service > .section-heading::after {
+  content: "";
+  width: 220px;
+  height: 220px;
+  position: absolute;
+  inset-inline-end: -100px;
+  inset-block-start: -112px;
+  border: 1px solid color-mix(in srgb, var(--brand) 32%, transparent);
+  border-radius: 50%;
+  box-shadow: 0 0 0 24px color-mix(in srgb, var(--brand) 5%, transparent), 0 0 70px color-mix(in srgb, var(--brand) 14%, transparent);
+  pointer-events: none;
+}
+
+.projects-live-service > .section-heading h1,
+.projects-live-service > .section-heading p,
+.projects-live-service > .section-heading .eyebrow {
+  position: relative;
+  z-index: 1;
+}
+
+.projects-workspace > .section-heading {
+  padding-inline: 4px;
+}
+
+.projects-workspace .card {
+  border-color: color-mix(in srgb, var(--border) 72%, transparent);
+  background: linear-gradient(145deg, color-mix(in srgb, var(--surface) 88%, transparent), color-mix(in srgb, var(--deep) 68%, transparent));
+  box-shadow: 0 18px 48px color-mix(in srgb, var(--deep) 34%, transparent);
+}
+
+.project-create-form,
+.project-list-controls,
+.project-workflow,
+.project-calculator,
+.project-intelligence,
+.project-risk,
+.project-governance,
+.project-evidence-library,
+.project-members {
+  border-inline-start: 2px solid color-mix(in srgb, var(--brand) 42%, var(--border));
+}
+
+.project-list-controls {
+  padding: 12px;
+  border: 1px solid color-mix(in srgb, var(--border) 62%, transparent);
+  border-radius: 14px;
+  background: color-mix(in srgb, var(--surface) 56%, transparent);
+}
+
+.project-list-item {
+  transition: transform 180ms ease, border-color 180ms ease, box-shadow 180ms ease;
+}
+
+.project-list-item:hover {
+  transform: translateY(-2px);
+  border-color: color-mix(in srgb, var(--brand) 48%, var(--border));
+  box-shadow: 0 22px 56px color-mix(in srgb, var(--brand) 8%, transparent);
+}
+
+.project-quality strong {
+  text-shadow: 0 0 20px color-mix(in srgb, var(--brand) 38%, transparent);
+}
+
+.project-workflow__steps span {
+  min-height: 58px;
+  transition: border-color 180ms ease, background 180ms ease, transform 180ms ease;
+}
+
+.project-workflow__steps .is-active {
+  background: color-mix(in srgb, var(--brand) 9%, transparent);
+  box-shadow: 0 0 24px color-mix(in srgb, var(--brand) 10%, transparent);
+}
+
+.project-workflow__steps span:hover {
+  transform: translateY(-2px);
+}
+
+.project-intelligence-metrics div,
+.project-governance__summary div,
+.project-calculation-result > .card {
+  background: color-mix(in srgb, var(--deep) 48%, transparent);
+}
+
+.project-risk__result {
+  padding: 12px 14px;
+  border: 1px solid color-mix(in srgb, var(--brand) 24%, var(--border));
+  border-radius: 10px;
+  background: color-mix(in srgb, var(--brand) 7%, transparent);
+}
+
+@media (max-width: 760px) {
+  .projects-live-service > .section-heading {
+    padding: 18px;
+    border-radius: 14px;
+  }
+
+  .projects-live-service > .section-heading h1 {
+    font-size: 1.45rem;
+  }
+
+  .project-list-controls {
+    padding: 10px;
+  }
+}
