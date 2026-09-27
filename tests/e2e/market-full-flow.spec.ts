@@ -67,6 +67,9 @@ test.describe.serial("Jenan Market buyer and seller flow", () => {
       const response = await page.goto(definition.route, { waitUntil: "domcontentloaded" });
       expect(response?.status(), definition.route).toBe(200);
       await expect(page.locator(".market-flow")).toBeVisible();
+      await expect(page.locator(".market-flow")).toHaveAttribute("data-market-route", definition.route);
+      await expect(page.locator(".market-flow")).toHaveAttribute("data-market-kind", definition.kind);
+      await expect(page.locator(".market-flow")).toHaveAttribute("data-market-source", "CONNECTED");
       await expect(page.locator(".market-flow__nav a.is-active")).toHaveAttribute("href", definition.route);
       const layout = await page.evaluate(() => ({ scrollWidth: document.documentElement.scrollWidth, viewportWidth: document.documentElement.clientWidth }));
       expect(layout.scrollWidth, definition.route).toBeLessThanOrEqual(layout.viewportWidth + 1);
