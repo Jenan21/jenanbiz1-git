@@ -117,11 +117,12 @@ export function AdminOperationPage({ snapshot }: { snapshot: Snapshot }) {
   const { definition, metrics } = snapshot;
   const keys = panelAliases[definition.path];
   const selectedPanels = keys ? snapshot.panels.filter((item) => keys.includes(item.key)) : groupRoots.has(definition.path) || definition.group === "reports" ? snapshot.panels : snapshot.panels.slice(0, 3);
+  const sourceState = metrics.unavailablePanels === metrics.panels ? "UNAVAILABLE" : metrics.livePanels === metrics.panels ? "LIVE" : "MIXED";
   const informationRequests = snapshot.panels.find((item) => item.key === "information-requests")?.rows
     .map((item) => ({ id: String(item.id), label: `${String(item.robot)} · ${String(item.requester)}`, status: String(item.status) })) ?? [];
 
   return (
-    <main className="admin-ops" data-admin-operation={definition.path}>
+    <main className="admin-ops" data-admin-access="ADMIN" data-admin-group={definition.group} data-admin-kind={definition.kind} data-admin-operation={definition.path} data-admin-source={sourceState}>
       <nav className="admin-ops-switcher" aria-label="أقسام منصة الإدارة">
         {groupLinks.map(([href, label]) => <Link key={href} href={href} className={definition.path === href || (href !== "/admin" && definition.path.startsWith(`${href}/`)) ? "active" : ""}>{label}</Link>)}
       </nav>

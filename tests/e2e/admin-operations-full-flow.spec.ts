@@ -30,6 +30,12 @@ test.describe("admin operations 80-page acceptance", () => {
     for (const definition of ADMIN_OPERATION_ROUTES) {
       const response = await page.request.get(definition.path, { maxRedirects: 0 });
       expect(response.status(), definition.path).toBe(200);
+      const html = await response.text();
+      expect(html, `${definition.path} route contract`).toContain(`data-admin-operation="${definition.path}"`);
+      expect(html, `${definition.path} group contract`).toContain(`data-admin-group="${definition.group}"`);
+      expect(html, `${definition.path} kind contract`).toContain(`data-admin-kind="${definition.kind}"`);
+      expect(html, `${definition.path} access contract`).toContain('data-admin-access="ADMIN"');
+      expect(html, `${definition.path} source contract`).toContain("data-admin-source=");
     }
   });
 
