@@ -31,7 +31,7 @@ test.describe.serial("Academy full route flow", () => {
       await expect(page.locator(".academy-section-nav")).toBeVisible();
       if (definition.route === "/academy/courses") await expect(page.locator(".academy-library")).toBeVisible();
       else if (definition.source === "course") await expect(page.locator(".academy-reference__course")).toBeVisible();
-      else await expect(page.locator(".academy-reference__empty")).toContainText("No content source connected");
+      else await expect(page.locator(".academy-reference__empty")).toContainText("Awaiting approved source");
       const layout = await page.evaluate(() => ({ scrollWidth: document.documentElement.scrollWidth, viewportWidth: document.documentElement.clientWidth }));
       expect(layout.scrollWidth, definition.route).toBeLessThanOrEqual(layout.viewportWidth + 1);
     }

@@ -153,7 +153,6 @@ enum MapProviderReviewStatus {
   SUSPENDED
 }
 
-
 enum MarketListingKind {
   PROJECT
   BUSINESS
@@ -586,6 +585,23 @@ enum SandboxLabRunStatus {
   AWAITING_AI_PROVIDER
 }
 
+enum AcademyResourceKind {
+  COURSE
+  WEBINAR
+  STUDY
+  RESEARCH
+  LEARNING_PATH
+  CERTIFICATE
+}
+
+enum AcademyResourceApprovalState {
+  DRAFT
+  IN_REVIEW
+  APPROVED
+  REJECTED
+  ARCHIVED
+}
+
 enum GenomeCapabilityType {
   ROLE
   GEOGRAPHY
@@ -596,102 +612,105 @@ enum GenomeCapabilityType {
 }
 
 model User {
-  id                      String                   @id @default(cuid())
-  email                   String                   @unique
-  passwordHash            String?
-  status                  UserStatus               @default(PENDING)
-  systemRole              SystemRole               @default(USER)
-  emailVerifiedAt         DateTime?
-  profile                 Profile?
-  memberships             OrganizationMember[]
-  sessions                Session[]
-  passwordResetTokens     PasswordResetToken[]
-  notifications           Notification[]
-  communityAccessGrants   CommunityAccessGrant[]
-  auditLogs               AuditLog[]               @relation("AuditActor")
-  hierarchyEntries        EmployeeHierarchy[]      @relation("HierarchyUser")
-  supervisedEntries       EmployeeHierarchy[]      @relation("HierarchySupervisor")
-  managedEntries          EmployeeHierarchy[]      @relation("HierarchyManager")
-  uploadedFiles           FileAsset[]              @relation("FileUploader")
-  createdProjects         Project[]                @relation("ProjectCreator")
-  projectMemberships      ProjectMember[]          @relation("ProjectMemberUser")
-  addedProjectMembers     ProjectMember[]          @relation("ProjectMemberAdder")
-  mapProviderReviews      MapProviderReview[]      @relation("MapProviderReviewActor")
+  id                         String                      @id @default(cuid())
+  email                      String                      @unique
+  passwordHash               String?
+  status                     UserStatus                  @default(PENDING)
+  systemRole                 SystemRole                  @default(USER)
+  emailVerifiedAt            DateTime?
+  profile                    Profile?
+  memberships                OrganizationMember[]
+  sessions                   Session[]
+  passwordResetTokens        PasswordResetToken[]
+  notifications              Notification[]
+  communityAccessGrants      CommunityAccessGrant[]
+  auditLogs                  AuditLog[]                  @relation("AuditActor")
+  hierarchyEntries           EmployeeHierarchy[]         @relation("HierarchyUser")
+  supervisedEntries          EmployeeHierarchy[]         @relation("HierarchySupervisor")
+  managedEntries             EmployeeHierarchy[]         @relation("HierarchyManager")
+  uploadedFiles              FileAsset[]                 @relation("FileUploader")
+  createdProjects            Project[]                   @relation("ProjectCreator")
+  projectMemberships         ProjectMember[]             @relation("ProjectMemberUser")
+  addedProjectMembers        ProjectMember[]             @relation("ProjectMemberAdder")
+  mapProviderReviews         MapProviderReview[]         @relation("MapProviderReviewActor")
   projectAssessmentRevisions ProjectAssessmentRevision[] @relation("ProjectAssessmentRevisionAuthor")
-  projectDecisions        ProjectDecision[]        @relation("ProjectDecisionMaker")
-  projectFinancialPlans   ProjectFinancialPlan[]   @relation("ProjectFinancialPlanAuthor")
-  marketListings          MarketListing[]          @relation("MarketListingCreator")
-  marketInquiries         MarketInquiry[]          @relation("MarketInquiryRequester")
-  marketNdaAcceptances    MarketNdaAcceptance[]
-  marketViewingRequests   MarketViewingRequest[]
-  marketOffers            MarketOffer[]
-  fundingAssessments      FundingAssessment[]
-  learnerEnrollments      LearnerEnrollment[]
-  learnerLessonCompletions LearnerLessonCompletion[]
-  learnerExamAttempts     LearnerExamAttempt[]
-  learnerCertificates     LearnerCertificate[]
-  createdJobPostings      JobPosting[]             @relation("JobPostingCreator")
-  jobApplications         JobApplication[]         @relation("JobApplicant")
-  talentProfile           TalentProfile?
-  marketingCampaigns      MarketingCampaign[]      @relation("MarketingCampaignCreator")
-  payments                Payment[]                @relation("PaymentPayer")
-  studioDocuments         StudioDocument[]         @relation("StudioDocumentOwner")
-  robotInformationRequests RobotInformationRequest[]
-  academyStaffAssignments AcademyStaffAssignment[]
-  createdAt               DateTime                 @default(now())
-  updatedAt               DateTime                 @updatedAt
+  projectDecisions           ProjectDecision[]           @relation("ProjectDecisionMaker")
+  projectFinancialPlans      ProjectFinancialPlan[]      @relation("ProjectFinancialPlanAuthor")
+  marketListings             MarketListing[]             @relation("MarketListingCreator")
+  marketInquiries            MarketInquiry[]             @relation("MarketInquiryRequester")
+  marketNdaAcceptances       MarketNdaAcceptance[]
+  marketViewingRequests      MarketViewingRequest[]
+  marketOffers               MarketOffer[]
+  fundingAssessments         FundingAssessment[]
+  learnerEnrollments         LearnerEnrollment[]
+  learnerLessonCompletions   LearnerLessonCompletion[]
+  learnerExamAttempts        LearnerExamAttempt[]
+  learnerCertificates        LearnerCertificate[]
+  createdJobPostings         JobPosting[]                @relation("JobPostingCreator")
+  jobApplications            JobApplication[]            @relation("JobApplicant")
+  talentProfile              TalentProfile?
+  marketingCampaigns         MarketingCampaign[]         @relation("MarketingCampaignCreator")
+  payments                   Payment[]                   @relation("PaymentPayer")
+  studioDocuments            StudioDocument[]            @relation("StudioDocumentOwner")
+  robotInformationRequests   RobotInformationRequest[]
+  academyStaffAssignments    AcademyStaffAssignment[]
+  createdAcademyResources    AcademyResource[]           @relation("AcademyResourceCreator")
+  approvedAcademyResources   AcademyResource[]           @relation("AcademyResourceApprover")
+  academyResourceVersions    AcademyResourceVersion[]    @relation("AcademyResourceVersionAuthor")
+  createdAt                  DateTime                    @default(now())
+  updatedAt                  DateTime                    @updatedAt
 }
 
 model Profile {
-  id          String   @id @default(cuid())
-  userId      String   @unique
-  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  id          String    @id @default(cuid())
+  userId      String    @unique
+  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
   displayName String?
-  locale      String   @default("ar")
-  language    String   @default("ar")
+  locale      String    @default("ar")
+  language    String    @default("ar")
   countryCode String?
   currency    String?
-  timezone    String   @default("Asia/Riyadh")
+  timezone    String    @default("Asia/Riyadh")
   avatarUrl   String?
   accountType String?
   city        String?
   interests   Json?
   onboardedAt DateTime?
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
 }
 
 model Organization {
-  id            String               @id @default(cuid())
-  name          String
-  slug          String               @unique
-  members       OrganizationMember[]
-  roles         Role[]
-  subscriptions Subscription[]
-  payments      Payment[]
-  files         FileAsset[]
-  auditLogs     AuditLog[]
-  projects      Project[]
-  marketListings MarketListing[]
-  jobPostings   JobPosting[]
+  id                 String                @id @default(cuid())
+  name               String
+  slug               String                @unique
+  members            OrganizationMember[]
+  roles              Role[]
+  subscriptions      Subscription[]
+  payments           Payment[]
+  files              FileAsset[]
+  auditLogs          AuditLog[]
+  projects           Project[]
+  marketListings     MarketListing[]
+  jobPostings        JobPosting[]
   marketingCampaigns MarketingCampaign[]
-  businessPrograms OrganizationProgram[]
-  financialEntries FinancialEntry[]
-  softwareCustomers SoftwareCustomer[]
-  softwareProducts SoftwareProduct[]
-  salesDocuments SalesDocument[]
-  softwareReceipts SoftwareReceipt[]
-  crmLeads CrmLead[]
+  businessPrograms   OrganizationProgram[]
+  financialEntries   FinancialEntry[]
+  softwareCustomers  SoftwareCustomer[]
+  softwareProducts   SoftwareProduct[]
+  salesDocuments     SalesDocument[]
+  softwareReceipts   SoftwareReceipt[]
+  crmLeads           CrmLead[]
   inventoryMovements InventoryMovement[]
-  softwareEmployees SoftwareEmployee[]
-  payrollRuns PayrollRun[]
-  softwareSuppliers SoftwareSupplier[]
-  purchaseOrders PurchaseOrder[]
-  posShifts PosShift[]
-  fieldAssignments FieldAssignment[]
-  fleetVehicles FleetVehicle[]
-  createdAt     DateTime             @default(now())
-  updatedAt     DateTime             @updatedAt
+  softwareEmployees  SoftwareEmployee[]
+  payrollRuns        PayrollRun[]
+  softwareSuppliers  SoftwareSupplier[]
+  purchaseOrders     PurchaseOrder[]
+  posShifts          PosShift[]
+  fieldAssignments   FieldAssignment[]
+  fleetVehicles      FleetVehicle[]
+  createdAt          DateTime              @default(now())
+  updatedAt          DateTime              @updatedAt
 }
 
 model OrganizationProgram {
@@ -787,7 +806,7 @@ model SalesDocument {
   createdById    String
   organization   Organization        @relation(fields: [organizationId], references: [id], onDelete: Cascade)
   customer       SoftwareCustomer?   @relation(fields: [customerId], references: [id], onDelete: SetNull)
-  posShift       PosShift?            @relation(fields: [posShiftId], references: [id], onDelete: SetNull)
+  posShift       PosShift?           @relation(fields: [posShiftId], references: [id], onDelete: SetNull)
   lines          SalesDocumentLine[]
   receipts       SoftwareReceipt[]
   createdAt      DateTime            @default(now())
@@ -834,21 +853,21 @@ model SoftwareReceipt {
 }
 
 model CrmLead {
-  id             String        @id @default(cuid())
+  id             String            @id @default(cuid())
   organizationId String
   customerId     String?
   name           String
   contact        String?
   source         String?
   valueMinor     Int?
-  currency       String        @default("SAR")
-  status         CrmLeadStatus @default(NEW)
+  currency       String            @default("SAR")
+  status         CrmLeadStatus     @default(NEW)
   nextAction     String?
   createdById    String
-  organization   Organization  @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  organization   Organization      @relation(fields: [organizationId], references: [id], onDelete: Cascade)
   customer       SoftwareCustomer? @relation(fields: [customerId], references: [id], onDelete: SetNull)
-  createdAt      DateTime      @default(now())
-  updatedAt      DateTime      @updatedAt
+  createdAt      DateTime          @default(now())
+  updatedAt      DateTime          @updatedAt
 
   @@index([organizationId, status])
   @@index([customerId])
@@ -931,49 +950,49 @@ model LeaveRequest {
 }
 
 model PayrollRun {
-  id             String           @id @default(cuid())
-  organizationId String
-  periodStart    DateTime
-  periodEnd      DateTime
-  status         PayrollRunStatus @default(DRAFT)
+  id              String           @id @default(cuid())
+  organizationId  String
+  periodStart     DateTime
+  periodEnd       DateTime
+  status          PayrollRunStatus @default(DRAFT)
   totalGrossMinor Int
-  totalNetMinor  Int
-  postedAt       DateTime?
-  createdById    String
-  organization   Organization     @relation(fields: [organizationId], references: [id], onDelete: Cascade)
-  items          PayrollItem[]
-  createdAt      DateTime         @default(now())
-  updatedAt      DateTime         @updatedAt
+  totalNetMinor   Int
+  postedAt        DateTime?
+  createdById     String
+  organization    Organization     @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  items           PayrollItem[]
+  createdAt       DateTime         @default(now())
+  updatedAt       DateTime         @updatedAt
 
   @@index([organizationId, periodEnd])
   @@index([organizationId, status])
 }
 
 model PayrollItem {
-  id             String           @id @default(cuid())
-  payrollRunId   String
-  employeeId     String
-  grossMinor     Int
-  deductionsMinor Int             @default(0)
-  netMinor       Int
-  payrollRun     PayrollRun       @relation(fields: [payrollRunId], references: [id], onDelete: Cascade)
-  employee       SoftwareEmployee @relation(fields: [employeeId], references: [id], onDelete: Cascade)
-  createdAt      DateTime         @default(now())
+  id              String           @id @default(cuid())
+  payrollRunId    String
+  employeeId      String
+  grossMinor      Int
+  deductionsMinor Int              @default(0)
+  netMinor        Int
+  payrollRun      PayrollRun       @relation(fields: [payrollRunId], references: [id], onDelete: Cascade)
+  employee        SoftwareEmployee @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  createdAt       DateTime         @default(now())
 
   @@unique([payrollRunId, employeeId])
   @@index([employeeId])
 }
 
 model PerformanceReview {
-  id         String           @id @default(cuid())
-  employeeId String
-  score      Int
-  summary    String
-  period     String
-  reviewedAt DateTime         @default(now())
+  id          String           @id @default(cuid())
+  employeeId  String
+  score       Int
+  summary     String
+  period      String
+  reviewedAt  DateTime         @default(now())
   createdById String
-  employee   SoftwareEmployee @relation(fields: [employeeId], references: [id], onDelete: Cascade)
-  createdAt  DateTime         @default(now())
+  employee    SoftwareEmployee @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  createdAt   DateTime         @default(now())
 
   @@index([employeeId, reviewedAt])
 }
@@ -1005,10 +1024,10 @@ model PurchaseOrder {
   receivedAt     DateTime?
   createdById    String
   organization   Organization        @relation(fields: [organizationId], references: [id], onDelete: Cascade)
-  supplier       SoftwareSupplier?    @relation(fields: [supplierId], references: [id], onDelete: SetNull)
+  supplier       SoftwareSupplier?   @relation(fields: [supplierId], references: [id], onDelete: SetNull)
   lines          PurchaseOrderLine[]
-  createdAt      DateTime             @default(now())
-  updatedAt      DateTime             @updatedAt
+  createdAt      DateTime            @default(now())
+  updatedAt      DateTime            @updatedAt
 
   @@unique([organizationId, number])
   @@index([organizationId, status])
@@ -1016,34 +1035,34 @@ model PurchaseOrder {
 }
 
 model PurchaseOrderLine {
-  id             String           @id @default(cuid())
+  id              String           @id @default(cuid())
   purchaseOrderId String
-  productId      String?
-  description    String
-  quantity       Int
-  unitCostMinor  Int
-  lineTotalMinor Int
-  purchaseOrder  PurchaseOrder    @relation(fields: [purchaseOrderId], references: [id], onDelete: Cascade)
-  product        SoftwareProduct? @relation(fields: [productId], references: [id], onDelete: SetNull)
-  createdAt      DateTime         @default(now())
+  productId       String?
+  description     String
+  quantity        Int
+  unitCostMinor   Int
+  lineTotalMinor  Int
+  purchaseOrder   PurchaseOrder    @relation(fields: [purchaseOrderId], references: [id], onDelete: Cascade)
+  product         SoftwareProduct? @relation(fields: [productId], references: [id], onDelete: SetNull)
+  createdAt       DateTime         @default(now())
 
   @@index([purchaseOrderId])
   @@index([productId])
 }
 
 model PosShift {
-  id               String         @id @default(cuid())
+  id               String          @id @default(cuid())
   organizationId   String
-  status           PosShiftStatus @default(OPEN)
-  openingCashMinor Int            @default(0)
+  status           PosShiftStatus  @default(OPEN)
+  openingCashMinor Int             @default(0)
   closingCashMinor Int?
-  openedAt         DateTime       @default(now())
+  openedAt         DateTime        @default(now())
   closedAt         DateTime?
   openedById       String
-  organization     Organization   @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  organization     Organization    @relation(fields: [organizationId], references: [id], onDelete: Cascade)
   sales            SalesDocument[]
-  createdAt        DateTime       @default(now())
-  updatedAt        DateTime       @updatedAt
+  createdAt        DateTime        @default(now())
+  updatedAt        DateTime        @updatedAt
 
   @@index([organizationId, status])
   @@index([openedAt])
@@ -1099,20 +1118,20 @@ model EmployeeHierarchy {
 }
 
 model OrganizationMember {
-  id             String                   @id @default(cuid())
-  organizationId String
-  userId         String
-  roleId         String?
-  organization   Organization             @relation(fields: [organizationId], references: [id], onDelete: Cascade)
-  user           User                     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  role           Role?                    @relation(fields: [roleId], references: [id], onDelete: SetNull)
-  status         OrganizationMemberStatus @default(INVITED)
-  isOwner        Boolean                  @default(false)
-  joinedAt       DateTime?
-  fieldAssignments FieldAssignment[]      @relation("FieldAssignmentAssignee")
-  softwareEmployee SoftwareEmployee?      @relation("SoftwareEmployeeMember")
-  createdAt      DateTime                 @default(now())
-  updatedAt      DateTime                 @updatedAt
+  id               String                   @id @default(cuid())
+  organizationId   String
+  userId           String
+  roleId           String?
+  organization     Organization             @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  user             User                     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  role             Role?                    @relation(fields: [roleId], references: [id], onDelete: SetNull)
+  status           OrganizationMemberStatus @default(INVITED)
+  isOwner          Boolean                  @default(false)
+  joinedAt         DateTime?
+  fieldAssignments FieldAssignment[]        @relation("FieldAssignmentAssignee")
+  softwareEmployee SoftwareEmployee?        @relation("SoftwareEmployeeMember")
+  createdAt        DateTime                 @default(now())
+  updatedAt        DateTime                 @updatedAt
 
   @@unique([organizationId, userId])
   @@index([userId])
@@ -1169,14 +1188,14 @@ model Session {
 }
 
 model PasswordResetToken {
-  id        String   @id @default(cuid())
+  id        String    @id @default(cuid())
   userId    String
-  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  tokenHash String   @unique
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  tokenHash String    @unique
   expiresAt DateTime
   usedAt    DateTime?
-  attempts  Int      @default(0)
-  createdAt DateTime @default(now())
+  attempts  Int       @default(0)
+  createdAt DateTime  @default(now())
 
   @@index([userId, expiresAt])
 }
@@ -1275,23 +1294,23 @@ model Subscription {
 }
 
 model Payment {
-  id             String        @id @default(cuid())
-  organizationId String?
-  payerUserId    String?
-  subscriptionId String?
+  id                String             @id @default(cuid())
+  organizationId    String?
+  payerUserId       String?
+  subscriptionId    String?
   marketingCampaign MarketingCampaign? @relation("MarketingCampaignPayment")
-  organization   Organization? @relation(fields: [organizationId], references: [id], onDelete: Restrict)
-  payerUser      User?         @relation("PaymentPayer", fields: [payerUserId], references: [id], onDelete: Restrict)
-  subscription   Subscription? @relation(fields: [subscriptionId], references: [id], onDelete: SetNull)
-  amountMinor    Int
-  currency       String        @default("SAR")
-  status         PaymentStatus @default(PENDING)
-  provider       String?
-  externalRef    String?       @unique
-  paidAt         DateTime?
-  metadata       Json?
-  createdAt      DateTime      @default(now())
-  updatedAt      DateTime      @updatedAt
+  organization      Organization?      @relation(fields: [organizationId], references: [id], onDelete: Restrict)
+  payerUser         User?              @relation("PaymentPayer", fields: [payerUserId], references: [id], onDelete: Restrict)
+  subscription      Subscription?      @relation(fields: [subscriptionId], references: [id], onDelete: SetNull)
+  amountMinor       Int
+  currency          String             @default("SAR")
+  status            PaymentStatus      @default(PENDING)
+  provider          String?
+  externalRef       String?            @unique
+  paidAt            DateTime?
+  metadata          Json?
+  createdAt         DateTime           @default(now())
+  updatedAt         DateTime           @updatedAt
 
   @@index([organizationId, status])
   @@index([payerUserId, status])
@@ -1299,18 +1318,18 @@ model Payment {
 }
 
 model StudioDocument {
-  id             String                  @id @default(cuid())
-  ownerId        String
-  kind           StudioDocumentKind
-  title          String
-  content        Json
-  currentVersion Int                     @default(1)
-  owner          User                    @relation("StudioDocumentOwner", fields: [ownerId], references: [id], onDelete: Cascade)
-  versions       StudioDocumentVersion[]
-  talentProfile  TalentProfile?          @relation("TalentProfileCv")
-  jobApplications JobApplication[]       @relation("JobApplicationCv")
-  createdAt      DateTime                @default(now())
-  updatedAt      DateTime                @updatedAt
+  id              String                  @id @default(cuid())
+  ownerId         String
+  kind            StudioDocumentKind
+  title           String
+  content         Json
+  currentVersion  Int                     @default(1)
+  owner           User                    @relation("StudioDocumentOwner", fields: [ownerId], references: [id], onDelete: Cascade)
+  versions        StudioDocumentVersion[]
+  talentProfile   TalentProfile?          @relation("TalentProfileCv")
+  jobApplications JobApplication[]        @relation("JobApplicationCv")
+  createdAt       DateTime                @default(now())
+  updatedAt       DateTime                @updatedAt
 
   @@index([ownerId, kind, updatedAt])
 }
@@ -1329,24 +1348,24 @@ model StudioDocumentVersion {
 }
 
 model FileAsset {
-  id             String        @id @default(cuid())
-  organizationId String?
-  projectId      String?
-  marketListingId String?
-  organization   Organization? @relation(fields: [organizationId], references: [id], onDelete: Cascade)
-  project        Project?      @relation("ProjectEvidenceFiles", fields: [projectId], references: [id], onDelete: Cascade)
-  marketListing  MarketListing? @relation(fields: [marketListingId], references: [id], onDelete: Cascade)
-  uploadedById   String?
-  uploadedBy     User?         @relation("FileUploader", fields: [uploadedById], references: [id], onDelete: SetNull)
-  storageKey     String        @unique
-  fileName       String
-  mimeType       String
-  sizeBytes      BigInt
-  checksum       String?
+  id               String                @id @default(cuid())
+  organizationId   String?
+  projectId        String?
+  marketListingId  String?
+  organization     Organization?         @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  project          Project?              @relation("ProjectEvidenceFiles", fields: [projectId], references: [id], onDelete: Cascade)
+  marketListing    MarketListing?        @relation(fields: [marketListingId], references: [id], onDelete: Cascade)
+  uploadedById     String?
+  uploadedBy       User?                 @relation("FileUploader", fields: [uploadedById], references: [id], onDelete: SetNull)
+  storageKey       String                @unique
+  fileName         String
+  mimeType         String
+  sizeBytes        BigInt
+  checksum         String?
   marketVisibility MarketFileVisibility?
-  metadata       Json?
-  createdAt      DateTime      @default(now())
-  updatedAt      DateTime      @updatedAt
+  metadata         Json?
+  createdAt        DateTime              @default(now())
+  updatedAt        DateTime              @updatedAt
 
   @@index([organizationId])
   @@index([projectId])
@@ -1355,15 +1374,15 @@ model FileAsset {
 }
 
 model Robot {
-  id                      String                   @id @default(cuid())
+  id                      String                    @id @default(cuid())
   name                    String
-  slug                    String                   @unique
+  slug                    String                    @unique
   team                    String?
-  intelligence            Int                      @default(0)
-  skill                   Int                      @default(0)
-  experience              Int                      @default(0)
-  status                  RobotStatus              @default(PENDING)
-  isVisible               Boolean                  @default(false)
+  intelligence            Int                       @default(0)
+  skill                   Int                       @default(0)
+  experience              Int                       @default(0)
+  status                  RobotStatus               @default(PENDING)
+  isVisible               Boolean                   @default(false)
   notes                   String?
   tasks                   RobotTask[]
   reviews                 CommitteeReview[]
@@ -1374,13 +1393,13 @@ model Robot {
   evolutions              RobotEvolution[]
   modelRuns               ModelExecution[]
   genomeId                String?
-  genome                  AgentGenome?             @relation(fields: [genomeId], references: [id], onDelete: SetNull)
+  genome                  AgentGenome?              @relation(fields: [genomeId], references: [id], onDelete: SetNull)
   academicProfile         RobotAcademicProfile?
   runtimeAllocations      AgentRuntimeAllocation[]
   academyStaffAssignments AcademyStaffAssignment[]
   informationRequests     RobotInformationRequest[]
-  createdAt               DateTime                 @default(now())
-  updatedAt               DateTime                 @updatedAt
+  createdAt               DateTime                  @default(now())
+  updatedAt               DateTime                  @updatedAt
 
   @@index([status])
   @@index([isVisible])
@@ -1403,25 +1422,25 @@ model RobotTask {
   costs              CostRecord[]
   learningLogs       LearningLog[]
   runtimeAllocations AgentRuntimeAllocation[]
-  marketingCampaign MarketingCampaign? @relation("MarketingCampaignTask")
+  marketingCampaign  MarketingCampaign?       @relation("MarketingCampaignTask")
 
   @@index([robotId, status])
 }
 
 model RobotInformationRequest {
-  id           String                        @id @default(cuid())
-  requesterId  String
-  robotId      String
-  task         String
-  sector       String?
-  location     String?
-  environment  String?
-  budgetMinor  Int?
-  status       RobotInformationRequestStatus @default(REQUESTED)
-  requester    User                          @relation(fields: [requesterId], references: [id], onDelete: Cascade)
-  robot        Robot                         @relation(fields: [robotId], references: [id], onDelete: Cascade)
-  createdAt    DateTime                      @default(now())
-  updatedAt    DateTime                      @updatedAt
+  id          String                        @id @default(cuid())
+  requesterId String
+  robotId     String
+  task        String
+  sector      String?
+  location    String?
+  environment String?
+  budgetMinor Int?
+  status      RobotInformationRequestStatus @default(REQUESTED)
+  requester   User                          @relation(fields: [requesterId], references: [id], onDelete: Cascade)
+  robot       Robot                         @relation(fields: [robotId], references: [id], onDelete: Cascade)
+  createdAt   DateTime                      @default(now())
+  updatedAt   DateTime                      @updatedAt
 
   @@index([requesterId, status, createdAt])
   @@index([robotId, status, createdAt])
@@ -1555,7 +1574,7 @@ model CommitteeReview {
   id        String        @id @default(cuid())
   robotId   String
   robot     Robot         @relation(fields: [robotId], references: [id], onDelete: Cascade)
-  projectId      String?       @unique
+  projectId String?       @unique
   score     Int           @default(0)
   verdict   ReviewVerdict @default(DEFER)
   notes     String?
@@ -1630,6 +1649,7 @@ model Academy {
   roles             AcademyRole[]
   curriculumChanges CurriculumChangeProposal[]
   workQueues        AcademyWorkQueue[]
+  resources         AcademyResource[]
   createdAt         DateTime                   @default(now())
   updatedAt         DateTime                   @updatedAt
 }
@@ -1712,7 +1732,7 @@ model SkillPrerequisite {
 }
 
 model AcademyCourse {
-  id                  String             @id @default(cuid())
+  id                  String               @id @default(cuid())
   academyId           String
   fieldId             String?
   specializationId    String?
@@ -1720,10 +1740,10 @@ model AcademyCourse {
   title               String
   code                String
   description         String?
-  academy             Academy            @relation(fields: [academyId], references: [id], onDelete: Cascade)
-  field               AcademyField?      @relation(fields: [fieldId], references: [id], onDelete: SetNull)
-  specialization      Specialization?    @relation(fields: [specializationId], references: [id], onDelete: SetNull)
-  curriculumVersion   CurriculumVersion? @relation(fields: [curriculumVersionId], references: [id], onDelete: SetNull)
+  academy             Academy              @relation(fields: [academyId], references: [id], onDelete: Cascade)
+  field               AcademyField?        @relation(fields: [fieldId], references: [id], onDelete: SetNull)
+  specialization      Specialization?      @relation(fields: [specializationId], references: [id], onDelete: SetNull)
+  curriculumVersion   CurriculumVersion?   @relation(fields: [curriculumVersionId], references: [id], onDelete: SetNull)
   lessons             AcademyLesson[]
   labs                AcademyLab[]
   exams               AcademyExam[]
@@ -1731,22 +1751,102 @@ model AcademyCourse {
   completions         CourseCompletion[]
   learnerEnrollments  LearnerEnrollment[]
   learnerCertificates LearnerCertificate[]
-  createdAt           DateTime           @default(now())
-  updatedAt           DateTime           @updatedAt
+  libraryResources    AcademyResource[]
+  createdAt           DateTime             @default(now())
+  updatedAt           DateTime             @updatedAt
 
   @@unique([academyId, code])
 }
 
+model AcademyResource {
+  id                String                       @id @default(cuid())
+  academyId         String?
+  courseId          String?
+  createdById       String?
+  approvedById      String?
+  kind              AcademyResourceKind
+  slug              String                       @unique
+  title             String
+  summary           String?
+  category          String?
+  language          String                       @default("ar")
+  currentVersion    Int                          @default(1)
+  approvalState     AcademyResourceApprovalState @default(DRAFT)
+  sourceName        String?
+  sourceUrl         String?
+  sourcePublishedAt DateTime?
+  authorName        String?
+  approvedAt        DateTime?
+  academy           Academy?                     @relation(fields: [academyId], references: [id], onDelete: SetNull)
+  course            AcademyCourse?               @relation(fields: [courseId], references: [id], onDelete: SetNull)
+  createdBy         User?                        @relation("AcademyResourceCreator", fields: [createdById], references: [id], onDelete: SetNull)
+  approvedBy        User?                        @relation("AcademyResourceApprover", fields: [approvedById], references: [id], onDelete: SetNull)
+  versions          AcademyResourceVersion[]
+  attachments       AcademyResourceAttachment[]
+  createdAt         DateTime                     @default(now())
+  updatedAt         DateTime                     @updatedAt
+
+  @@index([kind, approvalState, category])
+  @@index([academyId, kind])
+  @@index([courseId])
+}
+
+model AcademyResourceVersion {
+  id                String                       @id @default(cuid())
+  resourceId        String
+  createdById       String?
+  version           Int
+  title             String
+  summary           String?
+  content           Json
+  references        Json?
+  changeSummary     String?
+  sourceName        String?
+  sourceUrl         String?
+  sourcePublishedAt DateTime?
+  authorName        String?
+  approvalState     AcademyResourceApprovalState @default(DRAFT)
+  resource          AcademyResource              @relation(fields: [resourceId], references: [id], onDelete: Cascade)
+  createdBy         User?                        @relation("AcademyResourceVersionAuthor", fields: [createdById], references: [id], onDelete: SetNull)
+  attachments       AcademyResourceAttachment[]
+  createdAt         DateTime                     @default(now())
+
+  @@unique([resourceId, version])
+  @@index([resourceId, createdAt])
+  @@index([approvalState])
+}
+
+model AcademyResourceAttachment {
+  id          String                  @id @default(cuid())
+  resourceId  String
+  versionId   String?
+  title       String
+  fileName    String?
+  mimeType    String?
+  sizeBytes   BigInt?
+  storageKey  String?
+  externalUrl String?
+  checksum    String?
+  sourceName  String?
+  sourceUrl   String?
+  resource    AcademyResource         @relation(fields: [resourceId], references: [id], onDelete: Cascade)
+  version     AcademyResourceVersion? @relation(fields: [versionId], references: [id], onDelete: SetNull)
+  createdAt   DateTime                @default(now())
+
+  @@index([resourceId, createdAt])
+  @@index([versionId])
+}
+
 model AcademyLesson {
-  id        String        @id @default(cuid())
-  courseId  String
-  title     String
-  sequence  Int
-  content   String?
-  course    AcademyCourse @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  id                 String                    @id @default(cuid())
+  courseId           String
+  title              String
+  sequence           Int
+  content            String?
+  course             AcademyCourse             @relation(fields: [courseId], references: [id], onDelete: Cascade)
   learnerCompletions LearnerLessonCompletion[]
-  createdAt DateTime      @default(now())
-  updatedAt DateTime      @updatedAt
+  createdAt          DateTime                  @default(now())
+  updatedAt          DateTime                  @updatedAt
 
   @@unique([courseId, sequence])
 }
@@ -2127,36 +2227,36 @@ model ProjectPhase {
 }
 
 model ProjectAssessment {
-  id         String                @id @default(cuid())
+  id         String                      @id @default(cuid())
   projectId  String
   type       ProjectAssessmentType
   score      Int?
-  status     ProjectPhaseStatus    @default(PENDING)
+  status     ProjectPhaseStatus          @default(PENDING)
   summary    String?
   source     String?
   assessedAt DateTime?
-  project    Project               @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  project    Project                     @relation(fields: [projectId], references: [id], onDelete: Cascade)
   revisions  ProjectAssessmentRevision[]
-  createdAt  DateTime              @default(now())
-  updatedAt  DateTime              @updatedAt
+  createdAt  DateTime                    @default(now())
+  updatedAt  DateTime                    @updatedAt
 
   @@unique([projectId, type])
   @@index([projectId, status])
 }
 
 model ProjectAssessmentRevision {
-  id                   String                @id @default(cuid())
-  projectId            String
-  assessmentId         String
-  recordedById         String
-  version              Int
-  score                Int
-  summary              String
-  source               String
-  project              Project               @relation(fields: [projectId], references: [id], onDelete: Cascade)
-  assessment           ProjectAssessment     @relation(fields: [assessmentId], references: [id], onDelete: Cascade)
-  recordedBy           User                  @relation("ProjectAssessmentRevisionAuthor", fields: [recordedById], references: [id], onDelete: Restrict)
-  createdAt            DateTime              @default(now())
+  id           String            @id @default(cuid())
+  projectId    String
+  assessmentId String
+  recordedById String
+  version      Int
+  score        Int
+  summary      String
+  source       String
+  project      Project           @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  assessment   ProjectAssessment @relation(fields: [assessmentId], references: [id], onDelete: Cascade)
+  recordedBy   User              @relation("ProjectAssessmentRevisionAuthor", fields: [recordedById], references: [id], onDelete: Restrict)
+  createdAt    DateTime          @default(now())
 
   @@unique([assessmentId, version])
   @@index([projectId, createdAt])
@@ -2197,20 +2297,20 @@ model ProjectFinancialPlan {
 }
 
 model ProjectRisk {
-  id          String            @id @default(cuid())
-  projectId   String
-  category    String
-  title       String
-  likelihood  Int
-  impact      Int
-  score       Int
-  status      ProjectRiskStatus @default(OPEN)
-  mitigation  String
-  ownerLabel  String
-  reviewAt    DateTime?
-  project     Project           @relation(fields: [projectId], references: [id], onDelete: Cascade)
-  createdAt   DateTime          @default(now())
-  updatedAt   DateTime          @updatedAt
+  id         String            @id @default(cuid())
+  projectId  String
+  category   String
+  title      String
+  likelihood Int
+  impact     Int
+  score      Int
+  status     ProjectRiskStatus @default(OPEN)
+  mitigation String
+  ownerLabel String
+  reviewAt   DateTime?
+  project    Project           @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  createdAt  DateTime          @default(now())
+  updatedAt  DateTime          @updatedAt
 
   @@index([projectId, status])
   @@index([projectId, score])
@@ -2235,35 +2335,35 @@ model ProjectIntelligenceSnapshot {
 }
 
 model MarketListing {
-  id            String              @id @default(cuid())
-  createdById   String
-  projectId     String?
-  organizationId String?
-  kind          MarketListingKind
-  status        MarketListingStatus @default(DRAFT)
-  title         String
-  slug          String              @unique
-  summary       String
-  sector        String?
-  countryCode   String?
-  currency      String              @default("SAR")
-  askingPriceMinor Int?
-  valuationNote String?
+  id                  String                 @id @default(cuid())
+  createdById         String
+  projectId           String?
+  organizationId      String?
+  kind                MarketListingKind
+  status              MarketListingStatus    @default(DRAFT)
+  title               String
+  slug                String                 @unique
+  summary             String
+  sector              String?
+  countryCode         String?
+  currency            String                 @default("SAR")
+  askingPriceMinor    Int?
+  valuationNote       String?
   confidentialDetails String?
-  requiresNda    Boolean             @default(true)
-  qualityScore  Int                 @default(0)
-  qualitySignals Json?
-  reviewedAt    DateTime?
-  createdBy     User                @relation("MarketListingCreator", fields: [createdById], references: [id], onDelete: Restrict)
-  project       Project?            @relation(fields: [projectId], references: [id], onDelete: SetNull)
-  organization  Organization?       @relation(fields: [organizationId], references: [id], onDelete: SetNull)
-  inquiries     MarketInquiry[]
-  ndaAcceptances MarketNdaAcceptance[]
-  viewingRequests MarketViewingRequest[]
-  offers        MarketOffer[]
-  files         FileAsset[]
-  createdAt     DateTime            @default(now())
-  updatedAt     DateTime            @updatedAt
+  requiresNda         Boolean                @default(true)
+  qualityScore        Int                    @default(0)
+  qualitySignals      Json?
+  reviewedAt          DateTime?
+  createdBy           User                   @relation("MarketListingCreator", fields: [createdById], references: [id], onDelete: Restrict)
+  project             Project?               @relation(fields: [projectId], references: [id], onDelete: SetNull)
+  organization        Organization?          @relation(fields: [organizationId], references: [id], onDelete: SetNull)
+  inquiries           MarketInquiry[]
+  ndaAcceptances      MarketNdaAcceptance[]
+  viewingRequests     MarketViewingRequest[]
+  offers              MarketOffer[]
+  files               FileAsset[]
+  createdAt           DateTime               @default(now())
+  updatedAt           DateTime               @updatedAt
 
   @@index([status, kind, createdAt])
   @@index([createdById, status])
@@ -2384,46 +2484,46 @@ model JobPosting {
 }
 
 model TalentProfile {
-  id                 String          @id @default(cuid())
-  userId             String          @unique
-  headline           String
-  summary            String
-  city               String?
-  countryCode        String?
-  yearsExperience    Int             @default(0)
-  skills             Json?
-  experience         String?
-  education          String?
-  desiredWorkModes   Json?
-  availability       String?
-  cvDocumentId       String?         @unique
-  isDiscoverable     Boolean         @default(false)
-  user               User            @relation(fields: [userId], references: [id], onDelete: Cascade)
-  cvDocument         StudioDocument? @relation("TalentProfileCv", fields: [cvDocumentId], references: [id], onDelete: SetNull)
-  createdAt          DateTime        @default(now())
-  updatedAt          DateTime        @updatedAt
+  id               String          @id @default(cuid())
+  userId           String          @unique
+  headline         String
+  summary          String
+  city             String?
+  countryCode      String?
+  yearsExperience  Int             @default(0)
+  skills           Json?
+  experience       String?
+  education        String?
+  desiredWorkModes Json?
+  availability     String?
+  cvDocumentId     String?         @unique
+  isDiscoverable   Boolean         @default(false)
+  user             User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  cvDocument       StudioDocument? @relation("TalentProfileCv", fields: [cvDocumentId], references: [id], onDelete: SetNull)
+  createdAt        DateTime        @default(now())
+  updatedAt        DateTime        @updatedAt
 
   @@index([isDiscoverable, countryCode])
 }
 
 model JobApplication {
-  id          String               @id @default(cuid())
-  jobPostingId String
-  applicantId String
-  message     String?
-  cvDocumentId String?
+  id              String               @id @default(cuid())
+  jobPostingId    String
+  applicantId     String
+  message         String?
+  cvDocumentId    String?
   profileSnapshot Json?
-  consentVersion String?
-  consentedAt DateTime?
-  employerNotes String?
-  matchScore  Int       @default(0)
-  matchSignals Json?
-  status      JobApplicationStatus @default(SUBMITTED)
-  jobPosting  JobPosting           @relation(fields: [jobPostingId], references: [id], onDelete: Cascade)
-  applicant   User                 @relation("JobApplicant", fields: [applicantId], references: [id], onDelete: Cascade)
-  cvDocument  StudioDocument?      @relation("JobApplicationCv", fields: [cvDocumentId], references: [id], onDelete: SetNull)
-  createdAt   DateTime             @default(now())
-  updatedAt   DateTime             @updatedAt
+  consentVersion  String?
+  consentedAt     DateTime?
+  employerNotes   String?
+  matchScore      Int                  @default(0)
+  matchSignals    Json?
+  status          JobApplicationStatus @default(SUBMITTED)
+  jobPosting      JobPosting           @relation(fields: [jobPostingId], references: [id], onDelete: Cascade)
+  applicant       User                 @relation("JobApplicant", fields: [applicantId], references: [id], onDelete: Cascade)
+  cvDocument      StudioDocument?      @relation("JobApplicationCv", fields: [cvDocumentId], references: [id], onDelete: SetNull)
+  createdAt       DateTime             @default(now())
+  updatedAt       DateTime             @updatedAt
 
   @@unique([jobPostingId, applicantId])
   @@index([applicantId, status])
@@ -2432,36 +2532,36 @@ model JobApplication {
 }
 
 model MarketingCampaign {
-  id             String                  @id @default(cuid())
-  createdById    String
-  organizationId String?
-  name           String
-  slug           String                  @unique
-  objective      String
-  channel        MarketingChannel
-  customerType   ServiceCustomerType     @default(INDIVIDUAL)
-  status         MarketingCampaignStatus @default(DRAFT)
-  budgetMinor    Int                     @default(0)
-  currency       String                  @default("SAR")
-  targetAudience  String?
-  callToAction    String?
-  contentBrief    String?
-  kpiTarget       Int?
-  qualityScore    Int                     @default(0)
-  qualitySignals  Json?
+  id                  String                     @id @default(cuid())
+  createdById         String
+  organizationId      String?
+  name                String
+  slug                String                     @unique
+  objective           String
+  channel             MarketingChannel
+  customerType        ServiceCustomerType        @default(INDIVIDUAL)
+  status              MarketingCampaignStatus    @default(DRAFT)
+  budgetMinor         Int                        @default(0)
+  currency            String                     @default("SAR")
+  targetAudience      String?
+  callToAction        String?
+  contentBrief        String?
+  kpiTarget           Int?
+  qualityScore        Int                        @default(0)
+  qualitySignals      Json?
   performanceSnapshot Json?
-  paymentId      String?                 @unique
-  robotTaskId    String?                 @unique
-  startsAt       DateTime?
-  endsAt         DateTime?
-  createdBy      User                    @relation("MarketingCampaignCreator", fields: [createdById], references: [id], onDelete: Restrict)
-  organization   Organization?           @relation(fields: [organizationId], references: [id], onDelete: SetNull)
-  payment        Payment?                @relation("MarketingCampaignPayment", fields: [paymentId], references: [id], onDelete: SetNull)
-  robotTask      RobotTask?              @relation("MarketingCampaignTask", fields: [robotTaskId], references: [id], onDelete: SetNull)
-  leads          MarketingLead[]
-  audienceSegments MarketingAudienceSegment[]
-  createdAt      DateTime                @default(now())
-  updatedAt      DateTime                @updatedAt
+  paymentId           String?                    @unique
+  robotTaskId         String?                    @unique
+  startsAt            DateTime?
+  endsAt              DateTime?
+  createdBy           User                       @relation("MarketingCampaignCreator", fields: [createdById], references: [id], onDelete: Restrict)
+  organization        Organization?              @relation(fields: [organizationId], references: [id], onDelete: SetNull)
+  payment             Payment?                   @relation("MarketingCampaignPayment", fields: [paymentId], references: [id], onDelete: SetNull)
+  robotTask           RobotTask?                 @relation("MarketingCampaignTask", fields: [robotTaskId], references: [id], onDelete: SetNull)
+  leads               MarketingLead[]
+  audienceSegments    MarketingAudienceSegment[]
+  createdAt           DateTime                   @default(now())
+  updatedAt           DateTime                   @updatedAt
 
   @@index([createdById, status])
   @@index([status, channel, createdAt])
@@ -2469,16 +2569,16 @@ model MarketingCampaign {
 }
 
 model MarketingLead {
-  id         String               @id @default(cuid())
+  id         String              @id @default(cuid())
   campaignId String
   label      String
   source     String?
-  status     MarketingLeadStatus  @default(NEW)
+  status     MarketingLeadStatus @default(NEW)
   valueMinor Int?
   notes      String?
-  campaign   MarketingCampaign    @relation(fields: [campaignId], references: [id], onDelete: Cascade)
-  createdAt  DateTime             @default(now())
-  updatedAt  DateTime             @updatedAt
+  campaign   MarketingCampaign   @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  createdAt  DateTime            @default(now())
+  updatedAt  DateTime            @updatedAt
 
   @@index([campaignId, status])
   @@index([status, createdAt])

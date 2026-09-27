@@ -181,3 +181,26 @@
     justify-self: start;
   }
 }
+
+.academy-library { display: grid; gap: 16px; }
+.academy-library__search { display: grid; grid-template-columns: 2fr 1fr auto; gap: 10px; }
+.academy-library__search input { min-width: 0; padding: 11px 12px; border: 1px solid var(--border); border-radius: 6px; background: var(--deep); color: var(--text); }
+.academy-library__layout { display: grid; grid-template-columns: minmax(220px, .65fr) minmax(0, 1.8fr); gap: 14px; }
+.academy-library__layout > nav { display: grid; align-content: start; gap: 8px; }
+.academy-library__layout > nav a { display: grid; gap: 4px; padding: 12px; border: 1px solid var(--border); border-radius: 6px; color: var(--text); background: var(--surface); }
+.academy-library__layout > nav a.active { border-color: var(--brand); background: color-mix(in srgb, var(--brand) 10%, var(--surface)); }
+.academy-library__layout > nav span, .academy-library__reader span, .academy-library__reader small { color: var(--muted); font-size: 12px; }
+.academy-library__reader { display: grid; gap: 18px; padding: 20px; border: 1px solid var(--border); border-radius: 8px; background: var(--surface); }
+.academy-library__reader > header { display: flex; justify-content: space-between; gap: 14px; }
+.academy-library__reader h2, .academy-library__reader h3 { margin: 5px 0; }
+.academy-library__metadata { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px; }
+.academy-library__metadata div { display: grid; gap: 5px; padding: 10px; background: var(--surface2); }
+.academy-library__body { white-space: pre-wrap; line-height: 1.9; }
+.academy-library__reader ul { display: grid; gap: 8px; margin: 0; padding-inline-start: 20px; }
+.academy-library__reader li small { display: block; }
+.academy-library__reader details article { display: grid; gap: 4px; padding: 10px 0; border-bottom: 1px solid var(--border); }
+
+@media (max-width: 760px) {
+  .academy-library__search, .academy-library__layout, .academy-library__metadata { grid-template-columns: 1fr; }
+  .academy-library__reader > header { flex-direction: column; }
+}

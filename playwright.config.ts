@@ -106,6 +106,12 @@ export default defineConfig({
       metadata: { appLocale: "en" },
     },
     {
+      name: "academy-content-library",
+      testMatch: /academy-content-library\.spec\.ts/,
+      use: { viewport: { width: 1440, height: 900 }, locale: "ar-SA" },
+      metadata: { appLocale: "ar" },
+    },
+    {
       name: "market-full-flow",
       testMatch: /market-full-flow\.spec\.ts/,
       use: { viewport: { width: 1440, height: 1000 }, locale: "en-US" },

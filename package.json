@@ -26,6 +26,7 @@
     "test:integration": "node --env-file=.env ./node_modules/vitest/vitest.mjs run tests/integration",
     "test:academy": "node --env-file=.env ./node_modules/vitest/vitest.mjs run tests/integration/academy-foundation.integration.test.ts tests/integration/academy-dashboard.integration.test.ts tests/integration/academy-rbac.integration.test.ts tests/integration/academy-queue-sandbox.integration.test.ts tests/integration/academy-learner-certification.integration.test.ts",
     "test:e2e:academy-flows": "node --env-file=.env scripts/run-playwright.mjs tests/e2e/academy-flow-routes.spec.ts --project=academy-flow-routes",
+    "test:e2e:academy-library": "node --env-file=.env scripts/run-playwright.mjs tests/e2e/academy-content-library.spec.ts --project=academy-content-library",
     "test:account": "node --env-file=.env ./node_modules/vitest/vitest.mjs run tests/integration/account-overview.integration.test.ts",
     "test:marketing": "node --env-file=.env ./node_modules/vitest/vitest.mjs run tests/unit/marketing-flow-routes.test.ts tests/integration/marketing-domain.integration.test.ts",
     "test:e2e:marketing-flow": "node --env-file=.env scripts/run-playwright.mjs tests/e2e/marketing-full-flow.spec.ts --project=marketing-full-flow",
