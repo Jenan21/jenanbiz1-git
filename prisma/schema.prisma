@@ -140,6 +140,14 @@ enum MissionDependencyType {
   BLOCKS
 }
 
+enum KnowledgeApprovalState {
+  DRAFT
+  IN_REVIEW
+  APPROVED
+  REJECTED
+  ARCHIVED
+}
+
 enum ProjectStatus {
   DRAFT
   ANALYSIS
@@ -715,6 +723,9 @@ model User {
   decidedMissionApprovals    MissionApproval[]           @relation("MissionApprovalDecider")
   missionEscalations         MissionEscalation[]         @relation("MissionEscalationActor")
   missionHistoryEntries      MissionHistory[]            @relation("MissionHistoryActor")
+  authoredKnowledgeVersions  KnowledgeVersion[]          @relation("KnowledgeVersionAuthor")
+  approvedKnowledgeEntries   SharedKnowledge[]           @relation("KnowledgeApprover")
+  knowledgeReviews           KnowledgeReview[]           @relation("KnowledgeReviewer")
   createdAt                  DateTime                    @default(now())
   updatedAt                  DateTime                    @updatedAt
 }
@@ -1713,23 +1724,24 @@ model MissionHistory {
 }
 
 model Evidence {
-  id           String          @id @default(cuid())
-  robotId      String
-  robotTaskId  String?
-  missionId    String?
-  missionRunId String?
-  attemptId    String?
-  type         String
-  description  String
-  metadata     Json?
-  verified     Boolean         @default(false)
-  robot        Robot           @relation(fields: [robotId], references: [id], onDelete: Cascade)
-  robotTask    RobotTask?      @relation(fields: [robotTaskId], references: [id], onDelete: Cascade)
-  mission      Mission?        @relation(fields: [missionId], references: [id], onDelete: SetNull)
-  missionRun   MissionRun?     @relation(fields: [missionRunId], references: [id], onDelete: SetNull)
-  attempt      MissionAttempt? @relation(fields: [attemptId], references: [id], onDelete: SetNull)
-  createdAt    DateTime        @default(now())
-  updatedAt    DateTime        @updatedAt
+  id             String                  @id @default(cuid())
+  robotId        String
+  robotTaskId    String?
+  missionId      String?
+  missionRunId   String?
+  attemptId      String?
+  type           String
+  description    String
+  metadata       Json?
+  verified       Boolean                 @default(false)
+  robot          Robot                   @relation(fields: [robotId], references: [id], onDelete: Cascade)
+  robotTask      RobotTask?              @relation(fields: [robotTaskId], references: [id], onDelete: Cascade)
+  mission        Mission?                @relation(fields: [missionId], references: [id], onDelete: SetNull)
+  missionRun     MissionRun?             @relation(fields: [missionRunId], references: [id], onDelete: SetNull)
+  attempt        MissionAttempt?         @relation(fields: [attemptId], references: [id], onDelete: SetNull)
+  knowledgeLinks KnowledgeEvidenceLink[]
+  createdAt      DateTime                @default(now())
+  updatedAt      DateTime                @updatedAt
 
   @@index([robotId, verified])
   @@index([robotTaskId])
@@ -1799,18 +1811,85 @@ model RobotEvolution {
 }
 
 model SharedKnowledge {
-  id                String              @id @default(cuid())
+  id                String                  @id @default(cuid())
   title             String
   content           String
   source            String
-  confidence        Int                 @default(0)
+  sourceUrl         String?
+  sourcePublishedAt DateTime?
+  confidence        Int                     @default(0)
+  currentVersion    Int                     @default(1)
+  approvalState     KnowledgeApprovalState  @default(DRAFT)
+  approvedById      String?
+  approvedAt        DateTime?
   missionId         String?
-  mission           Mission?            @relation(fields: [missionId], references: [id], onDelete: SetNull)
+  mission           Mission?                @relation(fields: [missionId], references: [id], onDelete: SetNull)
+  approvedBy        User?                   @relation("KnowledgeApprover", fields: [approvedById], references: [id], onDelete: SetNull)
   academyExperience AcademicExperience?
-  createdAt         DateTime            @default(now())
-  updatedAt         DateTime            @updatedAt
+  versions          KnowledgeVersion[]
+  reviews           KnowledgeReview[]
+  evidenceLinks     KnowledgeEvidenceLink[]
+  createdAt         DateTime                @default(now())
+  updatedAt         DateTime                @updatedAt
 
-  @@index([confidence])
+  @@index([confidence, approvalState])
+}
+
+model KnowledgeVersion {
+  id                String                  @id @default(cuid())
+  knowledgeId       String
+  authorId          String?
+  version           Int
+  title             String
+  content           String
+  source            String
+  sourceUrl         String?
+  sourcePublishedAt DateTime?
+  confidence        Int                     @default(0)
+  approvalState     KnowledgeApprovalState  @default(DRAFT)
+  references        Json?
+  changeSummary     String?
+  rollbackFrom      Int?
+  knowledge         SharedKnowledge         @relation(fields: [knowledgeId], references: [id], onDelete: Cascade)
+  author            User?                   @relation("KnowledgeVersionAuthor", fields: [authorId], references: [id], onDelete: SetNull)
+  reviews           KnowledgeReview[]
+  evidenceLinks     KnowledgeEvidenceLink[]
+  createdAt         DateTime                @default(now())
+
+  @@unique([knowledgeId, version])
+  @@index([knowledgeId, createdAt])
+  @@index([approvalState])
+}
+
+model KnowledgeReview {
+  id          String                 @id @default(cuid())
+  knowledgeId String
+  versionId   String
+  reviewerId  String?
+  state       KnowledgeApprovalState
+  notes       String
+  knowledge   SharedKnowledge        @relation(fields: [knowledgeId], references: [id], onDelete: Cascade)
+  version     KnowledgeVersion       @relation(fields: [versionId], references: [id], onDelete: Cascade)
+  reviewer    User?                  @relation("KnowledgeReviewer", fields: [reviewerId], references: [id], onDelete: SetNull)
+  createdAt   DateTime               @default(now())
+
+  @@index([knowledgeId, createdAt])
+  @@index([versionId, state])
+}
+
+model KnowledgeEvidenceLink {
+  knowledgeId String
+  versionId   String
+  evidenceId  String
+  note        String?
+  knowledge   SharedKnowledge  @relation(fields: [knowledgeId], references: [id], onDelete: Cascade)
+  version     KnowledgeVersion @relation(fields: [versionId], references: [id], onDelete: Cascade)
+  evidence    Evidence         @relation(fields: [evidenceId], references: [id], onDelete: Cascade)
+  createdAt   DateTime         @default(now())
+
+  @@id([versionId, evidenceId])
+  @@index([knowledgeId])
+  @@index([evidenceId])
 }
 
 model ModelExecution {

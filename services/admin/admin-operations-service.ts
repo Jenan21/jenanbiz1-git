@@ -120,21 +120,23 @@ async function missionPanels() {
 }
 
 async function intelligencePanels() {
-  const [knowledge, learning, evidence, reviews, skills, evolutions] = await Promise.all([
-    db.sharedKnowledge.findMany({ include: { mission: { select: { name: true } } }, orderBy: { updatedAt: "desc" }, take: 200 }),
+  const [knowledge, versions, learning, evidence, reviews, skills, evolutions] = await Promise.all([
+    db.sharedKnowledge.findMany({ include: { mission: { select: { name: true } }, _count: { select: { evidenceLinks: true, reviews: true, versions: true } } }, orderBy: { updatedAt: "desc" }, take: 200 }),
+    db.knowledgeVersion.findMany({ include: { knowledge: { select: { title: true } }, _count: { select: { evidenceLinks: true, reviews: true } } }, orderBy: { createdAt: "desc" }, take: 300 }),
     db.learningLog.findMany({ include: { robot: { select: { name: true } }, mission: { select: { name: true } } }, orderBy: { createdAt: "desc" }, take: 200 }),
     db.evidence.findMany({ include: { robot: { select: { name: true } } }, orderBy: { createdAt: "desc" }, take: 200 }),
-    db.committeeReview.findMany({ include: { robot: { select: { name: true } } }, orderBy: { updatedAt: "desc" }, take: 100 }),
+    db.knowledgeReview.findMany({ include: { knowledge: { select: { title: true } }, version: { select: { version: true } }, reviewer: { select: { email: true } } }, orderBy: { createdAt: "desc" }, take: 200 }),
     db.skill.findMany({ include: { specialization: { select: { name: true } }, _count: { select: { robotSkills: true } } }, orderBy: { updatedAt: "desc" }, take: 200 }),
     db.robotEvolution.findMany({ include: { robot: { select: { name: true } } }, orderBy: { createdAt: "desc" }, take: 200 }),
   ]);
   return [
-    panel("knowledge", "Shared knowledge", knowledge.map((item) => ({ id: item.id, title: item.title, source: item.source, confidence: item.confidence, mission: item.mission?.name ?? null, updatedAt: iso(item.updatedAt) }))),
+    panel("knowledge", "Shared knowledge", knowledge.map((item) => ({ id: item.id, title: item.title, source: item.source, sourceDate: iso(item.sourcePublishedAt), confidence: item.confidence, approvalState: item.approvalState, currentVersion: item.currentVersion, versions: item._count.versions, reviews: item._count.reviews, evidence: item._count.evidenceLinks, mission: item.mission?.name ?? null, updatedAt: iso(item.updatedAt) }))),
     panel("experiences", "Validated experiences", knowledge.filter((item) => Boolean(item.missionId)).map((item) => ({ id: item.id, title: item.title, source: item.source, confidence: item.confidence, mission: item.mission?.name ?? null })), "PARTIAL", "Experience records are represented through mission-linked shared knowledge."),
     panel("learning", "Learning logs", learning.map((item) => ({ id: item.id, robot: item.robot.name, mission: item.mission?.name ?? null, signal: item.signal, scoreBefore: item.scoreBefore, scoreAfter: item.scoreAfter, feedback: item.feedback, createdAt: iso(item.createdAt) }))),
     panel("evidence", "Evidence base", evidence.map((item) => ({ id: item.id, robot: item.robot.name, type: item.type, description: item.description, verified: item.verified, createdAt: iso(item.createdAt) }))),
-    panel("reviews", "Knowledge reviews", reviews.map((item) => ({ id: item.id, robot: item.robot.name, verdict: item.verdict, score: item.score, notes: item.notes, updatedAt: iso(item.updatedAt) }))),
-    panel("versions", "Evolution versions", evolutions.map((item) => ({ id: item.id, robot: item.robot.name, generation: item.generation, intelligenceDelta: item.intelligenceDelta, skillDelta: item.skillDelta, experienceDelta: item.experienceDelta, reason: item.reason, createdAt: iso(item.createdAt) })), "PARTIAL", "Robot evolution is versioned; shared-knowledge rollback is not yet available."),
+    panel("reviews", "Knowledge reviews", reviews.map((item) => ({ id: item.id, knowledge: item.knowledge.title, version: item.version.version, state: item.state, reviewer: item.reviewer?.email ?? null, notes: item.notes, createdAt: iso(item.createdAt) }))),
+    panel("versions", "Knowledge versions", versions.map((item) => ({ id: item.id, knowledgeId: item.knowledgeId, knowledge: item.knowledge.title, version: item.version, state: item.approvalState, source: item.source, sourceDate: iso(item.sourcePublishedAt), confidence: item.confidence, rollbackFrom: item.rollbackFrom, reviews: item._count.reviews, evidence: item._count.evidenceLinks, createdAt: iso(item.createdAt) }))),
+    panel("evolution", "Robot evolution", evolutions.map((item) => ({ id: item.id, robot: item.robot.name, generation: item.generation, intelligenceDelta: item.intelligenceDelta, skillDelta: item.skillDelta, experienceDelta: item.experienceDelta, reason: item.reason, createdAt: iso(item.createdAt) }))),
     panel("skills", "Skill registry", skills.map((item) => ({ id: item.id, name: item.name, key: item.key, specialization: item.specialization?.name ?? null, riskLevel: item.riskLevel, robots: item._count.robotSkills, updatedAt: iso(item.updatedAt) }))),
   ];
 }

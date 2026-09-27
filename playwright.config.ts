@@ -88,6 +88,12 @@ export default defineConfig({
       metadata: { appLocale: "ar" },
     },
     {
+      name: "knowledge-versioning",
+      testMatch: /knowledge-versioning\.spec\.ts/,
+      use: { viewport: { width: 1440, height: 900 }, locale: "ar-SA" },
+      metadata: { appLocale: "ar" },
+    },
+    {
       name: "report-pages",
       testMatch: /report-pages\.spec\.ts/,
       use: { viewport: { width: 1440, height: 900 }, locale: "ar-SA" },
