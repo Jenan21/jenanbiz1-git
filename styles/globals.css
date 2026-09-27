@@ -2823,14 +2823,18 @@ html[data-theme="light"] .input {
   z-index: 20;
 }
 .main-nav {
+  min-width: 0;
   display: flex;
   justify-content: center;
   gap: 7px;
+  overflow-x: auto;
+  scrollbar-width: none;
 }
 .mobile-nav {
   display: none;
 }
 .nav-link {
+  flex: 0 0 auto;
   border: 0;
   background: transparent;
   color: var(--muted);

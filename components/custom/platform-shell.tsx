@@ -118,6 +118,7 @@ const platformNav = [
   ["/market", "السوق", "Market"],
   ["/studio", "الأدوات", "Tools"],
   ["/software", "البرمجيات", "Software"],
+  ["/robotics", "الروبوتات", "Robotics"],
   ["/programs", "البرامج", "Programs"],
   ["/talent", "المواهب", "Talent"],
   ["/marketing", "التسويق", "Marketing"],

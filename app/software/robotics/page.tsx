@@ -1,5 +1,5 @@
-import { ModulePage } from "@/components/custom/module-page";
+import { redirect } from "next/navigation";
 
 export default function Page() {
-  return <ModulePage route="/software/robotics" />;
+  redirect("/robotics");
 }

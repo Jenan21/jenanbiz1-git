@@ -72,6 +72,12 @@ enum RobotStatus {
   ARCHIVED
 }
 
+enum RobotInformationRequestStatus {
+  REQUESTED
+  REVIEWED
+  CLOSED
+}
+
 enum TaskStatus {
   DRAFT
   ACTIVE
@@ -630,6 +636,7 @@ model User {
   marketingCampaigns      MarketingCampaign[]      @relation("MarketingCampaignCreator")
   payments                Payment[]                @relation("PaymentPayer")
   studioDocuments         StudioDocument[]         @relation("StudioDocumentOwner")
+  robotInformationRequests RobotInformationRequest[]
   academyStaffAssignments AcademyStaffAssignment[]
   createdAt               DateTime                 @default(now())
   updatedAt               DateTime                 @updatedAt
@@ -1371,6 +1378,7 @@ model Robot {
   academicProfile         RobotAcademicProfile?
   runtimeAllocations      AgentRuntimeAllocation[]
   academyStaffAssignments AcademyStaffAssignment[]
+  informationRequests     RobotInformationRequest[]
   createdAt               DateTime                 @default(now())
   updatedAt               DateTime                 @updatedAt
 
@@ -1398,6 +1406,25 @@ model RobotTask {
   marketingCampaign MarketingCampaign? @relation("MarketingCampaignTask")
 
   @@index([robotId, status])
+}
+
+model RobotInformationRequest {
+  id           String                        @id @default(cuid())
+  requesterId  String
+  robotId      String
+  task         String
+  sector       String?
+  location     String?
+  environment  String?
+  budgetMinor  Int?
+  status       RobotInformationRequestStatus @default(REQUESTED)
+  requester    User                          @relation(fields: [requesterId], references: [id], onDelete: Cascade)
+  robot        Robot                         @relation(fields: [robotId], references: [id], onDelete: Cascade)
+  createdAt    DateTime                      @default(now())
+  updatedAt    DateTime                      @updatedAt
+
+  @@index([requesterId, status, createdAt])
+  @@index([robotId, status, createdAt])
 }
 
 model Mission {

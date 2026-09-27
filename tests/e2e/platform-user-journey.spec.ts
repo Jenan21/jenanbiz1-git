@@ -258,7 +258,7 @@ test.describe.serial("real Jenan Pro user journey", () => {
       "/programs/people",
       "/programs/field",
       "/programs/fleet",
-      "/software/robotics",
+      "/robotics",
       "/benefits",
       "/pricing",
       "/studio",

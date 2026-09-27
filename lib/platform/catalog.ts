@@ -151,6 +151,17 @@ const modules: readonly PlatformModuleDefinition[] = [
       ),
       service(
         "dashboard",
+        "robotics",
+        "brain",
+        ["Jenan Robotics", "Jenan Robotics"],
+        [
+          "بحث وتوصيات لروبوتات تشغيلية معتمدة بملفات عامة آمنة.",
+          "Search and recommendations for operational robots with safe public profiles.",
+        ],
+        "/robotics",
+      ),
+      service(
+        "dashboard",
         "programs",
         "grid",
         ["برامج جنان", "Jenan Programs"],
