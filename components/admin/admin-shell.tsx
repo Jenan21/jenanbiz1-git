@@ -33,7 +33,7 @@ const texts = {
     eyebrow: "عمليات الذكاء",
     heading: "مركز التحكم",
     live: "مباشر",
-    deploy: "نشر",
+    operations: "العمليات",
     toggle: "EN",
   },
   en: {
@@ -42,7 +42,7 @@ const texts = {
     eyebrow: "INTELLIGENCE OPS",
     heading: "Admin command center",
     live: "live",
-    deploy: "Deploy",
+    operations: "Operations",
     toggle: "AR",
   },
 } as const;
@@ -128,9 +128,9 @@ export function AdminShell({ children }: { children: ReactNode }) {
             >
               {t.toggle}
             </button>
-            <button type="button" className="btn small primary" aria-label={t.deploy}>
-              {t.deploy}
-            </button>
+            <Link href="/admin/operations" className="btn small primary">
+              {t.operations}
+            </Link>
           </div>
         </header>
 
