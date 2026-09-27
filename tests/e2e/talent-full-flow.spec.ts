@@ -91,6 +91,9 @@ test.describe.serial("Jenan Talent full flow", () => {
       const response = await page.goto(`${definition.route}${suffix}`, { waitUntil: "domcontentloaded" });
       expect(response?.status(), definition.route).toBe(200);
       await expect(page.locator(".talent-flow")).toBeVisible();
+      await expect(page.locator(".talent-flow")).toHaveAttribute("data-talent-route", definition.route);
+      await expect(page.locator(".talent-flow")).toHaveAttribute("data-talent-source", "PERSISTED_RECORDS");
+      await expect(page.locator(".talent-flow")).toHaveAttribute("data-talent-privacy", "CONSENT_SCOPED");
       const layout = await page.evaluate(() => ({ scrollWidth: document.documentElement.scrollWidth, viewportWidth: document.documentElement.clientWidth }));
       expect(layout.scrollWidth, definition.route).toBeLessThanOrEqual(layout.viewportWidth + 1);
     }

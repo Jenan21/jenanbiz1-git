@@ -63,6 +63,7 @@ function EmptyState({ locale, message }: { locale: Locale; message?: string }) {
 
 export function TalentFlowWorkspace({ applicationId, jobId, locale, route }: { applicationId?: string; jobId?: string; locale: Locale; route: TalentFlowRoute }) {
   const ar = locale === "ar";
+  const audience = route.id.startsWith("employer") || route.id === "candidate" || route.id === "reports" ? "EMPLOYER" : "CANDIDATE";
   const [data, setData] = useState<TalentPayload | null>(null);
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
@@ -124,9 +125,9 @@ export function TalentFlowWorkspace({ applicationId, jobId, locale, route }: { a
     if (await runCommand({ action: "apply", jobPostingId: selectedJob.id, message: optional(values, "applicationMessage"), cvDocumentId: optional(values, "cvDocumentId"), shareProfile: values.get("shareProfile") === "on" }, ["تم إرسال الطلب مع درجة مطابقة أولية. لا يمثل ذلك ضماناً للتوظيف.", "Application submitted with an initial match score. This does not guarantee employment."])) form.reset();
   }
 
-  if (loading || !data) return <section className="talent-flow"><header className="talent-flow__hero"><div><span>TALENT · {route.id.toUpperCase()}</span><h1>{pick(route.title, locale)}</h1><p>{pick(routeDescriptions[route.id], locale)}</p></div></header><div className="talent-flow__loading"><span />{ar ? "جارٍ تحميل رحلة التوظيف..." : "Loading the hiring journey..."}</div></section>;
+  if (loading || !data) return <section className="talent-flow" data-talent-privacy="CONSENT_SCOPED" data-talent-role={audience} data-talent-route={route.route} data-talent-source="LOADING"><header className="talent-flow__hero"><div><span>TALENT · {route.id.toUpperCase()}</span><h1>{pick(route.title, locale)}</h1><p>{pick(routeDescriptions[route.id], locale)}</p></div></header><div className="talent-flow__loading"><span />{ar ? "جارٍ تحميل رحلة التوظيف..." : "Loading the hiring journey..."}</div></section>;
 
-  return <section className="talent-flow">
+  return <section className="talent-flow" data-talent-privacy="CONSENT_SCOPED" data-talent-role={audience} data-talent-route={route.route} data-talent-source="PERSISTED_RECORDS">
     <nav className="talent-flow__nav" aria-label={ar ? "مسارات المواهب" : "Talent routes"}>{TALENT_FLOW_ROUTES.map((definition, index) => <Link aria-current={definition.id === route.id ? "page" : undefined} className={definition.id === route.id ? "is-active" : ""} href={definition.route} key={definition.id}><span>{String(index + 1).padStart(2, "0")}</span>{pick(definition.title, locale)}</Link>)}</nav>
     <header className="talent-flow__hero"><div><span>TALENT · {route.id.toUpperCase().replaceAll("-", " ")}</span><h1>{pick(route.title, locale)}</h1><p>{pick(routeDescriptions[route.id], locale)}</p></div><div className="talent-flow__promise"><Icon name="shield" /><strong>{ar ? "قرار بشري موثّق" : "Documented human decision"}</strong><small>{ar ? "المطابقة مساعدة ولا تضمن التوظيف" : "Matching assists and never guarantees employment"}</small></div></header>
     {message ? <p className="talent-flow__message" role="status">{message}</p> : null}
