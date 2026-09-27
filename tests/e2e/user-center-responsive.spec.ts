@@ -1,4 +1,5 @@
 import { expect, test } from "@playwright/test";
+import { USER_CENTER_ROUTES } from "@/lib/account/user-center-routes";
 import { cleanE2EIdentities, createE2ESession, seedE2EUser } from "./identity-fixture";
 import { e2eIdentity } from "./test-identities";
 
@@ -13,16 +14,6 @@ const viewports = [
   { name: "430x932", width: 430, height: 932 },
   { name: "390x844", width: 390, height: 844 },
   { name: "360x800", width: 360, height: 800 },
-] as const;
-
-const routes = [
-  "/user",
-  "/user/investments",
-  "/user/investment/detail",
-  "/user/unlocks",
-  "/user/payments",
-  "/user/payments/invoice",
-  "/user/reports",
 ] as const;
 
 test.describe.serial("User center responsive acceptance", () => {
@@ -49,17 +40,23 @@ test.describe.serial("User center responsive acceptance", () => {
         const runtimeErrors: string[] = [];
         page.on("pageerror", (error) => runtimeErrors.push(error.message));
 
-        for (const route of routes) {
-          const response = await page.goto(route, { waitUntil: "domcontentloaded" });
-          expect(response?.status(), route).toBe(200);
-          await expect(page.locator(".user-center-nav")).toBeVisible();
+        for (const definition of USER_CENTER_ROUTES) {
+          const response = await page.goto(definition.path, { waitUntil: "domcontentloaded" });
+          expect(response?.status(), definition.path).toBe(200);
+          if (definition.path !== "/account") await expect(page.locator(".user-center-nav")).toBeVisible();
+          const contract = page.locator(".user-center-contract");
+          await expect(contract).toHaveAttribute("data-user-route", definition.path);
+          await expect(contract).toHaveAttribute("data-user-screen", definition.id);
+          await expect(contract).toHaveAttribute("data-user-source", definition.source);
+          await expect(contract).toHaveAttribute("data-user-outputs", definition.outputs);
+          await expect(contract).toHaveAttribute("data-user-privacy", "USER_SCOPED");
           const layout = await page.evaluate(() => ({
             scrollWidth: document.documentElement.scrollWidth,
             viewportWidth: document.documentElement.clientWidth,
             clippedButtons: Array.from(document.querySelectorAll("button, a.button")).some((element) => element.scrollWidth > element.clientWidth + 1),
           }));
-          expect(layout.scrollWidth, route).toBeLessThanOrEqual(layout.viewportWidth + 1);
-          expect(layout.clippedButtons, route).toBe(false);
+          expect(layout.scrollWidth, definition.path).toBeLessThanOrEqual(layout.viewportWidth + 1);
+          expect(layout.clippedButtons, definition.path).toBe(false);
         }
 
         await page.goto("/user/investments");
