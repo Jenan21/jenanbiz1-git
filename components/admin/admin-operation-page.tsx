@@ -5,6 +5,7 @@ import type { AdminPanel } from "@/services/admin/admin-operations-service";
 import { AdminOperationActions } from "@/components/admin/admin-operation-actions";
 import { MissionEngineActions } from "@/components/admin/mission-engine-actions";
 import { KnowledgeActions } from "@/components/admin/knowledge-actions";
+import { ModelToolActions } from "@/components/admin/model-tool-actions";
 
 type Snapshot = {
   definition: AdminOperationRoute;
@@ -139,6 +140,7 @@ export function AdminOperationPage({ snapshot }: { snapshot: Snapshot }) {
       <AdminOperationActions path={definition.path} informationRequests={informationRequests} />
       {definition.group === "missions" ? <MissionEngineActions approvals={snapshot.panels.find((item) => item.key === "approvals")?.rows ?? []} missions={snapshot.panels.find((item) => item.key === "missions")?.rows ?? []} robots={snapshot.panels.find((item) => item.key === "mission-robots")?.rows ?? []} runs={snapshot.panels.find((item) => item.key === "runs")?.rows ?? []} subtasks={snapshot.panels.find((item) => item.key === "tasks")?.rows ?? []} /> : null}
       {definition.group === "intelligence" ? <KnowledgeActions entries={snapshot.panels.find((item) => item.key === "knowledge")?.rows ?? []} /> : null}
+      {definition.group === "models" ? <ModelToolActions models={snapshot.panels.find((item) => item.key === "models")?.rows ?? []} path={definition.path} tools={snapshot.panels.find((item) => item.key === "tools")?.rows ?? []} /> : null}
 
       <div className="admin-ops-panels">
         {selectedPanels.map((item) => <DataPanel key={item.key} panel={item} />)}

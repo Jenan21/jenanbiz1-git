@@ -148,6 +148,33 @@ enum KnowledgeApprovalState {
   ARCHIVED
 }
 
+enum ModelRegistryStatus {
+  ACTIVE
+  DEGRADED
+  DISABLED
+}
+
+enum ToolRiskLevel {
+  LOW
+  MEDIUM
+  HIGH
+  CRITICAL
+}
+
+enum ToolExecutionStatus {
+  PENDING_APPROVAL
+  RUNNING
+  SUCCEEDED
+  FAILED
+  DENIED
+}
+
+enum ToolApprovalStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
 enum ProjectStatus {
   DRAFT
   ANALYSIS
@@ -726,6 +753,9 @@ model User {
   authoredKnowledgeVersions  KnowledgeVersion[]          @relation("KnowledgeVersionAuthor")
   approvedKnowledgeEntries   SharedKnowledge[]           @relation("KnowledgeApprover")
   knowledgeReviews           KnowledgeReview[]           @relation("KnowledgeReviewer")
+  toolExecutions             ToolExecution[]             @relation("ToolExecutionActor")
+  requestedToolApprovals     ToolApproval[]              @relation("ToolApprovalRequester")
+  decidedToolApprovals       ToolApproval[]              @relation("ToolApprovalDecider")
   createdAt                  DateTime                    @default(now())
   updatedAt                  DateTime                    @updatedAt
 }
@@ -1893,19 +1923,156 @@ model KnowledgeEvidenceLink {
 }
 
 model ModelExecution {
-  id           String   @id @default(cuid())
-  robotId      String?
-  provider     String
-  model        String
-  taskType     String
-  inputTokens  Int      @default(0)
-  outputTokens Int      @default(0)
-  latencyMs    Int      @default(0)
-  success      Boolean  @default(false)
-  robot        Robot?   @relation(fields: [robotId], references: [id], onDelete: SetNull)
-  createdAt    DateTime @default(now())
+  id              String              @id @default(cuid())
+  robotId         String?
+  registryModelId String?
+  routingRuleId   String?
+  fallbackFromId  String?
+  provider        String
+  model           String
+  taskType        String
+  inputTokens     Int                 @default(0)
+  outputTokens    Int                 @default(0)
+  latencyMs       Int                 @default(0)
+  costMinor       Int                 @default(0)
+  qualityScore    Int?
+  success         Boolean             @default(false)
+  error           String?
+  traceId         String?
+  robot           Robot?              @relation(fields: [robotId], references: [id], onDelete: SetNull)
+  registryModel   ModelRegistryEntry? @relation("ModelExecutionSelectedModel", fields: [registryModelId], references: [id], onDelete: SetNull)
+  routingRule     ModelRoutingRule?   @relation(fields: [routingRuleId], references: [id], onDelete: SetNull)
+  fallbackFrom    ModelRegistryEntry? @relation("ModelExecutionFallbackFrom", fields: [fallbackFromId], references: [id], onDelete: SetNull)
+  createdAt       DateTime            @default(now())
 
   @@index([provider, model, createdAt])
+  @@index([registryModelId, createdAt])
+  @@index([routingRuleId])
+  @@index([traceId])
+}
+
+model ModelRegistryEntry {
+  id                        String              @id @default(cuid())
+  provider                  String
+  modelKey                  String
+  displayName               String
+  capabilities              Json?
+  status                    ModelRegistryStatus @default(DISABLED)
+  qualityScore              Int                 @default(0)
+  averageLatencyMs          Int                 @default(0)
+  inputCostPerMillionMinor  Int                 @default(0)
+  outputCostPerMillionMinor Int                 @default(0)
+  currency                  String              @default("USD")
+  contextWindow             Int?
+  enabled                   Boolean             @default(false)
+  routingRules              ModelRoutingRule[]
+  primaryFallbacks          ModelFallbackLink[] @relation("PrimaryModelFallbacks")
+  fallbackFor               ModelFallbackLink[] @relation("FallbackModelTargets")
+  executions                ModelExecution[]    @relation("ModelExecutionSelectedModel")
+  fallbackExecutions        ModelExecution[]    @relation("ModelExecutionFallbackFrom")
+  createdAt                 DateTime            @default(now())
+  updatedAt                 DateTime            @updatedAt
+
+  @@unique([provider, modelKey])
+  @@index([status, enabled, qualityScore])
+}
+
+model ModelRoutingRule {
+  id                   String             @id @default(cuid())
+  name                 String
+  taskType             String
+  modelId              String
+  priority             Int                @default(0)
+  minimumQuality       Int                @default(0)
+  maximumLatencyMs     Int?
+  maximumCostMinor     Int?
+  requiredCapabilities Json?
+  enabled              Boolean            @default(true)
+  model                ModelRegistryEntry @relation(fields: [modelId], references: [id], onDelete: Cascade)
+  executions           ModelExecution[]
+  createdAt            DateTime           @default(now())
+  updatedAt            DateTime           @updatedAt
+
+  @@index([taskType, enabled, priority])
+  @@index([modelId])
+}
+
+model ModelFallbackLink {
+  id              String             @id @default(cuid())
+  primaryModelId  String
+  fallbackModelId String
+  priority        Int                @default(0)
+  condition       Json?
+  enabled         Boolean            @default(true)
+  primaryModel    ModelRegistryEntry @relation("PrimaryModelFallbacks", fields: [primaryModelId], references: [id], onDelete: Cascade)
+  fallbackModel   ModelRegistryEntry @relation("FallbackModelTargets", fields: [fallbackModelId], references: [id], onDelete: Cascade)
+  createdAt       DateTime           @default(now())
+
+  @@unique([primaryModelId, fallbackModelId])
+  @@index([primaryModelId, enabled, priority])
+}
+
+model ToolDefinition {
+  id          String           @id @default(cuid())
+  key         String           @unique
+  name        String
+  description String?
+  handlerId   String
+  riskLevel   ToolRiskLevel    @default(LOW)
+  enabled     Boolean          @default(false)
+  permissions ToolPermission[]
+  executions  ToolExecution[]
+  createdAt   DateTime         @default(now())
+  updatedAt   DateTime         @updatedAt
+}
+
+model ToolPermission {
+  id               String         @id @default(cuid())
+  toolId           String
+  role             SystemRole
+  allowed          Boolean        @default(false)
+  approvalRequired Boolean        @default(false)
+  scopes           Json?
+  tool             ToolDefinition @relation(fields: [toolId], references: [id], onDelete: Cascade)
+  createdAt        DateTime       @default(now())
+  updatedAt        DateTime       @updatedAt
+
+  @@unique([toolId, role])
+  @@index([role, allowed])
+}
+
+model ToolExecution {
+  id          String              @id @default(cuid())
+  toolId      String
+  actorId     String?
+  status      ToolExecutionStatus @default(PENDING_APPROVAL)
+  traceId     String              @unique
+  input       Json
+  output      Json?
+  error       String?
+  startedAt   DateTime?
+  completedAt DateTime?
+  tool        ToolDefinition      @relation(fields: [toolId], references: [id], onDelete: Cascade)
+  actor       User?               @relation("ToolExecutionActor", fields: [actorId], references: [id], onDelete: SetNull)
+  approval    ToolApproval?
+  createdAt   DateTime            @default(now())
+
+  @@index([toolId, status, createdAt])
+  @@index([actorId, createdAt])
+}
+
+model ToolApproval {
+  id            String             @id @default(cuid())
+  executionId   String             @unique
+  requestedById String?
+  decidedById   String?
+  status        ToolApprovalStatus @default(PENDING)
+  rationale     String?
+  requestedAt   DateTime           @default(now())
+  decidedAt     DateTime?
+  execution     ToolExecution      @relation(fields: [executionId], references: [id], onDelete: Cascade)
+  requestedBy   User?              @relation("ToolApprovalRequester", fields: [requestedById], references: [id], onDelete: SetNull)
+  decidedBy     User?              @relation("ToolApprovalDecider", fields: [decidedById], references: [id], onDelete: SetNull)
 }
 
 model CommitteeReview {

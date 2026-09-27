@@ -1,7 +1,6 @@
 import { Prisma, TaskStatus } from "@/generated/prisma/client";
 import { db } from "@/lib/db";
 import type { AdminOperationRoute } from "@/lib/admin/admin-operations-routes";
-import { platformToolRegistry } from "@/lib/tools/tool-registry";
 
 type AdminRow = Record<string, string | number | boolean | null>;
 export type AdminPanel = { key: string; title: string; sourceState: "LIVE" | "PARTIAL" | "UNAVAILABLE"; note?: string; rows: AdminRow[] };
@@ -142,23 +141,22 @@ async function intelligencePanels() {
 }
 
 async function modelPanels() {
-  const [executions, costs] = await Promise.all([
-    db.modelExecution.findMany({ include: { robot: { select: { name: true } } }, orderBy: { createdAt: "desc" }, take: 200 }),
-    db.costRecord.findMany({ orderBy: { createdAt: "desc" }, take: 200 }),
+  const [models, rules, fallbacks, executions, tools, permissions, toolExecutions] = await Promise.all([
+    db.modelRegistryEntry.findMany({ include: { _count: { select: { executions: true, routingRules: true } } }, orderBy: [{ enabled: "desc" }, { qualityScore: "desc" }], take: 200 }),
+    db.modelRoutingRule.findMany({ include: { model: { select: { displayName: true, provider: true, modelKey: true } } }, orderBy: [{ taskType: "asc" }, { priority: "desc" }], take: 200 }),
+    db.modelFallbackLink.findMany({ include: { fallbackModel: { select: { displayName: true } }, primaryModel: { select: { displayName: true } } }, orderBy: [{ primaryModelId: "asc" }, { priority: "asc" }], take: 200 }),
+    db.modelExecution.findMany({ include: { registryModel: { select: { displayName: true } }, robot: { select: { name: true } }, routingRule: { select: { name: true } } }, orderBy: { createdAt: "desc" }, take: 200 }),
+    db.toolDefinition.findMany({ include: { _count: { select: { executions: true, permissions: true } } }, orderBy: { name: "asc" }, take: 200 }),
+    db.toolPermission.findMany({ include: { tool: { select: { key: true, name: true } } }, orderBy: [{ toolId: "asc" }, { role: "asc" }], take: 300 }),
+    db.toolExecution.findMany({ include: { actor: { select: { email: true } }, approval: true, tool: { select: { key: true, name: true } } }, orderBy: { createdAt: "desc" }, take: 300 }),
   ]);
-  const models = new Map<string, { provider: string; model: string; runs: number; success: number; inputTokens: number; outputTokens: number }>();
-  for (const execution of executions) {
-    const key = `${execution.provider}:${execution.model}`;
-    const current = models.get(key) ?? { provider: execution.provider, model: execution.model, runs: 0, success: 0, inputTokens: 0, outputTokens: 0 };
-    current.runs += 1; current.success += execution.success ? 1 : 0; current.inputTokens += execution.inputTokens; current.outputTokens += execution.outputTokens; models.set(key, current);
-  }
   return [
-    panel("models", "Observed model registry", [...models.values()].map((item) => ({ ...item, successRate: item.runs ? Math.round(item.success / item.runs * 100) : 0 })), "PARTIAL", "Registry is derived from observed executions; provider configuration is not persisted here."),
-    panel("router", "Model router", [], "UNAVAILABLE", "No persisted model-routing policy is configured."),
-    panel("model-executions", "Model executions", executions.map((item) => ({ id: item.id, provider: item.provider, model: item.model, taskType: item.taskType, robot: item.robot?.name ?? null, inputTokens: item.inputTokens, outputTokens: item.outputTokens, latencyMs: item.latencyMs, success: item.success, createdAt: iso(item.createdAt) }))),
-    panel("tools", "Registered tools", platformToolRegistry.list().map((item) => ({ id: item.id, name: item.name, description: item.description })), "PARTIAL", "Only tools registered in the current process are visible."),
-    panel("tool-permissions", "Tool permissions", [], "UNAVAILABLE", "A persisted per-tool permission matrix is not configured."),
-    panel("tool-executions", "Tool execution evidence", costs.map((item) => ({ id: item.id, provider: item.provider, model: item.model, costMinor: item.computeCostMinor, currency: item.currency, createdAt: iso(item.createdAt) })), "PARTIAL", "Cost records provide execution evidence; structured tool-call logs are not yet persisted."),
+    panel("models", "Model registry", models.map((item) => ({ id: item.id, displayName: item.displayName, provider: item.provider, modelKey: item.modelKey, status: item.status, enabled: item.enabled, quality: item.qualityScore, latencyMs: item.averageLatencyMs, inputCostMinor: item.inputCostPerMillionMinor, outputCostMinor: item.outputCostPerMillionMinor, currency: item.currency, rules: item._count.routingRules, executions: item._count.executions }))),
+    panel("router", "Model routing rules and fallbacks", [...rules.map((item) => ({ id: item.id, type: "RULE", name: item.name, taskType: item.taskType, primaryModelId: item.modelId, model: item.model.displayName, fallbackModelId: null, priority: item.priority, minQuality: item.minimumQuality, maxLatencyMs: item.maximumLatencyMs, maxCostMinor: item.maximumCostMinor, enabled: item.enabled })), ...fallbacks.map((item) => ({ id: item.id, type: "FALLBACK", name: `${item.primaryModel.displayName} → ${item.fallbackModel.displayName}`, taskType: null, primaryModelId: item.primaryModelId, model: item.primaryModel.displayName, fallbackModelId: item.fallbackModelId, priority: item.priority, minQuality: null, maxLatencyMs: null, maxCostMinor: null, enabled: item.enabled }))]),
+    panel("model-executions", "Model executions", executions.map((item) => ({ id: item.id, traceId: item.traceId, provider: item.provider, model: item.registryModel?.displayName ?? item.model, rule: item.routingRule?.name ?? null, taskType: item.taskType, robot: item.robot?.name ?? null, inputTokens: item.inputTokens, outputTokens: item.outputTokens, latencyMs: item.latencyMs, costMinor: item.costMinor, quality: item.qualityScore, success: item.success, error: item.error, createdAt: iso(item.createdAt) }))),
+    panel("tools", "Tool registry", tools.map((item) => ({ id: item.id, key: item.key, name: item.name, handlerId: item.handlerId, risk: item.riskLevel, enabled: item.enabled, permissions: item._count.permissions, executions: item._count.executions }))),
+    panel("tool-permissions", "Tool permissions", permissions.map((item) => ({ id: item.id, toolId: item.toolId, tool: item.tool.name, key: item.tool.key, role: item.role, allowed: item.allowed, approvalRequired: item.approvalRequired, updatedAt: iso(item.updatedAt) }))),
+    panel("tool-executions", "Tool execution history", toolExecutions.map((item) => ({ id: item.id, traceId: item.traceId, tool: item.tool.name, key: item.tool.key, actor: item.actor?.email ?? null, status: item.status, approval: item.approval?.status ?? "NOT_REQUIRED", error: item.error, startedAt: iso(item.startedAt), completedAt: iso(item.completedAt), createdAt: iso(item.createdAt) }))),
   ];
 }
 
