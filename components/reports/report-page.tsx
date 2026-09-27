@@ -19,7 +19,7 @@ export async function ReportPage({ path, projectId }: { path: ReportRoute; proje
         <p>REPORT CENTER</p><h1>{report.title}</h1><p>{report.subtitle}</p>
         <dl><div><dt>تاريخ التوليد</dt><dd>{new Intl.DateTimeFormat("ar-SA", { dateStyle: "long", timeStyle: "short" }).format(report.generatedAt)}</dd></div><div><dt>المستخدم</dt><dd>{user.profile?.displayName ?? user.email}</dd></div><div><dt>حالة المصدر</dt><dd>{report.sourceState}</dd></div></dl>
       </section>
-      <ReportActions canEmail={false} canPrint={canPrint} title={report.title} />
+      <ReportActions canEmail={canPrint} canPrint={canPrint} projectId={report.projectId ?? undefined} recipient={user.email} reportPath={path} title={report.title} />
       <div className="report-document__sections">
         {report.sections.map((section) => <section key={section.title}><h2>{section.title}</h2>{section.note ? <p className="report-document__note">{section.note}</p> : null}{section.rows.length ? <table><tbody>{section.rows.map((row) => <tr key={`${section.title}-${row.label}`}><th>{row.label}</th><td>{row.value}</td></tr>)}</tbody></table> : null}</section>)}
         {!report.sections.length ? <section className="report-document__empty"><h2>لا توجد بيانات تقرير</h2><p>أنشئ مشروعاً أو اختر سجلاً فعلياً ثم أعد فتح التقرير.</p></section> : null}

@@ -1,7 +1,7 @@
 import { expect, test } from "@playwright/test";
 
 import { REPORT_ROUTES } from "@/lib/reports/report-routes";
-import { cleanE2EIdentities, createE2ESession, seedE2EAdmin, seedE2EUser } from "./identity-fixture";
+import { cleanE2EIdentities, createE2ESession, queryE2E, seedE2EAdmin, seedE2EUser } from "./identity-fixture";
 import { e2eIdentity } from "./test-identities";
 
 const origin = process.env.PLAYWRIGHT_BASE_URL ?? `http://127.0.0.1:${process.env.PLAYWRIGHT_PORT ?? "3101"}`;
@@ -37,6 +37,12 @@ test.describe.serial("shared report and legacy route acceptance", () => {
       expect(await page.evaluate(() => document.documentElement.scrollWidth <= document.documentElement.clientWidth + 1), route).toBe(true);
     }
     await expect(page.locator(".report-source")).toHaveText("AWAITING_APPROVED_SOURCE");
+
+    await page.goto(`/reports/view/general?project=${projectId}`, { waitUntil: "domcontentloaded" });
+    await page.getByRole("button", { name: "إرسال بالبريد" }).click();
+    await expect(page.getByRole("status")).toContainText("بانتظار مزود معتمد", { timeout: 15_000 });
+    const deliveries = await queryE2E<{ status: string }>('SELECT status FROM "ReportDelivery" WHERE "projectId" = $1', [projectId]);
+    expect(deliveries.rows[0]?.status).toBe("PENDING_PROVIDER");
   });
 
   test("keeps report documents printable and responsive on mobile", async ({ context, page }) => {

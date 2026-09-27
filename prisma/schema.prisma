@@ -224,6 +224,14 @@ enum RestoreDrillStatus {
   FAILED
 }
 
+enum ReportDeliveryStatus {
+  PENDING_PROVIDER
+  QUEUED
+  SENT
+  FAILED
+  CANCELLED
+}
+
 enum ProjectStatus {
   DRAFT
   ANALYSIS
@@ -805,6 +813,7 @@ model User {
   toolExecutions             ToolExecution[]             @relation("ToolExecutionActor")
   requestedToolApprovals     ToolApproval[]              @relation("ToolApprovalRequester")
   decidedToolApprovals       ToolApproval[]              @relation("ToolApprovalDecider")
+  reportDeliveries           ReportDelivery[]
   createdAt                  DateTime                    @default(now())
   updatedAt                  DateTime                    @updatedAt
 }
@@ -2278,6 +2287,28 @@ model RestoreDrill {
 
   @@index([status, createdAt])
   @@index([backupId])
+}
+
+model ReportDelivery {
+  id          String               @id @default(cuid())
+  userId      String
+  reportPath  String
+  projectId   String?
+  recipient   String
+  subject     String
+  status      ReportDeliveryStatus @default(PENDING_PROVIDER)
+  provider    String?
+  externalId  String?
+  traceId     String               @unique
+  error       String?
+  requestedAt DateTime             @default(now())
+  sentAt      DateTime?
+  user        User                 @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt   DateTime             @default(now())
+  updatedAt   DateTime             @updatedAt
+
+  @@index([userId, status, requestedAt])
+  @@index([recipient, requestedAt])
 }
 
 model CommitteeReview {
