@@ -6,7 +6,108 @@ import { requireUser } from "@/lib/auth/session";
 import { getRequestDictionary } from "@/lib/i18n/server";
 
 export default async function UserInvestmentsPage() {
-  const [{ locale }, user] = await Promise.all([getRequestDictionary(), requireUser("/user/investments")]);
+  const [{ locale }, user] = await Promise.all([
+    getRequestDictionary(),
+    requireUser("/user/investments"),
+  ]);
   const ar = locale === "ar";
-  return <PlatformShell locale={locale} activeRoute="/account" userLabel={user.profile?.displayName ?? user.email}><UserCenterNav activeRoute="/user/investments" locale={locale} /><section className="user-center-page"><UserSectionHeader eyebrow={ar ? "المحفظة الاستثمارية" : "INVESTMENT PORTFOLIO"} title={ar ? "بياناتي الاستثمارية" : "My investment data"} description={ar ? "تظهر الأصول والعوائد فقط عند ربط مصدر استثماري معتمد." : "Assets and returns appear only after an approved investment data source is connected."} /><div className="user-center-metrics">{[ar ? "إجمالي الاستثمارات" : "Total investments", ar ? "العائد" : "Return", ar ? "القيمة السوقية" : "Market value", ar ? "توزيع المحفظة" : "Portfolio allocation"].map((label) => <article key={label}><span>{label}</span><strong>—</strong><small>{ar ? "غير متوفر" : "Unavailable"}</small></article>)}</div><div className="user-investment-modules">{[[ar ? "الأداء" : "Performance", ar ? "يظهر الرسم الزمني بعد ربط سجل قيم موثق." : "The performance timeline appears after a verified valuation record is connected."], [ar ? "الفرص" : "Opportunities", ar ? "لا توجد توصيات قبل توفر بيانات محفظة فعلية." : "No recommendations are shown before real portfolio data is available."], [ar ? "التحديثات" : "Updates", ar ? "ستظهر أحداث الأصل والمستندات المؤكدة هنا." : "Verified asset events and documents will appear here."]].map(([title, description]) => <article key={title}><span aria-hidden="true">◇</span><h2>{title}</h2><p>{description}</p><small>{ar ? "بانتظار المصدر" : "Awaiting source"}</small></article>)}<article className="user-investment-modules__report"><span aria-hidden="true">▤</span><h2>{ar ? "تقرير المحفظة" : "Portfolio report"}</h2><p>{ar ? "يتاح التقرير بعد وجود بيانات قابلة للتحقق." : "The report becomes available when verifiable data exists."}</p><button className="button button--secondary" disabled type="button">{ar ? "التصدير غير متاح" : "Export unavailable"}</button></article></div><section className="user-center-empty"><strong>{ar ? "لا يوجد مصدر استثماري متصل" : "No investment source connected"}</strong><p>{ar ? "لن تعرض المنصة قيماً تقديرية أو تجريبية على أنها استثمارات فعلية." : "The platform will not present estimated or demo values as actual investments."}</p><Link className="button button--secondary" href="/user/investment/detail">{ar ? "عرض حالة التفاصيل" : "View detail state"}</Link></section></section></PlatformShell>;
+  return (
+    <PlatformShell
+      locale={locale}
+      activeRoute="/account"
+      userLabel={user.profile?.displayName ?? user.email}
+    >
+      <UserCenterNav activeRoute="/user/investments" locale={locale} />
+      <section className="user-center-page">
+        <UserSectionHeader
+          eyebrow={ar ? "المحفظة الاستثمارية" : "INVESTMENT PORTFOLIO"}
+          title={ar ? "بياناتي الاستثمارية" : "My investment data"}
+          description={
+            ar
+              ? "تظهر الأصول والعوائد فقط عند ربط مصدر استثماري معتمد."
+              : "Assets and returns appear only after an approved investment data source is connected."
+          }
+        />
+        <div className="user-center-metrics">
+          {[
+            ar ? "إجمالي الاستثمارات" : "Total investments",
+            ar ? "العائد" : "Return",
+            ar ? "القيمة السوقية" : "Market value",
+            ar ? "توزيع المحفظة" : "Portfolio allocation",
+          ].map((label) => (
+            <article key={label}>
+              <span>{label}</span>
+              <strong>—</strong>
+              <small>{ar ? "غير متوفر" : "Unavailable"}</small>
+            </article>
+          ))}
+        </div>
+        <div className="user-investment-modules">
+          {[
+            [
+              ar ? "الأداء" : "Performance",
+              ar
+                ? "يظهر الرسم الزمني بعد ربط سجل قيم موثق."
+                : "The performance timeline appears after a verified valuation record is connected.",
+            ],
+            [
+              ar ? "الفرص" : "Opportunities",
+              ar
+                ? "لا توجد توصيات قبل توفر بيانات محفظة فعلية."
+                : "No recommendations are shown before real portfolio data is available.",
+            ],
+            [
+              ar ? "التحديثات" : "Updates",
+              ar
+                ? "ستظهر أحداث الأصل والمستندات المؤكدة هنا."
+                : "Verified asset events and documents will appear here.",
+            ],
+          ].map(([title, description]) => (
+            <article key={title}>
+              <span aria-hidden="true">◇</span>
+              <h2>{title}</h2>
+              <p>{description}</p>
+              <small>{ar ? "بانتظار المصدر" : "Awaiting source"}</small>
+            </article>
+          ))}
+          <article className="user-investment-modules__report">
+            <span aria-hidden="true">▤</span>
+            <h2>{ar ? "تقرير المحفظة" : "Portfolio report"}</h2>
+            <p>
+              {ar
+                ? "يتاح التقرير بعد وجود بيانات قابلة للتحقق."
+                : "The report becomes available when verifiable data exists."}
+            </p>
+            <Link
+              className="button button--secondary"
+              href="/reports/view/portfolio"
+            >
+              {ar ? "فتح حالة التقرير" : "Open report state"}
+            </Link>
+          </article>
+        </div>
+        <section className="user-center-empty">
+          <strong>
+            {ar
+              ? "لا يوجد مصدر استثماري متصل"
+              : "No investment source connected"}
+          </strong>
+          <p>
+            {ar
+              ? "لن تعرض المنصة قيماً تقديرية أو تجريبية على أنها استثمارات فعلية."
+              : "The platform will not present estimated or demo values as actual investments."}
+          </p>
+          <Link
+            className="button button--secondary"
+            href="/user/investment/detail"
+          >
+            {ar ? "عرض حالة التفاصيل" : "View detail state"}
+          </Link>
+          <Link className="button button--ghost" href="/reports/view/portfolio">
+            {ar ? "تقرير المحفظة" : "Portfolio report"}
+          </Link>
+        </section>
+      </section>
+    </PlatformShell>
+  );
 }

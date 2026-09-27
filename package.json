@@ -40,6 +40,7 @@
     "test:robotics": "node --env-file=.env ./node_modules/vitest/vitest.mjs run tests/unit/robotics-flow-routes.test.ts tests/integration/public-robotics.integration.test.ts",
     "test:e2e:robotics-flow": "node --env-file=.env scripts/run-playwright.mjs tests/e2e/robotics-full-flow.spec.ts --project=robotics-full-flow",
     "test:e2e:admin-operations": "node --env-file=.env scripts/run-playwright.mjs tests/e2e/admin-operations-full-flow.spec.ts --project=admin-operations-full-flow",
+    "test:e2e:reports": "node --env-file=.env scripts/run-playwright.mjs tests/e2e/report-pages.spec.ts --project=report-pages",
     "test:software": "node --env-file=.env ./node_modules/vitest/vitest.mjs run tests/unit/pdf-engine.test.ts tests/unit/sheets-engine.test.ts tests/unit/visual-dna.test.ts",
     "test:software-erp": "node --env-file=.env ./node_modules/vitest/vitest.mjs run tests/unit/software-flow-routes.test.ts tests/integration/software-sales.integration.test.ts tests/integration/software-operations.integration.test.ts tests/integration/software-hr.integration.test.ts",
     "test:e2e:software-flow": "node --env-file=.env scripts/run-playwright.mjs tests/e2e/software-full-flow.spec.ts --project=software-full-flow",
