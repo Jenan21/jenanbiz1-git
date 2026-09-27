@@ -108,6 +108,10 @@ test.describe.serial("Jenan Software full flow", () => {
       const response = await page.goto(route.route, { waitUntil: "domcontentloaded" });
       expect(response?.status(), route.route).toBe(200);
       await expect(page.locator(".software-erp")).toBeVisible();
+      await expect(page.locator(".software-erp")).toHaveAttribute("data-software-route", route.route);
+      await expect(page.locator(".software-erp")).toHaveAttribute("data-software-module", route.id);
+      await expect(page.locator(".software-erp")).toHaveAttribute("data-software-section", route.section);
+      await expect(page.locator(".software-erp")).toHaveAttribute("data-software-source", "ORGANIZATION_RECORDS");
       const layout = await page.evaluate(() => ({ scrollWidth: document.documentElement.scrollWidth, viewportWidth: document.documentElement.clientWidth }));
       expect(layout.scrollWidth, route.route).toBeLessThanOrEqual(layout.viewportWidth + 1);
     }

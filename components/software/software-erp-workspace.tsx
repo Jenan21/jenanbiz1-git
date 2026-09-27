@@ -115,7 +115,7 @@ export function SoftwareErpWorkspace({ locale, route }: { locale: Locale; route:
   const sectionRoutes = route.section === "sales" ? SOFTWARE_FLOW_ROUTES.filter((definition) => definition.section === "sales") : route.section === "hr" ? SOFTWARE_FLOW_ROUTES.filter((definition) => definition.section === "hr") : [];
 
   return (
-    <section className="software-erp">
+    <section className="software-erp" data-software-module={route.id} data-software-output={route.id.includes("reports") ? "PRINT_PDF" : "OPERATIONAL_RECORDS"} data-software-route={route.route} data-software-section={route.section} data-software-source="ORGANIZATION_RECORDS">
       <nav className="software-erp__nav" aria-label={ar ? "وحدات Jenan Software" : "Jenan Software modules"}>{primaryDefinitions.map((definition) => {
         const active = definition.id === route.id || route.section === "sales" && definition.id === "sales" || route.section === "hr" && definition.id === "hr";
         return <Link aria-current={definition.id === route.id ? "page" : undefined} className={active ? "is-active" : ""} href={definition.route} key={definition.id}>{pick(definition.title, locale)}</Link>;
