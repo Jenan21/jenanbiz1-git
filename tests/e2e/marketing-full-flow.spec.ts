@@ -102,6 +102,10 @@ test.describe.serial("Jenan Marketing full flow", () => {
       const response = await page.goto(`${definition.route}${suffix}`, { waitUntil: "domcontentloaded" });
       expect(response?.status(), definition.route).toBe(200);
       await expect(page.locator(".marketing-flow")).toBeVisible();
+      await expect(page.locator(".marketing-flow")).toHaveAttribute("data-marketing-route", definition.route);
+      await expect(page.locator(".marketing-flow")).toHaveAttribute("data-marketing-screen", definition.id);
+      await expect(page.locator(".marketing-flow")).toHaveAttribute("data-marketing-source", "RECORDED_LEADS");
+      await expect(page.locator(".marketing-flow")).toHaveAttribute("data-marketing-provider", "NOT_CONNECTED");
       const layout = await page.evaluate(() => ({ scrollWidth: document.documentElement.scrollWidth, viewportWidth: document.documentElement.clientWidth }));
       expect(layout.scrollWidth, definition.route).toBeLessThanOrEqual(layout.viewportWidth + 1);
     }
