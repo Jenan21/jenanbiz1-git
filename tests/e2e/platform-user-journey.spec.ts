@@ -222,8 +222,8 @@ test.describe.serial("real Jenan Pro user journey", () => {
     expect((await leadResponse).status()).toBe(200);
     await expect(page.getByRole("status")).toContainText("Lead added");
 
-    await expectHealthyPage(page, "/software");
-    const mergeForm = page.locator(".software-tool").filter({ hasText: "Merge PDF files" });
+    await expectHealthyPage(page, "/studio/pdf/editor");
+    const mergeForm = page.locator(".studio-pdf-editor form").filter({ hasText: "Merge files" });
     await mergeForm.locator('input[type="file"]').setInputFiles([
       { name: "journey-one.pdf", mimeType: "application/pdf", buffer: await createPdf("Jenan Pro journey one") },
       { name: "journey-two.pdf", mimeType: "application/pdf", buffer: await createPdf("Jenan Pro journey two") },
@@ -233,14 +233,12 @@ test.describe.serial("real Jenan Pro user journey", () => {
     const download = await downloadPromise;
     expect(download.suggestedFilename()).toBe("jenan-merged.pdf");
     expect(await download.failure()).toBeNull();
-    await expect(page.getByRole("status")).toContainText("Merged PDF created");
+    await expect(page.getByRole("status")).toContainText("created and downloaded");
 
-    const designForm = page.locator(".software-tool").filter({ hasText: "Brand palette" });
-    await designForm.locator('input[type="file"]').setInputFiles(path.join(process.cwd(), "public", "assets", "jenan-pro-logo.jpg"));
-    const paletteResponse = page.waitForResponse((response) => response.url().endsWith("/api/software/design") && response.request().method() === "POST");
-    await designForm.getByRole("button", { name: "Extract palette" }).click();
-    expect((await paletteResponse).status()).toBe(200);
-    await expect(page.locator(".software-palette button").first()).toBeVisible();
+    await expectHealthyPage(page, "/studio/visual-dna");
+    await page.locator(".visual-dna").locator('input[type="file"]').setInputFiles(path.join(process.cwd(), "public", "assets", "jenan-pro-logo.jpg"));
+    await expect(page.getByText(/File: jenan-pro-logo\.jpg/)).toBeVisible();
+    await expect(page.getByRole("button", { name: "Apply theme" })).toBeEnabled();
 
     await expectHealthyPage(page, "/account");
     await expect(page.locator(".account-overview")).toContainText(projectName);

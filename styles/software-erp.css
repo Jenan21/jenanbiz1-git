@@ -1,0 +1,874 @@
+.software-erp {
+  min-width: 0;
+  display: grid;
+  gap: 16px;
+  font-family: "Alexandria Variable", var(--font);
+}
+
+.software-erp__nav,
+.software-erp__subnav {
+  width: 100%;
+  min-width: 0;
+  display: flex;
+  gap: 7px;
+  padding: 9px;
+  overflow-x: auto;
+  border: 1px solid color-mix(in srgb, var(--border) 82%, transparent);
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--surface) 84%, transparent);
+  scrollbar-width: thin;
+}
+
+.software-erp__nav a,
+.software-erp__subnav a {
+  flex: 0 0 auto;
+  min-height: 40px;
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 8px 11px;
+  border: 1px solid transparent;
+  border-radius: 6px;
+  color: var(--muted);
+  font-size: 0.72rem;
+}
+
+.software-erp__subnav {
+  margin-top: -8px;
+  background: color-mix(in srgb, var(--deep) 70%, transparent);
+}
+
+.software-erp__subnav a span {
+  color: var(--brand);
+  font-size: 0.64rem;
+  font-weight: 900;
+}
+
+.software-erp__nav a:hover,
+.software-erp__nav a.is-active,
+.software-erp__subnav a:hover,
+.software-erp__subnav a.is-active {
+  border-color: color-mix(in srgb, var(--brand) 46%, var(--border));
+  color: var(--text);
+  background: color-mix(in srgb, var(--brand) 9%, transparent);
+}
+
+.software-erp__hero {
+  min-height: 210px;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(230px, 320px);
+  align-items: center;
+  gap: 28px;
+  padding: 34px;
+  border: 1px solid color-mix(in srgb, var(--brand) 24%, var(--border));
+  border-radius: 8px;
+  background:
+    radial-gradient(circle at 8% 100%, color-mix(in srgb, var(--success) 11%, transparent), transparent 31%),
+    radial-gradient(circle at 91% 0, color-mix(in srgb, #f4c86a 11%, transparent), transparent 24%),
+    linear-gradient(135deg, color-mix(in srgb, var(--surface2) 78%, transparent), color-mix(in srgb, var(--surface) 94%, transparent));
+  box-shadow: var(--shadow);
+}
+
+.software-erp__hero > div:first-child > span,
+.software-form header span,
+.software-company > header span,
+.software-report > header span {
+  color: var(--brand);
+  font-size: 0.69rem;
+  font-weight: 900;
+}
+
+.software-erp__hero h1 {
+  margin: 8px 0 10px;
+  font-size: 3rem;
+  line-height: 1.1;
+}
+
+.software-erp__hero p,
+.software-panel header p,
+.software-company p,
+.software-report header p,
+.software-report footer {
+  color: var(--muted);
+  line-height: 1.7;
+}
+
+.software-erp__org {
+  display: grid;
+  gap: 10px;
+  padding: 16px;
+  border: 1px solid color-mix(in srgb, var(--brand) 32%, var(--border));
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--deep) 58%, transparent);
+}
+
+.software-erp__org label {
+  display: grid;
+  gap: 7px;
+  color: var(--muted);
+  font-size: 0.72rem;
+}
+
+.software-erp__org select,
+.software-form input,
+.software-form select,
+.software-form textarea,
+.software-search input,
+.software-table select,
+.software-pipeline select {
+  width: 100%;
+  min-height: 42px;
+  padding: 8px 10px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  outline: none;
+  color: var(--text);
+  background: var(--deep);
+}
+
+.software-erp__org select:focus,
+.software-form input:focus,
+.software-form select:focus,
+.software-form textarea:focus,
+.software-search input:focus,
+.software-table select:focus,
+.software-pipeline select:focus {
+  border-color: var(--brand);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--brand) 10%, transparent);
+}
+
+.software-erp__org small {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--success);
+}
+
+.software-erp__loading,
+.software-erp__onboarding {
+  min-height: 250px;
+  display: grid;
+  place-items: center;
+  align-content: center;
+  gap: 12px;
+  padding: 30px;
+  border: 1px solid color-mix(in srgb, var(--border) 78%, transparent);
+  border-radius: 8px;
+  text-align: center;
+  background: color-mix(in srgb, var(--surface) 85%, transparent);
+}
+
+.software-erp__loading span {
+  width: 30px;
+  height: 30px;
+  border: 2px solid var(--border);
+  border-top-color: var(--brand);
+  border-radius: 50%;
+  animation: software-spin 0.8s linear infinite;
+}
+
+@keyframes software-spin {
+  to { transform: rotate(360deg); }
+}
+
+.software-erp__onboarding .icon {
+  width: 42px;
+  height: 42px;
+  color: var(--brand);
+}
+
+.software-erp__onboarding h2,
+.software-erp__onboarding p {
+  margin: 0;
+}
+
+.software-erp__onboarding form {
+  width: min(480px, 100%);
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 8px;
+}
+
+.software-erp__onboarding input {
+  min-width: 0;
+  min-height: 44px;
+  padding: 8px 11px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  color: var(--text);
+  background: var(--deep);
+}
+
+.software-erp__signals {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.software-erp__signals article {
+  min-width: 0;
+  min-height: 102px;
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-content: center;
+  gap: 4px 11px;
+  padding: 16px;
+  border: 1px solid color-mix(in srgb, var(--border) 76%, transparent);
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--surface) 88%, transparent);
+}
+
+.software-erp__signals article > span {
+  grid-row: span 2;
+  color: var(--brand);
+  font-size: 0.7rem;
+  font-weight: 900;
+}
+
+.software-erp__signals strong {
+  min-width: 0;
+  overflow-wrap: anywhere;
+  font-size: 1.45rem;
+}
+
+.software-erp__signals small {
+  color: var(--muted);
+}
+
+.software-erp__modules {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.software-erp__modules > a {
+  min-width: 0;
+  min-height: 158px;
+  display: grid;
+  grid-template-columns: 1fr auto;
+  align-content: space-between;
+  gap: 10px;
+  padding: 17px;
+  border: 1px solid color-mix(in srgb, var(--border) 76%, transparent);
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--surface) 88%, transparent);
+  transition: transform 150ms ease, border-color 150ms ease;
+}
+
+.software-erp__modules > a:hover {
+  border-color: color-mix(in srgb, var(--brand) 55%, var(--border));
+  transform: translateY(-2px);
+}
+
+.software-erp__modules > a > span {
+  width: 42px;
+  height: 42px;
+  display: grid;
+  place-items: center;
+  grid-column: 1 / -1;
+  border: 1px solid color-mix(in srgb, var(--brand) 38%, var(--border));
+  border-radius: 6px;
+  color: var(--brand);
+  background: color-mix(in srgb, var(--brand) 7%, transparent);
+}
+
+.software-erp__modules h2 {
+  margin: 0;
+  font-size: 1rem;
+}
+
+.software-erp__modules p {
+  margin: 5px 0 0;
+  color: var(--muted);
+  font-size: 0.72rem;
+  line-height: 1.6;
+}
+
+.software-erp__modules > a > .icon {
+  align-self: end;
+  color: var(--brand);
+}
+
+.software-module {
+  min-width: 0;
+  display: grid;
+  gap: 14px;
+}
+
+.software-shortcuts {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  gap: 8px;
+}
+
+.software-shortcuts a {
+  min-height: 52px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 10px 13px;
+  border: 1px solid color-mix(in srgb, var(--border) 74%, transparent);
+  border-radius: 6px;
+  color: var(--text);
+  background: color-mix(in srgb, var(--surface) 86%, transparent);
+}
+
+.software-shortcuts .icon {
+  color: var(--brand);
+}
+
+.software-form,
+.software-panel,
+.software-company,
+.software-report,
+.software-locked,
+.software-pos-status {
+  min-width: 0;
+  padding: 20px;
+  border: 1px solid color-mix(in srgb, var(--border) 76%, transparent);
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--surface) 88%, transparent);
+  box-shadow: var(--shadow);
+}
+
+.software-form {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.software-form > header {
+  grid-column: 1 / -1;
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.software-form h2,
+.software-panel h2,
+.software-company h2,
+.software-report h2 {
+  margin: 4px 0;
+}
+
+.software-form textarea {
+  min-height: 92px;
+  grid-column: span 2;
+  resize: vertical;
+}
+
+.software-form > .button {
+  min-height: 44px;
+  grid-column: span 2;
+  align-self: end;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+}
+
+.software-erp__message {
+  margin: 0;
+  padding: 12px 14px;
+  border: 1px solid color-mix(in srgb, var(--brand) 34%, var(--border));
+  border-radius: 6px;
+  background: color-mix(in srgb, var(--brand) 8%, transparent);
+}
+
+.software-search {
+  min-width: 0;
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: center;
+  gap: 8px;
+  padding: 7px 10px;
+  border: 1px solid color-mix(in srgb, var(--border) 76%, transparent);
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--surface) 84%, transparent);
+}
+
+.software-search .icon {
+  color: var(--brand);
+}
+
+.software-search input {
+  border: 0;
+  background: transparent;
+}
+
+.software-panel {
+  display: grid;
+  gap: 12px;
+}
+
+.software-panel > header,
+.software-company > header,
+.software-report > header {
+  display: flex;
+  align-items: start;
+  justify-content: space-between;
+  gap: 18px;
+}
+
+.software-table-wrap {
+  max-width: 100%;
+  overflow-x: auto;
+}
+
+.software-table {
+  width: 100%;
+  min-width: 760px;
+  border-collapse: collapse;
+}
+
+.software-table th,
+.software-table td {
+  padding: 12px 10px;
+  border-bottom: 1px solid color-mix(in srgb, var(--border) 56%, transparent);
+  text-align: start;
+  vertical-align: middle;
+  font-size: 0.78rem;
+}
+
+.software-table th {
+  color: var(--muted);
+  font-size: 0.67rem;
+  font-weight: 700;
+}
+
+.software-table td > strong,
+.software-table td > small {
+  display: block;
+}
+
+.software-table td > small {
+  margin-top: 4px;
+  color: var(--muted);
+  font-size: 0.67rem;
+}
+
+.software-table td:last-child {
+  min-width: 150px;
+}
+
+.software-table td:last-child select {
+  width: calc(100% - 58px);
+  min-height: 34px;
+  display: inline-block;
+}
+
+.software-inline-action,
+.software-row-actions button {
+  min-height: 34px;
+  padding: 6px 9px;
+  border: 1px solid color-mix(in srgb, var(--brand) 42%, var(--border));
+  border-radius: 6px;
+  color: var(--brand);
+  background: color-mix(in srgb, var(--brand) 7%, transparent);
+}
+
+.software-inline-action {
+  width: 54px;
+  margin-inline-start: 4px;
+}
+
+.software-row-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+}
+
+.software-status {
+  width: fit-content;
+  display: inline-flex;
+  padding: 4px 7px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  color: var(--muted);
+  font-size: 0.64rem;
+  font-weight: 800;
+}
+
+.software-status--paid,
+.software-status--posted,
+.software-status--active,
+.software-status--present,
+.software-status--approved,
+.software-status--won,
+.software-status--received,
+.software-status--fulfilled,
+.software-status--owner {
+  border-color: color-mix(in srgb, var(--success) 48%, var(--border));
+  color: var(--success);
+}
+
+.software-status--draft,
+.software-status--pending,
+.software-status--new,
+.software-status--ordered,
+.software-status--open,
+.software-status--issued {
+  border-color: color-mix(in srgb, var(--warning) 48%, var(--border));
+  color: var(--warning);
+}
+
+.software-status--void,
+.software-status--lost,
+.software-status--rejected,
+.software-status--terminated,
+.software-status--closed {
+  border-color: color-mix(in srgb, var(--error) 44%, var(--border));
+  color: var(--error);
+}
+
+.software-empty,
+.software-locked {
+  min-height: 110px;
+  display: grid;
+  place-items: center;
+  align-content: center;
+  gap: 8px;
+  color: var(--muted);
+  text-align: center;
+}
+
+.software-empty p,
+.software-locked p {
+  margin: 0;
+}
+
+.software-empty .icon,
+.software-locked .icon {
+  color: var(--brand);
+}
+
+.software-stock-grid,
+.software-review-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
+  gap: 10px;
+}
+
+.software-stock-grid article,
+.software-review-grid article {
+  min-width: 0;
+  display: grid;
+  gap: 6px;
+  padding: 16px;
+  border: 1px solid color-mix(in srgb, var(--border) 75%, transparent);
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--surface) 86%, transparent);
+}
+
+.software-stock-grid article.is-low {
+  border-color: color-mix(in srgb, var(--warning) 52%, var(--border));
+}
+
+.software-stock-grid span,
+.software-stock-grid small,
+.software-review-grid small,
+.software-review-grid p {
+  color: var(--muted);
+}
+
+.software-stock-grid h3,
+.software-review-grid h3,
+.software-review-grid p {
+  margin: 0;
+}
+
+.software-stock-grid strong,
+.software-review-grid > article > span {
+  color: var(--brand);
+  font-size: 1.6rem;
+  font-weight: 900;
+}
+
+.software-review-grid article {
+  grid-template-columns: auto minmax(0, 1fr);
+}
+
+.software-two-column {
+  min-width: 0;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.software-two-column .software-form {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.software-pipeline {
+  min-width: 0;
+  display: grid;
+  grid-template-columns: repeat(5, minmax(210px, 1fr));
+  gap: 9px;
+  overflow-x: auto;
+}
+
+.software-pipeline > div {
+  min-width: 210px;
+  display: grid;
+  align-content: start;
+  gap: 8px;
+  padding: 10px;
+  border: 1px solid color-mix(in srgb, var(--border) 75%, transparent);
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--surface) 82%, transparent);
+}
+
+.software-pipeline > div > header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.software-pipeline h2 {
+  margin: 0;
+  font-size: 0.78rem;
+}
+
+.software-pipeline header span {
+  color: var(--brand);
+}
+
+.software-pipeline article {
+  display: grid;
+  gap: 7px;
+  padding: 11px;
+  border: 1px solid color-mix(in srgb, var(--border) 58%, transparent);
+  border-radius: 6px;
+  background: color-mix(in srgb, var(--deep) 50%, transparent);
+}
+
+.software-pipeline h3,
+.software-pipeline p {
+  margin: 0;
+}
+
+.software-pipeline p {
+  color: var(--muted);
+  font-size: 0.7rem;
+}
+
+.software-pipeline select {
+  min-height: 36px;
+  font-size: 0.68rem;
+}
+
+.software-pos-status {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.software-pos-status .icon {
+  width: 30px;
+  height: 30px;
+  color: var(--brand);
+}
+
+.software-pos-status > div {
+  display: grid;
+  gap: 4px;
+}
+
+.software-company,
+.software-report {
+  display: grid;
+  gap: 20px;
+}
+
+.software-company__grid,
+.software-report__grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.software-company__grid > section,
+.software-report__grid > section {
+  min-width: 0;
+  display: grid;
+  align-content: start;
+  gap: 8px;
+  padding: 16px;
+  border: 1px solid color-mix(in srgb, var(--border) 64%, transparent);
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--deep) 46%, transparent);
+}
+
+.software-company__grid article {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding-top: 9px;
+  border-top: 1px solid color-mix(in srgb, var(--border) 48%, transparent);
+}
+
+.software-company__grid article > div {
+  min-width: 0;
+  display: grid;
+  gap: 3px;
+}
+
+.software-company__grid small {
+  color: var(--muted);
+  overflow-wrap: anywhere;
+}
+
+.software-company__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.software-report__grid dl {
+  display: grid;
+  gap: 8px;
+  margin: 0;
+}
+
+.software-report__grid dl div {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 9px 0;
+  border-top: 1px solid color-mix(in srgb, var(--border) 48%, transparent);
+}
+
+.software-report__grid dt {
+  color: var(--muted);
+}
+
+.software-report__grid dd {
+  margin: 0;
+  color: var(--brand);
+  font-weight: 900;
+}
+
+.is-warning {
+  color: var(--warning);
+}
+
+.is-positive {
+  color: var(--success);
+}
+
+@media (max-width: 1200px) {
+  .software-erp__modules {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  .software-form {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 850px) {
+  .software-erp__hero,
+  .software-two-column,
+  .software-company__grid,
+  .software-report__grid {
+    grid-template-columns: 1fr;
+  }
+
+  .software-erp__hero {
+    min-height: 0;
+    padding: 26px;
+  }
+
+  .software-erp__hero h1 {
+    font-size: 2.25rem;
+  }
+
+  .software-erp__signals {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .software-erp__modules {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 560px) {
+  .software-erp {
+    gap: 11px;
+  }
+
+  .software-erp__hero,
+  .software-form,
+  .software-panel,
+  .software-company,
+  .software-report,
+  .software-locked,
+  .software-pos-status {
+    padding: 16px;
+  }
+
+  .software-erp__hero h1 {
+    font-size: 1.8rem;
+  }
+
+  .software-erp__signals,
+  .software-erp__modules,
+  .software-form,
+  .software-two-column .software-form,
+  .software-erp__onboarding form {
+    grid-template-columns: 1fr;
+  }
+
+  .software-erp__signals article {
+    min-height: 84px;
+  }
+
+  .software-erp__modules > a {
+    min-height: 130px;
+  }
+
+  .software-form textarea,
+  .software-form > .button {
+    grid-column: auto;
+  }
+
+  .software-panel > header,
+  .software-company > header,
+  .software-report > header {
+    display: grid;
+  }
+}
+
+@media print {
+  .software-report,
+  .software-report * {
+    visibility: visible !important;
+  }
+
+  .software-report {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    color: #102034;
+    background: #fff;
+    box-shadow: none;
+  }
+
+  .software-report .button {
+    display: none;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .software-erp__loading span {
+    animation: none;
+  }
+
+  .software-erp__modules > a {
+    transition: none;
+  }
+}

@@ -106,6 +106,12 @@ export default defineConfig({
       metadata: { appLocale: "en" },
     },
     {
+      name: "software-full-flow",
+      testMatch: /software-full-flow\.spec\.ts/,
+      use: { viewport: { width: 1440, height: 1000 }, locale: "en-US" },
+      metadata: { appLocale: "en" },
+    },
+    {
       name: "platform-user-journey",
       testMatch: /platform-user-journey\.spec\.ts/,
       use: { viewport: { width: 1440, height: 1000 }, locale: "en-US" },

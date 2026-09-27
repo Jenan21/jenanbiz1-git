@@ -1,0 +1,2 @@
+ALTER TABLE "PayrollItem" DROP CONSTRAINT "PayrollItem_employeeId_fkey";
+ALTER TABLE "PayrollItem" ADD CONSTRAINT "PayrollItem_employeeId_fkey" FOREIGN KEY ("employeeId") REFERENCES "SoftwareEmployee"("id") ON DELETE CASCADE ON UPDATE CASCADE;

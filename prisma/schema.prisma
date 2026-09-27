@@ -250,6 +250,78 @@ enum StudioDocumentKind {
   CV
 }
 
+enum SoftwareCustomerStatus {
+  ACTIVE
+  INACTIVE
+}
+
+enum SalesDocumentKind {
+  QUOTE
+  ORDER
+  INVOICE
+  RETURN
+}
+
+enum SalesDocumentStatus {
+  DRAFT
+  ISSUED
+  ACCEPTED
+  FULFILLED
+  PAID
+  VOID
+}
+
+enum CrmLeadStatus {
+  NEW
+  QUALIFIED
+  CONTACTED
+  WON
+  LOST
+}
+
+enum InventoryMovementType {
+  RECEIPT
+  SALE
+  RETURN
+  ADJUSTMENT
+}
+
+enum SoftwareEmployeeStatus {
+  ACTIVE
+  ON_LEAVE
+  TERMINATED
+}
+
+enum AttendanceRecordStatus {
+  PRESENT
+  ABSENT
+  REMOTE
+}
+
+enum LeaveRequestStatus {
+  PENDING
+  APPROVED
+  REJECTED
+  CANCELLED
+}
+
+enum PayrollRunStatus {
+  DRAFT
+  POSTED
+}
+
+enum PurchaseOrderStatus {
+  DRAFT
+  ORDERED
+  RECEIVED
+  CANCELLED
+}
+
+enum PosShiftStatus {
+  OPEN
+  CLOSED
+}
+
 enum ServiceCustomerType {
   INDIVIDUAL
   ORGANIZATION
@@ -597,6 +669,17 @@ model Organization {
   marketingCampaigns MarketingCampaign[]
   businessPrograms OrganizationProgram[]
   financialEntries FinancialEntry[]
+  softwareCustomers SoftwareCustomer[]
+  softwareProducts SoftwareProduct[]
+  salesDocuments SalesDocument[]
+  softwareReceipts SoftwareReceipt[]
+  crmLeads CrmLead[]
+  inventoryMovements InventoryMovement[]
+  softwareEmployees SoftwareEmployee[]
+  payrollRuns PayrollRun[]
+  softwareSuppliers SoftwareSupplier[]
+  purchaseOrders PurchaseOrder[]
+  posShifts PosShift[]
   fieldAssignments FieldAssignment[]
   fleetVehicles FleetVehicle[]
   createdAt     DateTime             @default(now())
@@ -633,6 +716,329 @@ model FinancialEntry {
 
   @@index([organizationId, occurredAt])
   @@index([organizationId, type])
+}
+
+model SoftwareCustomer {
+  id             String                 @id @default(cuid())
+  organizationId String
+  name           String
+  email          String?
+  phone          String?
+  taxNumber      String?
+  status         SoftwareCustomerStatus @default(ACTIVE)
+  createdById    String
+  organization   Organization           @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  salesDocuments SalesDocument[]
+  leads          CrmLead[]
+  createdAt      DateTime               @default(now())
+  updatedAt      DateTime               @updatedAt
+
+  @@index([organizationId, status])
+  @@index([organizationId, name])
+}
+
+model SoftwareProduct {
+  id                 String              @id @default(cuid())
+  organizationId     String
+  sku                String
+  name               String
+  description        String?
+  priceMinor         Int
+  costMinor          Int                 @default(0)
+  currency           String              @default("SAR")
+  stockQuantity      Int                 @default(0)
+  reorderLevel       Int                 @default(0)
+  isActive           Boolean             @default(true)
+  createdById        String
+  organization       Organization        @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  salesLines         SalesDocumentLine[]
+  purchaseLines      PurchaseOrderLine[]
+  inventoryMovements InventoryMovement[]
+  createdAt          DateTime            @default(now())
+  updatedAt          DateTime            @updatedAt
+
+  @@unique([organizationId, sku])
+  @@index([organizationId, isActive])
+}
+
+model SalesDocument {
+  id             String              @id @default(cuid())
+  organizationId String
+  customerId     String?
+  posShiftId     String?
+  kind           SalesDocumentKind
+  status         SalesDocumentStatus @default(DRAFT)
+  number         String
+  currency       String              @default("SAR")
+  subtotalMinor  Int
+  taxMinor       Int
+  totalMinor     Int
+  issuedAt       DateTime            @default(now())
+  dueAt          DateTime?
+  notes          String?
+  createdById    String
+  organization   Organization        @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  customer       SoftwareCustomer?   @relation(fields: [customerId], references: [id], onDelete: SetNull)
+  posShift       PosShift?            @relation(fields: [posShiftId], references: [id], onDelete: SetNull)
+  lines          SalesDocumentLine[]
+  receipts       SoftwareReceipt[]
+  createdAt      DateTime            @default(now())
+  updatedAt      DateTime            @updatedAt
+
+  @@unique([organizationId, number])
+  @@index([organizationId, kind, status])
+  @@index([customerId])
+  @@index([posShiftId])
+}
+
+model SalesDocumentLine {
+  id             String           @id @default(cuid())
+  documentId     String
+  productId      String?
+  description    String
+  quantity       Int
+  unitPriceMinor Int
+  taxRateBps     Int              @default(1500)
+  lineTotalMinor Int
+  document       SalesDocument    @relation(fields: [documentId], references: [id], onDelete: Cascade)
+  product        SoftwareProduct? @relation(fields: [productId], references: [id], onDelete: SetNull)
+  createdAt      DateTime         @default(now())
+
+  @@index([documentId])
+  @@index([productId])
+}
+
+model SoftwareReceipt {
+  id             String        @id @default(cuid())
+  organizationId String
+  documentId     String
+  amountMinor    Int
+  currency       String        @default("SAR")
+  reference      String?
+  receivedAt     DateTime      @default(now())
+  createdById    String
+  organization   Organization  @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  document       SalesDocument @relation(fields: [documentId], references: [id], onDelete: Cascade)
+  createdAt      DateTime      @default(now())
+
+  @@index([organizationId, receivedAt])
+  @@index([documentId])
+}
+
+model CrmLead {
+  id             String        @id @default(cuid())
+  organizationId String
+  customerId     String?
+  name           String
+  contact        String?
+  source         String?
+  valueMinor     Int?
+  currency       String        @default("SAR")
+  status         CrmLeadStatus @default(NEW)
+  nextAction     String?
+  createdById    String
+  organization   Organization  @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  customer       SoftwareCustomer? @relation(fields: [customerId], references: [id], onDelete: SetNull)
+  createdAt      DateTime      @default(now())
+  updatedAt      DateTime      @updatedAt
+
+  @@index([organizationId, status])
+  @@index([customerId])
+}
+
+model InventoryMovement {
+  id             String                @id @default(cuid())
+  organizationId String
+  productId      String
+  type           InventoryMovementType
+  quantity       Int
+  note           String?
+  referenceType  String?
+  referenceId    String?
+  occurredAt     DateTime              @default(now())
+  createdById    String
+  organization   Organization          @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  product        SoftwareProduct       @relation(fields: [productId], references: [id], onDelete: Cascade)
+  createdAt      DateTime              @default(now())
+
+  @@index([organizationId, occurredAt])
+  @@index([productId, occurredAt])
+}
+
+model SoftwareEmployee {
+  id             String                 @id @default(cuid())
+  organizationId String
+  memberId       String?                @unique
+  employeeNumber String
+  name           String
+  email          String?
+  roleTitle      String
+  salaryMinor    Int                    @default(0)
+  currency       String                 @default("SAR")
+  status         SoftwareEmployeeStatus @default(ACTIVE)
+  hiredAt        DateTime
+  createdById    String
+  organization   Organization           @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  member         OrganizationMember?    @relation("SoftwareEmployeeMember", fields: [memberId], references: [id], onDelete: SetNull)
+  attendance     AttendanceRecord[]
+  leaveRequests  LeaveRequest[]
+  payrollItems   PayrollItem[]
+  reviews        PerformanceReview[]
+  createdAt      DateTime               @default(now())
+  updatedAt      DateTime               @updatedAt
+
+  @@unique([organizationId, employeeNumber])
+  @@index([organizationId, status])
+}
+
+model AttendanceRecord {
+  id         String                 @id @default(cuid())
+  employeeId String
+  date       DateTime
+  status     AttendanceRecordStatus
+  checkInAt  DateTime?
+  checkOutAt DateTime?
+  note       String?
+  employee   SoftwareEmployee       @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  createdAt  DateTime               @default(now())
+  updatedAt  DateTime               @updatedAt
+
+  @@unique([employeeId, date])
+  @@index([date, status])
+}
+
+model LeaveRequest {
+  id         String             @id @default(cuid())
+  employeeId String
+  startDate  DateTime
+  endDate    DateTime
+  reason     String?
+  status     LeaveRequestStatus @default(PENDING)
+  employee   SoftwareEmployee   @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  createdAt  DateTime           @default(now())
+  updatedAt  DateTime           @updatedAt
+
+  @@index([employeeId, status])
+  @@index([startDate, endDate])
+}
+
+model PayrollRun {
+  id             String           @id @default(cuid())
+  organizationId String
+  periodStart    DateTime
+  periodEnd      DateTime
+  status         PayrollRunStatus @default(DRAFT)
+  totalGrossMinor Int
+  totalNetMinor  Int
+  postedAt       DateTime?
+  createdById    String
+  organization   Organization     @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  items          PayrollItem[]
+  createdAt      DateTime         @default(now())
+  updatedAt      DateTime         @updatedAt
+
+  @@index([organizationId, periodEnd])
+  @@index([organizationId, status])
+}
+
+model PayrollItem {
+  id             String           @id @default(cuid())
+  payrollRunId   String
+  employeeId     String
+  grossMinor     Int
+  deductionsMinor Int             @default(0)
+  netMinor       Int
+  payrollRun     PayrollRun       @relation(fields: [payrollRunId], references: [id], onDelete: Cascade)
+  employee       SoftwareEmployee @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  createdAt      DateTime         @default(now())
+
+  @@unique([payrollRunId, employeeId])
+  @@index([employeeId])
+}
+
+model PerformanceReview {
+  id         String           @id @default(cuid())
+  employeeId String
+  score      Int
+  summary    String
+  period     String
+  reviewedAt DateTime         @default(now())
+  createdById String
+  employee   SoftwareEmployee @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  createdAt  DateTime         @default(now())
+
+  @@index([employeeId, reviewedAt])
+}
+
+model SoftwareSupplier {
+  id             String          @id @default(cuid())
+  organizationId String
+  name           String
+  email          String?
+  phone          String?
+  createdById    String
+  organization   Organization    @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  purchaseOrders PurchaseOrder[]
+  createdAt      DateTime        @default(now())
+  updatedAt      DateTime        @updatedAt
+
+  @@index([organizationId, name])
+}
+
+model PurchaseOrder {
+  id             String              @id @default(cuid())
+  organizationId String
+  supplierId     String?
+  number         String
+  status         PurchaseOrderStatus @default(DRAFT)
+  currency       String              @default("SAR")
+  totalMinor     Int
+  expectedAt     DateTime?
+  receivedAt     DateTime?
+  createdById    String
+  organization   Organization        @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  supplier       SoftwareSupplier?    @relation(fields: [supplierId], references: [id], onDelete: SetNull)
+  lines          PurchaseOrderLine[]
+  createdAt      DateTime             @default(now())
+  updatedAt      DateTime             @updatedAt
+
+  @@unique([organizationId, number])
+  @@index([organizationId, status])
+  @@index([supplierId])
+}
+
+model PurchaseOrderLine {
+  id             String           @id @default(cuid())
+  purchaseOrderId String
+  productId      String?
+  description    String
+  quantity       Int
+  unitCostMinor  Int
+  lineTotalMinor Int
+  purchaseOrder  PurchaseOrder    @relation(fields: [purchaseOrderId], references: [id], onDelete: Cascade)
+  product        SoftwareProduct? @relation(fields: [productId], references: [id], onDelete: SetNull)
+  createdAt      DateTime         @default(now())
+
+  @@index([purchaseOrderId])
+  @@index([productId])
+}
+
+model PosShift {
+  id               String         @id @default(cuid())
+  organizationId   String
+  status           PosShiftStatus @default(OPEN)
+  openingCashMinor Int            @default(0)
+  closingCashMinor Int?
+  openedAt         DateTime       @default(now())
+  closedAt         DateTime?
+  openedById       String
+  organization     Organization   @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  sales            SalesDocument[]
+  createdAt        DateTime       @default(now())
+  updatedAt        DateTime       @updatedAt
+
+  @@index([organizationId, status])
+  @@index([openedAt])
 }
 
 model FieldAssignment {
@@ -696,6 +1102,7 @@ model OrganizationMember {
   isOwner        Boolean                  @default(false)
   joinedAt       DateTime?
   fieldAssignments FieldAssignment[]      @relation("FieldAssignmentAssignee")
+  softwareEmployee SoftwareEmployee?      @relation("SoftwareEmployeeMember")
   createdAt      DateTime                 @default(now())
   updatedAt      DateTime                 @updatedAt
 
