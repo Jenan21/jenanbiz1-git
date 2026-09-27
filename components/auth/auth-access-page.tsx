@@ -22,6 +22,7 @@ import type { Locale } from "@/types/i18n";
 interface ActivityPayload {
   activeUsers: number;
   locations: GatewayActivityLocation[];
+  sourceState?: "LIVE" | "UNAVAILABLE";
   windowMinutes: number;
 }
 
@@ -88,8 +89,9 @@ export function AuthAccessPage({ locale, mode, languageLabel, labels }: AuthAcce
           signal: controller.signal,
         });
         if (response.ok) {
-          setActivity((await response.json()) as ActivityPayload);
-          setActivitySource("LIVE_PLATFORM_ACTIVITY");
+          const payload = (await response.json()) as ActivityPayload;
+          setActivity(payload);
+          setActivitySource(payload.sourceState === "UNAVAILABLE" ? "UNAVAILABLE" : "LIVE_PLATFORM_ACTIVITY");
         } else {
           setActivitySource("UNAVAILABLE");
         }

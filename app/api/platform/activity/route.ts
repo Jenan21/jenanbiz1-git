@@ -74,6 +74,7 @@ export async function GET() {
         activeUsers: users.size,
         generatedAt: now.toISOString(),
         locations,
+        sourceState: "LIVE",
         windowMinutes: ACTIVITY_WINDOW_MINUTES,
       },
       {
@@ -89,6 +90,7 @@ export async function GET() {
         activeUsers: 0,
         generatedAt: now.toISOString(),
         locations: [],
+        sourceState: "UNAVAILABLE",
         windowMinutes: ACTIVITY_WINDOW_MINUTES,
       },
       { headers: { "Cache-Control": "no-store" } },

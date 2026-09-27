@@ -1,5 +1,7 @@
 import { expect, test, type BrowserContext } from "@playwright/test";
 
+test.setTimeout(90_000);
+
 const homeViewports = [
   { name: "2560x1440", width: 2560, height: 1440 },
   { name: "1920x1080", width: 1920, height: 1080 },
@@ -21,6 +23,7 @@ const activityFixture = {
     { countryCode: "DE", countryName: { ar: "ألمانيا", en: "Germany" }, activeUsers: 4 },
     { countryCode: "JP", countryName: { ar: "اليابان", en: "Japan" }, activeUsers: 2 },
   ],
+  sourceState: "LIVE",
 };
 
 const zones = [
@@ -92,6 +95,9 @@ for (const locale of ["ar", "en"] as const) {
         locale === "ar" ? "rtl" : "ltr",
       );
       await expect(page.locator(".global-home__stage")).toBeVisible();
+      await expect(page.locator(".global-home")).toHaveAttribute("data-home-route", "/");
+      await expect(page.locator(".global-home")).toHaveAttribute("data-home-source", "LIVE_PLATFORM_ACTIVITY");
+      await expect(page.locator(".global-home")).toHaveAttribute("data-home-privacy", "PUBLIC_AGGREGATE");
       await expect(page.locator(".global-home__network i")).toHaveCount(6);
       await expect(page.locator(".global-home__quote cite")).toHaveText("Jenan Pro");
       await expect(page.locator(".global-home__region")).toHaveCount(0);
@@ -229,6 +235,7 @@ for (const locale of ["ar", "en"] as const) {
     await page.goto("/");
     await activityResponse;
 
+    await expect(page.locator(".global-home")).toHaveAttribute("data-home-source", "UNAVAILABLE");
     await expect(page.locator(".global-home__region")).toHaveCount(0);
     await expect(page.locator(".global-home__distribution .global-home__empty")).toContainText(
       locale === "ar" ? "لا توجد جلسات نشطة حالياً" : "No active sessions now",

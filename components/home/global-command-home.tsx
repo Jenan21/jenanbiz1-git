@@ -15,6 +15,7 @@ interface ActivityPayload {
   activeUsers: number;
   generatedAt: string;
   locations: GatewayActivityLocation[];
+  sourceState?: "LIVE" | "UNAVAILABLE";
   windowMinutes: number;
 }
 
@@ -38,6 +39,7 @@ export function GlobalCommandHome({
     locations: [],
     windowMinutes: 15,
   });
+  const [activitySource, setActivitySource] = useState<"LOADING" | "LIVE_PLATFORM_ACTIVITY" | "UNAVAILABLE">("LOADING");
   const serviceCount = modules.reduce(
     (total, module) => total + module.services.length,
     0,
@@ -70,9 +72,16 @@ export function GlobalCommandHome({
           cache: "no-store",
           signal: controller.signal,
         });
-        if (response.ok) setActivity((await response.json()) as ActivityPayload);
+        if (response.ok) {
+          const payload = (await response.json()) as ActivityPayload;
+          setActivity(payload);
+          setActivitySource(payload.sourceState === "UNAVAILABLE" ? "UNAVAILABLE" : "LIVE_PLATFORM_ACTIVITY");
+        } else {
+          setActivitySource("UNAVAILABLE");
+        }
       } catch (error) {
         if (!(error instanceof DOMException && error.name === "AbortError")) {
+          setActivitySource("UNAVAILABLE");
           console.error("Unable to refresh public activity");
         }
       }
@@ -86,7 +95,7 @@ export function GlobalCommandHome({
   }, []);
 
   return (
-    <main className="global-home">
+    <main className="global-home" data-home-access="PUBLIC" data-home-catalog="PLATFORM_CATALOG" data-home-privacy="PUBLIC_AGGREGATE" data-home-route="/" data-home-screen="home" data-home-source={activitySource}>
       <div className="global-home__stage">
         <div className="global-home__atmosphere" aria-hidden="true" />
 
