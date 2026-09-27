@@ -241,6 +241,15 @@ enum MarketingLeadStatus {
   LOST
 }
 
+enum StudioDocumentKind {
+  DOCS
+  SHEETS
+  PRESENTATION
+  LOGO
+  LETTERHEAD
+  CV
+}
+
 enum ServiceCustomerType {
   INDIVIDUAL
   ORGANIZATION
@@ -547,6 +556,7 @@ model User {
   jobApplications         JobApplication[]         @relation("JobApplicant")
   marketingCampaigns      MarketingCampaign[]      @relation("MarketingCampaignCreator")
   payments                Payment[]                @relation("PaymentPayer")
+  studioDocuments         StudioDocument[]         @relation("StudioDocumentOwner")
   academyStaffAssignments AcademyStaffAssignment[]
   createdAt               DateTime                 @default(now())
   updatedAt               DateTime                 @updatedAt
@@ -871,6 +881,34 @@ model Payment {
   @@index([organizationId, status])
   @@index([payerUserId, status])
   @@index([subscriptionId])
+}
+
+model StudioDocument {
+  id             String                  @id @default(cuid())
+  ownerId        String
+  kind           StudioDocumentKind
+  title          String
+  content        Json
+  currentVersion Int                     @default(1)
+  owner          User                    @relation("StudioDocumentOwner", fields: [ownerId], references: [id], onDelete: Cascade)
+  versions       StudioDocumentVersion[]
+  createdAt      DateTime                @default(now())
+  updatedAt      DateTime                @updatedAt
+
+  @@index([ownerId, kind, updatedAt])
+}
+
+model StudioDocumentVersion {
+  id         String         @id @default(cuid())
+  documentId String
+  version    Int
+  title      String
+  content    Json
+  document   StudioDocument @relation(fields: [documentId], references: [id], onDelete: Cascade)
+  createdAt  DateTime       @default(now())
+
+  @@unique([documentId, version])
+  @@index([documentId, createdAt])
 }
 
 model FileAsset {

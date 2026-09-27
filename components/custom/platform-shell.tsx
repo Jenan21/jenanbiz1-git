@@ -116,6 +116,7 @@ const platformNav = [
   ["/projects", "المشاريع", "Projects"],
   ["/academy", "الأكاديمية", "Academy"],
   ["/market", "السوق", "Market"],
+  ["/studio", "الأدوات", "Tools"],
   ["/software", "البرمجيات", "Software"],
   ["/programs", "البرامج", "Programs"],
   ["/talent", "المواهب", "Talent"],
