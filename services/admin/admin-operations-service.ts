@@ -90,20 +90,32 @@ async function organizationPanels() {
 }
 
 async function missionPanels() {
-  const [missions, tasks, evidence, costs] = await Promise.all([
-    db.mission.findMany({ include: { _count: { select: { assignedRobots: true, tasks: true, evidence: true, costs: true } } }, orderBy: { updatedAt: "desc" }, take: 100 }),
+  const [missions, runs, tasks, subtasks, dependencies, retryPolicies, fallbackPolicies, approvals, escalations, history, evidence, costs, robots] = await Promise.all([
+    db.mission.findMany({ include: { _count: { select: { assignedRobots: true, tasks: true, evidence: true, costs: true, runs: true } } }, orderBy: { updatedAt: "desc" }, take: 100 }),
+    db.missionRun.findMany({ include: { mission: { select: { name: true } }, _count: { select: { attempts: true, approvals: true, escalations: true, evidence: true, costs: true, subtasks: true } } }, orderBy: { createdAt: "desc" }, take: 200 }),
     db.robotTask.findMany({ include: { robot: { select: { name: true } }, mission: { select: { name: true } } }, orderBy: { updatedAt: "desc" }, take: 200 }),
-    db.evidence.findMany({ include: { robot: { select: { name: true } }, mission: { select: { name: true } } }, orderBy: { createdAt: "desc" }, take: 200 }),
-    db.costRecord.findMany({ include: { mission: { select: { name: true } }, robot: { select: { name: true } } }, orderBy: { createdAt: "desc" }, take: 200 }),
+    db.missionSubtask.findMany({ include: { run: { select: { traceId: true, mission: { select: { name: true } } } } }, orderBy: [{ runId: "asc" }, { sequence: "asc" }], take: 300 }),
+    db.missionDependency.findMany({ include: { run: { select: { traceId: true, mission: { select: { name: true } } } }, predecessor: { select: { key: true, title: true } }, successor: { select: { key: true, title: true } } }, orderBy: { createdAt: "desc" }, take: 300 }),
+    db.missionRetryPolicy.findMany({ include: { mission: { select: { name: true } } }, orderBy: { updatedAt: "desc" }, take: 100 }),
+    db.missionFallbackPolicy.findMany({ include: { mission: { select: { name: true } } }, orderBy: [{ missionId: "asc" }, { priority: "asc" }], take: 200 }),
+    db.missionApproval.findMany({ include: { run: { select: { traceId: true, mission: { select: { name: true } } } } }, orderBy: { requestedAt: "desc" }, take: 200 }),
+    db.missionEscalation.findMany({ include: { run: { select: { traceId: true, mission: { select: { name: true } } } } }, orderBy: { createdAt: "desc" }, take: 200 }),
+    db.missionHistory.findMany({ include: { mission: { select: { name: true } } }, orderBy: { createdAt: "desc" }, take: 300 }),
+    db.evidence.findMany({ include: { robot: { select: { name: true } }, mission: { select: { name: true } }, missionRun: { select: { traceId: true } } }, orderBy: { createdAt: "desc" }, take: 200 }),
+    db.costRecord.findMany({ include: { mission: { select: { name: true } }, missionRun: { select: { traceId: true } }, robot: { select: { name: true } } }, orderBy: { createdAt: "desc" }, take: 200 }),
+    db.robot.findMany({ where: { status: "ACTIVE" }, select: { id: true, name: true }, orderBy: { name: "asc" }, take: 100 }),
   ]);
   return [
-    panel("missions", "Missions", missions.map((item) => ({ id: item.id, name: item.name, status: item.status, requiredIntelligence: item.requiredIntelligence, robots: item._count.assignedRobots, tasks: item._count.tasks, evidence: item._count.evidence, costs: item._count.costs, updatedAt: iso(item.updatedAt) }))),
-    panel("tasks", "Task queue", tasks.map((item) => ({ id: item.id, title: item.title, robot: item.robot.name, mission: item.mission?.name ?? null, status: item.status, priority: item.priority, dueAt: iso(item.dueAt), updatedAt: iso(item.updatedAt) }))),
-    panel("dependencies", "Dependencies", [], "UNAVAILABLE", "No persisted mission dependency graph exists."),
-    panel("retry", "Retry and fallback", tasks.filter((item) => item.status === "CANCELLED").map((item) => ({ id: item.id, title: item.title, status: item.status, updatedAt: iso(item.updatedAt) })), "PARTIAL", "Attempts are persisted for academy queues; mission retry policy is not yet modeled."),
-    panel("approvals", "Approval gates", [], "UNAVAILABLE", "Mission approval policy is not yet persisted."),
-    panel("evidence", "Evidence pack", evidence.map((item) => ({ id: item.id, type: item.type, description: item.description, verified: item.verified, robot: item.robot.name, mission: item.mission?.name ?? null, createdAt: iso(item.createdAt) }))),
-    panel("costs", "Mission costs", costs.map((item) => ({ id: item.id, mission: item.mission?.name ?? null, robot: item.robot?.name ?? null, provider: item.provider, model: item.model, inputTokens: item.inputTokens, outputTokens: item.outputTokens, costMinor: item.computeCostMinor, currency: item.currency, createdAt: iso(item.createdAt) }))),
+    panel("missions", "Missions", missions.map((item) => ({ id: item.id, name: item.name, status: item.status, requiredIntelligence: item.requiredIntelligence, runs: item._count.runs, robots: item._count.assignedRobots, tasks: item._count.tasks, evidence: item._count.evidence, costs: item._count.costs, updatedAt: iso(item.updatedAt) }))),
+    panel("runs", "Mission runs", runs.map((item) => ({ id: item.id, missionId: item.missionId, mission: item.mission.name, traceId: item.traceId, status: item.status, attempt: item.currentAttempt, subtasks: item._count.subtasks, approvals: item._count.approvals, escalations: item._count.escalations, evidence: item._count.evidence, costs: item._count.costs, createdAt: iso(item.createdAt) }))),
+    panel("tasks", "Task queue", [...subtasks.map((item) => ({ id: item.id, title: item.title, mission: item.run.mission.name, traceId: item.run.traceId, status: item.status, priority: item.priority, sequence: item.sequence, type: "SUBTASK" })), ...tasks.map((item) => ({ id: item.id, title: item.title, mission: item.mission?.name ?? null, traceId: null, status: item.status, priority: item.priority, sequence: 0, type: "ROBOT_TASK" }))]),
+    panel("dependencies", "Dependencies", dependencies.map((item) => ({ id: item.id, mission: item.run.mission.name, traceId: item.run.traceId, predecessor: item.predecessor.title, successor: item.successor.title, type: item.type, createdAt: iso(item.createdAt) }))),
+    panel("retry", "Retry and fallback policies", [...retryPolicies.map((item) => ({ id: item.id, mission: item.mission.name, policy: "RETRY", priority: 0, maxAttempts: item.maxAttempts, backoff: item.backoff, provider: null, model: null, active: item.active })), ...fallbackPolicies.map((item) => ({ id: item.id, mission: item.mission.name, policy: "FALLBACK", priority: item.priority, maxAttempts: null, backoff: null, provider: item.provider, model: item.model, active: item.active }))]),
+    panel("approvals", "Approval gates and escalations", [...approvals.map((item) => ({ id: item.id, mission: item.run.mission.name, traceId: item.run.traceId, type: "APPROVAL", gate: item.gate, status: item.status, level: null, rationale: item.rationale, createdAt: iso(item.requestedAt) })), ...escalations.map((item) => ({ id: item.id, mission: item.run.mission.name, traceId: item.run.traceId, type: "ESCALATION", gate: null, status: item.status, level: item.level, rationale: item.reason, createdAt: iso(item.createdAt) }))]),
+    panel("history", "Mission history", history.map((item) => ({ id: item.id, mission: item.mission.name, traceId: item.traceId, event: item.event, from: item.fromStatus, to: item.toStatus, createdAt: iso(item.createdAt) }))),
+    panel("evidence", "Evidence pack", evidence.map((item) => ({ id: item.id, type: item.type, description: item.description, verified: item.verified, robot: item.robot.name, mission: item.mission?.name ?? null, traceId: item.missionRun?.traceId ?? null, attemptId: item.attemptId, createdAt: iso(item.createdAt) }))),
+    panel("costs", "Mission costs", costs.map((item) => ({ id: item.id, mission: item.mission?.name ?? null, traceId: item.missionRun?.traceId ?? null, attemptId: item.attemptId, robot: item.robot?.name ?? null, provider: item.provider, model: item.model, inputTokens: item.inputTokens, outputTokens: item.outputTokens, costMinor: item.computeCostMinor, currency: item.currency, createdAt: iso(item.createdAt) }))),
+    panel("mission-robots", "Available mission robots", robots.map((item) => ({ id: item.id, name: item.name }))),
   ];
 }
 

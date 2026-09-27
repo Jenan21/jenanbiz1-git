@@ -87,6 +87,59 @@ enum TaskStatus {
   CANCELLED
 }
 
+enum MissionRunStatus {
+  CREATED
+  QUEUED
+  RUNNING
+  WAITING_APPROVAL
+  RETRY
+  FALLBACK
+  COMPLETED
+  FAILED
+  CANCELLED
+}
+
+enum MissionSubtaskStatus {
+  PENDING
+  READY
+  RUNNING
+  WAITING_APPROVAL
+  COMPLETED
+  FAILED
+  SKIPPED
+}
+
+enum MissionAttemptStatus {
+  RUNNING
+  SUCCEEDED
+  FAILED
+}
+
+enum MissionApprovalStatus {
+  PENDING
+  APPROVED
+  REJECTED
+  ESCALATED
+}
+
+enum MissionEscalationStatus {
+  OPEN
+  ACKNOWLEDGED
+  RESOLVED
+  DISMISSED
+}
+
+enum MissionRetryBackoff {
+  FIXED
+  LINEAR
+  EXPONENTIAL
+}
+
+enum MissionDependencyType {
+  REQUIRES
+  BLOCKS
+}
+
 enum ProjectStatus {
   DRAFT
   ANALYSIS
@@ -657,6 +710,11 @@ model User {
   createdAcademyResources    AcademyResource[]           @relation("AcademyResourceCreator")
   approvedAcademyResources   AcademyResource[]           @relation("AcademyResourceApprover")
   academyResourceVersions    AcademyResourceVersion[]    @relation("AcademyResourceVersionAuthor")
+  createdMissionRuns         MissionRun[]                @relation("MissionRunCreator")
+  requestedMissionApprovals  MissionApproval[]           @relation("MissionApprovalRequester")
+  decidedMissionApprovals    MissionApproval[]           @relation("MissionApprovalDecider")
+  missionEscalations         MissionEscalation[]         @relation("MissionEscalationActor")
+  missionHistoryEntries      MissionHistory[]            @relation("MissionHistoryActor")
   createdAt                  DateTime                    @default(now())
   updatedAt                  DateTime                    @updatedAt
 }
@@ -1459,52 +1517,253 @@ model Mission {
   learningLogs         LearningLog[]
   knowledgeEntries     SharedKnowledge[]
   runtimeAllocations   AgentRuntimeAllocation[]
+  runs                 MissionRun[]
+  retryPolicy          MissionRetryPolicy?
+  fallbackPolicies     MissionFallbackPolicy[]
+  history              MissionHistory[]
   createdAt            DateTime                 @default(now())
   updatedAt            DateTime                 @updatedAt
 
   @@index([status])
 }
 
+model MissionRun {
+  id             String              @id @default(cuid())
+  missionId      String
+  createdById    String?
+  status         MissionRunStatus    @default(CREATED)
+  traceId        String              @unique
+  currentAttempt Int                 @default(0)
+  queuedAt       DateTime?
+  startedAt      DateTime?
+  completedAt    DateTime?
+  failedAt       DateTime?
+  lastError      String?
+  mission        Mission             @relation(fields: [missionId], references: [id], onDelete: Cascade)
+  createdBy      User?               @relation("MissionRunCreator", fields: [createdById], references: [id], onDelete: SetNull)
+  subtasks       MissionSubtask[]
+  dependencies   MissionDependency[]
+  attempts       MissionAttempt[]
+  approvals      MissionApproval[]
+  escalations    MissionEscalation[]
+  history        MissionHistory[]
+  evidence       Evidence[]
+  costs          CostRecord[]
+  createdAt      DateTime            @default(now())
+  updatedAt      DateTime            @updatedAt
+
+  @@index([missionId, status, createdAt])
+}
+
+model MissionSubtask {
+  id           String               @id @default(cuid())
+  runId        String
+  parentId     String?
+  key          String
+  title        String
+  description  String?
+  status       MissionSubtaskStatus @default(PENDING)
+  priority     Int                  @default(0)
+  sequence     Int                  @default(0)
+  maxAttempts  Int                  @default(3)
+  run          MissionRun           @relation(fields: [runId], references: [id], onDelete: Cascade)
+  parent       MissionSubtask?      @relation("MissionSubtaskTree", fields: [parentId], references: [id], onDelete: SetNull)
+  children     MissionSubtask[]     @relation("MissionSubtaskTree")
+  predecessors MissionDependency[]  @relation("MissionDependencyPredecessor")
+  successors   MissionDependency[]  @relation("MissionDependencySuccessor")
+  attempts     MissionAttempt[]
+  createdAt    DateTime             @default(now())
+  updatedAt    DateTime             @updatedAt
+
+  @@unique([runId, key])
+  @@index([runId, status, sequence])
+  @@index([parentId])
+}
+
+model MissionDependency {
+  id            String                @id @default(cuid())
+  runId         String
+  predecessorId String
+  successorId   String
+  type          MissionDependencyType @default(REQUIRES)
+  condition     Json?
+  run           MissionRun            @relation(fields: [runId], references: [id], onDelete: Cascade)
+  predecessor   MissionSubtask        @relation("MissionDependencyPredecessor", fields: [predecessorId], references: [id], onDelete: Cascade)
+  successor     MissionSubtask        @relation("MissionDependencySuccessor", fields: [successorId], references: [id], onDelete: Cascade)
+  createdAt     DateTime              @default(now())
+
+  @@unique([predecessorId, successorId])
+  @@index([runId])
+  @@index([successorId])
+}
+
+model MissionAttempt {
+  id               String                 @id @default(cuid())
+  runId            String
+  subtaskId        String?
+  fallbackPolicyId String?
+  attempt          Int
+  attemptKey       String                 @unique
+  status           MissionAttemptStatus   @default(RUNNING)
+  provider         String?
+  model            String?
+  output           Json?
+  error            String?
+  startedAt        DateTime               @default(now())
+  completedAt      DateTime?
+  run              MissionRun             @relation(fields: [runId], references: [id], onDelete: Cascade)
+  subtask          MissionSubtask?        @relation(fields: [subtaskId], references: [id], onDelete: SetNull)
+  fallbackPolicy   MissionFallbackPolicy? @relation(fields: [fallbackPolicyId], references: [id], onDelete: SetNull)
+  evidence         Evidence[]
+  costs            CostRecord[]
+
+  @@index([runId, attempt])
+  @@index([subtaskId, attempt])
+}
+
+model MissionRetryPolicy {
+  id                  String              @id @default(cuid())
+  missionId           String              @unique
+  maxAttempts         Int                 @default(3)
+  backoff             MissionRetryBackoff @default(EXPONENTIAL)
+  baseDelaySeconds    Int                 @default(30)
+  maximumDelaySeconds Int                 @default(3600)
+  retryableErrors     Json?
+  active              Boolean             @default(true)
+  mission             Mission             @relation(fields: [missionId], references: [id], onDelete: Cascade)
+  createdAt           DateTime            @default(now())
+  updatedAt           DateTime            @updatedAt
+}
+
+model MissionFallbackPolicy {
+  id        String           @id @default(cuid())
+  missionId String
+  name      String
+  priority  Int              @default(0)
+  provider  String?
+  model     String?
+  toolId    String?
+  condition Json?
+  active    Boolean          @default(true)
+  mission   Mission          @relation(fields: [missionId], references: [id], onDelete: Cascade)
+  attempts  MissionAttempt[]
+  createdAt DateTime         @default(now())
+  updatedAt DateTime         @updatedAt
+
+  @@unique([missionId, priority])
+  @@index([missionId, active, priority])
+}
+
+model MissionApproval {
+  id            String                @id @default(cuid())
+  runId         String
+  requestedById String?
+  decidedById   String?
+  gate          String
+  status        MissionApprovalStatus @default(PENDING)
+  rationale     String?
+  requestedAt   DateTime              @default(now())
+  decidedAt     DateTime?
+  run           MissionRun            @relation(fields: [runId], references: [id], onDelete: Cascade)
+  requestedBy   User?                 @relation("MissionApprovalRequester", fields: [requestedById], references: [id], onDelete: SetNull)
+  decidedBy     User?                 @relation("MissionApprovalDecider", fields: [decidedById], references: [id], onDelete: SetNull)
+  escalations   MissionEscalation[]
+
+  @@index([runId, status, requestedAt])
+}
+
+model MissionEscalation {
+  id           String                  @id @default(cuid())
+  runId        String
+  approvalId   String?
+  actorId      String?
+  level        Int                     @default(1)
+  reason       String
+  assignedRole SystemRole?
+  status       MissionEscalationStatus @default(OPEN)
+  resolvedAt   DateTime?
+  run          MissionRun              @relation(fields: [runId], references: [id], onDelete: Cascade)
+  approval     MissionApproval?        @relation(fields: [approvalId], references: [id], onDelete: SetNull)
+  actor        User?                   @relation("MissionEscalationActor", fields: [actorId], references: [id], onDelete: SetNull)
+  createdAt    DateTime                @default(now())
+  updatedAt    DateTime                @updatedAt
+
+  @@index([runId, status, createdAt])
+  @@index([approvalId])
+}
+
+model MissionHistory {
+  id         String            @id @default(cuid())
+  missionId  String
+  runId      String?
+  actorId    String?
+  event      String
+  fromStatus MissionRunStatus?
+  toStatus   MissionRunStatus?
+  traceId    String?
+  metadata   Json?
+  mission    Mission           @relation(fields: [missionId], references: [id], onDelete: Cascade)
+  run        MissionRun?       @relation(fields: [runId], references: [id], onDelete: Cascade)
+  actor      User?             @relation("MissionHistoryActor", fields: [actorId], references: [id], onDelete: SetNull)
+  createdAt  DateTime          @default(now())
+
+  @@index([missionId, createdAt])
+  @@index([runId, createdAt])
+  @@index([traceId])
+}
+
 model Evidence {
-  id          String     @id @default(cuid())
-  robotId     String
-  robotTaskId String?
-  missionId   String?
-  type        String
-  description String
-  metadata    Json?
-  verified    Boolean    @default(false)
-  robot       Robot      @relation(fields: [robotId], references: [id], onDelete: Cascade)
-  robotTask   RobotTask? @relation(fields: [robotTaskId], references: [id], onDelete: Cascade)
-  mission     Mission?   @relation(fields: [missionId], references: [id], onDelete: SetNull)
-  createdAt   DateTime   @default(now())
-  updatedAt   DateTime   @updatedAt
+  id           String          @id @default(cuid())
+  robotId      String
+  robotTaskId  String?
+  missionId    String?
+  missionRunId String?
+  attemptId    String?
+  type         String
+  description  String
+  metadata     Json?
+  verified     Boolean         @default(false)
+  robot        Robot           @relation(fields: [robotId], references: [id], onDelete: Cascade)
+  robotTask    RobotTask?      @relation(fields: [robotTaskId], references: [id], onDelete: Cascade)
+  mission      Mission?        @relation(fields: [missionId], references: [id], onDelete: SetNull)
+  missionRun   MissionRun?     @relation(fields: [missionRunId], references: [id], onDelete: SetNull)
+  attempt      MissionAttempt? @relation(fields: [attemptId], references: [id], onDelete: SetNull)
+  createdAt    DateTime        @default(now())
+  updatedAt    DateTime        @updatedAt
 
   @@index([robotId, verified])
   @@index([robotTaskId])
   @@index([missionId])
+  @@index([missionRunId, createdAt])
+  @@index([attemptId])
 }
 
 model CostRecord {
-  id                String     @id @default(cuid())
+  id                String          @id @default(cuid())
   robotId           String?
   robotTaskId       String?
   missionId         String?
+  missionRunId      String?
+  attemptId         String?
   provider          String
   model             String?
-  inputTokens       Int        @default(0)
-  outputTokens      Int        @default(0)
-  computeCostMinor  Int        @default(0)
-  currency          String     @default("USD")
+  inputTokens       Int             @default(0)
+  outputTokens      Int             @default(0)
+  computeCostMinor  Int             @default(0)
+  currency          String          @default("USD")
   estimatedDuration Int?
   actualDuration    Int?
-  robot             Robot?     @relation(fields: [robotId], references: [id], onDelete: SetNull)
-  robotTask         RobotTask? @relation(fields: [robotTaskId], references: [id], onDelete: SetNull)
-  mission           Mission?   @relation(fields: [missionId], references: [id], onDelete: SetNull)
-  createdAt         DateTime   @default(now())
+  robot             Robot?          @relation(fields: [robotId], references: [id], onDelete: SetNull)
+  robotTask         RobotTask?      @relation(fields: [robotTaskId], references: [id], onDelete: SetNull)
+  mission           Mission?        @relation(fields: [missionId], references: [id], onDelete: SetNull)
+  missionRun        MissionRun?     @relation(fields: [missionRunId], references: [id], onDelete: SetNull)
+  attempt           MissionAttempt? @relation(fields: [attemptId], references: [id], onDelete: SetNull)
+  createdAt         DateTime        @default(now())
 
   @@index([robotId, createdAt])
   @@index([missionId, createdAt])
+  @@index([missionRunId, createdAt])
+  @@index([attemptId])
 }
 
 model LearningLog {

@@ -143,6 +143,11 @@
 .admin-ops-review-list span { display: flex; align-items: center; gap: 8px; }
 .admin-ops-review-list small { color: var(--muted); }
 
+.mission-engine-console { display: grid; gap: 14px; padding: 18px; border: 1px solid color-mix(in srgb, var(--brand) 42%, var(--border)); border-radius: 8px; background: color-mix(in srgb, var(--surface) 90%, transparent); }
+.mission-engine-console > header { display: flex; align-items: center; justify-content: space-between; gap: 12px; }.mission-engine-console > header span { color: var(--brand); font-size: 11px; font-weight: 900; }.mission-engine-console h2 { margin: 4px 0 0; font-size: 18px; }.mission-engine-console > header > strong { color: var(--muted); font-size: 11px; }
+.mission-engine-console__selectors { display: grid; grid-template-columns: 1fr 1fr auto; gap: 10px; align-items: end; }.mission-engine-console label { display: grid; gap: 6px; color: var(--muted); font-size: 12px; }.mission-engine-console select, .mission-engine-console input { min-width: 0; padding: 9px 10px; border: 1px solid var(--border); border-radius: 5px; background: var(--deep); color: var(--text); }
+.mission-engine-console__commands { display: flex; gap: 8px; flex-wrap: wrap; }.mission-engine-console__commands form { display: flex; gap: 7px; flex-wrap: wrap; }.mission-engine-console__commands button { padding: 9px 12px; border: 1px solid color-mix(in srgb, var(--brand) 38%, var(--border)); border-radius: 5px; background: var(--surface2); color: var(--text); cursor: pointer; }.mission-engine-console__commands button:disabled { cursor: not-allowed; opacity: .45; }
+
 @media (max-width: 1050px) {
   .admin-ops-metrics { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .admin-ops-command { grid-template-columns: 1fr; }
@@ -158,4 +163,5 @@
   .admin-ops-command__wide { grid-column: auto; }
   .admin-ops-review-list > div,
   .admin-ops-review-list span { align-items: flex-start; flex-direction: column; }
+  .mission-engine-console > header, .mission-engine-console__selectors { align-items: stretch; grid-template-columns: 1fr; }.mission-engine-console > header { display: grid; }.mission-engine-console__commands, .mission-engine-console__commands form { display: grid; grid-template-columns: 1fr; }.mission-engine-console__commands button { width: 100%; }
 }

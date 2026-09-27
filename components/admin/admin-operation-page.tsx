@@ -3,6 +3,7 @@ import Link from "next/link";
 import type { AdminOperationRoute } from "@/lib/admin/admin-operations-routes";
 import type { AdminPanel } from "@/services/admin/admin-operations-service";
 import { AdminOperationActions } from "@/components/admin/admin-operation-actions";
+import { MissionEngineActions } from "@/components/admin/mission-engine-actions";
 
 type Snapshot = {
   definition: AdminOperationRoute;
@@ -135,6 +136,7 @@ export function AdminOperationPage({ snapshot }: { snapshot: Snapshot }) {
       </section>
 
       <AdminOperationActions path={definition.path} informationRequests={informationRequests} />
+      {definition.group === "missions" ? <MissionEngineActions approvals={snapshot.panels.find((item) => item.key === "approvals")?.rows ?? []} missions={snapshot.panels.find((item) => item.key === "missions")?.rows ?? []} robots={snapshot.panels.find((item) => item.key === "mission-robots")?.rows ?? []} runs={snapshot.panels.find((item) => item.key === "runs")?.rows ?? []} subtasks={snapshot.panels.find((item) => item.key === "tasks")?.rows ?? []} /> : null}
 
       <div className="admin-ops-panels">
         {selectedPanels.map((item) => <DataPanel key={item.key} panel={item} />)}
