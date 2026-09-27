@@ -626,6 +626,7 @@ model User {
   learnerCertificates     LearnerCertificate[]
   createdJobPostings      JobPosting[]             @relation("JobPostingCreator")
   jobApplications         JobApplication[]         @relation("JobApplicant")
+  talentProfile           TalentProfile?
   marketingCampaigns      MarketingCampaign[]      @relation("MarketingCampaignCreator")
   payments                Payment[]                @relation("PaymentPayer")
   studioDocuments         StudioDocument[]         @relation("StudioDocumentOwner")
@@ -1299,6 +1300,8 @@ model StudioDocument {
   currentVersion Int                     @default(1)
   owner          User                    @relation("StudioDocumentOwner", fields: [ownerId], references: [id], onDelete: Cascade)
   versions       StudioDocumentVersion[]
+  talentProfile  TalentProfile?          @relation("TalentProfileCv")
+  jobApplications JobApplication[]       @relation("JobApplicationCv")
   createdAt      DateTime                @default(now())
   updatedAt      DateTime                @updatedAt
 
@@ -2353,22 +2356,52 @@ model JobPosting {
   @@index([countryCode, city])
 }
 
+model TalentProfile {
+  id                 String          @id @default(cuid())
+  userId             String          @unique
+  headline           String
+  summary            String
+  city               String?
+  countryCode        String?
+  yearsExperience    Int             @default(0)
+  skills             Json?
+  experience         String?
+  education          String?
+  desiredWorkModes   Json?
+  availability       String?
+  cvDocumentId       String?         @unique
+  isDiscoverable     Boolean         @default(false)
+  user               User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  cvDocument         StudioDocument? @relation("TalentProfileCv", fields: [cvDocumentId], references: [id], onDelete: SetNull)
+  createdAt          DateTime        @default(now())
+  updatedAt          DateTime        @updatedAt
+
+  @@index([isDiscoverable, countryCode])
+}
+
 model JobApplication {
   id          String               @id @default(cuid())
   jobPostingId String
   applicantId String
   message     String?
+  cvDocumentId String?
+  profileSnapshot Json?
+  consentVersion String?
+  consentedAt DateTime?
+  employerNotes String?
   matchScore  Int       @default(0)
   matchSignals Json?
   status      JobApplicationStatus @default(SUBMITTED)
   jobPosting  JobPosting           @relation(fields: [jobPostingId], references: [id], onDelete: Cascade)
   applicant   User                 @relation("JobApplicant", fields: [applicantId], references: [id], onDelete: Cascade)
+  cvDocument  StudioDocument?      @relation("JobApplicationCv", fields: [cvDocumentId], references: [id], onDelete: SetNull)
   createdAt   DateTime             @default(now())
   updatedAt   DateTime             @updatedAt
 
   @@unique([jobPostingId, applicantId])
   @@index([applicantId, status])
   @@index([jobPostingId, status])
+  @@index([cvDocumentId])
 }
 
 model MarketingCampaign {

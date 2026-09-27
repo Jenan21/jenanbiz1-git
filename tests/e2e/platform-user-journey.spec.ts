@@ -155,24 +155,25 @@ test.describe.serial("real Jenan Pro user journey", () => {
     expect((await publishListingResponse).status()).toBe(200);
     await expect(listingCard).toContainText("PUBLISHED");
 
-    await expectHealthyPage(page, "/talent");
-    const talentForm = page.locator(".talent-form");
+    await expectHealthyPage(page, "/talent/employer/post");
+    const talentForm = page.locator(".talent-post-form");
     await talentForm.getByPlaceholder("Job title").fill(jobTitle);
-    await talentForm.getByPlaceholder("Department or field").fill("Operations");
+    await talentForm.getByPlaceholder("Department").fill("Operations");
     await talentForm.getByLabel("Work mode").selectOption("HYBRID");
     await talentForm.getByPlaceholder("City").fill("Riyadh");
     await talentForm.getByPlaceholder("Country").fill("SA");
     await talentForm.getByPlaceholder("Salary from").fill("12000");
     await talentForm.getByPlaceholder("Salary to").fill("18000");
-    await talentForm.getByPlaceholder("Required skills, comma separated").fill("operations, analytics, leadership, logistics");
-    await talentForm.getByPlaceholder("Role description and responsibilities").fill("Lead cross-functional operations, analyze service performance, coordinate logistics, document decisions, and improve delivery quality across regional teams.");
+    await talentForm.getByPlaceholder("Required skills").fill("operations, analytics, leadership, logistics");
+    await talentForm.getByPlaceholder("Responsibilities, requirements, and benefits").fill("Lead cross-functional operations, analyze service performance, coordinate logistics, document decisions, and improve delivery quality across regional teams.");
     const postingResponse = page.waitForResponse((response) => response.url().endsWith("/api/talent") && response.request().method() === "POST");
-    await talentForm.getByRole("button", { name: "Create posting" }).click();
+    await talentForm.getByRole("button", { name: "Save draft" }).click();
     expect((await postingResponse).status()).toBe(201);
-    const postingCard = page.locator(".talent-posting").filter({ hasText: jobTitle });
+    await expectHealthyPage(page, "/talent/employer");
+    const postingCard = page.locator(".talent-job-grid > article").filter({ hasText: jobTitle });
     await expect(postingCard).toBeVisible();
     const publishPostingResponse = page.waitForResponse((response) => response.url().endsWith("/api/talent") && response.request().method() === "POST");
-    await postingCard.getByRole("button", { name: "Publish posting" }).click();
+    await postingCard.getByRole("button", { name: "Publish" }).click();
     expect((await publishPostingResponse).status()).toBe(200);
     await expect(postingCard).toContainText("PUBLISHED");
 

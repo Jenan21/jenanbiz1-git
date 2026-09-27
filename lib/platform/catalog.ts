@@ -380,23 +380,25 @@ const modules: readonly PlatformModuleDefinition[] = [
     services: [
       service(
         "talent",
-        "job-seeker",
+        "jobs",
         "user",
         ["طالب وظيفة", "Job seeker"],
         [
           "صفحة مهنية للملف والسيرة الذاتية واستكشاف الفرص.",
           "A professional page for profiles, resumes, and opportunity discovery.",
         ],
+        "/talent/jobs",
       ),
       service(
         "talent",
-        "hiring-organization",
+        "employer",
         "building",
         ["منشأة تبحث عن موظفين", "Hiring organization"],
         [
           "صفحة للمنشأة واحتياجاتها والبحث في السير الذاتية.",
           "A page for organization needs and resume discovery.",
         ],
+        "/talent/employer",
       ),
     ],
   },
