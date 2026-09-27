@@ -175,6 +175,55 @@ enum ToolApprovalStatus {
   REJECTED
 }
 
+enum WorkerNodeStatus {
+  ONLINE
+  DEGRADED
+  OFFLINE
+  DRAINING
+}
+
+enum OperationsJobStatus {
+  QUEUED
+  LEASED
+  RETRYING
+  SUCCEEDED
+  FAILED
+  DEAD_LETTER
+  CANCELLED
+}
+
+enum OperationalAlertSeverity {
+  INFO
+  WARNING
+  ERROR
+  CRITICAL
+}
+
+enum OperationalAlertStatus {
+  OPEN
+  ACKNOWLEDGED
+  RESOLVED
+}
+
+enum IncidentStatus {
+  OPEN
+  INVESTIGATING
+  RESOLVED
+}
+
+enum BackupRecordStatus {
+  RUNNING
+  SUCCEEDED
+  FAILED
+}
+
+enum RestoreDrillStatus {
+  PLANNED
+  RUNNING
+  SUCCEEDED
+  FAILED
+}
+
 enum ProjectStatus {
   DRAFT
   ANALYSIS
@@ -2073,6 +2122,162 @@ model ToolApproval {
   execution     ToolExecution      @relation(fields: [executionId], references: [id], onDelete: Cascade)
   requestedBy   User?              @relation("ToolApprovalRequester", fields: [requestedById], references: [id], onDelete: SetNull)
   decidedBy     User?              @relation("ToolApprovalDecider", fields: [decidedById], references: [id], onDelete: SetNull)
+}
+
+model WorkerNode {
+  id              String            @id @default(cuid())
+  key             String            @unique
+  name            String
+  status          WorkerNodeStatus  @default(OFFLINE)
+  capabilities    Json?
+  version         String?
+  lastHeartbeatAt DateTime?
+  heartbeats      WorkerHeartbeat[]
+  jobs            OperationsJob[]
+  createdAt       DateTime          @default(now())
+  updatedAt       DateTime          @updatedAt
+
+  @@index([status, lastHeartbeatAt])
+}
+
+model WorkerHeartbeat {
+  id          String           @id @default(cuid())
+  workerId    String
+  status      WorkerNodeStatus
+  loadPercent Int              @default(0)
+  activeJobs  Int              @default(0)
+  traceId     String?
+  metadata    Json?
+  worker      WorkerNode       @relation(fields: [workerId], references: [id], onDelete: Cascade)
+  createdAt   DateTime         @default(now())
+
+  @@index([workerId, createdAt])
+  @@index([traceId])
+}
+
+model OperationsQueue {
+  id          String          @id @default(cuid())
+  key         String          @unique
+  name        String
+  concurrency Int             @default(1)
+  paused      Boolean         @default(false)
+  jobs        OperationsJob[]
+  createdAt   DateTime        @default(now())
+  updatedAt   DateTime        @updatedAt
+}
+
+model OperationsJob {
+  id             String              @id @default(cuid())
+  queueId        String
+  workerId       String?
+  idempotencyKey String              @unique
+  kind           String
+  status         OperationsJobStatus @default(QUEUED)
+  payload        Json?
+  output         Json?
+  traceId        String              @unique
+  priority       Int                 @default(0)
+  attempts       Int                 @default(0)
+  maxAttempts    Int                 @default(3)
+  availableAt    DateTime            @default(now())
+  leasedAt       DateTime?
+  leaseExpiresAt DateTime?
+  completedAt    DateTime?
+  lastError      String?
+  queue          OperationsQueue     @relation(fields: [queueId], references: [id], onDelete: Cascade)
+  worker         WorkerNode?         @relation(fields: [workerId], references: [id], onDelete: SetNull)
+  createdAt      DateTime            @default(now())
+  updatedAt      DateTime            @updatedAt
+
+  @@index([queueId, status, priority, availableAt])
+  @@index([workerId, status])
+  @@index([leaseExpiresAt])
+}
+
+model OperationalIncident {
+  id         String                   @id @default(cuid())
+  title      String
+  summary    String?
+  severity   OperationalAlertSeverity
+  status     IncidentStatus           @default(OPEN)
+  traceId    String?
+  openedAt   DateTime                 @default(now())
+  resolvedAt DateTime?
+  alerts     OperationalAlert[]
+  createdAt  DateTime                 @default(now())
+  updatedAt  DateTime                 @updatedAt
+
+  @@index([status, severity, openedAt])
+  @@index([traceId])
+}
+
+model OperationalAlert {
+  id             String                   @id @default(cuid())
+  incidentId     String?
+  severity       OperationalAlertSeverity
+  status         OperationalAlertStatus   @default(OPEN)
+  source         String
+  title          String
+  details        String?
+  traceId        String?
+  entityType     String?
+  entityId       String?
+  acknowledgedAt DateTime?
+  resolvedAt     DateTime?
+  incident       OperationalIncident?     @relation(fields: [incidentId], references: [id], onDelete: SetNull)
+  createdAt      DateTime                 @default(now())
+  updatedAt      DateTime                 @updatedAt
+
+  @@index([status, severity, createdAt])
+  @@index([traceId])
+  @@index([entityType, entityId])
+}
+
+model SystemLog {
+  id        String   @id @default(cuid())
+  level     String
+  source    String
+  message   String
+  traceId   String?
+  metadata  Json?
+  createdAt DateTime @default(now())
+
+  @@index([traceId, createdAt])
+  @@index([level, source, createdAt])
+}
+
+model BackupRecord {
+  id            String             @id @default(cuid())
+  provider      String
+  storageKey    String?
+  status        BackupRecordStatus @default(RUNNING)
+  startedAt     DateTime           @default(now())
+  completedAt   DateTime?
+  sizeBytes     BigInt?
+  checksum      String?
+  error         String?
+  restoreDrills RestoreDrill[]
+  createdAt     DateTime           @default(now())
+  updatedAt     DateTime           @updatedAt
+
+  @@index([status, startedAt])
+}
+
+model RestoreDrill {
+  id          String             @id @default(cuid())
+  backupId    String
+  status      RestoreDrillStatus @default(PLANNED)
+  target      String
+  startedAt   DateTime?
+  completedAt DateTime?
+  evidence    Json?
+  error       String?
+  backup      BackupRecord       @relation(fields: [backupId], references: [id], onDelete: Cascade)
+  createdAt   DateTime           @default(now())
+  updatedAt   DateTime           @updatedAt
+
+  @@index([status, createdAt])
+  @@index([backupId])
 }
 
 model CommitteeReview {

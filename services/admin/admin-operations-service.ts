@@ -1,6 +1,7 @@
 import { Prisma, TaskStatus } from "@/generated/prisma/client";
 import { db } from "@/lib/db";
 import type { AdminOperationRoute } from "@/lib/admin/admin-operations-routes";
+import { getOperationsObservabilitySnapshot } from "@/services/observability/operations-observability-service";
 
 type AdminRow = Record<string, string | number | boolean | null>;
 export type AdminPanel = { key: string; title: string; sourceState: "LIVE" | "PARTIAL" | "UNAVAILABLE"; note?: string; rows: AdminRow[] };
@@ -174,19 +175,18 @@ async function financePanels() {
 }
 
 async function observabilityPanels() {
-  const [audit, queues, sessions, failures] = await Promise.all([
-    db.auditLog.findMany({ select: { id: true, action: true, entityType: true, entityId: true, createdAt: true }, orderBy: { createdAt: "desc" }, take: 200 }),
-    db.academyWorkQueue.findMany({ include: { _count: { select: { items: true } } }, orderBy: { updatedAt: "desc" }, take: 50 }),
+  const [snapshot, sessions] = await Promise.all([
+    getOperationsObservabilitySnapshot(),
     db.session.count({ where: { expiresAt: { gt: new Date() } } }),
-    db.academyQueueItem.findMany({ where: { status: "FAILED" }, include: { queue: { select: { name: true } } }, orderBy: { updatedAt: "desc" }, take: 100 }),
   ]);
   return [
-    panel("health", "Application health", [{ database: "AVAILABLE", activeSessions: sessions, redis: process.env.REDIS_URL ? "CONFIGURED" : "NOT_CONFIGURED", workerProvider: "NOT_CONNECTED" }]),
-    panel("workers", "Workers", [], "UNAVAILABLE", "No external worker heartbeat source is connected."),
-    panel("queues", "Queues", queues.map((item) => ({ id: item.id, name: item.name, concurrency: item.concurrency, paused: item.paused, items: item._count.items, updatedAt: iso(item.updatedAt) }))),
-    panel("logs", "Central audit events", audit.map((item) => ({ id: item.id, action: item.action, entityType: item.entityType, entityId: item.entityId, createdAt: iso(item.createdAt) })), "PARTIAL", "Audit events are available; application log aggregation is not connected."),
-    panel("alerts", "Queue failures", failures.map((item) => ({ id: item.id, queue: item.queue.name, kind: item.kind, status: item.status, attempts: item.attempts, lastError: item.lastError, updatedAt: iso(item.updatedAt) })), "PARTIAL", "Only persisted queue failures are shown; incident management is not connected."),
-    panel("backups", "Backup status", [], "UNAVAILABLE", "No backup provider or restore-test feed is connected."),
+    panel("health", "Application health", [{ database: "AVAILABLE", activeSessions: sessions, redis: process.env.REDIS_URL ? "CONFIGURED" : "NOT_CONFIGURED", onlineWorkers: snapshot.workers.filter((item) => item.status === "ONLINE").length, openAlerts: snapshot.alerts.filter((item) => item.status === "OPEN").length, openIncidents: snapshot.incidents.filter((item) => item.status !== "RESOLVED").length }]),
+    panel("workers", "Workers and heartbeats", snapshot.workers.map((item) => ({ id: item.id, key: item.key, name: item.name, status: item.status, version: item.version, lastHeartbeatAt: iso(item.lastHeartbeatAt), heartbeats: item._count.heartbeats, jobs: item._count.jobs }))),
+    panel("queues", "Operations queues", snapshot.queues.map((item) => ({ id: item.id, key: item.key, name: item.name, concurrency: item.concurrency, paused: item.paused, jobs: item._count.jobs, updatedAt: iso(item.updatedAt) }))),
+    panel("jobs", "Queue jobs", snapshot.jobs.map((item) => ({ id: item.id, queue: item.queue.name, worker: item.worker?.name ?? null, kind: item.kind, status: item.status, traceId: item.traceId, attempts: item.attempts, maxAttempts: item.maxAttempts, lastError: item.lastError, availableAt: iso(item.availableAt), completedAt: iso(item.completedAt) }))),
+    panel("logs", "Structured logs", snapshot.logs.map((item) => ({ id: item.id, level: item.level, source: item.source, message: item.message, traceId: item.traceId, createdAt: iso(item.createdAt) })), process.env.MONITORING_PROVIDER ? "LIVE" : "PARTIAL", process.env.MONITORING_PROVIDER ? undefined : "Internal structured logs are live; an external collector is not configured."),
+    panel("alerts", "Alerts and incidents", [...snapshot.alerts.map((item) => ({ id: item.id, type: "ALERT", severity: item.severity, status: item.status, title: item.title, source: item.source, traceId: item.traceId, createdAt: iso(item.createdAt) })), ...snapshot.incidents.map((item) => ({ id: item.id, type: "INCIDENT", severity: item.severity, status: item.status, title: item.title, source: "INCIDENT", traceId: item.traceId, createdAt: iso(item.openedAt) }))]),
+    panel("backups", "Backups and restore drills", [...snapshot.backups.map((item) => ({ id: item.id, type: "BACKUP", provider: item.provider, status: item.status, storageKey: item.storageKey, sizeBytes: item.sizeBytes?.toString() ?? null, checksum: item.checksum, target: null, startedAt: iso(item.startedAt), completedAt: iso(item.completedAt) })), ...snapshot.drills.map((item) => ({ id: item.id, type: "RESTORE_DRILL", provider: item.backup.provider, status: item.status, storageKey: item.backup.storageKey, sizeBytes: null, checksum: null, target: item.target, startedAt: iso(item.startedAt), completedAt: iso(item.completedAt) }))], process.env.BACKUP_STORAGE_PROVIDER ? "LIVE" : "PARTIAL", process.env.BACKUP_STORAGE_PROVIDER ? undefined : "Internal backup and restore-drill records are live; external backup storage is not configured."),
   ];
 }
 

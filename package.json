@@ -44,6 +44,7 @@
     "test:e2e:mission-engine": "node --env-file=.env scripts/run-playwright.mjs tests/e2e/mission-engine.spec.ts --project=mission-engine",
     "test:e2e:knowledge-versioning": "node --env-file=.env scripts/run-playwright.mjs tests/e2e/knowledge-versioning.spec.ts --project=knowledge-versioning",
     "test:e2e:model-tools": "node --env-file=.env scripts/run-playwright.mjs tests/e2e/model-tool-governance.spec.ts --project=model-tool-governance",
+    "test:e2e:observability-ops": "node --env-file=.env scripts/run-playwright.mjs tests/e2e/operations-observability.spec.ts --project=operations-observability",
     "test:e2e:reports": "node --env-file=.env scripts/run-playwright.mjs tests/e2e/report-pages.spec.ts --project=report-pages",
     "test:software": "node --env-file=.env ./node_modules/vitest/vitest.mjs run tests/unit/pdf-engine.test.ts tests/unit/sheets-engine.test.ts tests/unit/visual-dna.test.ts",
     "test:software-erp": "node --env-file=.env ./node_modules/vitest/vitest.mjs run tests/unit/software-flow-routes.test.ts tests/integration/software-sales.integration.test.ts tests/integration/software-operations.integration.test.ts tests/integration/software-hr.integration.test.ts",
