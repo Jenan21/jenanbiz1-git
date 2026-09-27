@@ -37,6 +37,7 @@
     "test:programs": "node --env-file=.env ./node_modules/vitest/vitest.mjs run tests/integration/programs-domain.integration.test.ts",
     "test:e2e:programs-flow": "node --env-file=.env scripts/run-playwright.mjs tests/e2e/programs-full-flow.spec.ts --project=programs-full-flow",
     "test:e2e:supplemental": "node --env-file=.env scripts/run-playwright.mjs tests/e2e/supplemental-pages.spec.ts --project=supplemental-pages",
+    "test:e2e:authoritative-routes": "node --env-file=.env scripts/run-playwright.mjs tests/e2e/authoritative-ui-routes.spec.ts --project=authoritative-ui-routes",
     "test:projects": "node --env-file=.env ./node_modules/vitest/vitest.mjs run tests/integration/projects-domain.integration.test.ts",
     "test:e2e:project-flows": "node --env-file=.env scripts/run-playwright.mjs tests/e2e/projects-flow-routes.spec.ts --project=projects-flow-routes",
     "test:robots": "node --env-file=.env ./node_modules/vitest/vitest.mjs run tests/integration/robot-coverage.integration.test.ts tests/integration/academy-foundation.integration.test.ts",
