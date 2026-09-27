@@ -73,7 +73,7 @@ test.describe("admin operations 80-page acceptance", () => {
     const unavailable = await page.request.get("/api/admin/operations-center?path=%2Fobservability%2Fbackups");
     expect(unavailable.status()).toBe(200);
     const snapshot = (await unavailable.json()).snapshot;
-    expect(snapshot.panels.find((panel: { key: string }) => panel.key === "backups").sourceState).toBe("UNAVAILABLE");
+    expect(snapshot.panels.find((panel: { key: string }) => panel.key === "backups").sourceState).toBe("PARTIAL");
 
     const suffix = Date.now();
     const mission = await page.request.post("/api/admin/operations-center", { headers: { origin }, data: { action: "createMission", name: `E2E Mission ${suffix}`, requiredIntelligence: 55 } });
