@@ -35,6 +35,19 @@ const toolCards = [
   ["cv", "/studio/cv", "CV Builder", "سيرة مهنية", "Professional CV", "user"],
 ] as const;
 
+const supportedOutputs: Record<StudioRouteId, string> = {
+  dashboard: "NONE",
+  pdf: "PDF",
+  "pdf-editor": "PDF",
+  docs: "PRINT_PDF",
+  sheets: "CSV",
+  presentations: "PRINT_PDF",
+  logo: "PNG",
+  letterhead: "PRINT_PDF",
+  cv: "PRINT_PDF",
+  history: "VERSIONING",
+};
+
 function pick(copy: readonly [string, string], locale: Locale) {
   return locale === "ar" ? copy[0] : copy[1];
 }
@@ -137,7 +150,7 @@ export function StudioWorkspace({ initialDocumentId, locale, routeId }: { initia
   const versionCount = documents.reduce((total, document) => total + document.versions.length, 0);
 
   return (
-    <section className="studio-flow">
+    <section className="studio-flow" data-studio-output={supportedOutputs[routeId]} data-studio-route={STUDIO_FLOW_ROUTES.find((item) => item.id === routeId)?.href ?? "/studio"} data-studio-source={routeId === "pdf" || routeId === "pdf-editor" ? "LOCAL_PROCESSING" : "PERSISTED_DOCUMENTS"} data-studio-tool={routeId}>
       <nav className="studio-flow__nav" aria-label={ar ? "مسارات الأدوات" : "Tools routes"}>
         {STUDIO_FLOW_ROUTES.map((route, index) => <Link aria-current={route.id === routeId ? "page" : undefined} className={route.id === routeId ? "is-active" : ""} href={route.href} key={route.id}><span>{String(index + 1).padStart(2, "0")}</span>{pick(route.label, locale)}</Link>)}
       </nav>

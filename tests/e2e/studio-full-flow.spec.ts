@@ -104,6 +104,9 @@ test.describe.serial("Jenan Studio full flow", () => {
       const response = await page.goto(route.href, { waitUntil: "domcontentloaded" });
       expect(response?.status(), route.href).toBe(200);
       await expect(page.locator(".studio-flow")).toBeVisible();
+      await expect(page.locator(".studio-flow")).toHaveAttribute("data-studio-route", route.href);
+      await expect(page.locator(".studio-flow")).toHaveAttribute("data-studio-tool", route.id);
+      await expect(page.locator(".studio-flow")).not.toHaveAttribute("data-studio-output", /DOCX|XLSX|PPTX/);
       await expect(page.locator(".studio-flow__nav a.is-active")).toHaveAttribute("href", route.href);
       const layout = await page.evaluate(() => ({ scrollWidth: document.documentElement.scrollWidth, viewportWidth: document.documentElement.clientWidth }));
       expect(layout.scrollWidth, route.href).toBeLessThanOrEqual(layout.viewportWidth + 1);
