@@ -1,0 +1,725 @@
+.marketing-flow {
+  min-width: 0;
+  display: grid;
+  gap: 16px;
+  font-family: "Alexandria Variable", var(--font);
+}
+
+.marketing-flow__nav {
+  width: 100%;
+  min-width: 0;
+  display: flex;
+  gap: 7px;
+  padding: 9px;
+  overflow-x: auto;
+  border: 1px solid color-mix(in srgb, var(--brand) 24%, var(--border));
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--surface) 82%, transparent);
+  scrollbar-width: thin;
+}
+
+.marketing-flow__nav a {
+  flex: 0 0 auto;
+  min-height: 40px;
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 8px 11px;
+  border: 1px solid transparent;
+  border-radius: 6px;
+  color: var(--muted);
+  font-size: 0.72rem;
+}
+
+.marketing-flow__nav a span {
+  color: var(--brand);
+  font-size: 0.64rem;
+  font-weight: 900;
+}
+
+.marketing-flow__nav a:hover,
+.marketing-flow__nav a.is-active {
+  border-color: color-mix(in srgb, var(--brand) 48%, var(--border));
+  color: var(--text);
+  background: color-mix(in srgb, var(--brand) 9%, transparent);
+}
+
+.marketing-flow__hero {
+  min-height: 215px;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(220px, 300px);
+  align-items: center;
+  gap: 28px;
+  padding: 35px;
+  border: 1px solid color-mix(in srgb, var(--brand) 24%, var(--border));
+  border-radius: 8px;
+  background:
+    radial-gradient(circle at 91% 3%, color-mix(in srgb, #f4c86a 15%, transparent), transparent 24%),
+    radial-gradient(circle at 4% 100%, color-mix(in srgb, var(--success) 10%, transparent), transparent 30%),
+    linear-gradient(135deg, color-mix(in srgb, var(--surface2) 78%, transparent), color-mix(in srgb, var(--surface) 94%, transparent));
+  box-shadow: var(--shadow);
+}
+
+.marketing-flow__hero > div:first-child > span,
+.marketing-campaign-form > header::before,
+.marketing-audience-form > header::before,
+.marketing-report > header span {
+  color: var(--brand);
+  font-size: 0.7rem;
+  font-weight: 900;
+}
+
+.marketing-flow__hero h1 {
+  margin: 8px 0 10px;
+  font-size: 3rem;
+  line-height: 1.08;
+}
+
+.marketing-flow__hero p,
+.marketing-flow__entry p,
+.marketing-campaign-list p,
+.marketing-campaign-detail p,
+.marketing-audience-grid p,
+.marketing-audience-form p,
+.marketing-report p,
+.marketing-report footer {
+  color: var(--muted);
+  line-height: 1.7;
+}
+
+.marketing-flow__source {
+  display: grid;
+  place-items: center;
+  gap: 7px;
+  padding: 22px;
+  border: 1px solid color-mix(in srgb, var(--success) 42%, var(--border));
+  border-radius: 8px;
+  text-align: center;
+  background: color-mix(in srgb, var(--success) 7%, var(--deep));
+}
+
+.marketing-flow__source .icon {
+  width: 34px;
+  height: 34px;
+  color: var(--success);
+}
+
+.marketing-flow__source small {
+  color: var(--muted);
+  font-size: 0.7rem;
+}
+
+.marketing-flow__loading,
+.marketing-flow__empty {
+  min-height: 150px;
+  display: grid;
+  place-items: center;
+  align-content: center;
+  gap: 10px;
+  color: var(--muted);
+  text-align: center;
+}
+
+.marketing-flow__loading span {
+  width: 28px;
+  height: 28px;
+  border: 2px solid var(--border);
+  border-top-color: var(--brand);
+  border-radius: 50%;
+  animation: marketing-spin 0.8s linear infinite;
+}
+
+@keyframes marketing-spin {
+  to { transform: rotate(360deg); }
+}
+
+.marketing-flow__message {
+  margin: 0;
+  padding: 12px 14px;
+  border: 1px solid color-mix(in srgb, var(--brand) 34%, var(--border));
+  border-radius: 6px;
+  background: color-mix(in srgb, var(--brand) 8%, transparent);
+}
+
+.marketing-flow__signals {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.marketing-flow__signals article {
+  min-width: 0;
+  min-height: 102px;
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-content: center;
+  gap: 4px 11px;
+  padding: 16px;
+  border: 1px solid color-mix(in srgb, var(--border) 76%, transparent);
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--surface) 88%, transparent);
+}
+
+.marketing-flow__signals article > span {
+  grid-row: span 2;
+  color: var(--brand);
+  font-size: 0.68rem;
+  font-weight: 900;
+}
+
+.marketing-flow__signals strong {
+  min-width: 0;
+  overflow-wrap: anywhere;
+  font-size: 1.45rem;
+}
+
+.marketing-flow__signals small {
+  color: var(--muted);
+}
+
+.marketing-flow__entry {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.marketing-flow__entry > a {
+  min-height: 175px;
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 17px;
+  padding: 22px;
+  border: 1px solid color-mix(in srgb, var(--border) 76%, transparent);
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--surface) 88%, transparent);
+  box-shadow: var(--shadow);
+}
+
+.marketing-flow__entry > a:hover {
+  border-color: color-mix(in srgb, var(--brand) 54%, var(--border));
+}
+
+.marketing-flow__entry > a > .icon:first-child {
+  width: 42px;
+  height: 42px;
+  padding: 9px;
+  border: 1px solid color-mix(in srgb, var(--brand) 40%, var(--border));
+  border-radius: 8px;
+  color: var(--brand);
+  background: color-mix(in srgb, var(--brand) 8%, transparent);
+}
+
+.marketing-flow__entry h2,
+.marketing-flow__entry p {
+  margin: 0;
+}
+
+.marketing-flow__entry > a > .icon:last-child {
+  color: var(--brand);
+}
+
+.marketing-flow__search,
+.marketing-lead-form {
+  min-width: 0;
+  display: grid;
+  align-items: center;
+  gap: 8px;
+  padding: 10px;
+  border: 1px solid color-mix(in srgb, var(--border) 76%, transparent);
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--surface) 86%, transparent);
+}
+
+.marketing-flow__search {
+  grid-template-columns: auto minmax(0, 1fr);
+}
+
+.marketing-lead-form {
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+}
+
+.marketing-flow__search input,
+.marketing-campaign-form input,
+.marketing-campaign-form select,
+.marketing-campaign-form textarea,
+.marketing-audience-form input,
+.marketing-audience-form select,
+.marketing-audience-form textarea,
+.marketing-lead-form input,
+.marketing-lead-form select,
+.marketing-lead-table select {
+  width: 100%;
+  min-height: 43px;
+  padding: 8px 10px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  outline: 0;
+  color: var(--text);
+  background: var(--deep);
+}
+
+.marketing-flow__search input {
+  border: 0;
+  background: transparent;
+}
+
+.marketing-flow__search input:focus,
+.marketing-campaign-form input:focus,
+.marketing-campaign-form select:focus,
+.marketing-campaign-form textarea:focus,
+.marketing-audience-form input:focus,
+.marketing-audience-form select:focus,
+.marketing-audience-form textarea:focus,
+.marketing-lead-form input:focus,
+.marketing-lead-form select:focus,
+.marketing-lead-table select:focus {
+  border-color: var(--brand);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--brand) 10%, transparent);
+}
+
+.marketing-campaign-form,
+.marketing-audience-form,
+.marketing-campaign-detail,
+.marketing-lead-table,
+.marketing-analytics,
+.marketing-report {
+  min-width: 0;
+  display: grid;
+  gap: 13px;
+  padding: 20px;
+  border: 1px solid color-mix(in srgb, var(--border) 76%, transparent);
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--surface) 88%, transparent);
+  box-shadow: var(--shadow);
+}
+
+.marketing-campaign-form,
+.marketing-audience-form {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.marketing-campaign-form > header,
+.marketing-campaign-form > textarea,
+.marketing-campaign-form > .button,
+.marketing-audience-form > header,
+.marketing-audience-form > textarea,
+.marketing-audience-form > .button {
+  grid-column: 1 / -1;
+}
+
+.marketing-campaign-form > header,
+.marketing-audience-form > header {
+  position: relative;
+  padding-top: 17px;
+}
+
+.marketing-campaign-form > header::before {
+  content: "CAMPAIGN";
+  position: absolute;
+  top: 0;
+}
+
+.marketing-audience-form > header::before {
+  content: "AUDIENCE";
+  position: absolute;
+  top: 0;
+}
+
+.marketing-campaign-form h2,
+.marketing-audience-form h2,
+.marketing-campaign-detail h2,
+.marketing-report h2 {
+  margin: 3px 0;
+}
+
+.marketing-campaign-form textarea,
+.marketing-audience-form textarea {
+  min-height: 105px;
+  resize: vertical;
+}
+
+.marketing-campaign-list,
+.marketing-audience-grid,
+.marketing-channel-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  gap: 11px;
+}
+
+.marketing-campaign-list > article,
+.marketing-audience-grid > article,
+.marketing-channel-grid > article,
+.marketing-source-grid > article {
+  min-width: 0;
+  display: grid;
+  gap: 10px;
+  padding: 18px;
+  border: 1px solid color-mix(in srgb, var(--border) 76%, transparent);
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--surface) 88%, transparent);
+  box-shadow: var(--shadow);
+}
+
+.marketing-campaign-list header,
+.marketing-channel-grid header,
+.marketing-campaign-detail > header > div,
+.marketing-report > header {
+  display: flex;
+  align-items: start;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.marketing-campaign-list h2,
+.marketing-campaign-list p,
+.marketing-audience-grid h2,
+.marketing-audience-grid p {
+  margin: 0;
+}
+
+.marketing-campaign-list header > span:last-child {
+  color: var(--brand);
+  font-weight: 900;
+}
+
+.marketing-campaign-list dl,
+.marketing-channel-grid dl,
+.marketing-campaign-detail dl {
+  display: grid;
+  gap: 7px;
+  margin: 0;
+}
+
+.marketing-campaign-list dl div,
+.marketing-channel-grid dl div,
+.marketing-campaign-detail dl div {
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+  padding-top: 7px;
+  border-top: 1px solid color-mix(in srgb, var(--border) 48%, transparent);
+}
+
+.marketing-campaign-list dt,
+.marketing-channel-grid dt,
+.marketing-campaign-detail dt {
+  color: var(--muted);
+}
+
+.marketing-campaign-list dd,
+.marketing-channel-grid dd,
+.marketing-campaign-detail dd {
+  margin: 0;
+  font-weight: 800;
+}
+
+.marketing-campaign-list a {
+  min-height: 38px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: space-between;
+  color: var(--brand);
+}
+
+.marketing-flow__status {
+  width: fit-content;
+  display: inline-flex;
+  padding: 5px 8px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  color: var(--muted);
+  font-size: 0.64rem;
+  font-weight: 800;
+}
+
+.marketing-flow__status--active,
+.marketing-flow__status--connected,
+.marketing-flow__status--converted {
+  border-color: color-mix(in srgb, var(--success) 48%, var(--border));
+  color: var(--success);
+}
+
+.marketing-flow__status--draft,
+.marketing-flow__status--paused,
+.marketing-flow__status--qualified,
+.marketing-flow__status--contacted {
+  border-color: color-mix(in srgb, var(--warning) 48%, var(--border));
+  color: var(--warning);
+}
+
+.marketing-flow__status--archived,
+.marketing-flow__status--lost {
+  border-color: color-mix(in srgb, var(--error) 45%, var(--border));
+  color: var(--error);
+}
+
+.marketing-campaign-detail > header {
+  padding-bottom: 15px;
+  border-bottom: 1px solid color-mix(in srgb, var(--border) 56%, transparent);
+}
+
+.marketing-campaign-detail__grid,
+.marketing-report__grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.marketing-campaign-detail__grid > section,
+.marketing-report__grid > section {
+  min-width: 0;
+  padding: 16px;
+  border: 1px solid color-mix(in srgb, var(--border) 60%, transparent);
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--deep) 44%, transparent);
+}
+
+.marketing-campaign-detail > footer {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.marketing-audience-grid article > span {
+  color: var(--brand);
+  font-size: 0.7rem;
+}
+
+.marketing-audience-grid article > div {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+}
+
+.marketing-audience-grid small {
+  padding: 4px 7px;
+  border: 1px solid color-mix(in srgb, var(--brand) 32%, var(--border));
+  border-radius: 6px;
+  color: var(--brand);
+}
+
+.marketing-audience-grid article > strong {
+  color: var(--muted);
+  font-size: 0.72rem;
+}
+
+.marketing-channel-grid > article > header > span:first-child {
+  color: var(--brand);
+  font-weight: 900;
+}
+
+.marketing-table-wrap {
+  max-width: 100%;
+  overflow-x: auto;
+}
+
+.marketing-table-wrap table {
+  width: 100%;
+  min-width: 760px;
+  border-collapse: collapse;
+}
+
+.marketing-table-wrap th,
+.marketing-table-wrap td {
+  padding: 11px 9px;
+  border-bottom: 1px solid color-mix(in srgb, var(--border) 54%, transparent);
+  text-align: start;
+  font-size: 0.76rem;
+}
+
+.marketing-table-wrap th {
+  color: var(--muted);
+  font-size: 0.66rem;
+}
+
+.marketing-table-wrap td > strong,
+.marketing-table-wrap td > small {
+  display: block;
+}
+
+.marketing-table-wrap td > small {
+  color: var(--muted);
+}
+
+.marketing-analytics {
+  display: grid;
+  gap: 14px;
+}
+
+.marketing-funnel {
+  display: grid;
+  gap: 8px;
+}
+
+.marketing-funnel article {
+  width: var(--funnel-width);
+  min-width: min(100%, 250px);
+  min-height: 60px;
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 16px;
+  border: 1px solid color-mix(in srgb, var(--brand) 34%, var(--border));
+  border-radius: 6px;
+  background: color-mix(in srgb, var(--brand) 7%, var(--deep));
+}
+
+.marketing-funnel article span,
+.marketing-funnel article b {
+  color: var(--brand);
+}
+
+.marketing-source-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.marketing-source-grid h3,
+.marketing-source-grid strong {
+  margin: 0;
+}
+
+.marketing-source-grid strong {
+  overflow-wrap: anywhere;
+  color: var(--brand);
+  font-size: 1.35rem;
+}
+
+.marketing-source-grid small {
+  color: var(--muted);
+}
+
+.marketing-report {
+  display: grid;
+  gap: 18px;
+}
+
+.marketing-report__grid ul {
+  padding-inline-start: 18px;
+}
+
+.marketing-report footer {
+  padding-top: 14px;
+  border-top: 1px solid color-mix(in srgb, var(--border) 56%, transparent);
+}
+
+@media (max-width: 950px) {
+  .marketing-flow__hero,
+  .marketing-campaign-detail__grid,
+  .marketing-report__grid {
+    grid-template-columns: 1fr;
+  }
+
+  .marketing-flow__hero {
+    min-height: 0;
+    padding: 27px;
+  }
+
+  .marketing-flow__hero h1 {
+    font-size: 2.25rem;
+  }
+
+  .marketing-flow__signals,
+  .marketing-source-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .marketing-lead-form {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 620px) {
+  .marketing-flow {
+    gap: 11px;
+  }
+
+  .marketing-flow__hero {
+    padding: 20px 17px;
+  }
+
+  .marketing-flow__hero h1 {
+    font-size: 1.85rem;
+  }
+
+  .marketing-flow__source {
+    grid-template-columns: auto minmax(0, 1fr);
+    justify-items: start;
+    padding: 14px;
+    text-align: start;
+  }
+
+  .marketing-flow__source small {
+    grid-column: 2;
+  }
+
+  .marketing-flow__signals,
+  .marketing-flow__entry,
+  .marketing-campaign-form,
+  .marketing-audience-form,
+  .marketing-lead-form,
+  .marketing-source-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .marketing-flow__signals article {
+    min-height: 84px;
+  }
+
+  .marketing-flow__entry > a {
+    min-height: 128px;
+    padding: 16px;
+  }
+
+  .marketing-campaign-form,
+  .marketing-audience-form,
+  .marketing-campaign-detail,
+  .marketing-lead-table,
+  .marketing-analytics,
+  .marketing-report {
+    padding: 16px;
+  }
+
+  .marketing-campaign-form > header,
+  .marketing-campaign-form > textarea,
+  .marketing-campaign-form > .button,
+  .marketing-audience-form > header,
+  .marketing-audience-form > textarea,
+  .marketing-audience-form > .button {
+    grid-column: auto;
+  }
+
+  .marketing-funnel article {
+    width: 100%;
+    min-width: 0;
+  }
+}
+
+@media print {
+  .marketing-report,
+  .marketing-report * {
+    visibility: visible !important;
+  }
+
+  .marketing-report {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    color: #102034;
+    background: #fff;
+    box-shadow: none;
+  }
+
+  .marketing-report .button {
+    display: none;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .marketing-flow__loading span {
+    animation: none;
+  }
+}

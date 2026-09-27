@@ -2418,6 +2418,7 @@ model MarketingCampaign {
   currency       String                  @default("SAR")
   targetAudience  String?
   callToAction    String?
+  contentBrief    String?
   kpiTarget       Int?
   qualityScore    Int                     @default(0)
   qualitySignals  Json?
@@ -2431,6 +2432,7 @@ model MarketingCampaign {
   payment        Payment?                @relation("MarketingCampaignPayment", fields: [paymentId], references: [id], onDelete: SetNull)
   robotTask      RobotTask?              @relation("MarketingCampaignTask", fields: [robotTaskId], references: [id], onDelete: SetNull)
   leads          MarketingLead[]
+  audienceSegments MarketingAudienceSegment[]
   createdAt      DateTime                @default(now())
   updatedAt      DateTime                @updatedAt
 
@@ -2446,12 +2448,27 @@ model MarketingLead {
   source     String?
   status     MarketingLeadStatus  @default(NEW)
   valueMinor Int?
+  notes      String?
   campaign   MarketingCampaign    @relation(fields: [campaignId], references: [id], onDelete: Cascade)
   createdAt  DateTime             @default(now())
   updatedAt  DateTime             @updatedAt
 
   @@index([campaignId, status])
   @@index([status, createdAt])
+}
+
+model MarketingAudienceSegment {
+  id         String            @id @default(cuid())
+  campaignId String
+  name       String
+  location   String?
+  interests  Json?
+  notes      String?
+  campaign   MarketingCampaign @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  createdAt  DateTime          @default(now())
+  updatedAt  DateTime          @updatedAt
+
+  @@index([campaignId, createdAt])
 }
 
 model AcademyCollege {

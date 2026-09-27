@@ -1,10 +1,6 @@
-import { GrowthWorkspace } from "@/components/marketing/growth-workspace";
-import { PlatformShell } from "@/components/custom/platform-shell";
-import { requireUser } from "@/lib/auth/session";
-import { getRequestDictionary } from "@/lib/i18n/server";
-import type { Locale } from "@/types/i18n";
+import { MarketingRoutePage } from "@/components/marketing/marketing-route-page";
+import { MARKETING_FLOW_ROUTES } from "@/lib/marketing/marketing-routes";
 
-export default async function Page() {
-  const [{ locale }, user] = await Promise.all([getRequestDictionary(), requireUser("/marketing")]);
-  return <PlatformShell locale={locale as Locale} activeRoute="/marketing" userLabel={user.profile?.displayName ?? user.email}><GrowthWorkspace locale={locale as Locale} /></PlatformShell>;
+export default function Page() {
+  return <MarketingRoutePage route={MARKETING_FLOW_ROUTES[0]} />;
 }

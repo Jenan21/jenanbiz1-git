@@ -22,6 +22,7 @@ import "@/styles/market-flow.css";
 import "@/styles/studio-flow.css";
 import "@/styles/software-erp.css";
 import "@/styles/talent-flow.css";
+import "@/styles/marketing-flow.css";
 
 export const metadata: Metadata = {
   metadataBase: new URL("https://jenanbiz.com"),

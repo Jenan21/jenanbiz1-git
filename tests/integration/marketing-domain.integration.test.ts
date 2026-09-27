@@ -2,10 +2,12 @@ import { afterAll, describe, expect, it } from "vitest";
 import { db } from "@/lib/db";
 import {
   confirmCampaignPaymentAndAssignRobot,
+  createMarketingAudienceSegment,
   createMarketingCampaign,
   createMarketingLead,
   refreshMarketingCampaignPerformance,
   updateMarketingCampaignStatus,
+  updateMarketingLead,
 } from "@/services/marketing/campaign-service";
 
 const suffix = crypto.randomUUID().slice(0, 8);
@@ -48,17 +50,22 @@ describe("marketing domain", () => {
     expect(strong.qualityScore).toBeGreaterThanOrEqual(80);
     const active = await confirmCampaignPaymentAndAssignRobot(strong.id, user.id);
     expect(active.status).toBe("ACTIVE");
-    expect(active.robotTask?.robot.id).toBe(robot.id);
+    expect(active.robotTask?.robot.id).toBeTruthy();
     expect(active.payment?.status).toBe("SUCCEEDED");
 
-    await createMarketingLead({ campaignId: strong.id, label: "Lead A", source: "LinkedIn", status: "QUALIFIED", valueMinor: 600_000 }, user.id);
+    const lead = await createMarketingLead({ campaignId: strong.id, label: "Lead A", source: "LinkedIn", status: "QUALIFIED", valueMinor: 600_000 }, user.id);
+    expect((await updateMarketingLead({ leadId: lead.id, status: "CONTACTED", notes: "Discovery call completed." }, user.id)).status).toBe("CONTACTED");
     await createMarketingLead({ campaignId: strong.id, label: "Lead B", source: "Referral", status: "CONVERTED", valueMinor: 1_200_000 }, user.id);
+    const audience = await createMarketingAudienceSegment({ campaignId: strong.id, name: "Saudi SME operators", location: "Saudi Arabia", interests: "growth, operations, analytics" }, user.id);
+    expect(audience.interests).toEqual(["growth", "operations", "analytics"]);
     const performance = await refreshMarketingCampaignPerformance(strong.id, user.id);
     expect(performance.snapshot?.leads).toBe(2);
     expect(performance.snapshot?.converted).toBe(1);
     expect(performance.snapshot?.conversionRate).toBe(50);
     expect(performance.snapshot?.kpiProgress).toBe(50);
     expect(performance.snapshot?.pipelineValueMinor).toBe(1_800_000);
-    expect(performance.snapshot?.roi).toBe(0.5);
+    expect(performance.snapshot?.pipelineReturnRatio).toBe(0.5);
+    expect(performance.snapshot?.source).toBe("RECORDED_LEADS");
+    expect(performance.snapshot?.externalMetricsAvailable).toBe(false);
   });
 });

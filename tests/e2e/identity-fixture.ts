@@ -35,12 +35,12 @@ export async function cleanE2EIdentities() {
         'SELECT "organizationId" AS id FROM "OrganizationMember" WHERE "userId" = ANY($1::text[]) AND "isOwner" = true',
         [ids],
       );
+      const organizationIds = organizations.rows.map(({ id }) => id);
       await client.query('DELETE FROM "MarketListing" WHERE "createdById" = ANY($1::text[])', [ids]);
       await client.query('DELETE FROM "JobPosting" WHERE "createdById" = ANY($1::text[])', [ids]);
       await client.query('DELETE FROM "MarketingCampaign" WHERE "createdById" = ANY($1::text[])', [ids]);
-      await client.query('DELETE FROM "Payment" WHERE "payerUserId" = ANY($1::text[])', [ids]);
+      await client.query('DELETE FROM "Payment" WHERE "payerUserId" = ANY($1::text[]) OR "organizationId" = ANY($2::text[])', [ids, organizationIds]);
       await client.query('DELETE FROM "Project" WHERE "createdById" = ANY($1::text[])', [ids]);
-      const organizationIds = organizations.rows.map(({ id }) => id);
       if (organizationIds.length) {
         await client.query('DELETE FROM "Organization" WHERE id = ANY($1::text[])', [organizationIds]);
       }

@@ -3,7 +3,8 @@ import { db } from "@/lib/db";
 
 const campaignInclude = {
   leads: { orderBy: { updatedAt: "desc" as const } },
-  payment: { select: { id: true, payerUserId: true, amountMinor: true, currency: true, status: true, paidAt: true } },
+  audienceSegments: { orderBy: { updatedAt: "desc" as const } },
+  payment: { select: { id: true, payerUserId: true, amountMinor: true, currency: true, status: true, provider: true, paidAt: true } },
   robotTask: { select: { id: true, title: true, status: true, robot: { select: { id: true, name: true } } } },
 } satisfies Prisma.MarketingCampaignInclude;
 
@@ -47,8 +48,8 @@ async function refreshCampaignPerformance(campaignId: string, transaction: Prism
   const pipelineValueMinor = campaign.leads.reduce((total, lead) => total + (lead.valueMinor ?? 0), 0);
   const conversionRate = leads ? Math.round((converted / leads) * 100) : 0;
   const kpiProgress = campaign.kpiTarget ? Math.min(100, Math.round((converted / campaign.kpiTarget) * 100)) : 0;
-  const roi = campaign.budgetMinor > 0 ? Number(((pipelineValueMinor - campaign.budgetMinor) / campaign.budgetMinor).toFixed(2)) : null;
-  const snapshot = { conversionRate, converted, kpiProgress, leads, pipelineValueMinor, qualified, roi };
+  const pipelineReturnRatio = campaign.budgetMinor > 0 ? Number(((pipelineValueMinor - campaign.budgetMinor) / campaign.budgetMinor).toFixed(2)) : null;
+  const snapshot = { conversionRate, converted, externalMetricsAvailable: false, kpiProgress, leads, pipelineReturnRatio, pipelineValueMinor, qualified, source: "RECORDED_LEADS" };
   await transaction.marketingCampaign.update({ where: { id: campaignId }, data: { performanceSnapshot: snapshot } });
   return snapshot;
 }
@@ -62,10 +63,21 @@ export async function listMarketingCampaigns(userId: string) {
   return db.marketingCampaign.findMany({ where: { createdById: userId }, include: campaignInclude, orderBy: { updatedAt: "desc" } });
 }
 
-export async function createMarketingCampaign(input: { budgetMinor: number; callToAction?: string; channel: "CONTENT" | "EMAIL" | "SOCIAL" | "PAID_SEARCH" | "DIRECT"; currency?: string; customerType: "INDIVIDUAL" | "ORGANIZATION"; kpiTarget?: number; name: string; objective: string; targetAudience?: string }, userId: string) {
+export async function getMarketingReadiness() {
+  const availableRobot = await db.robot.findFirst({ where: { status: "ACTIVE", isVisible: true }, orderBy: [{ intelligence: "desc" }, { skill: "desc" }], select: { id: true, name: true } });
+  return { availableRobot, externalChannelProviderConnected: false, externalPaymentProviderConnected: false };
+}
+
+export async function createMarketingCampaign(input: { budgetMinor: number; callToAction?: string; channel: "CONTENT" | "EMAIL" | "SOCIAL" | "PAID_SEARCH" | "DIRECT"; contentBrief?: string; currency?: string; customerType: "INDIVIDUAL" | "ORGANIZATION"; endsAt?: Date; kpiTarget?: number; name: string; objective: string; organizationId?: string; startsAt?: Date; targetAudience?: string }, userId: string) {
+  if (input.endsAt && input.startsAt && input.endsAt < input.startsAt) throw new Error("Campaign end date must be on or after its start date");
+  if (input.customerType === "ORGANIZATION") {
+    if (!input.organizationId) throw new Error("Organization is required for an organization campaign");
+    const membership = await db.organizationMember.findFirst({ where: { organizationId: input.organizationId, userId, status: "ACTIVE", isOwner: true }, select: { id: true } });
+    if (!membership) throw new Error("Organization owner access required");
+  }
   const quality = assessCampaignQuality(input);
   return db.$transaction(async (transaction) => {
-    const campaign = await transaction.marketingCampaign.create({ data: { budgetMinor: input.budgetMinor, callToAction: input.callToAction?.trim() || undefined, channel: input.channel, currency: input.currency?.trim().toUpperCase() || "SAR", customerType: input.customerType, kpiTarget: input.kpiTarget, name: input.name.trim(), objective: input.objective.trim(), qualityScore: quality.score, qualitySignals: quality.signals, slug: `${slugify(input.name)}-${crypto.randomUUID().slice(0, 8)}`, targetAudience: input.targetAudience?.trim() || undefined, createdById: userId }, include: campaignInclude });
+    const campaign = await transaction.marketingCampaign.create({ data: { budgetMinor: input.budgetMinor, callToAction: input.callToAction?.trim() || undefined, channel: input.channel, contentBrief: input.contentBrief?.trim() || undefined, currency: input.currency?.trim().toUpperCase() || "SAR", customerType: input.customerType, endsAt: input.endsAt, kpiTarget: input.kpiTarget, name: input.name.trim(), objective: input.objective.trim(), organizationId: input.organizationId, qualityScore: quality.score, qualitySignals: quality.signals, slug: `${slugify(input.name)}-${crypto.randomUUID().slice(0, 8)}`, startsAt: input.startsAt, targetAudience: input.targetAudience?.trim() || undefined, createdById: userId }, include: campaignInclude });
     await transaction.auditLog.create({ data: { actorId: userId, action: "marketing.campaign.created", entityType: "MarketingCampaign", entityId: campaign.id } });
     return campaign;
   });
@@ -73,9 +85,10 @@ export async function createMarketingCampaign(input: { budgetMinor: number; call
 
 export async function updateMarketingCampaignStatus(campaignId: string, status: "ACTIVE" | "PAUSED" | "ARCHIVED", userId: string) {
   return db.$transaction(async (transaction) => {
-    const campaign = await transaction.marketingCampaign.findFirst({ where: { id: campaignId, createdById: userId }, select: { id: true, qualityScore: true } });
+    const campaign = await transaction.marketingCampaign.findFirst({ where: { id: campaignId, createdById: userId }, select: { id: true, paymentId: true, qualityScore: true } });
     if (!campaign) throw new Error("Campaign not found");
     if (status === "ACTIVE" && campaign.qualityScore < 60) throw new Error("Campaign quality score is too low to activate");
+    if (status === "ACTIVE" && !campaign.paymentId) throw new Error("Budget confirmation is required to activate");
     const updated = await transaction.marketingCampaign.update({ where: { id: campaignId }, data: { status }, include: campaignInclude });
     await transaction.auditLog.create({ data: { actorId: userId, action: "marketing.campaign.status.updated", entityType: "MarketingCampaign", entityId: updated.id, metadata: { status } } });
     return updated;
@@ -93,14 +106,36 @@ export async function createMarketingLead(input: { campaignId: string; label: st
   });
 }
 
+export async function updateMarketingLead(input: { leadId: string; notes?: string; status: "NEW" | "QUALIFIED" | "CONTACTED" | "CONVERTED" | "LOST" }, userId: string) {
+  return db.$transaction(async (transaction) => {
+    const lead = await transaction.marketingLead.findFirst({ where: { id: input.leadId, campaign: { createdById: userId } }, select: { id: true, campaignId: true } });
+    if (!lead) throw new Error("Marketing lead not found");
+    const updated = await transaction.marketingLead.update({ where: { id: lead.id }, data: { status: MarketingLeadStatus[input.status], notes: input.notes?.trim() || undefined } });
+    await refreshCampaignPerformance(lead.campaignId, transaction);
+    await transaction.auditLog.create({ data: { actorId: userId, action: "marketing.lead.updated", entityType: "MarketingLead", entityId: lead.id, metadata: { status: input.status } } });
+    return updated;
+  });
+}
+
+export async function createMarketingAudienceSegment(input: { campaignId: string; interests?: string; location?: string; name: string; notes?: string }, userId: string) {
+  return db.$transaction(async (transaction) => {
+    const campaign = await transaction.marketingCampaign.findFirst({ where: { id: input.campaignId, createdById: userId }, select: { id: true } });
+    if (!campaign) throw new Error("Campaign not found");
+    const interests = (input.interests ?? "").split(/[,،\n]/).map((interest) => interest.trim()).filter(Boolean).slice(0, 30);
+    const segment = await transaction.marketingAudienceSegment.create({ data: { campaignId: campaign.id, name: input.name.trim(), location: input.location?.trim() || undefined, interests, notes: input.notes?.trim() || undefined } });
+    await transaction.auditLog.create({ data: { actorId: userId, action: "marketing.audience.created", entityType: "MarketingAudienceSegment", entityId: segment.id, metadata: { campaignId: campaign.id } } });
+    return segment;
+  });
+}
+
 export async function confirmCampaignPaymentAndAssignRobot(campaignId: string, userId: string) {
   return db.$transaction(async (transaction) => {
-    const campaign = await transaction.marketingCampaign.findFirst({ where: { id: campaignId, createdById: userId }, select: { id: true, name: true, objective: true, channel: true, customerType: true, budgetMinor: true, currency: true, paymentId: true, qualityScore: true, robotTaskId: true } });
+    const campaign = await transaction.marketingCampaign.findFirst({ where: { id: campaignId, createdById: userId }, select: { id: true, name: true, objective: true, channel: true, customerType: true, organizationId: true, budgetMinor: true, currency: true, paymentId: true, qualityScore: true, robotTaskId: true } });
     if (!campaign) throw new Error("Campaign not found");
     if (campaign.paymentId || campaign.robotTaskId) throw new Error("Campaign payment already confirmed");
     if (campaign.qualityScore < 60) throw new Error("Campaign quality score is too low to activate");
 
-    const membership = campaign.customerType === "ORGANIZATION" ? await transaction.organizationMember.findFirst({ where: { userId, status: "ACTIVE" }, select: { organizationId: true } }) : null;
+    const membership = campaign.customerType === "ORGANIZATION" ? await transaction.organizationMember.findFirst({ where: { organizationId: campaign.organizationId ?? undefined, userId, status: "ACTIVE", isOwner: true }, select: { organizationId: true } }) : null;
     if (campaign.customerType === "ORGANIZATION" && !membership) throw new Error("Active organization membership required");
     const robot = await transaction.robot.findFirst({ where: { status: "ACTIVE", isVisible: true }, orderBy: [{ intelligence: "desc" }, { skill: "desc" }], select: { id: true, name: true } });
     if (!robot) throw new Error("No active bounty robot is available");
