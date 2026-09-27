@@ -35,6 +35,7 @@
     "test:studio": "node --env-file=.env ./node_modules/vitest/vitest.mjs run tests/unit/studio-flow-routes.test.ts tests/integration/studio-documents.integration.test.ts",
     "test:e2e:studio-flow": "node --env-file=.env scripts/run-playwright.mjs tests/e2e/studio-full-flow.spec.ts --project=studio-full-flow",
     "test:programs": "node --env-file=.env ./node_modules/vitest/vitest.mjs run tests/integration/programs-domain.integration.test.ts",
+    "test:e2e:programs-flow": "node --env-file=.env scripts/run-playwright.mjs tests/e2e/programs-full-flow.spec.ts --project=programs-full-flow",
     "test:projects": "node --env-file=.env ./node_modules/vitest/vitest.mjs run tests/integration/projects-domain.integration.test.ts",
     "test:e2e:project-flows": "node --env-file=.env scripts/run-playwright.mjs tests/e2e/projects-flow-routes.spec.ts --project=projects-flow-routes",
     "test:robots": "node --env-file=.env ./node_modules/vitest/vitest.mjs run tests/integration/robot-coverage.integration.test.ts tests/integration/academy-foundation.integration.test.ts",
