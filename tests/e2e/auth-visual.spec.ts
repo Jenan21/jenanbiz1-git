@@ -63,6 +63,10 @@ for (const locale of ["ar", "en"] as const) {
           "dir",
           locale === "ar" ? "rtl" : "ltr",
         );
+        await expect(page.locator(".access-page")).toHaveAttribute("data-auth-route", route);
+        await expect(page.locator(".access-page")).toHaveAttribute("data-auth-screen", route.slice(1));
+        await expect(page.locator(".access-page")).toHaveAttribute("data-auth-source", "LIVE_PLATFORM_ACTIVITY");
+        await expect(page.locator(".access-page")).toHaveAttribute("data-auth-privacy", "PUBLIC_AGGREGATE");
         await expect(page.locator(".access-page__form-panel")).toHaveCount(0);
         await expect(page.locator(".access-page__access-action")).toHaveCount(2);
         await expect(

@@ -44,6 +44,8 @@ test.describe.serial("Auth recovery and onboarding responsive acceptance", () =>
         expect(forgotResponse?.status()).toBe(200);
         await expect(page.locator("html")).toHaveAttribute("dir", locale === "ar" ? "rtl" : "ltr");
         await expect(page.locator(".auth-workflow__panel")).toBeVisible();
+        await expect(page.locator(".auth-workflow")).toHaveAttribute("data-auth-route", "/auth/forgot");
+        await expect(page.locator(".auth-workflow")).toHaveAttribute("data-auth-source", "PASSWORD_RECOVERY_SERVICE");
         await expect(page.getByRole("button", { name: locale === "ar" ? "إرسال رمز التحقق" : "Send verification code" })).toBeVisible();
         const forgotLayout = await page.evaluate(() => ({
           scrollWidth: document.documentElement.scrollWidth,
@@ -56,6 +58,9 @@ test.describe.serial("Auth recovery and onboarding responsive acceptance", () =>
         const onboardingResponse = await page.goto("/user/onboarding");
         expect(onboardingResponse?.status()).toBe(200);
         await expect(page.locator(".onboarding-form")).toBeVisible();
+        await expect(page.locator(".auth-workflow")).toHaveAttribute("data-auth-route", "/user/onboarding");
+        await expect(page.locator(".auth-workflow")).toHaveAttribute("data-auth-access", "AUTHENTICATED");
+        await expect(page.locator(".auth-workflow")).toHaveAttribute("data-auth-source", "AUTHENTICATED_PROFILE");
         const onboardingLayout = await page.evaluate(() => ({
           scrollWidth: document.documentElement.scrollWidth,
           viewportWidth: document.documentElement.clientWidth,

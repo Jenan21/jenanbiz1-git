@@ -8,6 +8,8 @@ export default async function ForgotPasswordPage() {
   return (
     <AuthWorkflowShell
       locale={locale}
+      route="/auth/forgot"
+      source="PASSWORD_RECOVERY_SERVICE"
       eyebrow={ar ? "استعادة آمنة" : "SECURE RECOVERY"}
       title={ar ? "استعادة كلمة المرور" : "Recover your password"}
       description={ar ? "تحقق من هويتك ثم أنشئ كلمة مرور جديدة. لا نكشف وجود الحساب في بيئة الإنتاج." : "Verify your identity, then create a new password. Account existence is never disclosed in production."}

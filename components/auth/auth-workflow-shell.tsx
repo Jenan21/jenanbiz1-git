@@ -9,17 +9,21 @@ export function AuthWorkflowShell({
   description,
   eyebrow,
   locale,
+  route,
+  source,
   title,
 }: {
   children: ReactNode;
   description: string;
   eyebrow: string;
   locale: Locale;
+  route: string;
+  source: "AUTHENTICATED_PROFILE" | "PASSWORD_RECOVERY_SERVICE";
   title: string;
 }) {
   const ar = locale === "ar";
   return (
-    <main className="auth-workflow">
+    <main className="auth-workflow" data-auth-access={route === "/user/onboarding" ? "AUTHENTICATED" : "PUBLIC"} data-auth-privacy="SENSITIVE_FORM" data-auth-route={route} data-auth-screen={route === "/user/onboarding" ? "onboarding" : "forgot"} data-auth-source={source}>
       <div className="auth-workflow__backdrop" aria-hidden="true" />
       <header className="auth-workflow__header">
         <Link href="/" className="auth-workflow__brand" aria-label={ar ? "Jenan Pro الرئيسية" : "Jenan Pro home"}>

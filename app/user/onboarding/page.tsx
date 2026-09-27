@@ -11,6 +11,8 @@ export default async function OnboardingPage() {
   return (
     <AuthWorkflowShell
       locale={locale}
+      route="/user/onboarding"
+      source="AUTHENTICATED_PROFILE"
       eyebrow={ar ? "الخطوة الأخيرة" : "FINAL SETUP"}
       title={ar ? "هيّئ حسابك" : "Set up your account"}
       description={ar ? "حدد نوع الحساب وموقعك واهتماماتك لنرتب مساحة العمل حسب أولوياتك." : "Choose your account type, location, and interests so the workspace reflects your priorities."}

@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { usePathname } from "next/navigation";
 import {
   useEffect,
   useRef,
@@ -36,6 +37,7 @@ const distributionColors = ["#1fe7ff", "#4df6a2", "#f0c85b", "#8a63ff", "#ff8a45
 export function AuthAccessPage({ locale, mode, languageLabel, labels }: AuthAccessPageProps) {
   const ar = locale === "ar";
   const registering = mode === "register";
+  const pathname = usePathname();
   const [panelOpen, setPanelOpen] = useState(false);
   const panelRef = useRef<HTMLElement>(null);
   const triggerRef = useRef<HTMLButtonElement>(null);
@@ -44,6 +46,7 @@ export function AuthAccessPage({ locale, mode, languageLabel, labels }: AuthAcce
     locations: [],
     windowMinutes: 15,
   });
+  const [activitySource, setActivitySource] = useState<"LOADING" | "LIVE_PLATFORM_ACTIVITY" | "UNAVAILABLE">("LOADING");
   const topLocations = activity.locations.slice(0, 5);
   let distributionCursor = 0;
   const distributionGradient = topLocations.length
@@ -84,9 +87,15 @@ export function AuthAccessPage({ locale, mode, languageLabel, labels }: AuthAcce
           cache: "no-store",
           signal: controller.signal,
         });
-        if (response.ok) setActivity((await response.json()) as ActivityPayload);
+        if (response.ok) {
+          setActivity((await response.json()) as ActivityPayload);
+          setActivitySource("LIVE_PLATFORM_ACTIVITY");
+        } else {
+          setActivitySource("UNAVAILABLE");
+        }
       } catch (error) {
         if (!(error instanceof DOMException && error.name === "AbortError")) {
+          setActivitySource("UNAVAILABLE");
           console.error("Unable to refresh public activity");
         }
       }
@@ -100,7 +109,7 @@ export function AuthAccessPage({ locale, mode, languageLabel, labels }: AuthAcce
   }, []);
 
   return (
-    <main className="access-page" data-mode={mode} data-panel-open={panelOpen || undefined}>
+    <main className="access-page" data-auth-access="PUBLIC" data-auth-privacy="PUBLIC_AGGREGATE" data-auth-route={pathname} data-auth-screen={mode} data-auth-source={activitySource} data-mode={mode} data-panel-open={panelOpen || undefined}>
       <div className="access-page__stage">
       <div className="access-page__scene" aria-hidden="true">
         <div className="access-page__globe">
