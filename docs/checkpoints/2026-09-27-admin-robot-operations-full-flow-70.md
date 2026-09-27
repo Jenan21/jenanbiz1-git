@@ -46,7 +46,7 @@
 
 ## Environment and remaining differences
 
-- The existing local `jenanbiz` Docker volume contains a historical failed migration (`20260828110000_add_project_intelligence_snapshots`). It was not reset or force-resolved.
-- Acceptance was rerun safely against an isolated `jenanbiz_e2e` database with all 44 migrations applied.
+- A historical failed migration (`20260828110000_add_project_intelligence_snapshots`) was repaired without resetting the local `jenanbiz` database or deleting data. The empty partial table was retained under an orphan-backup name, the failed attempt was marked rolled back, and all 44 migrations then applied in order.
+- Acceptance passed against both an isolated `jenanbiz_e2e` database and the repaired default `jenanbiz` database.
 - External worker, incident, backup, restore-drill, model-routing, and tool-governance providers are the remaining integration blockers for fully live versions of the explicitly unavailable panels.
 - The 70% baseline intentionally uses one reusable operational visual system; later refinement may add route-specific charts, network diagrams, and print layouts after the external data contracts exist.

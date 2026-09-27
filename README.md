@@ -6,7 +6,7 @@ Production-oriented foundation and visual application shell for Jenan Pro. Core 
 
 - Node.js 20.9 or newer
 - npm 10 or newer
-- Docker Desktop with PostgreSQL 18 through `compose.yaml`
+- Docker Desktop with PostgreSQL 17 through `compose.yaml`
 
 ```bash
 npm install
