@@ -1,16 +1,18 @@
 import Link from "next/link";
 
 import { ReportActions } from "@/components/reports/report-actions";
-import type { ReportRoute } from "@/lib/reports/report-routes";
+import { REPORT_DEFINITIONS, type ReportRoute } from "@/lib/reports/report-routes";
 import { requireUser } from "@/lib/auth/session";
 import { getReportView } from "@/services/reports/report-view-service";
 
 export async function ReportPage({ path, projectId }: { path: ReportRoute; projectId?: string }) {
   const user = await requireUser(path);
   const report = await getReportView({ path, projectId, userId: user.id });
+  const definition = REPORT_DEFINITIONS.find((item) => item.path === path)!;
   const canPrint = report.sourceState === "LIVE";
+  const outputs = canPrint ? "PRINT_PDF,SHARE_LINK,EMAIL_OUTBOX" : "SHARE_LINK";
   return (
-    <main className="report-document" dir="rtl">
+    <main className="report-document" data-report-access="AUTHENTICATED" data-report-delivery={canPrint ? "PENDING_PROVIDER" : "DISABLED_NO_SOURCE"} data-report-kind={definition.kind} data-report-outputs={outputs} data-report-privacy="USER_SCOPED" data-report-route={path} data-report-screen={definition.id} data-report-source={report.sourceState} dir="rtl">
       <header className="report-document__header">
         <div className="report-document__brand"><span>J</span><div><strong>Jenan PRO</strong><small>وثيقة تشغيلية</small></div></div>
         <div><span className={`report-source report-source--${report.sourceState.toLowerCase()}`}>{report.sourceState}</span><small>{report.source ?? "لا يوجد مصدر متصل"}</small></div>
