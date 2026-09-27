@@ -97,7 +97,7 @@ export function AcademyReferenceWorkspace({
       ? "/academy/courses"
       : definition.route;
   return (
-    <section className="academy-reference">
+    <section className="academy-reference" data-academy-route={definition.route} data-academy-kind={definition.kind} data-academy-source={course || selectedResource ? "CONNECTED" : "AWAITING_APPROVED_SOURCE"}>
       <AcademySectionNav activeRoute={activeRoot} locale={locale} />
       <header className="academy-reference__header">
         <div>
