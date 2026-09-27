@@ -73,6 +73,10 @@ test.describe.serial("Jenan Robotics public flow", () => {
       const response = await page.goto(`${definition.route}${suffix}`, { waitUntil: "domcontentloaded" });
       expect(response?.status(), definition.route).toBe(200);
       await expect(page.locator(".robotics-flow")).toBeVisible();
+      await expect(page.locator(".robotics-flow")).toHaveAttribute("data-robotics-route", definition.route);
+      await expect(page.locator(".robotics-flow")).toHaveAttribute("data-robotics-screen", definition.id);
+      await expect(page.locator(".robotics-flow")).toHaveAttribute("data-robotics-access", "INFORMATION_ONLY");
+      await expect(page.locator(".robotics-flow")).toHaveAttribute("data-robotics-privacy", "SANITIZED_PUBLIC_PROFILE");
       const layout = await page.evaluate(() => ({ scrollWidth: document.documentElement.scrollWidth, viewportWidth: document.documentElement.clientWidth }));
       expect(layout.scrollWidth, definition.route).toBeLessThanOrEqual(layout.viewportWidth + 1);
     }

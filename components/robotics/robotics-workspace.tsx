@@ -89,9 +89,9 @@ export function RoboticsWorkspace({ criteria, locale, robotId, route }: { criter
     setBusy(false);
   }
 
-  if (loading || !data) return <section className="robotics-flow"><header className="robotics-flow__hero"><div><span>JENAN ROBOTICS</span><h1>{pick(route.title, locale)}</h1><p>{pick(descriptions[route.id], locale)}</p></div></header><div className="robotics-flow__loading"><span />{ar ? "جارٍ تحميل الكتالوج..." : "Loading catalog..."}</div></section>;
+  if (loading || !data) return <section className="robotics-flow" data-robotics-access="INFORMATION_ONLY" data-robotics-privacy="SANITIZED_PUBLIC_PROFILE" data-robotics-route={route.route} data-robotics-screen={route.id} data-robotics-source="LOADING"><header className="robotics-flow__hero"><div><span>JENAN ROBOTICS</span><h1>{pick(route.title, locale)}</h1><p>{pick(descriptions[route.id], locale)}</p></div></header><div className="robotics-flow__loading"><span />{ar ? "جارٍ تحميل الكتالوج..." : "Loading catalog..."}</div></section>;
 
-  return <section className="robotics-flow">
+  return <section className="robotics-flow" data-robotics-access="INFORMATION_ONLY" data-robotics-privacy="SANITIZED_PUBLIC_PROFILE" data-robotics-route={route.route} data-robotics-screen={route.id} data-robotics-source="CERTIFIED_OPERATIONAL_PROFILES">
     <nav className="robotics-flow__nav" aria-label={ar ? "مسارات Robotics" : "Robotics routes"}>{ROBOTICS_FLOW_ROUTES.map((definition, index) => <Link aria-current={definition.id === route.id ? "page" : undefined} className={definition.id === route.id ? "is-active" : ""} href={definition.route} key={definition.id}><span>{String(index + 1).padStart(2, "0")}</span>{pick(definition.title, locale)}</Link>)}</nav>
     <header className="robotics-flow__hero"><div><span>JENAN ROBOTICS · {route.id.toUpperCase()}</span><h1>{pick(route.title, locale)}</h1><p>{pick(descriptions[route.id], locale)}</p></div><div className="robotics-flow__guard"><Icon name="shield" /><strong>{ar ? "واجهة معلومات فقط" : "Information-only access"}</strong><small>{ar ? "التنفيذ والتكاليف محمية إدارياً" : "Execution and costs remain admin-controlled"}</small></div></header>
     {message ? <p className="robotics-flow__message" role="status">{message}</p> : null}
