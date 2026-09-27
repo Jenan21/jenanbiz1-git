@@ -1,3 +1,25 @@
+.projects-workspace__screen-heading {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 18px;
+}
+
+.projects-workspace__source-state {
+  flex: 0 0 auto;
+  padding: 8px 10px;
+  border: 1px solid color-mix(in srgb, var(--brand) 44%, var(--border));
+  border-radius: 999px;
+  color: var(--brand);
+  font-size: 11px;
+  font-weight: 800;
+}
+
+@media (max-width: 680px) {
+  .projects-workspace__screen-heading {
+    display: grid;
+  }
+}
 .projects-live-service,
 .projects-workspace {
   min-width: 0;

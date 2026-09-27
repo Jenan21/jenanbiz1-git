@@ -99,7 +99,7 @@ function statusClass(status: PhaseStatus) {
   return status === "COMPLETED" ? "is-complete" : status === "ACTIVE" ? "is-active" : "is-pending";
 }
 
-export function ProjectsWorkspace({ focus = "workflow", locale }: { focus?: ProjectFocus; locale: Locale }) {
+export function ProjectsWorkspace({ focus = "workflow", kind = "workspace", locale, route = "/projects" }: { focus?: ProjectFocus; kind?: string; locale: Locale; route?: string }) {
   const ar = locale === "ar";
   const [projects, setProjects] = useState<Project[]>([]);
   const [hasMoreProjects, setHasMoreProjects] = useState(false);
@@ -323,8 +323,21 @@ export function ProjectsWorkspace({ focus = "workflow", locale }: { focus?: Proj
     }
   }
 
-  return <section className="projects-workspace" aria-busy={loading || busy} data-project-view={focus}>
-    <header className="section-heading"><h2>{ar ? "مساحة القرار والتنفيذ" : "Decision and delivery workspace"}</h2><p>{ar ? "تظهر السجلات الفعلية فقط. لا يبدأ التنفيذ إلا بعد اكتمال الأدلة والمراحل المطلوبة." : "Only live records are shown. Execution begins only after evidence and prerequisite phases are complete."}</p></header>
+  const screenLabels: Record<string, [string, string]> = {
+    form: ["إدخال البيانات", "Data input"],
+    progress: ["المعالجة", "Processing"],
+    dashboard: ["النتيجة", "Result"],
+    detail: ["التفاصيل", "Details"],
+    report: ["التقرير", "Report"],
+    map: ["الخريطة", "Map"],
+    timeline: ["الخط الزمني", "Timeline"],
+    checklist: ["قائمة التحقق", "Checklist"],
+    wizard: ["المعالج", "Wizard"],
+    workspace: ["مساحة العمل", "Workspace"],
+  };
+  const screenLabel = screenLabels[kind] ?? screenLabels.workspace;
+  return <section className="projects-workspace" aria-busy={loading || busy} aria-label={ar ? `${screenLabel[0]} لتقييم المشروع` : `${screenLabel[1]} for project evaluation`} data-project-view={focus} data-project-kind={kind} data-project-route={route}>
+    <header className="section-heading projects-workspace__screen-heading"><div><span className="eyebrow eyebrow--small">{ar ? screenLabel[0] : screenLabel[1]}</span><h2>{ar ? "مساحة القرار والتنفيذ" : "Decision and delivery workspace"}</h2><p>{ar ? "تظهر السجلات الفعلية فقط. لا يبدأ التنفيذ إلا بعد اكتمال الأدلة والمراحل المطلوبة." : "Only live records are shown. Execution begins only after evidence and prerequisite phases are complete."}</p></div><span className="projects-workspace__source-state">{ar ? "بيانات مصدرية" : "Sourced records"}</span></header>
     <form className="project-create-form card" data-project-focus="create" onSubmit={createProject}>
       <label>{ar ? "اسم المشروع" : "Project name"}<input required minLength={2} maxLength={160} value={projectName} onChange={(event) => setProjectName(event.target.value)} /></label>
       <label>{ar ? "القطاع" : "Sector"}<input maxLength={120} value={sector} onChange={(event) => setSector(event.target.value)} /></label>

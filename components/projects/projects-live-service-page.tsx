@@ -20,7 +20,7 @@ export async function ProjectsLiveServicePage({ title, description, focus = "wor
           <p>{ar ? description[0] : description[1]}</p>
         </header>
         {flowGroup ? <ProjectFlowNavigation activeRoute={route} group={flowGroup} kind={kind} locale={locale} /> : null}
-        <ProjectsWorkspace focus={focus} locale={locale} />
+        <ProjectsWorkspace focus={focus} kind={kind} locale={locale} route={route} />
       </section>
     </PlatformShell>
   );
