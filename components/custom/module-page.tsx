@@ -5,6 +5,7 @@ import { PlatformShell } from "@/components/custom/platform-shell";
 import { Icon } from "@/components/ui/icons";
 import { requireUser } from "@/lib/auth/session";
 import { findPlatformModule, findPlatformService } from "@/lib/platform/catalog";
+import { SUPPLEMENTAL_ROUTES } from "@/lib/platform/supplemental-routes";
 import { getRequestDictionary } from "@/lib/i18n/server";
 
 const standalonePages = {
@@ -46,6 +47,7 @@ export async function ModulePage({ route }: { route: string }) {
     findPlatformModule(route),
   ]);
   const standalone = standalonePages[route as keyof typeof standalonePages];
+  const supplemental = SUPPLEMENTAL_ROUTES.find((item) => item.path === route);
   if (!module && !standalone) notFound();
 
   const title = module?.title ?? standalone!.title;
@@ -55,7 +57,7 @@ export async function ModulePage({ route }: { route: string }) {
 
   return (
     <PlatformShell locale={locale} activeRoute={route} userLabel={user.profile?.displayName ?? user.email}>
-      <section className="workspace-overview">
+      <section className="workspace-overview" data-module-access="AUTHENTICATED" data-module-outputs="NONE" data-module-route={route} data-module-screen={supplemental?.id ?? module?.id ?? "standalone"} data-module-source={supplemental?.source ?? "PLATFORM_CATALOG"} data-module-state={supplemental?.state ?? "LIVE"}>
         <header className="workspace-overview__header">
           <div>
             <span className="workspace-overview__eyebrow">{pick(eyebrow, locale)}</span>
@@ -64,7 +66,7 @@ export async function ModulePage({ route }: { route: string }) {
           </div>
           <span className="workspace-overview__status">
             <i aria-hidden="true" />
-            {ar ? "جاهز للعمل" : "Ready"}
+            {supplemental?.state === "NOT_PUBLISHED" ? (ar ? "غير منشور" : "Not published") : supplemental?.state === "INFORMATIONAL" ? (ar ? "معلومات المنصة" : "Platform information") : (ar ? "جاهز للعمل" : "Ready")}
           </span>
         </header>
 
@@ -89,7 +91,11 @@ export async function ModulePage({ route }: { route: string }) {
         ) : (
           <div className="workspace-empty">
             <Icon name="settings" />
-            <p>{ar ? "ستظهر الإعدادات المتاحة هنا عند تفعيلها." : "Available settings will appear here when enabled."}</p>
+            <p>{route === "/pricing"
+              ? (ar ? "لا يوجد كتالوج باقات وأسعار معتمد ومنشور حالياً، لذلك لا تتوفر أي عملية شراء." : "No approved pricing catalog is currently published, so no purchase action is available.")
+              : route === "/benefits"
+                ? (ar ? "هذا ملخص معلوماتي لقدرات المنصة؛ تظهر الخدمات التشغيلية داخل أقسامها الفعلية." : "This is an informational summary of platform capabilities; operational services remain in their actual sections.")
+                : (ar ? "ستظهر الإعدادات المتاحة هنا عند تفعيلها." : "Available settings will appear here when enabled.")}</p>
           </div>
         )}
       </section>

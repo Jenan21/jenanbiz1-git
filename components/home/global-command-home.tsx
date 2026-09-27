@@ -174,7 +174,7 @@ export function GlobalCommandHome({
           ["brain", ar ? "ذكاء اصطناعي متقدم" : "Advanced AI", ar ? "يعمل من أجلك" : "Working for you"],
         ] as const).map(([icon, title, note]) => <article key={title}><Icon name={icon} /><span><strong>{title}</strong><small>{note}</small></span></article>)}</section>
 
-        <footer className="global-home__footer"><span className="global-home__footer-brand"><b>Jenan <em>Pro</em></b><small>Business Without Limits</small></span><nav><Link href="/benefits">{ar ? "الخصوصية" : "Privacy"}</Link><Link href="/pricing">{ar ? "الشروط والأحكام" : "Terms"}</Link><Link href="/login">{ar ? "تسجيل الدخول" : "Sign in"}</Link></nav><span>{ar ? "© 2026 منصة جنان برو. جميع الحقوق محفوظة." : "© 2026 Jenan Pro. All rights reserved."}</span></footer>
+        <footer className="global-home__footer"><span className="global-home__footer-brand"><b>Jenan <em>Pro</em></b><small>Business Without Limits</small></span><nav><Link href="/benefits">{ar ? "المزايا" : "Benefits"}</Link><Link href="/pricing">{ar ? "الباقات" : "Plans"}</Link><Link href="/login">{ar ? "تسجيل الدخول" : "Sign in"}</Link></nav><span>{ar ? "© 2026 منصة جنان برو. جميع الحقوق محفوظة." : "© 2026 Jenan Pro. All rights reserved."}</span></footer>
       </div>
     </main>
   );

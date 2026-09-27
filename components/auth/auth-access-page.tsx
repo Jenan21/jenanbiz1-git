@@ -259,7 +259,7 @@ export function AuthAccessPage({ locale, mode, languageLabel, labels }: AuthAcce
       </section>
 
       <footer className="access-page__footer">
-        <nav><Link href="/benefits">{ar ? "الخصوصية" : "Privacy"}</Link><Link href="/pricing">{ar ? "الشروط والأحكام" : "Terms"}</Link><Link href={registering ? "/login" : "/register"}>{registering ? (ar ? "تسجيل الدخول" : "Sign in") : (ar ? "إنشاء حساب" : "Create account")}</Link></nav>
+        <nav><Link href="/benefits">{ar ? "المزايا" : "Benefits"}</Link><Link href="/pricing">{ar ? "الباقات" : "Plans"}</Link><Link href={registering ? "/login" : "/register"}>{registering ? (ar ? "تسجيل الدخول" : "Sign in") : (ar ? "إنشاء حساب" : "Create account")}</Link></nav>
         <span>{ar ? "© 2026 منصة جنان برو. جميع الحقوق محفوظة." : "© 2026 Jenan Pro. All rights reserved."}</span>
       </footer>
       </div>
