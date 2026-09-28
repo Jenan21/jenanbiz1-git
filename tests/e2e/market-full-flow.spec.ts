@@ -4,9 +4,14 @@ import { e2eIdentity } from "./test-identities";
 import { marketFlowDefinitions } from "@/lib/market/market-flow-routes";
 
 const origin = "http://127.0.0.1:3101";
+const viewports = [
+  { width: 2560, height: 1440 }, { width: 1920, height: 1080 }, { width: 1440, height: 900 },
+  { width: 1366, height: 768 }, { width: 1280, height: 800 }, { width: 1024, height: 1366 },
+  { width: 820, height: 1180 }, { width: 430, height: 932 }, { width: 390, height: 844 }, { width: 360, height: 800 },
+] as const;
 
 test.describe.serial("Jenan Market buyer and seller flow", () => {
-  test.setTimeout(180_000);
+  test.setTimeout(600_000);
 
   test.beforeAll(async () => {
     await cleanE2EIdentities();
@@ -71,15 +76,33 @@ test.describe.serial("Jenan Market buyer and seller flow", () => {
       await expect(page.locator(".market-flow")).toHaveAttribute("data-market-kind", definition.kind);
       await expect(page.locator(".market-flow")).toHaveAttribute("data-market-source", "CONNECTED");
       await expect(page.locator(".market-flow__nav a.is-active")).toHaveAttribute("href", definition.route);
+      if (definition.route === "/market/listings") {
+        await expect(page.locator(".market-listing-catalog")).toBeVisible();
+        await expect(page.locator(".market-flow__listing")).toHaveCount(0);
+      }
+      if (definition.route === "/market/deal/sample") await expect(page.locator(".market-flow__timeline span").last()).toHaveClass(/is-complete/);
+      if (definition.route === "/market/deal/sample/report") {
+        await expect(page.locator(".market-deal-report")).toBeVisible();
+        await expect(page.locator(".market-flow__deal")).toHaveCount(0);
+        await expect(page.locator(".market-flow")).toHaveAttribute("data-market-outputs", "PRINT_PDF,SHARE_LINK");
+      }
       const layout = await page.evaluate(() => ({ scrollWidth: document.documentElement.scrollWidth, viewportWidth: document.documentElement.clientWidth }));
       expect(layout.scrollWidth, definition.route).toBeLessThanOrEqual(layout.viewportWidth + 1);
     }
 
-    await buyerPage.setViewportSize({ width: 390, height: 844 });
-    for (const route of ["/market/listings", "/market/listing/sample/secure", "/market/deal/sample/report"]) {
-      expect((await buyerPage.goto(route, { waitUntil: "domcontentloaded" }))?.status()).toBe(200);
-      const layout = await buyerPage.evaluate(() => ({ scrollWidth: document.documentElement.scrollWidth, viewportWidth: document.documentElement.clientWidth }));
-      expect(layout.scrollWidth, route).toBeLessThanOrEqual(layout.viewportWidth + 1);
+    for (const viewport of viewports) {
+      await buyerPage.setViewportSize(viewport);
+      expect((await buyerPage.goto("/market", { waitUntil: "domcontentloaded" }))?.status()).toBe(200);
+      await expect(buyerPage.locator(".market-workspace")).toHaveAttribute("data-market-route", "/market");
+      expect(await buyerPage.evaluate(() => document.documentElement.scrollWidth <= document.documentElement.clientWidth + 1), `/market at ${viewport.width}x${viewport.height}`).toBe(true);
+      for (const definition of marketFlowDefinitions) {
+        const page = definition.route.startsWith("/market/sell") ? ownerPage : buyerPage;
+        await page.setViewportSize(viewport);
+        expect((await page.goto(definition.route, { waitUntil: "domcontentloaded" }))?.status()).toBe(200);
+        await expect(page.locator(".market-flow")).toHaveAttribute("data-market-route", definition.route);
+        const layout = await page.evaluate(() => ({ scrollWidth: document.documentElement.scrollWidth, viewportWidth: document.documentElement.clientWidth }));
+        expect(layout.scrollWidth, `${definition.route} at ${viewport.width}x${viewport.height}`).toBeLessThanOrEqual(layout.viewportWidth + 1);
+      }
     }
 
     expect((await ownerPage.request.delete(`/api/files/${fileId}`, { headers: { origin } })).status()).toBe(204);

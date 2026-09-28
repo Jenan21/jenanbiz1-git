@@ -1,6 +1,6 @@
 "use client";
 
-import { FormEvent, useEffect, useEffectEvent, useState } from "react";
+import { FormEvent, useDeferredValue, useEffect, useEffectEvent, useState } from "react";
 import Link from "next/link";
 import type { MarketFlowDefinition } from "@/lib/market/market-flow-routes";
 import type { Locale } from "@/types/i18n";
@@ -22,6 +22,7 @@ type Listing = {
   sector: string | null;
   countryCode: string | null;
   currency: string;
+  createdBy: { email: string; profile: { displayName: string | null } | null };
   askingPriceMinor: number | null;
   valuationNote: string | null;
   qualityScore: number;
@@ -88,6 +89,7 @@ export function MarketFlowWorkspace({
   const [selectedId, setSelectedId] = useState("");
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState("");
+  const [listingFilters, setListingFilters] = useState({ country: "", kind: "", query: "" });
   const [ndaChecked, setNdaChecked] = useState(false);
   const [viewing, setViewing] = useState({
     preferredAt: "",
@@ -132,7 +134,8 @@ export function MarketFlowWorkspace({
       if (preferredId && data.listings.some((item) => item.id === preferredId))
         return preferredId;
       if (data.listings.some((item) => item.id === current)) return current;
-      const preferred = sellerFlow
+      const requestedId = new URLSearchParams(window.location.search).get("listing");
+      const preferred = requestedId ? data.listings.find((item) => item.id === requestedId) : sellerFlow
         ? data.listings.find((item) => item.isOwner)
         : data.listings.find(
             (item) => !item.isOwner && item.status === "PUBLISHED",
@@ -186,6 +189,21 @@ export function MarketFlowWorkspace({
   const selectedOffers = payload.offers.filter(
     (item) => item.listingId === selectedId,
   );
+  const deferredQuery = useDeferredValue(listingFilters.query.trim().toLocaleLowerCase());
+  const filteredListings = payload.listings.filter((listing) => (!deferredQuery || [listing.title, listing.summary, listing.sector].filter(Boolean).some((value) => value!.toLocaleLowerCase().includes(deferredQuery))) && (!listingFilters.kind || listing.kind === listingFilters.kind) && (!listingFilters.country || listing.countryCode === listingFilters.country.toUpperCase()));
+  const acceptedOffer = selectedOffers.find((item) => item.status === "ACCEPTED" || item.status === "CLOSED");
+  const activeOffer = selectedOffers.find((item) => item.status === "NEGOTIATING" || item.status === "SUBMITTED");
+  const confirmedViewing = selectedViewings.find((item) => item.status === "CONFIRMED" || item.status === "COMPLETED");
+  const dealStages = [
+    { key: "CONTACT", complete: selectedOffers.length > 0 || selectedViewings.length > 0 || Boolean(selected?.ndaAccepted) },
+    { key: "NDA", complete: Boolean(selected?.ndaAccepted) },
+    { key: "REVIEW", complete: Boolean(selected?.ndaAccepted && selected?.files.length) },
+    { key: "VIEWING", complete: Boolean(confirmedViewing) },
+    { key: "OFFER", complete: Boolean(activeOffer || acceptedOffer) },
+    { key: "NEGOTIATION", complete: Boolean(acceptedOffer || selectedOffers.some((item) => item.status === "NEGOTIATING")) },
+    { key: "CLOSING", complete: Boolean(acceptedOffer) },
+  ];
+  const currentStage = Math.max(0, dealStages.findIndex((stage) => !stage.complete));
   const money = (minor: number | null, currency = "SAR") =>
     minor === null
       ? ar
@@ -218,6 +236,12 @@ export function MarketFlowWorkspace({
         confidentialDetails: "",
         askingPrice: "",
       }));
+  }
+
+  async function shareReport() {
+    const data = { title: selected?.title ?? "Jenan PRO Market", text: ar ? "تقرير صفقة Jenan PRO" : "Jenan PRO deal report", url: window.location.href };
+    if (navigator.share) await navigator.share(data).catch(() => undefined);
+    else { await navigator.clipboard.writeText(window.location.href); setMessage(ar ? "تم نسخ رابط التقرير." : "Report link copied."); }
   }
 
   async function upload(event: FormEvent<HTMLFormElement>) {
@@ -256,6 +280,7 @@ export function MarketFlowWorkspace({
       data-market-role={sellerFlow ? "SELLER" : "BUYER"}
       data-market-route={definition.route}
       data-market-source={selected ? "CONNECTED" : "EMPTY"}
+      data-market-outputs={definition.route === "/market/deal/sample/report" ? "PRINT_PDF,SHARE_LINK" : "NONE"}
     >
       <nav
         className="market-flow__nav"
@@ -410,7 +435,7 @@ export function MarketFlowWorkspace({
         </form>
       ) : (
         <>
-          {payload.listings.length ? (
+          {payload.listings.length && definition.route !== "/market/listings" ? (
             <label className="market-flow__selector">
               {ar ? "الإعلان النشط" : "Active listing"}
               <select
@@ -431,7 +456,17 @@ export function MarketFlowWorkspace({
               </select>
             </label>
           ) : null}
-          {selected ? (
+          {definition.route === "/market/listings" ? (
+            <section className="market-listing-catalog" data-market-focus="listings">
+              <div className="market-listing-catalog__filters">
+                <input type="search" placeholder={ar ? "ابحث في العنوان أو القطاع" : "Search title or sector"} value={listingFilters.query} onChange={(event) => setListingFilters({ ...listingFilters, query: event.target.value })} />
+                <select aria-label={ar ? "نوع العرض" : "Listing kind"} value={listingFilters.kind} onChange={(event) => setListingFilters({ ...listingFilters, kind: event.target.value })}><option value="">{ar ? "كل الأنواع" : "All kinds"}</option><option value="PROJECT">{ar ? "مشاريع" : "Projects"}</option><option value="BUSINESS">{ar ? "أنشطة" : "Businesses"}</option></select>
+                <input maxLength={2} placeholder={ar ? "رمز الدولة" : "Country code"} value={listingFilters.country} onChange={(event) => setListingFilters({ ...listingFilters, country: event.target.value.toUpperCase() })} />
+              </div>
+              <div className="market-listing-catalog__grid">{filteredListings.map((listing) => <article key={listing.id}><header><span>{listing.kind}</span><strong>{listing.qualityScore}/100</strong></header><h2>{listing.title}</h2><p>{listing.summary}</p><dl><div><dt>{ar ? "السعر" : "Price"}</dt><dd>{money(listing.askingPriceMinor, listing.currency)}</dd></div><div><dt>{ar ? "الموقع" : "Location"}</dt><dd>{listing.countryCode ?? (ar ? "غير متاح" : "Unavailable")}</dd></div><div><dt>{ar ? "القطاع" : "Sector"}</dt><dd>{listing.sector ?? (ar ? "غير متاح" : "Unavailable")}</dd></div><div><dt>{ar ? "الحالة" : "Status"}</dt><dd>{listing.status}</dd></div></dl><Link className="button button--primary" href={`/market/listing/sample?listing=${listing.id}`}>{ar ? "عرض التفاصيل" : "View details"}</Link></article>)}{!filteredListings.length ? <p className="market-flow__message">{ar ? "لا توجد عروض مطابقة." : "No matching listings."}</p> : null}</div>
+            </section>
+          ) : null}
+          {selected && definition.route !== "/market/listings" ? (
             <article className="market-flow__listing">
               <header>
                 <div>
@@ -745,21 +780,13 @@ export function MarketFlowWorkspace({
                   )}
                 </section>
               ) : null}
-              {definition.route.includes("/deal/") ? (
+              {definition.route === "/market/deal/sample" ? (
                 <section className="market-flow__deal">
                   <div className="market-flow__timeline">
-                    {[
-                      "CONTACT",
-                      "NDA",
-                      "REVIEW",
-                      "VIEWING",
-                      "OFFER",
-                      "NEGOTIATION",
-                      "CLOSING",
-                    ].map((step, index) => (
-                      <span key={step}>
+                    {dealStages.map((step, index) => (
+                      <span className={step.complete ? "is-complete" : index === currentStage ? "is-active" : ""} key={step.key}>
                         <i>{index + 1}</i>
-                        <b>{step}</b>
+                        <b>{step.key}</b>
                       </span>
                     ))}
                   </div>
@@ -855,6 +882,16 @@ export function MarketFlowWorkspace({
                       </div>
                     </article>
                   ))}
+                </section>
+              ) : null}
+              {definition.route === "/market/deal/sample/report" ? (
+                <section className="market-deal-report" data-market-focus="deal-report">
+                  <header><div><span>JENAN PRO MARKET</span><h3>{ar ? "تقرير الصفقة" : "Deal report"}</h3><p>{selected.title}</p></div><strong>{acceptedOffer ? (ar ? "عرض مقبول" : "ACCEPTED OFFER") : activeOffer ? (ar ? "صفقة نشطة" : "ACTIVE DEAL") : (ar ? "بانتظار عرض" : "AWAITING OFFER")}</strong></header>
+                  <div className="market-deal-report__parties"><article><span>{ar ? "البائع" : "Seller"}</span><strong>{selected.createdBy.profile?.displayName ?? selected.createdBy.email}</strong></article><article><span>{ar ? "المشتري" : "Buyer"}</span><strong>{(acceptedOffer ?? activeOffer)?.buyer.profile?.displayName ?? (acceptedOffer ?? activeOffer)?.buyer.email ?? (ar ? "غير محدد" : "Not assigned")}</strong></article></div>
+                  <div className="market-flow__timeline">{dealStages.map((step, index) => <span className={step.complete ? "is-complete" : index === currentStage ? "is-active" : ""} key={step.key}><i>{index + 1}</i><b>{step.key}</b></span>)}</div>
+                  <dl><div><dt>{ar ? "المستندات المتاحة" : "Available documents"}</dt><dd>{selected.files.length}</dd></div><div><dt>{ar ? "طلبات المعاينة" : "Viewing requests"}</dt><dd>{selectedViewings.length}</dd></div><div><dt>{ar ? "العروض" : "Offers"}</dt><dd>{selectedOffers.length}</dd></div><div><dt>{ar ? "قيمة العرض الحالي" : "Current offer"}</dt><dd>{acceptedOffer || activeOffer ? money((acceptedOffer ?? activeOffer)!.amountMinor, (acceptedOffer ?? activeOffer)!.currency) : (ar ? "غير متاح" : "Unavailable")}</dd></div></dl>
+                  <section><h4>{ar ? "سجل العروض" : "Offer record"}</h4>{selectedOffers.map((item) => <article key={item.id}><span>{item.status}</span><strong>{money(item.amountMinor, item.currency)}</strong><small>{item.validUntil ? `${ar ? "صالح حتى" : "Valid until"}: ${new Intl.DateTimeFormat(ar ? "ar-SA" : "en-GB", { dateStyle: "medium" }).format(new Date(item.validUntil))}` : (ar ? "لا يوجد تاريخ صلاحية مسجل" : "No validity date recorded")}</small></article>)}{!selectedOffers.length ? <p>{ar ? "لا توجد عروض مسجلة." : "No recorded offers."}</p> : null}</section>
+                  <div className="market-deal-report__actions"><button className="button button--primary" onClick={() => window.print()} type="button">{ar ? "طباعة / PDF" : "Print / PDF"}</button><button className="button button--secondary" onClick={() => void shareReport()} type="button">{ar ? "مشاركة" : "Share"}</button></div>
                 </section>
               ) : null}
             </article>

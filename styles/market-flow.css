@@ -343,3 +343,192 @@
     color: black;
   }
 }
+
+.market-flow__timeline span.is-complete {
+  border-color: color-mix(in srgb, var(--success) 58%, var(--border));
+  color: var(--success);
+  background: color-mix(in srgb, var(--success) 8%, transparent);
+}
+
+.market-flow__timeline span.is-active {
+  border-color: color-mix(in srgb, var(--brand) 62%, var(--border));
+  color: var(--brand);
+  background: color-mix(in srgb, var(--brand) 10%, transparent);
+  box-shadow: 0 0 22px color-mix(in srgb, var(--brand) 10%, transparent);
+}
+
+.market-listing-catalog {
+  display: grid;
+  gap: 14px;
+}
+
+.market-listing-catalog__filters {
+  display: grid;
+  grid-template-columns: minmax(220px, 2fr) minmax(150px, 0.7fr) minmax(130px, 0.5fr);
+  gap: 9px;
+  padding: 12px;
+  border: 1px solid color-mix(in srgb, var(--border) 66%, transparent);
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--surface) 78%, transparent);
+}
+
+.market-listing-catalog__filters input,
+.market-listing-catalog__filters select {
+  min-width: 0;
+  min-height: 42px;
+  padding: 9px 11px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  color: var(--text);
+  background: var(--deep);
+}
+
+.market-listing-catalog__grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.market-listing-catalog__grid > article {
+  min-width: 0;
+  display: grid;
+  align-content: start;
+  gap: 10px;
+  padding: 18px;
+  border: 1px solid color-mix(in srgb, var(--border) 72%, transparent);
+  border-radius: 8px;
+  background: linear-gradient(145deg, color-mix(in srgb, var(--surface) 92%, transparent), color-mix(in srgb, var(--deep) 74%, transparent));
+  box-shadow: var(--shadow);
+}
+
+.market-listing-catalog__grid header {
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+  color: var(--muted);
+  font-size: 11px;
+}
+
+.market-listing-catalog__grid header strong,
+.market-listing-catalog__grid > article > small {
+  color: var(--brand);
+}
+
+.market-listing-catalog__grid h2,
+.market-listing-catalog__grid p {
+  margin: 0;
+}
+
+.market-listing-catalog__grid p {
+  color: var(--muted);
+  line-height: 1.7;
+}
+
+.market-listing-catalog__grid dl,
+.market-deal-report dl,
+.market-deal-report__parties {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 7px;
+  margin: 0;
+}
+
+.market-listing-catalog__grid dl div,
+.market-deal-report dl div,
+.market-deal-report__parties article {
+  min-width: 0;
+  display: grid;
+  gap: 4px;
+  padding: 9px;
+  border: 1px solid color-mix(in srgb, var(--border) 50%, transparent);
+  background: color-mix(in srgb, var(--deep) 46%, transparent);
+}
+
+.market-listing-catalog__grid dt,
+.market-deal-report dt,
+.market-deal-report__parties span {
+  color: var(--muted);
+  font-size: 10px;
+}
+
+.market-listing-catalog__grid dd,
+.market-deal-report dd {
+  margin: 0;
+  overflow-wrap: anywhere;
+  font-size: 12px;
+}
+
+.market-deal-report {
+  display: grid;
+  gap: 18px;
+  padding: clamp(20px, 4vw, 36px);
+  border: 1px solid color-mix(in srgb, var(--brand) 32%, var(--border));
+  border-radius: 8px;
+  background: linear-gradient(145deg, color-mix(in srgb, var(--surface2) 90%, transparent), color-mix(in srgb, var(--deep) 80%, transparent));
+}
+
+.market-deal-report > header {
+  display: flex;
+  align-items: start;
+  justify-content: space-between;
+  gap: 18px;
+}
+
+.market-deal-report h3,
+.market-deal-report h4,
+.market-deal-report p {
+  margin: 4px 0;
+}
+
+.market-deal-report > header > strong {
+  color: var(--brand);
+  font-size: 11px;
+}
+
+.market-deal-report > section {
+  display: grid;
+  gap: 8px;
+}
+
+.market-deal-report > section article {
+  display: grid;
+  grid-template-columns: 110px minmax(120px, 1fr) minmax(180px, 1fr);
+  gap: 10px;
+  padding: 10px 0;
+  border-top: 1px solid color-mix(in srgb, var(--border) 48%, transparent);
+}
+
+.market-deal-report > section small {
+  color: var(--muted);
+}
+
+.market-deal-report__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+@media (max-width: 760px) {
+  .market-listing-catalog__filters,
+  .market-listing-catalog__grid,
+  .market-deal-report > section article {
+    grid-template-columns: 1fr;
+  }
+
+  .market-deal-report > header {
+    display: grid;
+  }
+}
+
+@media print {
+  .market-deal-report__actions {
+    display: none !important;
+  }
+
+  .market-deal-report {
+    border: 0;
+    color: black;
+    background: white;
+    box-shadow: none;
+  }
+}

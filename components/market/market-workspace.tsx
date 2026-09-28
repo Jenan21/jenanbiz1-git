@@ -138,7 +138,7 @@ export function MarketWorkspace({ locale }: { locale: Locale }) {
   const ownerInquiries = inquiries.filter((inquiry) => inquiry.isListingOwner);
 
   return (
-    <section className="market-workspace" aria-busy={loading}>
+    <section className="market-workspace" aria-busy={loading} data-market-kind="dashboard" data-market-outputs="NONE" data-market-role="BOTH" data-market-route="/market" data-market-source={listings.length ? "CONNECTED" : loading ? "LOADING" : "EMPTY"}>
       <header className="market-workspace__header">
         <div>
           <span className="eyebrow eyebrow--small">JENAN PRO MARKET</span>
