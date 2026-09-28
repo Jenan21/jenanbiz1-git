@@ -197,3 +197,25 @@ export async function addAcademyResourceAttachment(input: {
     return attachment;
   });
 }
+
+export async function createAcademyExamQuestion(input: { examId: string; explanation?: string; options: Array<{ isCorrect: boolean; label: string }>; points?: number; prompt: string }, actorId: string) {
+  if (input.options.length < 2 || input.options.filter((option) => option.isCorrect).length !== 1) throw new Error("An exam question requires at least two options and exactly one correct answer");
+  return db.$transaction(async (transaction) => {
+    const exam = await transaction.academyExam.findUnique({ where: { id: input.examId }, select: { id: true, version: true } });
+    if (!exam) throw new Error("Academy exam not found");
+    const sequence = (await transaction.academyExamQuestion.count({ where: { examId: exam.id } })) + 1;
+    const question = await transaction.academyExamQuestion.create({
+      data: {
+        examId: exam.id,
+        explanation: input.explanation?.trim() || undefined,
+        points: input.points ?? 1,
+        prompt: input.prompt.trim(),
+        sequence,
+        options: { create: input.options.map((option, index) => ({ isCorrect: option.isCorrect, label: option.label.trim(), sequence: index + 1 })) },
+      },
+      include: { options: { orderBy: { sequence: "asc" } } },
+    });
+    await transaction.auditLog.create({ data: { actorId, action: "academy.exam.question.created", entityType: "AcademyExamQuestion", entityId: question.id, metadata: { examId: exam.id, examVersion: exam.version, points: question.points, sequence } } });
+    return question;
+  });
+}

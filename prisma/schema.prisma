@@ -774,6 +774,13 @@ enum AcademyResourceApprovalState {
   ARCHIVED
 }
 
+enum AcademyEngagementStatus {
+  SAVED
+  REGISTERED
+  IN_PROGRESS
+  COMPLETED
+}
+
 enum GenomeCapabilityType {
   ROLE
   GEOGRAPHY
@@ -816,6 +823,7 @@ model User {
   fundingAssessments         FundingAssessment[]
   learnerEnrollments         LearnerEnrollment[]
   learnerLessonCompletions   LearnerLessonCompletion[]
+  learnerLessonNotes         LearnerLessonNote[]
   learnerExamAttempts        LearnerExamAttempt[]
   learnerCertificates        LearnerCertificate[]
   createdJobPostings         JobPosting[]                @relation("JobPostingCreator")
@@ -829,6 +837,7 @@ model User {
   createdAcademyResources    AcademyResource[]           @relation("AcademyResourceCreator")
   approvedAcademyResources   AcademyResource[]           @relation("AcademyResourceApprover")
   academyResourceVersions    AcademyResourceVersion[]    @relation("AcademyResourceVersionAuthor")
+  academyResourceEngagements AcademyResourceEngagement[]
   createdMissionRuns         MissionRun[]                @relation("MissionRunCreator")
   requestedMissionApprovals  MissionApproval[]           @relation("MissionApprovalRequester")
   decidedMissionApprovals    MissionApproval[]           @relation("MissionApprovalDecider")
@@ -2551,6 +2560,7 @@ model AcademyResource {
   approvedBy        User?                        @relation("AcademyResourceApprover", fields: [approvedById], references: [id], onDelete: SetNull)
   versions          AcademyResourceVersion[]
   attachments       AcademyResourceAttachment[]
+  engagements       AcademyResourceEngagement[]
   createdAt         DateTime                     @default(now())
   updatedAt         DateTime                     @updatedAt
 
@@ -2605,6 +2615,24 @@ model AcademyResourceAttachment {
   @@index([versionId])
 }
 
+model AcademyResourceEngagement {
+  id              String                  @id @default(cuid())
+  userId          String
+  resourceId      String
+  status          AcademyEngagementStatus
+  progressPercent Int                     @default(0)
+  startedAt       DateTime?
+  completedAt     DateTime?
+  user            User                    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  resource        AcademyResource         @relation(fields: [resourceId], references: [id], onDelete: Cascade)
+  createdAt       DateTime                @default(now())
+  updatedAt       DateTime                @updatedAt
+
+  @@unique([userId, resourceId])
+  @@index([userId, status, updatedAt])
+  @@index([resourceId, status])
+}
+
 model AcademyLesson {
   id                 String                    @id @default(cuid())
   courseId           String
@@ -2613,6 +2641,7 @@ model AcademyLesson {
   content            String?
   course             AcademyCourse             @relation(fields: [courseId], references: [id], onDelete: Cascade)
   learnerCompletions LearnerLessonCompletion[]
+  learnerNotes       LearnerLessonNote[]
   createdAt          DateTime                  @default(now())
   updatedAt          DateTime                  @updatedAt
 
@@ -2645,6 +2674,20 @@ model LearnerLessonCompletion {
 
   @@unique([userId, lessonId])
   @@index([userId])
+}
+
+model LearnerLessonNote {
+  id        String        @id @default(cuid())
+  userId    String
+  lessonId  String
+  content   String
+  user      User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  lesson    AcademyLesson @relation(fields: [lessonId], references: [id], onDelete: Cascade)
+  createdAt DateTime      @default(now())
+  updatedAt DateTime      @updatedAt
+
+  @@unique([userId, lessonId])
+  @@index([lessonId, updatedAt])
 }
 
 model LearnerExamAttempt {
@@ -2692,8 +2735,40 @@ model AcademyExam {
   requirements     CertificationRequirement[]
   attempts         ExamAttempt[]
   learnerAttempts  LearnerExamAttempt[]
+  questions        AcademyExamQuestion[]
   createdAt        DateTime                   @default(now())
   updatedAt        DateTime                   @updatedAt
+}
+
+model AcademyExamQuestion {
+  id          String              @id @default(cuid())
+  examId      String
+  prompt      String
+  sequence    Int
+  points      Int                 @default(1)
+  explanation String?
+  isActive    Boolean             @default(true)
+  exam        AcademyExam         @relation(fields: [examId], references: [id], onDelete: Cascade)
+  options     AcademyExamOption[]
+  createdAt   DateTime            @default(now())
+  updatedAt   DateTime            @updatedAt
+
+  @@unique([examId, sequence])
+  @@index([examId, isActive])
+}
+
+model AcademyExamOption {
+  id         String              @id @default(cuid())
+  questionId String
+  label      String
+  sequence   Int
+  isCorrect  Boolean             @default(false)
+  question   AcademyExamQuestion @relation(fields: [questionId], references: [id], onDelete: Cascade)
+  createdAt  DateTime            @default(now())
+  updatedAt  DateTime            @updatedAt
+
+  @@unique([questionId, sequence])
+  @@index([questionId, isCorrect])
 }
 
 model CourseSkill {

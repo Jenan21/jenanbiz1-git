@@ -4,6 +4,7 @@ import {
   completeLearnerLesson,
   enrollLearner,
   getLearnerCourseProgress,
+  saveLearnerLessonNote,
   submitLearnerExamAttempt,
 } from "@/services/academy/learner-progress-service";
 
@@ -29,23 +30,30 @@ describe("academy learner certification", () => {
     const course = await db.academyCourse.create({ data: { academyId: academy.id, fieldId: field.id, specializationId: specialization.id, title: "Operational foundations", code: `OPS-${suffix}` } });
     const lesson = await db.academyLesson.create({ data: { courseId: course.id, title: "Operating model", sequence: 1 } });
     const exam = await db.academyExam.create({ data: { courseId: course.id, specializationId: specialization.id, title: "Readiness assessment", assessmentType: "THEORY", passingScore: 80 } });
+    const firstQuestion = await db.academyExamQuestion.create({ data: { examId: exam.id, prompt: "Which record proves a controlled operation?", sequence: 1, options: { create: [{ label: "Audited evidence", sequence: 1, isCorrect: true }, { label: "An unsupported claim", sequence: 2 }] } }, include: { options: true } });
+    const secondQuestion = await db.academyExamQuestion.create({ data: { examId: exam.id, prompt: "What should happen before execution?", sequence: 2, options: { create: [{ label: "Approval and complete evidence", sequence: 1, isCorrect: true }, { label: "Immediate launch", sequence: 2 }] } }, include: { options: true } });
     await db.certificationRequirement.create({ data: { certificationId: certification.id, examId: exam.id, minimumTheoryScore: 80 } });
 
     await enrollLearner(course.id, user.id);
+    await saveLearnerLessonNote({ content: "Review the operating evidence before approval.", lessonId: lesson.id, userId: user.id });
     await completeLearnerLesson(lesson.id, user.id);
     expect((await getLearnerCourseProgress(course.id, user.id)).certificate).toBeNull();
 
-    const failed = await submitLearnerExamAttempt({ examId: exam.id, score: 70, userId: user.id });
+    const failed = await submitLearnerExamAttempt({ examId: exam.id, userId: user.id, answers: [{ questionId: firstQuestion.id, optionId: firstQuestion.options.find((option) => !option.isCorrect)!.id }, { questionId: secondQuestion.id, optionId: secondQuestion.options.find((option) => !option.isCorrect)!.id }] });
     expect(failed.attempt.outcome).toBe("FAILED");
+    expect(failed.attempt.score).toBe(0);
     expect(failed.certificate).toBeNull();
 
-    const passed = await submitLearnerExamAttempt({ examId: exam.id, score: 92, userId: user.id });
+    const passed = await submitLearnerExamAttempt({ examId: exam.id, userId: user.id, answers: [{ questionId: firstQuestion.id, optionId: firstQuestion.options.find((option) => option.isCorrect)!.id }, { questionId: secondQuestion.id, optionId: secondQuestion.options.find((option) => option.isCorrect)!.id }] });
     expect(passed.attempt.outcome).toBe("PASSED");
+    expect(passed.attempt.score).toBe(100);
     expect(passed.certificate?.certificationId).toBe(certification.id);
 
     const progress = await getLearnerCourseProgress(course.id, user.id);
     expect(progress.completedLessonIds).toEqual([lesson.id]);
-    expect(progress.examAttempts[0]?.score).toBe(92);
+    expect(progress.examAttempts[0]?.score).toBe(100);
+    expect(progress.lessonNotes[0]?.content).toBe("Review the operating evidence before approval.");
+    expect(progress.examQuestions[0]?.questions[0]?.options[0]).not.toHaveProperty("isCorrect");
     expect(progress.certificate?.status).toBe("CERTIFIED");
     expect(progress.certificate?.certification?.name).toBe("Operations ready");
   });

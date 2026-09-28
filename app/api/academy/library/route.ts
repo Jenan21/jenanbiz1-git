@@ -7,6 +7,7 @@ import { hasValidOrigin } from "@/lib/auth/request";
 import { getCurrentUser } from "@/lib/auth/session";
 import {
   addAcademyResourceAttachment,
+  createAcademyExamQuestion,
   createAcademyResource,
   createAcademyResourceVersion,
   listAcademyResources,
@@ -21,6 +22,7 @@ const referenceSchema = z.object({
 });
 const contentSchema = z.record(z.string(), z.unknown());
 const optionalDate = z.string().datetime().optional();
+const academyRecordIdSchema = z.string().trim().min(1).max(191).regex(/^[A-Za-z0-9_-]+$/);
 
 const commandSchema = z.discriminatedUnion("action", [
   z.object({
@@ -30,6 +32,7 @@ const commandSchema = z.discriminatedUnion("action", [
     action: z.literal("createVersion"), authorName: z.string().trim().min(2).max(200).optional(), changeSummary: z.string().trim().min(2).max(2000), content: contentSchema, references: z.array(referenceSchema).max(100).optional(), resourceId: z.string().cuid(), sourceName: z.string().trim().max(240).optional(), sourcePublishedAt: optionalDate, sourceUrl: z.string().url().max(1000).optional(), summary: z.string().trim().max(4000).optional(), title: z.string().trim().min(2).max(240),
   }),
   z.object({ action: z.literal("reviewResource"), resourceId: z.string().cuid(), approvalState: z.enum(["IN_REVIEW", "APPROVED", "REJECTED", "ARCHIVED"]) }),
+  z.object({ action: z.literal("createExamQuestion"), examId: academyRecordIdSchema, prompt: z.string().trim().min(2).max(2000), explanation: z.string().trim().max(4000).optional(), points: z.number().int().min(1).max(100).optional(), options: z.array(z.object({ label: z.string().trim().min(1).max(1000), isCorrect: z.boolean() })).min(2).max(12) }),
   z.object({
     action: z.literal("addAttachment"), checksum: z.string().trim().max(160).optional(), externalUrl: z.string().url().max(1000).optional(), fileName: z.string().trim().max(240).optional(), mimeType: z.string().trim().max(160).optional(), resourceId: z.string().cuid(), sizeBytes: z.number().int().nonnegative().optional(), sourceName: z.string().trim().max(240).optional(), sourceUrl: z.string().url().max(1000).optional(), storageKey: z.string().trim().max(500).optional(), title: z.string().trim().min(2).max(240), versionId: z.string().cuid().optional(),
   }),
@@ -71,8 +74,10 @@ export async function POST(request: NextRequest) {
         ? await createAcademyResourceVersion({ ...input, content: input.content as Prisma.InputJsonValue, sourcePublishedAt: input.sourcePublishedAt ? new Date(input.sourcePublishedAt) : undefined }, user.id)
         : input.action === "reviewResource"
           ? await reviewAcademyResource(input.resourceId, input.approvalState, user.id)
-          : await addAcademyResourceAttachment({ ...input, sizeBytes: input.sizeBytes === undefined ? undefined : BigInt(input.sizeBytes) }, user.id);
-    return NextResponse.json({ success: true, result: serialize(result) }, { status: input.action === "createResource" || input.action === "createVersion" || input.action === "addAttachment" ? 201 : 200 });
+          : input.action === "createExamQuestion"
+            ? await createAcademyExamQuestion(input, user.id)
+            : await addAcademyResourceAttachment({ ...input, sizeBytes: input.sizeBytes === undefined ? undefined : BigInt(input.sizeBytes) }, user.id);
+    return NextResponse.json({ success: true, result: serialize(result) }, { status: input.action === "createResource" || input.action === "createVersion" || input.action === "createExamQuestion" || input.action === "addAttachment" ? 201 : 200 });
   } catch (error) {
     const message = error instanceof Error ? error.message : "Academy library command failed";
     return NextResponse.json({ success: false, message }, { status: message.endsWith("not found") ? 404 : 409 });

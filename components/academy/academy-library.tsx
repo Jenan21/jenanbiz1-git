@@ -29,10 +29,12 @@ function matchesCategory(course: AcademyCourse, keys: readonly string[]) {
   return keys.some((candidate) => key.includes(candidate));
 }
 
-export function AcademyLibrary({ locale }: { locale: Locale }) {
+export function AcademyLibrary({ locale, route = "/academy" }: { locale: Locale; route?: "/academy" | "/academy/courses" }) {
   const ar = locale === "ar";
   const [courses, setCourses] = useState<AcademyCourse[]>([]);
   const [selectedCategory, setSelectedCategory] = useState<(typeof categories)[number]["id"]>("all");
+  const [query, setQuery] = useState("");
+  const [overview, setOverview] = useState<{ certificates: number; completedEnrollments: number; enrollments: number; lessons: number; resources: Record<string, number> }>({ certificates: 0, completedEnrollments: 0, enrollments: 0, lessons: 0, resources: {} });
   const [loading, setLoading] = useState(true);
   const [failed, setFailed] = useState(false);
 
@@ -41,10 +43,10 @@ export function AcademyLibrary({ locale }: { locale: Locale }) {
     void fetch("/api/academy/catalog", { cache: "no-store" })
       .then(async (response) => {
         if (!response.ok) throw new Error("Catalog request failed");
-        return (await response.json()) as { courses: AcademyCourse[] };
+        return (await response.json()) as { courses: AcademyCourse[]; overview: typeof overview };
       })
       .then((payload) => {
-        if (active) setCourses(payload.courses);
+        if (active) { setCourses(payload.courses); setOverview(payload.overview); }
       })
       .catch(() => {
         if (active) setFailed(true);
@@ -58,10 +60,21 @@ export function AcademyLibrary({ locale }: { locale: Locale }) {
   }, []);
 
   const category = categories.find((item) => item.id === selectedCategory) ?? categories[0];
-  const visibleCourses = courses.filter((course) => matchesCategory(course, category.keys));
+  const normalizedQuery = query.trim().toLocaleLowerCase();
+  const visibleCourses = courses.filter((course) => matchesCategory(course, category.keys) && (!normalizedQuery || [course.title, course.description, course.code, course.field?.name, course.specialization?.name].filter(Boolean).some((value) => value!.toLocaleLowerCase().includes(normalizedQuery))));
+  const ecosystem = [
+    { href: "/academy/courses", label: ar ? "الدورات" : "Courses", value: courses.length },
+    { href: "/academy/course/sample/lesson/1", label: ar ? "الدروس" : "Lessons", value: overview.lessons },
+    { href: "/academy/studies", label: ar ? "الدراسات" : "Studies", value: overview.resources.STUDY ?? 0 },
+    { href: "/academy/research", label: ar ? "الأبحاث" : "Research", value: overview.resources.RESEARCH ?? 0 },
+    { href: "/academy/webinars", label: ar ? "الندوات" : "Webinars", value: overview.resources.WEBINAR ?? 0 },
+    { href: "/academy/paths", label: ar ? "المسارات" : "Paths", value: overview.resources.LEARNING_PATH ?? 0 },
+    { href: "/academy/certificates/sample", label: ar ? "الشهادات" : "Certificates", value: overview.certificates },
+    { href: "/academy/course/sample/result", label: ar ? "التقدم" : "Progress", value: `${overview.completedEnrollments}/${overview.enrollments}` },
+  ];
 
   return (
-    <section className="academy-library" aria-labelledby="academy-library-title" aria-busy={loading}>
+    <section className="academy-library" aria-labelledby="academy-library-title" aria-busy={loading} data-academy-route={route} data-academy-kind={route === "/academy" ? "dashboard" : "list"} data-academy-source="ACADEMY_AND_APPROVED_RESOURCE_RECORDS">
       <header className="academy-library__header">
         <div>
           <span className="eyebrow eyebrow--small">JENAN ACADEMY</span>
@@ -73,6 +86,10 @@ export function AcademyLibrary({ locale }: { locale: Locale }) {
           <span>{ar ? "مسار متاح" : "available tracks"}</span>
         </div>
       </header>
+
+      <div className="academy-library__ecosystem" aria-label={ar ? "منظومة الأكاديمية" : "Academy ecosystem"}>{ecosystem.map((item, index) => <Link href={item.href} key={item.href}><span>{String(index + 1).padStart(2, "0")}</span><strong>{item.label}</strong><b>{item.value}</b></Link>)}</div>
+
+      <label className="academy-library__query"><span>{ar ? "بحث في الدورات" : "Search courses"}</span><input type="search" value={query} onChange={(event) => setQuery(event.target.value)} placeholder={ar ? "العنوان، الرمز، المجال أو التخصص" : "Title, code, field, or specialization"} /></label>
 
       <div className="academy-library__filters" role="tablist" aria-label={ar ? "تصنيفات الأكاديمية" : "Academy categories"}>
         {categories.map((item) => (

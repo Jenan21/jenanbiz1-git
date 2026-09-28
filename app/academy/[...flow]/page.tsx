@@ -9,6 +9,7 @@ import {
   academyResourceKindForRoute,
   getApprovedAcademyResources,
 } from "@/services/academy/content-library-service";
+import { listAcademyResourceEngagements } from "@/services/academy/resource-engagement-service";
 
 export default async function AcademyFlowPage({
   params,
@@ -22,15 +23,18 @@ export default async function AcademyFlowPage({
   const route = `/academy/${flow.join("/")}`;
   const definition = findAcademyFlow(route);
   if (!definition || route === "/academy/courses") notFound();
-  const [{ locale }, user, course, resources] = await Promise.all([
+  const [{ locale }, user] = await Promise.all([
     getRequestDictionary(),
     requireUser(route),
+  ]);
+  const [course, resources] = await Promise.all([
     definition.source === "course"
       ? db.academyCourse.findFirst({
           include: {
             lessons: { orderBy: { sequence: "asc" } },
             labs: { orderBy: { sequence: "asc" } },
             exams: { orderBy: { createdAt: "asc" } },
+            skills: { include: { skill: true } },
           },
           orderBy: { createdAt: "asc" },
         })
@@ -41,6 +45,7 @@ export default async function AcademyFlowPage({
       query: filters.query?.trim().slice(0, 160) || undefined,
     }),
   ]);
+  const engagements = await listAcademyResourceEngagements(user.id, resources.map((resource) => resource.id));
   return (
     <PlatformShell
       locale={locale}
@@ -50,6 +55,7 @@ export default async function AcademyFlowPage({
       <AcademyReferenceWorkspace
         course={course}
         definition={definition}
+        engagements={engagements}
         locale={locale}
         requestedResource={filters.resource}
         resources={resources}

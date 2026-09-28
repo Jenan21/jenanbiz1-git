@@ -93,18 +93,62 @@ export async function completeLearnerLesson(lessonId: string, userId: string) {
   });
 }
 
-export async function submitLearnerExamAttempt(input: { examId: string; userId: string; score: number; evidence?: Prisma.InputJsonValue }) {
-  const exam = await db.academyExam.findUnique({ where: { id: input.examId }, select: { id: true, courseId: true, passingScore: true, maxAttempts: true } });
+export async function saveLearnerLessonNote(input: { content: string; lessonId: string; userId: string }) {
+  const lesson = await db.academyLesson.findUnique({ where: { id: input.lessonId }, select: { courseId: true } });
+  if (!lesson) throw new Error("Academy lesson not found");
+  const enrollment = await db.learnerEnrollment.findUnique({ where: { userId_courseId: { userId: input.userId, courseId: lesson.courseId } }, select: { id: true } });
+  if (!enrollment) throw new Error("Course enrollment required");
+  return db.$transaction(async (transaction) => {
+    const note = await transaction.learnerLessonNote.upsert({
+      where: { userId_lessonId: { userId: input.userId, lessonId: input.lessonId } },
+      create: { content: input.content.trim(), lessonId: input.lessonId, userId: input.userId },
+      update: { content: input.content.trim() },
+    });
+    await transaction.auditLog.create({ data: { actorId: input.userId, action: "academy.learner.note.saved", entityType: "LearnerLessonNote", entityId: note.id, metadata: { courseId: lesson.courseId, lessonId: input.lessonId } as Prisma.InputJsonValue } });
+    return note;
+  });
+}
+
+export async function submitLearnerExamAttempt(input: { answers: Array<{ optionId: string; questionId: string }>; examId: string; userId: string }) {
+  const exam = await db.academyExam.findUnique({
+    where: { id: input.examId },
+    select: {
+      id: true,
+      courseId: true,
+      passingScore: true,
+      maxAttempts: true,
+      questions: {
+        where: { isActive: true },
+        orderBy: { sequence: "asc" },
+        select: { id: true, points: true, options: { select: { id: true, isCorrect: true } } },
+      },
+    },
+  });
   if (!exam?.courseId) throw new Error("Academy exam not found");
   const enrollment = await db.learnerEnrollment.findUnique({ where: { userId_courseId: { userId: input.userId, courseId: exam.courseId } }, select: { id: true } });
   if (!enrollment) throw new Error("Course enrollment required");
+  if (!exam.questions.length) throw new Error("Approved exam questions are required");
+  if (input.answers.length !== exam.questions.length || new Set(input.answers.map((answer) => answer.questionId)).size !== exam.questions.length) {
+    throw new Error("Every exam question requires exactly one answer");
+  }
   const attempts = await db.learnerExamAttempt.count({ where: { userId: input.userId, examId: input.examId } });
   if (exam.maxAttempts && attempts >= exam.maxAttempts) throw new Error("Maximum exam attempts reached");
-  const outcome = input.score >= exam.passingScore ? AcademicAssessmentOutcome.PASSED : AcademicAssessmentOutcome.FAILED;
+  let earnedPoints = 0;
+  const totalPoints = exam.questions.reduce((total, question) => total + question.points, 0);
+  const evidence = exam.questions.map((question) => {
+    const answer = input.answers.find((item) => item.questionId === question.id);
+    const option = question.options.find((item) => item.id === answer?.optionId);
+    if (!option) throw new Error("Exam answer does not belong to its question");
+    if (option.isCorrect) earnedPoints += question.points;
+    return { questionId: question.id, selectedOptionId: option.id, correct: option.isCorrect };
+  });
+  if (totalPoints <= 0) throw new Error("Exam question points must be positive");
+  const score = Math.round((earnedPoints / totalPoints) * 100);
+  const outcome = score >= exam.passingScore ? AcademicAssessmentOutcome.PASSED : AcademicAssessmentOutcome.FAILED;
 
   return db.$transaction(async (transaction) => {
     const attempt = await transaction.learnerExamAttempt.create({
-      data: { userId: input.userId, examId: input.examId, score: input.score, outcome, evidence: input.evidence ?? Prisma.JsonNull },
+      data: { userId: input.userId, examId: input.examId, score, outcome, evidence },
     });
     const certificate = outcome === AcademicAssessmentOutcome.PASSED
       ? await maybeAwardLearnerCertificate(exam.courseId!, input.userId, transaction)
@@ -115,7 +159,7 @@ export async function submitLearnerExamAttempt(input: { examId: string; userId: 
         action: "academy.learner.exam.submitted",
         entityType: "LearnerExamAttempt",
         entityId: attempt.id,
-        metadata: { examId: input.examId, courseId: exam.courseId, score: input.score, outcome } as Prisma.InputJsonValue,
+        metadata: { examId: input.examId, courseId: exam.courseId, score, outcome } as Prisma.InputJsonValue,
       },
     });
     return { attempt, certificate };
@@ -123,7 +167,7 @@ export async function submitLearnerExamAttempt(input: { examId: string; userId: 
 }
 
 export async function getLearnerCourseProgress(courseId: string, userId: string) {
-  const [enrollment, completions, examAttempts, certificate] = await Promise.all([
+  const [enrollment, completions, examAttempts, certificate, lessonNotes, exams] = await Promise.all([
     db.learnerEnrollment.findUnique({ where: { userId_courseId: { userId, courseId } } }),
     db.learnerLessonCompletion.findMany({ where: { userId, lesson: { courseId } }, select: { lessonId: true } }),
     db.learnerExamAttempt.findMany({
@@ -135,6 +179,44 @@ export async function getLearnerCourseProgress(courseId: string, userId: string)
       where: { userId_courseId: { userId, courseId } },
       select: { id: true, status: true, awardedAt: true, expiresAt: true, certification: { select: { name: true } } },
     }),
+    db.learnerLessonNote.findMany({ where: { userId, lesson: { courseId } }, select: { id: true, lessonId: true, content: true, updatedAt: true } }),
+    db.academyExam.findMany({
+      where: { courseId },
+      orderBy: { createdAt: "asc" },
+      select: {
+        id: true,
+        questions: {
+          where: { isActive: true },
+          orderBy: { sequence: "asc" },
+          select: { id: true, prompt: true, sequence: true, points: true, options: { orderBy: { sequence: "asc" }, select: { id: true, label: true, sequence: true } } },
+        },
+      },
+    }),
   ]);
-  return { enrollment, completedLessonIds: completions.map((completion) => completion.lessonId), examAttempts, certificate };
+  return {
+    enrollment,
+    completedLessonIds: completions.map((completion) => completion.lessonId),
+    examAttempts,
+    certificate,
+    lessonNotes,
+    examQuestions: enrollment ? exams : exams.map((exam) => ({ ...exam, questions: [] })),
+  };
+}
+
+export async function getLearnerCertificateVerification(certificateId: string) {
+  const certificate = await db.learnerCertificate.findUnique({
+    where: { id: certificateId },
+    select: {
+      id: true,
+      status: true,
+      awardedAt: true,
+      expiresAt: true,
+      course: { select: { code: true, title: true } },
+      certification: { select: { name: true } },
+      user: { select: { profile: { select: { displayName: true } } } },
+    },
+  });
+  if (!certificate) return null;
+  const expired = Boolean(certificate.expiresAt && certificate.expiresAt.getTime() < Date.now());
+  return { ...certificate, expired, valid: certificate.status === CertificationRecordStatus.CERTIFIED && !expired };
 }

@@ -4,7 +4,7 @@ import { requireUser } from "@/lib/auth/session";
 import { db } from "@/lib/db";
 import { getRequestDictionary } from "@/lib/i18n/server";
 import { PlatformShell } from "@/components/custom/platform-shell";
-import { CourseLearningProgress } from "@/components/academy/course-learning-progress";
+import { AcademyCourseJourney } from "@/components/academy/academy-course-journey";
 import { AcademySectionNav } from "@/components/academy/academy-section-nav";
 import type { Locale } from "@/types/i18n";
 
@@ -26,6 +26,7 @@ export default async function AcademyCoursePage({
       lessons: { orderBy: { sequence: "asc" } },
       labs: { orderBy: { sequence: "asc" } },
       exams: { orderBy: { createdAt: "asc" } },
+      skills: { include: { skill: true } },
     },
   });
   if (!course) notFound();
@@ -42,12 +43,7 @@ export default async function AcademyCoursePage({
           <p>{course.description ?? (ar ? "مادة أكاديمية منظمة." : "A structured academy course.")}</p>
           <span className="academy-course-page__field">{course.field?.name ?? course.specialization?.name ?? (ar ? "مسار عام" : "General track")}</span>
         </header>
-        <CourseLearningProgress
-          courseId={course.id}
-          exams={course.exams.map((exam) => ({ id: exam.id, title: exam.title, passingScore: exam.passingScore, assessmentType: exam.assessmentType }))}
-          lessons={course.lessons.map((lesson) => ({ id: lesson.id, title: lesson.title }))}
-          locale={locale as Locale}
-        />
+        <AcademyCourseJourney course={course} locale={locale as Locale} mode="detail" />
         <section aria-labelledby="lessons-title">
           <h2 id="lessons-title">{ar ? "الدروس" : "Lessons"}</h2>
           {course.lessons.map((lesson) => <article className="academy-course-page__item" key={lesson.id}><span>{String(lesson.sequence).padStart(2, "0")}</span><div><h3>{lesson.title}</h3><p>{lesson.content ?? (ar ? "لا يوجد نص للدرس بعد." : "Lesson content has not been added yet.")}</p></div></article>)}

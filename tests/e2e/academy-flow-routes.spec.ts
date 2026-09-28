@@ -3,8 +3,14 @@ import { academyFlowDefinitions } from "@/lib/academy/user-academy-routes";
 import { cleanE2EIdentities, createE2ESession, seedE2EUser } from "./identity-fixture";
 import { e2eIdentity } from "./test-identities";
 
+const viewports = [
+  { width: 2560, height: 1440 }, { width: 1920, height: 1080 }, { width: 1440, height: 900 },
+  { width: 1366, height: 768 }, { width: 1280, height: 800 }, { width: 1024, height: 1366 },
+  { width: 820, height: 1180 }, { width: 430, height: 932 }, { width: 390, height: 844 }, { width: 360, height: 800 },
+] as const;
+
 test.describe.serial("Academy full route flow", () => {
-  test.setTimeout(180_000);
+  test.setTimeout(600_000);
 
   test.beforeAll(async () => {
     await cleanE2EIdentities();
@@ -30,21 +36,29 @@ test.describe.serial("Academy full route flow", () => {
       expect(response?.status(), definition.route).toBe(200);
       await expect(page.locator(".academy-section-nav")).toBeVisible();
       if (definition.route === "/academy/courses") await expect(page.locator(".academy-library")).toBeVisible();
-      else if (definition.source === "course") await expect(page.locator(".academy-reference__course")).toBeVisible();
+      else if (definition.source === "course") {
+        const expectedMode = definition.kind === "player" ? "lesson" : definition.kind === "form" ? "quiz" : definition.kind === "dashboard" ? "result" : definition.kind === "report" ? "certificate" : "detail";
+        await expect(page.locator(".academy-course-journey")).toHaveAttribute("data-academy-course-mode", expectedMode);
+      }
       else await expect(page.locator(".academy-reference__empty")).toContainText("Awaiting approved source");
       const layout = await page.evaluate(() => ({ scrollWidth: document.documentElement.scrollWidth, viewportWidth: document.documentElement.clientWidth }));
       expect(layout.scrollWidth, definition.route).toBeLessThanOrEqual(layout.viewportWidth + 1);
     }
   });
 
-  test("keeps representative Academy pages responsive on mobile", async ({ context, page }) => {
+  test("keeps every Academy screen responsive across all required viewports", async ({ context, page }) => {
     const sessionToken = await createE2ESession(e2eIdentity.user.email);
     await context.addCookies([{ name: "jenan_session", value: sessionToken, url: "http://127.0.0.1:3101", httpOnly: true, sameSite: "Lax" }]);
-    await page.setViewportSize({ width: 390, height: 844 });
-    for (const route of ["/academy/courses", "/academy/course/sample/lesson/1", "/academy/webinars", "/academy/research/sample", "/academy/paths"]) {
-      expect((await page.goto(route, { waitUntil: "domcontentloaded" }))?.status()).toBe(200);
-      const layout = await page.evaluate(() => ({ scrollWidth: document.documentElement.scrollWidth, viewportWidth: document.documentElement.clientWidth }));
-      expect(layout.scrollWidth, route).toBeLessThanOrEqual(layout.viewportWidth + 1);
+    for (const viewport of viewports) {
+      await page.setViewportSize(viewport);
+      expect((await page.goto("/academy", { waitUntil: "domcontentloaded" }))?.status()).toBe(200);
+      expect(await page.evaluate(() => document.documentElement.scrollWidth <= document.documentElement.clientWidth + 1), `/academy at ${viewport.width}x${viewport.height}`).toBe(true);
+      for (const definition of academyFlowDefinitions) {
+        expect((await page.goto(definition.route, { waitUntil: "domcontentloaded" }))?.status()).toBe(200);
+        await expect(page.locator("[data-academy-route]")).toHaveAttribute("data-academy-route", definition.route);
+        const layout = await page.evaluate(() => ({ scrollWidth: document.documentElement.scrollWidth, viewportWidth: document.documentElement.clientWidth }));
+        expect(layout.scrollWidth, `${definition.route} at ${viewport.width}x${viewport.height}`).toBeLessThanOrEqual(layout.viewportWidth + 1);
+      }
     }
   });
 });

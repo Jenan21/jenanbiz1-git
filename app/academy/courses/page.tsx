@@ -6,5 +6,5 @@ import { getRequestDictionary } from "@/lib/i18n/server";
 
 export default async function AcademyCoursesPage() {
   const [{ locale }, user] = await Promise.all([getRequestDictionary(), requireUser("/academy/courses")]);
-  return <PlatformShell locale={locale} activeRoute="/academy" userLabel={user.profile?.displayName ?? user.email}><AcademySectionNav activeRoute="/academy/courses" locale={locale} /><AcademyLibrary locale={locale} /></PlatformShell>;
+  return <PlatformShell locale={locale} activeRoute="/academy" userLabel={user.profile?.displayName ?? user.email}><AcademySectionNav activeRoute="/academy/courses" locale={locale} /><AcademyLibrary locale={locale} route="/academy/courses" /></PlatformShell>;
 }
