@@ -1,4 +1,4 @@
-export type ProjectFocus = "assessment" | "create" | "evidence" | "feasibility" | "governance" | "intelligence" | "launch" | "report" | "risk" | "team" | "workflow";
+export type ProjectFocus = "assessment" | "compliance" | "create" | "evidence" | "feasibility" | "governance" | "intelligence" | "launch" | "report" | "risk" | "team" | "vendors" | "workflow";
 export type ProjectFlowGroup = "analysis" | "evaluation" | "feasibility" | "start";
 
 export type ProjectFlowDefinition = {
@@ -38,10 +38,10 @@ export const projectFlowDefinitions: readonly ProjectFlowDefinition[] = [
   flow("evaluation", "report", ["تقرير تقييم المشروع", "Project evaluation report"], "report", "report"),
   flow("start", "new", ["بدء مشروع — بيانات البداية", "Start project — input"], "form", "create"),
   flow("start", "roadmap", ["خارطة تنفيذ المشروع", "Project delivery roadmap"], "timeline", "workflow"),
-  flow("start", "licenses", ["التراخيص والإجراءات", "Licenses and procedures"], "checklist", "evidence"),
+  flow("start", "licenses", ["التراخيص والإجراءات", "Licenses and procedures"], "checklist", "compliance"),
   flow("start", "setup", ["التجهيز والميزانية", "Setup and budget"], "dashboard", "feasibility"),
   flow("start", "team", ["الفريق والمهام", "Team and tasks"], "dashboard", "team"),
-  flow("start", "vendors", ["الموردون والشركاء", "Vendors and partners"], "list", "team"),
+  flow("start", "vendors", ["الموردون والشركاء", "Vendors and partners"], "list", "vendors"),
   flow("start", "launch", ["الإطلاق والنمو", "Launch and growth"], "dashboard", "launch"),
   flow("start", "report", ["تقرير خطة بدء المشروع", "Project launch plan report"], "report", "report"),
   flow("feasibility", "simple/new", ["الدراسة المبسطة — البيانات", "Simplified study — input"], "form", "feasibility"),

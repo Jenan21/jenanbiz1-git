@@ -2,16 +2,20 @@ import { afterAll, describe, expect, it } from "vitest";
 import { db } from "@/lib/db";
 import {
   addProjectMember,
+  createProjectComplianceItem,
   createProject,
   createProjectRisk,
+  createProjectVendor,
   listUserProjectsPage,
   listUserProjects,
   recordProjectDecision,
   recordProjectAssessment,
   saveProjectFinancialPlan,
   startProject,
+  updateProjectComplianceStatus,
   updateProjectRiskStatus,
   updateProjectPhase,
+  updateProjectVendorStatus,
 } from "@/services/projects/project-service";
 
 const suffix = crypto.randomUUID().slice(0, 8);
@@ -88,6 +92,11 @@ describe("projects domain", () => {
     const risk = await createProjectRisk(project.id, { category: "MARKET", title: "Demand variance", likelihood: 3, impact: 4, mitigation: "Review demand weekly and adjust capacity.", ownerLabel: "Project owner" }, user.id);
     expect(risk.score).toBe(12);
     expect((await updateProjectRiskStatus(project.id, risk.id, "MITIGATING", user.id)).status).toBe("MITIGATING");
+    const compliance = await createProjectComplianceItem(project.id, { authority: "Municipality", kind: "LICENSE", reference: "LIC-2026", title: "Operating license" }, editor.id);
+    expect((await updateProjectComplianceStatus(project.id, compliance.id, "APPROVED", editor.id)).status).toBe("APPROVED");
+    const vendor = await createProjectVendor(project.id, { category: "Equipment", contactEmail: "vendor@example.test", kind: "VENDOR", name: "Verified equipment supplier" }, editor.id);
+    expect((await updateProjectVendorStatus(project.id, vendor.id, "ACTIVE", editor.id)).status).toBe("ACTIVE");
+    await expect(createProjectVendor(project.id, { kind: "PARTNER", name: "Unauthorized partner" }, outsider.id)).rejects.toThrow("Project not found");
     expect(await db.projectAssessmentRevision.count({ where: { projectId: project.id } })).toBe(8);
     const marketRevisions = await db.projectAssessmentRevision.findMany({ where: { projectId: project.id, assessment: { type: "MARKET" } }, orderBy: { version: "asc" } });
     expect(marketRevisions.map((revision) => revision.version)).toEqual([1, 2, 3]);
@@ -106,6 +115,9 @@ describe("projects domain", () => {
     expect(started.status).toBe("IN_PROGRESS");
     expect(started.currentPhase).toBe("EXECUTION");
     expect((await listUserProjects(user.id)).some((item) => item.id === project.id)).toBe(true);
+    const persistedProject = (await listUserProjects(user.id)).find((item) => item.id === project.id);
+    expect(persistedProject?.complianceItems).toHaveLength(1);
+    expect(persistedProject?.vendors).toHaveLength(1);
     expect(await db.auditLog.count({ where: { entityType: "Project", entityId: project.id } })).toBeGreaterThanOrEqual(2);
   });
 });

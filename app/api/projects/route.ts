@@ -5,14 +5,18 @@ import { hasValidOrigin } from "@/lib/auth/request";
 import {
   createProject,
   addProjectMember,
+  createProjectComplianceItem,
   createProjectRisk,
+  createProjectVendor,
   listUserProjectsPage,
   recordProjectDecision,
   recordProjectAssessment,
   saveProjectFinancialPlan,
   startProject,
   updateProjectRiskStatus,
+  updateProjectComplianceStatus,
   updateProjectPhase,
+  updateProjectVendorStatus,
 } from "@/services/projects/project-service";
 import { calculateFeasibility, calculateRiskScore, calculateScenarios } from "@/services/projects/project-calculations";
 import { assessProjectQuality } from "@/services/projects/project-quality";
@@ -27,6 +31,10 @@ const assessmentTypes = ["MARKET", "FINANCIAL", "OPERATIONAL", "RISK", "TECHNICA
 const decisionVerdicts = ["APPROVE", "REJECT", "RETURN_FOR_REVIEW"] as const;
 const riskStatuses = ["OPEN", "MITIGATING", "ACCEPTED", "CLOSED"] as const;
 const projectMemberRoles = ["EDITOR", "REVIEWER", "VIEWER"] as const;
+const complianceKinds = ["LICENSE", "PROCEDURE"] as const;
+const complianceStatuses = ["REQUIRED", "IN_PROGRESS", "SUBMITTED", "APPROVED", "REJECTED", "NOT_APPLICABLE"] as const;
+const vendorKinds = ["VENDOR", "PARTNER"] as const;
+const vendorStatuses = ["PROSPECT", "APPROVED", "ACTIVE", "SUSPENDED", "ARCHIVED"] as const;
 const financialInputs = z.object({
   initialInvestment: z.number().finite().min(0),
   monthlyFixedCosts: z.number().finite().min(0),
@@ -47,6 +55,7 @@ function actionRateLimit(action: (typeof commandSchema)["_output"]["action"]): P
   if (action === "createRisk" || action === "updateRiskStatus" || action === "calculateRisk") return "risk";
   if (action === "recordDecision") return "decision";
   if (action === "addMember") return "membership";
+  if (action === "createCompliance" || action === "updateComplianceStatus" || action === "createVendor" || action === "updateVendorStatus") return "phase";
   if (action === "updatePhase") return "phase";
   if (action === "start") return "start";
   return undefined;
@@ -96,6 +105,10 @@ const commandSchema = z.discriminatedUnion("action", [
   }),
   z.object({ action: z.literal("start"), projectId: z.string().cuid() }),
   z.object({ action: z.literal("addMember"), projectId: z.string().cuid(), email: z.string().trim().email().max(320), role: z.enum(projectMemberRoles) }),
+  z.object({ action: z.literal("createCompliance"), projectId: z.string().cuid(), kind: z.enum(complianceKinds), title: z.string().trim().min(2).max(240), authority: z.string().trim().max(240).optional(), reference: z.string().trim().max(500).optional(), dueAt: z.string().datetime().optional(), notes: z.string().trim().max(4000).optional() }),
+  z.object({ action: z.literal("updateComplianceStatus"), projectId: z.string().cuid(), itemId: z.string().cuid(), status: z.enum(complianceStatuses) }),
+  z.object({ action: z.literal("createVendor"), projectId: z.string().cuid(), kind: z.enum(vendorKinds), name: z.string().trim().min(2).max(240), category: z.string().trim().max(160).optional(), contactEmail: z.string().trim().email().max(320).optional(), notes: z.string().trim().max(4000).optional() }),
+  z.object({ action: z.literal("updateVendorStatus"), projectId: z.string().cuid(), vendorId: z.string().cuid(), status: z.enum(vendorStatuses) }),
   z.object({ action: z.literal("calculateFeasibility"), inputs: financialInputs, projectId: z.string().cuid().optional(), persist: z.boolean().optional() }),
   z.object({ action: z.literal("recordDecision"), projectId: z.string().cuid(), verdict: z.enum(decisionVerdicts), rationale: z.string().trim().min(10).max(4000) }),
   z.object({ action: z.literal("createRisk"), projectId: z.string().cuid(), category: z.string().trim().min(2).max(120), title: z.string().trim().min(3).max(300), likelihood: z.number().int().min(1).max(5), impact: z.number().int().min(1).max(5), mitigation: z.string().trim().min(3).max(4000), ownerLabel: z.string().trim().min(2).max(160), reviewAt: z.string().datetime().optional() }),
@@ -157,6 +170,14 @@ export async function POST(request: NextRequest) {
       ? await createProject(input, user.id)
       : input.action === "addMember"
         ? await addProjectMember(input.projectId, input, user.id)
+      : input.action === "createCompliance"
+        ? await createProjectComplianceItem(input.projectId, { ...input, dueAt: input.dueAt ? new Date(input.dueAt) : undefined }, user.id)
+      : input.action === "updateComplianceStatus"
+        ? await updateProjectComplianceStatus(input.projectId, input.itemId, input.status, user.id)
+      : input.action === "createVendor"
+        ? await createProjectVendor(input.projectId, input, user.id)
+      : input.action === "updateVendorStatus"
+        ? await updateProjectVendorStatus(input.projectId, input.vendorId, input.status, user.id)
       : input.action === "updatePhase"
         ? await updateProjectPhase(input.projectId, input.phaseType, input.status, user.id, input.notes)
         : input.action === "recordAssessment"
@@ -200,7 +221,7 @@ export async function POST(request: NextRequest) {
                       return result;
                     })()
               : await startProject(input.projectId, user.id);
-    return NextResponse.json({ success: true, result }, { status: input.action === "create" ? 201 : 200 });
+    return NextResponse.json({ success: true, result }, { status: input.action === "create" || input.action === "createCompliance" || input.action === "createVendor" ? 201 : 200 });
   } catch (error) {
     const message = error instanceof Error ? error.message : "Project command failed";
     const status = message === "Project not found" ? 404 : 409;

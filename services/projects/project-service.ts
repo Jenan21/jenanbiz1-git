@@ -1,11 +1,15 @@
 import {
   ProjectAssessmentType,
+  ProjectComplianceKind,
+  ProjectComplianceStatus,
   ProjectDecisionVerdict,
   ProjectMemberRole,
   ProjectPhaseStatus,
   ProjectPhaseType,
   ProjectRiskStatus,
   ProjectStatus,
+  ProjectVendorKind,
+  ProjectVendorStatus,
   Prisma,
 } from "@/generated/prisma/client";
 import { db } from "@/lib/db";
@@ -48,6 +52,8 @@ function projectInclude() {
     decisions: { orderBy: { createdAt: "desc" as const }, take: 1 },
     financialPlans: { orderBy: { version: "desc" as const }, take: 1 },
     risks: { orderBy: [{ score: "desc" as const }, { createdAt: "desc" as const }] },
+    complianceItems: { orderBy: [{ kind: "asc" as const }, { createdAt: "desc" as const }] },
+    vendors: { orderBy: [{ kind: "asc" as const }, { createdAt: "desc" as const }] },
     evidenceFiles: { select: { id: true, fileName: true, mimeType: true, sizeBytes: true, checksum: true, createdAt: true }, orderBy: { createdAt: "desc" as const } },
     members: { include: { user: { include: { profile: true } } }, orderBy: { createdAt: "asc" as const } },
     organization: true,
@@ -411,6 +417,73 @@ export async function updateProjectRiskStatus(
     await transaction.auditLog.create({
       data: { actorId: userId, action: "project.risk.updated", entityType: "ProjectRisk", entityId: updated.id, metadata: { projectId, status } },
     });
+    return updated;
+  });
+}
+
+export async function createProjectComplianceItem(
+  projectId: string,
+  input: { authority?: string; dueAt?: Date; kind: ProjectComplianceKind; notes?: string; reference?: string; title: string },
+  userId: string,
+) {
+  return db.$transaction(async (transaction) => {
+    const project = await transaction.project.findFirst({ where: { id: projectId, ...projectAccessWhere(userId, [ProjectMemberRole.OWNER, ProjectMemberRole.EDITOR]) }, select: { id: true } });
+    if (!project) throw new Error("Project not found");
+    const item = await transaction.projectComplianceItem.create({
+      data: {
+        authority: input.authority?.trim() || undefined,
+        dueAt: input.dueAt,
+        kind: input.kind,
+        notes: input.notes?.trim() || undefined,
+        projectId,
+        reference: input.reference?.trim() || undefined,
+        title: input.title.trim(),
+      },
+    });
+    await transaction.auditLog.create({ data: { actorId: userId, action: "project.compliance.created", entityType: "ProjectComplianceItem", entityId: item.id, metadata: { kind: item.kind, projectId } } });
+    return item;
+  });
+}
+
+export async function updateProjectComplianceStatus(projectId: string, itemId: string, status: ProjectComplianceStatus, userId: string) {
+  return db.$transaction(async (transaction) => {
+    const item = await transaction.projectComplianceItem.findFirst({ where: { id: itemId, projectId, project: projectAccessWhere(userId, [ProjectMemberRole.OWNER, ProjectMemberRole.EDITOR]) } });
+    if (!item) throw new Error("Project compliance item not found");
+    const updated = await transaction.projectComplianceItem.update({ where: { id: itemId }, data: { status } });
+    await transaction.auditLog.create({ data: { actorId: userId, action: "project.compliance.updated", entityType: "ProjectComplianceItem", entityId: updated.id, metadata: { projectId, status } } });
+    return updated;
+  });
+}
+
+export async function createProjectVendor(
+  projectId: string,
+  input: { category?: string; contactEmail?: string; kind: ProjectVendorKind; name: string; notes?: string },
+  userId: string,
+) {
+  return db.$transaction(async (transaction) => {
+    const project = await transaction.project.findFirst({ where: { id: projectId, ...projectAccessWhere(userId, [ProjectMemberRole.OWNER, ProjectMemberRole.EDITOR]) }, select: { id: true } });
+    if (!project) throw new Error("Project not found");
+    const vendor = await transaction.projectVendor.create({
+      data: {
+        category: input.category?.trim() || undefined,
+        contactEmail: input.contactEmail?.trim().toLowerCase() || undefined,
+        kind: input.kind,
+        name: input.name.trim(),
+        notes: input.notes?.trim() || undefined,
+        projectId,
+      },
+    });
+    await transaction.auditLog.create({ data: { actorId: userId, action: "project.vendor.created", entityType: "ProjectVendor", entityId: vendor.id, metadata: { kind: vendor.kind, projectId } } });
+    return vendor;
+  });
+}
+
+export async function updateProjectVendorStatus(projectId: string, vendorId: string, status: ProjectVendorStatus, userId: string) {
+  return db.$transaction(async (transaction) => {
+    const vendor = await transaction.projectVendor.findFirst({ where: { id: vendorId, projectId, project: projectAccessWhere(userId, [ProjectMemberRole.OWNER, ProjectMemberRole.EDITOR]) } });
+    if (!vendor) throw new Error("Project vendor not found");
+    const updated = await transaction.projectVendor.update({ where: { id: vendorId }, data: { status } });
+    await transaction.auditLog.create({ data: { actorId: userId, action: "project.vendor.updated", entityType: "ProjectVendor", entityId: updated.id, metadata: { projectId, status } } });
     return updated;
   });
 }

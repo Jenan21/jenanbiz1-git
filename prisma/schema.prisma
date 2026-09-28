@@ -292,6 +292,33 @@ enum ProjectMemberRole {
   VIEWER
 }
 
+enum ProjectComplianceKind {
+  LICENSE
+  PROCEDURE
+}
+
+enum ProjectComplianceStatus {
+  REQUIRED
+  IN_PROGRESS
+  SUBMITTED
+  APPROVED
+  REJECTED
+  NOT_APPLICABLE
+}
+
+enum ProjectVendorKind {
+  VENDOR
+  PARTNER
+}
+
+enum ProjectVendorStatus {
+  PROSPECT
+  APPROVED
+  ACTIVE
+  SUSPENDED
+  ARCHIVED
+}
+
 enum MapProviderReviewStatus {
   DRAFT
   APPROVED
@@ -2904,6 +2931,8 @@ model Project {
   decisions             ProjectDecision[]
   financialPlans        ProjectFinancialPlan[]
   risks                 ProjectRisk[]
+  complianceItems       ProjectComplianceItem[]
+  vendors               ProjectVendor[]
   evidenceFiles         FileAsset[]                   @relation("ProjectEvidenceFiles")
   intelligenceSnapshots ProjectIntelligenceSnapshot[]
   marketListings        MarketListing[]
@@ -2930,6 +2959,41 @@ model ProjectMember {
   @@unique([projectId, userId])
   @@index([userId, role])
   @@index([projectId, role])
+}
+
+model ProjectComplianceItem {
+  id          String                  @id @default(cuid())
+  projectId   String
+  kind        ProjectComplianceKind
+  title       String
+  authority   String?
+  status      ProjectComplianceStatus @default(REQUIRED)
+  reference   String?
+  dueAt       DateTime?
+  notes       String?
+  project     Project                 @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  createdAt   DateTime                @default(now())
+  updatedAt   DateTime                @updatedAt
+
+  @@index([projectId, kind, status])
+  @@index([projectId, dueAt])
+}
+
+model ProjectVendor {
+  id           String              @id @default(cuid())
+  projectId    String
+  kind         ProjectVendorKind
+  name         String
+  category     String?
+  contactEmail String?
+  status       ProjectVendorStatus @default(PROSPECT)
+  notes        String?
+  project      Project             @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  createdAt    DateTime            @default(now())
+  updatedAt    DateTime            @updatedAt
+
+  @@index([projectId, kind, status])
+  @@index([projectId, name])
 }
 
 model MapProviderReview {
