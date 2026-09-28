@@ -42,6 +42,7 @@ describe("Jenan Software operational cycle", () => {
     expect((await db.softwareProduct.findUnique({ where: { id: product.id } }))?.stockQuantity).toBe(6);
 
     const operations = await listSoftwareOperations(organization.id, user.id);
+    expect(operations.crmActivities.map((activity) => activity.action)).toEqual(expect.arrayContaining(["software.crm.lead.created", "software.crm.lead.status.updated"]));
     expect(summarizeSoftwareOperations(operations)).toMatchObject({ activeLeads: 1, expenseMinor: 22_500, incomeMinor: 23_000, profitMinor: 500 });
   });
 });

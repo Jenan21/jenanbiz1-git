@@ -18,17 +18,20 @@ export function hasValidOrigin(request: NextRequest) {
   try {
     const originUrl = new URL(origin);
     const requestUrl = new URL(request.url);
-    const expectedHost =
-      request.headers.get("x-forwarded-host")?.split(",")[0]?.trim() ||
-      request.headers.get("host") ||
-      requestUrl.host;
-    const expectedProtocol =
-      request.headers.get("x-forwarded-proto")?.split(",")[0]?.trim() ||
-      requestUrl.protocol.replace(":", "");
-    return (
-      originUrl.host === expectedHost &&
-      originUrl.protocol === `${expectedProtocol}:`
-    );
+    const allowedOrigins = new Set([requestUrl.origin]);
+    const host = request.headers.get("host")?.trim();
+    const forwardedProtocol = request.headers
+      .get("x-forwarded-proto")
+      ?.split(",")[0]
+      ?.trim();
+    const protocol =
+      forwardedProtocol === "http" || forwardedProtocol === "https"
+        ? forwardedProtocol
+        : requestUrl.protocol.replace(":", "");
+    if (host) allowedOrigins.add(`${protocol}://${host}`);
+    const configuredAppUrl = process.env.NEXT_PUBLIC_APP_URL?.trim();
+    if (configuredAppUrl) allowedOrigins.add(new URL(configuredAppUrl).origin);
+    return allowedOrigins.has(originUrl.origin);
   } catch {
     return false;
   }

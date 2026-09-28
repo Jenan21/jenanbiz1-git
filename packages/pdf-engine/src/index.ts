@@ -1,4 +1,6 @@
-import { PDFDocument } from "pdf-lib";
+import { createCanvas } from "@napi-rs/canvas";
+import { degrees, PDFDocument, rgb, StandardFonts } from "pdf-lib";
+import { getDocument } from "pdfjs-dist/legacy/build/pdf.mjs";
 
 export type PdfBytes = Uint8Array | ArrayBuffer;
 
@@ -62,5 +64,136 @@ export async function splitPdf(
   return outputs;
 }
 
-const pdfEngine = { mergePdfs, splitPdf };
+function normalizePages(pageNumbers: number[], pageCount: number) {
+  if (!pageNumbers.length || new Set(pageNumbers).size !== pageNumbers.length || pageNumbers.some((page) => !Number.isInteger(page) || page < 1 || page > pageCount)) throw new Error("Invalid PDF page selection");
+  return pageNumbers.map((page) => page - 1);
+}
+
+export async function extractPdfPages(input: PdfBytes, pageNumbers: number[]) {
+  const source = await PDFDocument.load(toUint8Array(input));
+  const output = await PDFDocument.create();
+  const pages = await output.copyPages(source, normalizePages(pageNumbers, source.getPageCount()));
+  pages.forEach((page) => output.addPage(page));
+  return output.save();
+}
+
+export async function deletePdfPages(input: PdfBytes, pageNumbers: number[]) {
+  const document = await PDFDocument.load(toUint8Array(input));
+  const indices = normalizePages(pageNumbers, document.getPageCount()).sort((left, right) => right - left);
+  if (indices.length >= document.getPageCount()) throw new Error("A PDF must retain at least one page");
+  indices.forEach((index) => document.removePage(index));
+  return document.save();
+}
+
+export async function reorderPdfPages(input: PdfBytes, pageNumbers: number[]) {
+  const source = await PDFDocument.load(toUint8Array(input));
+  const indices = normalizePages(pageNumbers, source.getPageCount());
+  if (indices.length !== source.getPageCount()) throw new Error("PDF reorder requires every page exactly once");
+  const output = await PDFDocument.create();
+  const pages = await output.copyPages(source, indices);
+  pages.forEach((page) => output.addPage(page));
+  return output.save();
+}
+
+export async function rotatePdfPages(input: PdfBytes, rotation: 90 | 180 | 270, pageNumbers?: number[]) {
+  const document = await PDFDocument.load(toUint8Array(input));
+  const indices = pageNumbers?.length ? normalizePages(pageNumbers, document.getPageCount()) : document.getPageIndices();
+  indices.forEach((index) => {
+    const page = document.getPage(index);
+    page.setRotation(degrees((page.getRotation().angle + rotation) % 360));
+  });
+  return document.save();
+}
+
+export async function optimizePdf(input: PdfBytes) {
+  const source = toUint8Array(input);
+  const document = await PDFDocument.load(source);
+  const optimized = await document.save({ addDefaultPage: false, useObjectStreams: true });
+  return optimized.byteLength < source.byteLength ? optimized : source;
+}
+
+export async function imagesToPdf(inputs: Array<{ bytes: PdfBytes; mimeType: "image/jpeg" | "image/png" }>) {
+  if (!inputs.length) throw new Error("At least one image is required");
+  const document = await PDFDocument.create();
+  for (const input of inputs) {
+    const image = input.mimeType === "image/png" ? await document.embedPng(toUint8Array(input.bytes)) : await document.embedJpg(toUint8Array(input.bytes));
+    const dimensions = image.scale(1);
+    const maxWidth = 595;
+    const maxHeight = 842;
+    const scale = Math.min(maxWidth / dimensions.width, maxHeight / dimensions.height, 1);
+    const width = dimensions.width * scale;
+    const height = dimensions.height * scale;
+    const page = document.addPage([maxWidth, maxHeight]);
+    page.drawImage(image, { x: (maxWidth - width) / 2, y: (maxHeight - height) / 2, width, height });
+  }
+  return document.save();
+}
+
+export async function watermarkPdf(input: PdfBytes, watermark: string) {
+  const document = await PDFDocument.load(toUint8Array(input));
+  const font = await document.embedFont(StandardFonts.Helvetica);
+  document.getPages().forEach((page) => {
+    const { width, height } = page.getSize();
+    const size = Math.max(24, Math.min(width, height) / 12);
+    page.drawText(watermark.slice(0, 120), { x: width * 0.18, y: height * 0.48, size, font, color: rgb(0.35, 0.45, 0.5), opacity: 0.22, rotate: degrees(35) });
+  });
+  return document.save();
+}
+
+export async function numberPdfPages(input: PdfBytes) {
+  const document = await PDFDocument.load(toUint8Array(input));
+  const font = await document.embedFont(StandardFonts.Helvetica);
+  const pages = document.getPages();
+  pages.forEach((page, index) => {
+    const label = `${index + 1} / ${pages.length}`;
+    const size = 10;
+    const width = font.widthOfTextAtSize(label, size);
+    page.drawText(label, { x: (page.getWidth() - width) / 2, y: 18, size, font, color: rgb(0.25, 0.35, 0.4) });
+  });
+  return document.save();
+}
+
+export async function redactPdf(input: PdfBytes, redactions: Array<{ height: number; page: number; width: number; x: number; y: number }>) {
+  if (!redactions.length) throw new Error("At least one redaction area is required");
+  const sourceBytes = toUint8Array(input);
+  const sourceDocument = await PDFDocument.load(sourceBytes);
+  const loadingTask = getDocument({ data: Uint8Array.from(sourceBytes), useSystemFonts: true });
+  const renderedDocument = await loadingTask.promise;
+  try {
+    const redactionsByPage = new Map<number, typeof redactions>();
+    for (const redaction of redactions) {
+      if (![redaction.page, redaction.x, redaction.y, redaction.width, redaction.height].every(Number.isFinite) || !Number.isInteger(redaction.page) || redaction.page < 1 || redaction.page > renderedDocument.numPages || redaction.width <= 0 || redaction.height <= 0) throw new Error("Invalid PDF redaction area");
+      const page = await renderedDocument.getPage(redaction.page);
+      const viewport = page.getViewport({ scale: 1 });
+      if (redaction.x < 0 || redaction.y < 0 || redaction.x + redaction.width > viewport.width || redaction.y + redaction.height > viewport.height) throw new Error("PDF redaction area is outside the page");
+      redactionsByPage.set(redaction.page, [...(redactionsByPage.get(redaction.page) ?? []), redaction]);
+    }
+
+    const output = await PDFDocument.create();
+    const scale = 2;
+    for (let pageNumber = 1; pageNumber <= renderedDocument.numPages; pageNumber += 1) {
+      const pageRedactions = redactionsByPage.get(pageNumber);
+      if (!pageRedactions?.length) {
+        const [copied] = await output.copyPages(sourceDocument, [pageNumber - 1]);
+        output.addPage(copied);
+        continue;
+      }
+      const page = await renderedDocument.getPage(pageNumber);
+      const viewport = page.getViewport({ scale });
+      const canvas = createCanvas(Math.ceil(viewport.width), Math.ceil(viewport.height));
+      const context = canvas.getContext("2d");
+      await page.render({ background: "#ffffff", canvas: null, canvasContext: context as unknown as CanvasRenderingContext2D, viewport }).promise;
+      context.fillStyle = "#000000";
+      for (const redaction of pageRedactions) context.fillRect(redaction.x * scale, redaction.y * scale, redaction.width * scale, redaction.height * scale);
+      const image = await output.embedPng(canvas.toBuffer("image/png"));
+      const outputPage = output.addPage([viewport.width / scale, viewport.height / scale]);
+      outputPage.drawImage(image, { height: outputPage.getHeight(), width: outputPage.getWidth(), x: 0, y: 0 });
+    }
+    return output.save({ addDefaultPage: false, useObjectStreams: true });
+  } finally {
+    await loadingTask.destroy();
+  }
+}
+
+const pdfEngine = { deletePdfPages, extractPdfPages, imagesToPdf, mergePdfs, numberPdfPages, optimizePdf, redactPdf, reorderPdfPages, rotatePdfPages, splitPdf, watermarkPdf };
 export default pdfEngine;

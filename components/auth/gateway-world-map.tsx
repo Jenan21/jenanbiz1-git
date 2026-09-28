@@ -140,9 +140,6 @@ export function GatewayWorldMap({ activity, locale }: { activity: GatewayActivit
       <g className="gateway-world-map__scan">
         <path d="M24 333H986" />
       </g>
-      <a href="https://github.com/VictorCazanave/svg-maps" target="_blank" rel="noreferrer">
-        <text className="gateway-world-map__credit" x="34" y="48">MAP © SVG MAPS · CC BY 4.0</text>
-      </a>
     </svg>
   );
 }

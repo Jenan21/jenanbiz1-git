@@ -5,6 +5,7 @@ const postingInclude = {
   createdBy: { include: { profile: true } },
   organization: { select: { id: true, name: true } },
   applications: { select: { applicantId: true, matchScore: true, status: true } },
+  questions: { orderBy: { sequence: "asc" as const } },
 } satisfies Prisma.JobPostingInclude;
 
 export type JobPostingFilters = {
@@ -25,7 +26,9 @@ function normalizeSkills(value?: string) {
 }
 
 function assessJobQuality(input: {
+  benefits?: string;
   city?: string;
+  conditions?: string;
   countryCode?: string;
   department?: string;
   description: string;
@@ -37,6 +40,8 @@ function assessJobQuality(input: {
   const skills = normalizeSkills(input.requiredSkills);
   const signals = {
     clearDescription: input.description.trim().length >= 160,
+    hasBenefits: (input.benefits?.trim().length ?? 0) >= 20,
+    hasConditions: (input.conditions?.trim().length ?? 0) >= 20,
     hasCountry: Boolean(input.countryCode?.trim()),
     hasDepartment: Boolean(input.department?.trim()),
     hasLocation: Boolean(input.city?.trim() || input.countryCode?.trim()),
@@ -52,7 +57,9 @@ function assessJobQuality(input: {
     (signals.hasLocation ? 12 : 0) +
     (signals.hasCountry ? 8 : 0) +
     (signals.hasSalaryRange ? 18 : 0) +
-    (signals.hasSkills ? 22 : 0),
+    (signals.hasSkills ? 22 : 0) +
+    (signals.hasBenefits ? 5 : 0) +
+    (signals.hasConditions ? 5 : 0),
   );
   return { score, signals, skills };
 }
@@ -103,7 +110,7 @@ export async function listJobPostings(userId: string, filters: JobPostingFilters
   });
 }
 
-export async function createJobPosting(input: { city?: string; countryCode?: string; currency?: string; department?: string; description: string; organizationId?: string; requiredSkills?: string; salaryMaxMinor?: number; salaryMinMinor?: number; title: string; workMode: "ON_SITE" | "HYBRID" | "REMOTE" }, userId: string) {
+export async function createJobPosting(input: { benefits?: string; city?: string; conditions?: string; countryCode?: string; currency?: string; department?: string; description: string; organizationId?: string; questions?: Array<{ prompt: string; required?: boolean }>; requiredSkills?: string; salaryMaxMinor?: number; salaryMinMinor?: number; title: string; workMode: "ON_SITE" | "HYBRID" | "REMOTE" }, userId: string) {
   if (input.organizationId) {
     const membership = await db.organizationMember.findFirst({ where: { organizationId: input.organizationId, userId, status: "ACTIVE", isOwner: true }, select: { id: true } });
     if (!membership) throw new Error("Organization owner access required");
@@ -111,7 +118,7 @@ export async function createJobPosting(input: { city?: string; countryCode?: str
   const quality = assessJobQuality(input);
   return db.$transaction(async (transaction) => {
     const posting = await transaction.jobPosting.create({
-      data: { city: input.city?.trim() || undefined, countryCode: input.countryCode?.trim().toUpperCase() || undefined, currency: input.currency?.trim().toUpperCase() || "SAR", department: input.department?.trim() || undefined, description: input.description.trim(), organizationId: input.organizationId, qualityScore: quality.score, qualitySignals: quality.signals, requiredSkills: quality.skills, salaryMaxMinor: input.salaryMaxMinor, salaryMinMinor: input.salaryMinMinor, title: input.title.trim(), workMode: input.workMode, slug: `${slugify(input.title)}-${crypto.randomUUID().slice(0, 8)}`, createdById: userId },
+      data: { benefits: input.benefits?.trim() || undefined, city: input.city?.trim() || undefined, conditions: input.conditions?.trim() || undefined, countryCode: input.countryCode?.trim().toUpperCase() || undefined, currency: input.currency?.trim().toUpperCase() || "SAR", department: input.department?.trim() || undefined, description: input.description.trim(), organizationId: input.organizationId, qualityScore: quality.score, qualitySignals: quality.signals, requiredSkills: quality.skills, salaryMaxMinor: input.salaryMaxMinor, salaryMinMinor: input.salaryMinMinor, title: input.title.trim(), workMode: input.workMode, slug: `${slugify(input.title)}-${crypto.randomUUID().slice(0, 8)}`, createdById: userId, questions: { create: (input.questions ?? []).map((question, sequence) => ({ prompt: question.prompt.trim(), required: question.required ?? true, sequence })) } },
       include: postingInclude,
     });
     await transaction.auditLog.create({ data: { actorId: userId, action: "talent.job.created", entityType: "JobPosting", entityId: posting.id } });
@@ -130,12 +137,15 @@ export async function updateJobPostingStatus(jobPostingId: string, status: "PUBL
   });
 }
 
-export async function applyToJob(jobPostingId: string, message: string | undefined, applicantId: string, options: { cvDocumentId?: string; shareProfile?: boolean } = {}) {
+export async function applyToJob(jobPostingId: string, message: string | undefined, applicantId: string, options: { answers?: Array<{ answer: string; questionId: string }>; cvDocumentId?: string; shareProfile?: boolean } = {}) {
   return db.$transaction(async (transaction) => {
-    const posting = await transaction.jobPosting.findFirst({ where: { id: jobPostingId, status: JobPostingStatus.PUBLISHED }, select: { id: true, createdById: true, description: true, requiredSkills: true, title: true } });
+    const posting = await transaction.jobPosting.findFirst({ where: { id: jobPostingId, status: JobPostingStatus.PUBLISHED }, select: { id: true, createdById: true, description: true, requiredSkills: true, title: true, questions: { orderBy: { sequence: "asc" } } } });
     if (!posting) throw new Error("Job posting not found");
     if (posting.createdById === applicantId) throw new Error("You cannot apply to your own job posting");
     if (options.cvDocumentId && !options.shareProfile) throw new Error("Profile sharing consent is required");
+    const answerMap = new Map((options.answers ?? []).map((answer) => [answer.questionId, answer.answer.trim()]));
+    if ((options.answers ?? []).some((answer) => !posting.questions.some((question) => question.id === answer.questionId))) throw new Error("Application answer question is invalid");
+    if (posting.questions.some((question) => question.required && !answerMap.get(question.id))) throw new Error("Required screening answers are missing");
     const profile = await transaction.talentProfile.findUnique({ where: { userId: applicantId } });
     if (options.cvDocumentId) {
       const cv = await transaction.studioDocument.findFirst({ where: { id: options.cvDocumentId, ownerId: applicantId, kind: StudioDocumentKind.CV }, select: { id: true } });
@@ -153,7 +163,7 @@ export async function applyToJob(jobPostingId: string, message: string | undefin
       education: profile.education,
       availability: profile.availability,
     } : undefined;
-    const application = await transaction.jobApplication.create({ data: { jobPostingId, applicantId, cvDocumentId: options.cvDocumentId, profileSnapshot, consentVersion: options.shareProfile ? "talent-profile-v1" : undefined, consentedAt: options.shareProfile ? new Date() : undefined, matchScore: match.score, matchSignals: match.signals, message: message?.trim() || undefined } });
+    const application = await transaction.jobApplication.create({ data: { jobPostingId, applicantId, cvDocumentId: options.cvDocumentId, profileSnapshot, consentVersion: options.shareProfile ? "talent-profile-v1" : undefined, consentedAt: options.shareProfile ? new Date() : undefined, matchScore: match.score, matchSignals: match.signals, message: message?.trim() || undefined, answers: { create: posting.questions.flatMap((question) => { const answer = answerMap.get(question.id); return answer ? [{ questionId: question.id, promptSnapshot: question.prompt, answer }] : []; }) } } });
     await transaction.auditLog.create({ data: { actorId: applicantId, action: "talent.job.application.submitted", entityType: "JobApplication", entityId: application.id, metadata: { jobPostingId, profileShared: Boolean(options.shareProfile), cvDocumentId: options.cvDocumentId ?? null } } });
     return application;
   });
@@ -201,7 +211,7 @@ export async function listDiscoverableTalent(userId: string, query?: string) {
 export async function listMyJobApplications(userId: string) {
   return db.jobApplication.findMany({
     where: { applicantId: userId },
-    include: { jobPosting: { include: { organization: { select: { name: true } }, createdBy: { include: { profile: true } } } }, cvDocument: { select: { id: true, title: true, currentVersion: true } } },
+    include: { jobPosting: { include: { organization: { select: { name: true } }, createdBy: { include: { profile: true } } } }, cvDocument: { select: { id: true, title: true, currentVersion: true } }, answers: { orderBy: { createdAt: "asc" } }, messages: { include: { sender: { select: { profile: { select: { displayName: true } } } } }, orderBy: { createdAt: "asc" } } },
     orderBy: { updatedAt: "desc" },
   });
 }
@@ -235,6 +245,11 @@ export async function listOwnedJobApplications(userId: string) {
       jobPosting: { select: { id: true, title: true } },
       applicant: { select: { email: true, profile: { select: { displayName: true } } } },
       cvDocument: { select: { id: true, title: true, currentVersion: true, content: true } },
+      answers: { orderBy: { createdAt: "asc" } },
+      messages: {
+        include: { sender: { select: { profile: { select: { displayName: true } } } } },
+        orderBy: { createdAt: "asc" },
+      },
     },
     orderBy: { updatedAt: "desc" },
   });

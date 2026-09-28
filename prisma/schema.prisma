@@ -499,6 +499,11 @@ enum PosShiftStatus {
   CLOSED
 }
 
+enum SoftwareBranchStatus {
+  ACTIVE
+  INACTIVE
+}
+
 enum ServiceCustomerType {
   INDIVIDUAL
   ORGANIZATION
@@ -828,6 +833,7 @@ model User {
   learnerCertificates        LearnerCertificate[]
   createdJobPostings         JobPosting[]                @relation("JobPostingCreator")
   jobApplications            JobApplication[]            @relation("JobApplicant")
+  sentTalentMessages         TalentMessage[]             @relation("TalentMessageSender")
   talentProfile              TalentProfile?
   marketingCampaigns         MarketingCampaign[]         @relation("MarketingCampaignCreator")
   payments                   Payment[]                   @relation("PaymentPayer")
@@ -900,6 +906,8 @@ model Organization {
   softwareSuppliers  SoftwareSupplier[]
   purchaseOrders     PurchaseOrder[]
   posShifts          PosShift[]
+  softwareBranches   SoftwareBranch[]
+  softwareSettings   SoftwareSettings?
   fieldAssignments   FieldAssignment[]
   fleetVehicles      FleetVehicle[]
   createdAt          DateTime              @default(now())
@@ -1246,6 +1254,8 @@ model PurchaseOrderLine {
 model PosShift {
   id               String          @id @default(cuid())
   organizationId   String
+  branchId         String?
+  currency         String          @default("SAR")
   status           PosShiftStatus  @default(OPEN)
   openingCashMinor Int             @default(0)
   closingCashMinor Int?
@@ -1253,12 +1263,52 @@ model PosShift {
   closedAt         DateTime?
   openedById       String
   organization     Organization    @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  branch           SoftwareBranch? @relation(fields: [branchId], references: [id], onDelete: SetNull)
   sales            SalesDocument[]
   createdAt        DateTime        @default(now())
   updatedAt        DateTime        @updatedAt
 
   @@index([organizationId, status])
+  @@index([branchId, status])
   @@index([openedAt])
+}
+
+model SoftwareBranch {
+  id                 String               @id @default(cuid())
+  organizationId     String
+  code               String
+  name               String
+  countryCode        String?
+  city               String?
+  address            String?
+  status             SoftwareBranchStatus @default(ACTIVE)
+  createdById        String
+  organization       Organization         @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  posShifts           PosShift[]
+  defaultForSettings SoftwareSettings[]    @relation("SoftwareDefaultBranch")
+  createdAt          DateTime             @default(now())
+  updatedAt          DateTime             @updatedAt
+
+  @@unique([organizationId, code])
+  @@index([organizationId, status])
+}
+
+model SoftwareSettings {
+  id                     String          @id @default(cuid())
+  organizationId         String          @unique
+  defaultBranchId        String?
+  defaultCurrency        String          @default("SAR")
+  taxRateBps             Int             @default(1500)
+  fiscalYearStartMonth   Int             @default(1)
+  invoicePrefix          String          @default("INV")
+  allowNegativeInventory Boolean         @default(false)
+  timezone               String          @default("Asia/Riyadh")
+  organization           Organization    @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  defaultBranch          SoftwareBranch? @relation("SoftwareDefaultBranch", fields: [defaultBranchId], references: [id], onDelete: SetNull)
+  createdAt              DateTime        @default(now())
+  updatedAt              DateTime        @updatedAt
+
+  @@index([defaultBranchId])
 }
 
 model FieldAssignment {
@@ -3341,6 +3391,8 @@ model JobPosting {
   title          String
   slug           String           @unique
   description    String
+  benefits       String?
+  conditions     String?
   department     String?
   countryCode    String?
   city           String?
@@ -3355,12 +3407,27 @@ model JobPosting {
   createdBy      User             @relation("JobPostingCreator", fields: [createdById], references: [id], onDelete: Restrict)
   organization   Organization?    @relation(fields: [organizationId], references: [id], onDelete: SetNull)
   applications   JobApplication[]
+  questions      JobPostingQuestion[]
   createdAt      DateTime         @default(now())
   updatedAt      DateTime         @updatedAt
 
   @@index([status, workMode, createdAt])
   @@index([createdById, status])
   @@index([countryCode, city])
+}
+
+model JobPostingQuestion {
+  id           String                 @id @default(cuid())
+  jobPostingId String
+  prompt       String
+  required     Boolean                @default(true)
+  sequence     Int
+  jobPosting   JobPosting             @relation(fields: [jobPostingId], references: [id], onDelete: Cascade)
+  answers      JobApplicationAnswer[]
+  createdAt    DateTime               @default(now())
+
+  @@unique([jobPostingId, sequence])
+  @@index([jobPostingId])
 }
 
 model TalentProfile {
@@ -3402,6 +3469,8 @@ model JobApplication {
   jobPosting      JobPosting           @relation(fields: [jobPostingId], references: [id], onDelete: Cascade)
   applicant       User                 @relation("JobApplicant", fields: [applicantId], references: [id], onDelete: Cascade)
   cvDocument      StudioDocument?      @relation("JobApplicationCv", fields: [cvDocumentId], references: [id], onDelete: SetNull)
+  answers         JobApplicationAnswer[]
+  messages        TalentMessage[]
   createdAt       DateTime             @default(now())
   updatedAt       DateTime             @updatedAt
 
@@ -3409,6 +3478,33 @@ model JobApplication {
   @@index([applicantId, status])
   @@index([jobPostingId, status])
   @@index([cvDocumentId])
+}
+
+model TalentMessage {
+  id            String         @id @default(cuid())
+  applicationId String
+  senderId      String
+  body          String
+  application   JobApplication @relation(fields: [applicationId], references: [id], onDelete: Cascade)
+  sender        User           @relation("TalentMessageSender", fields: [senderId], references: [id], onDelete: Restrict)
+  createdAt     DateTime       @default(now())
+
+  @@index([applicationId, createdAt])
+  @@index([senderId, createdAt])
+}
+
+model JobApplicationAnswer {
+  id             String             @id @default(cuid())
+  applicationId  String
+  questionId     String
+  promptSnapshot String
+  answer         String
+  application    JobApplication     @relation(fields: [applicationId], references: [id], onDelete: Cascade)
+  question       JobPostingQuestion @relation(fields: [questionId], references: [id], onDelete: Restrict)
+  createdAt      DateTime           @default(now())
+
+  @@unique([applicationId, questionId])
+  @@index([questionId])
 }
 
 model MarketingCampaign {

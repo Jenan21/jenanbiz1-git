@@ -4,6 +4,8 @@ export type TalentPosting = {
   organizationId: string | null;
   title: string;
   description: string;
+  benefits: string | null;
+  conditions: string | null;
   department: string | null;
   countryCode: string | null;
   city: string | null;
@@ -18,11 +20,13 @@ export type TalentPosting = {
   organization: { id: string; name: string } | null;
   createdBy: { email: string; profile: { displayName: string | null } | null };
   applications: { applicantId: string; matchScore: number; status: string }[];
+  questions: { id: string; prompt: string; required: boolean; sequence: number }[];
   createdAt: string;
   updatedAt: string;
 };
 
 export type TalentCv = { id: string; title: string; currentVersion: number; updatedAt: string; content?: Record<string, unknown> };
+export type TalentMessageRecord = { id: string; senderId: string; body: string; createdAt: string; sender: { profile: { displayName: string | null } | null } };
 
 export type TalentProfileRecord = {
   id: string;
@@ -56,6 +60,8 @@ export type OwnedTalentApplication = {
   jobPosting: { id: string; title: string };
   applicant: { email: string; profile: { displayName: string | null } | null };
   cvDocument: TalentCv | null;
+  answers: { id: string; questionId: string; promptSnapshot: string; answer: string }[];
+  messages: TalentMessageRecord[];
   createdAt: string;
   updatedAt: string;
 };
@@ -67,6 +73,8 @@ export type MyTalentApplication = {
   message: string | null;
   jobPosting: TalentPosting;
   cvDocument: TalentCv | null;
+  answers?: { id: string; questionId: string; promptSnapshot: string; answer: string }[];
+  messages: TalentMessageRecord[];
   createdAt: string;
   updatedAt: string;
 };

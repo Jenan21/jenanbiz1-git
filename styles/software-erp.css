@@ -295,6 +295,285 @@
   gap: 14px;
 }
 
+.software-accounting__scope {
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 18px;
+  padding: 16px 18px;
+  border-block: 1px solid color-mix(in srgb, #f4c86a 34%, var(--border));
+  background: linear-gradient(100deg, color-mix(in srgb, #f4c86a 7%, transparent), transparent 68%);
+}
+
+.software-accounting__scope > div {
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.software-accounting__scope .icon {
+  flex: 0 0 auto;
+  color: #f4c86a;
+}
+
+.software-accounting__scope p,
+.software-accounting__scope label {
+  margin: 0;
+}
+
+.software-accounting__scope p {
+  display: grid;
+  gap: 4px;
+}
+
+.software-accounting__scope p span,
+.software-accounting__scope label {
+  color: var(--muted);
+  font-size: 0.7rem;
+  line-height: 1.55;
+}
+
+.software-accounting__scope label {
+  flex: 0 0 150px;
+  display: grid;
+  gap: 5px;
+}
+
+.software-accounting__scope select {
+  min-height: 38px;
+  padding: 7px 9px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  color: var(--text);
+  background: var(--deep);
+}
+
+.software-accounting__tabs {
+  min-width: 0;
+  display: flex;
+  gap: 7px;
+  padding: 8px;
+  overflow-x: auto;
+  border: 1px solid var(--border);
+  border-radius: 7px;
+  background: color-mix(in srgb, var(--deep) 52%, transparent);
+}
+
+.software-accounting__tabs button {
+  flex: 0 0 auto;
+  min-height: 40px;
+  padding: 8px 12px;
+  border: 1px solid transparent;
+  border-radius: 5px;
+  color: var(--muted);
+  background: transparent;
+}
+
+.software-accounting__tabs button.is-active {
+  border-color: color-mix(in srgb, var(--brand) 48%, var(--border));
+  color: var(--text);
+  background: color-mix(in srgb, var(--brand) 9%, transparent);
+}
+
+.software-accounting__tabs .software-accounting__print {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  margin-inline-start: auto;
+  color: var(--brand);
+}
+
+.software-accounting__statement,
+.software-accounting__accounts {
+  min-width: 0;
+  display: grid;
+  gap: 16px;
+  padding: 22px;
+  border: 1px solid color-mix(in srgb, var(--border) 76%, transparent);
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--surface) 88%, transparent);
+  box-shadow: var(--shadow);
+}
+
+.software-accounting__statement > header,
+.software-accounting__accounts > header {
+  display: flex;
+  align-items: start;
+  justify-content: space-between;
+  gap: 18px;
+  padding-bottom: 14px;
+  border-bottom: 1px solid color-mix(in srgb, var(--border) 58%, transparent);
+}
+
+.software-accounting__statement header span,
+.software-accounting__accounts header span {
+  color: var(--brand);
+  font-size: 0.66rem;
+  font-weight: 900;
+}
+
+.software-accounting__statement h2,
+.software-accounting__accounts h2 {
+  margin: 4px 0;
+}
+
+.software-accounting__statement header p {
+  margin: 0;
+  color: var(--muted);
+  font-size: 0.72rem;
+}
+
+.software-accounting__statement dl,
+.software-accounting__cash dl {
+  display: grid;
+  gap: 0;
+  margin: 0;
+}
+
+.software-accounting__statement dl > div,
+.software-accounting__cash dl > div {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 13px 2px;
+  border-bottom: 1px solid color-mix(in srgb, var(--border) 48%, transparent);
+}
+
+.software-accounting__statement dt,
+.software-accounting__cash dt {
+  color: var(--muted);
+}
+
+.software-accounting__statement dd,
+.software-accounting__cash dd {
+  margin: 0;
+  font-weight: 800;
+}
+
+.software-accounting__statement .is-total {
+  margin-top: 8px;
+  border-top: 2px solid var(--brand);
+  font-size: 1.05rem;
+}
+
+.software-accounting__balance,
+.software-accounting__cash {
+  min-width: 0;
+  display: grid;
+  grid-template-columns: minmax(0, 1.3fr) minmax(230px, 0.7fr);
+  gap: 18px;
+}
+
+.software-accounting__balance > aside {
+  display: grid;
+  place-items: center;
+  align-content: center;
+  gap: 9px;
+  padding: 22px;
+  border-inline-start: 3px solid #f4c86a;
+  color: var(--muted);
+  text-align: center;
+  background: color-mix(in srgb, #f4c86a 6%, transparent);
+}
+
+.software-accounting__balance > aside .icon {
+  color: #f4c86a;
+}
+
+.software-accounting__balance > aside strong {
+  color: var(--text);
+}
+
+.software-accounting__balance > aside p {
+  margin: 0;
+  font-size: 0.72rem;
+  line-height: 1.65;
+}
+
+.software-accounting__cash {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.software-accounting__cash > section {
+  padding: 16px;
+  border: 1px solid color-mix(in srgb, var(--border) 58%, transparent);
+  border-radius: 7px;
+  background: color-mix(in srgb, var(--deep) 45%, transparent);
+}
+
+.software-accounting__cash > h3 {
+  margin-top: 0;
+}
+
+.software-accounting__cash > strong {
+  grid-column: 1 / -1;
+  padding: 14px;
+  border-inline-start: 3px solid var(--brand);
+  background: color-mix(in srgb, var(--brand) 7%, transparent);
+}
+
+.software-accounting__accounts > div {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.software-accounting__accounts article {
+  min-width: 0;
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 10px;
+  padding: 12px;
+  border-bottom: 1px solid color-mix(in srgb, var(--border) 52%, transparent);
+}
+
+.software-accounting__accounts article > span {
+  color: var(--brand);
+  font-size: 0.7rem;
+  font-weight: 900;
+}
+
+.software-accounting__accounts article > div {
+  min-width: 0;
+  display: grid;
+  gap: 3px;
+}
+
+.software-accounting__accounts article small {
+  overflow: hidden;
+  color: var(--muted);
+  font-size: 0.65rem;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+@media (max-width: 760px) {
+  .software-accounting__scope,
+  .software-accounting__scope > div,
+  .software-accounting__statement > header,
+  .software-accounting__accounts > header {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .software-accounting__scope label {
+    flex-basis: auto;
+  }
+
+  .software-accounting__balance,
+  .software-accounting__cash,
+  .software-accounting__accounts > div {
+    grid-template-columns: 1fr;
+  }
+
+  .software-accounting__cash > strong {
+    grid-column: auto;
+  }
+}
+
 .software-shortcuts {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
@@ -870,5 +1149,827 @@
 
   .software-erp__modules > a {
     transition: none;
+  }
+}
+
+.software-route-outputs {
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  padding: 12px 14px;
+  border-block: 1px solid color-mix(in srgb, var(--brand) 28%, var(--border));
+  background: linear-gradient(100deg, color-mix(in srgb, var(--brand) 6%, transparent), transparent 68%);
+}
+
+.software-route-outputs > div {
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 9px;
+}
+
+.software-route-outputs > div:first-child .icon {
+  flex: 0 0 auto;
+  color: var(--brand);
+}
+
+.software-route-outputs p {
+  min-width: 0;
+  display: grid;
+  gap: 3px;
+  margin: 0;
+}
+
+.software-route-outputs p span {
+  overflow: hidden;
+  color: var(--muted);
+  font-size: 0.68rem;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.software-route-outputs button {
+  min-height: 36px;
+  padding: 7px 10px;
+  border: 1px solid color-mix(in srgb, var(--brand) 40%, var(--border));
+  border-radius: 5px;
+  color: var(--brand);
+  background: color-mix(in srgb, var(--brand) 6%, transparent);
+}
+
+.software-route-outputs button:disabled {
+  cursor: not-allowed;
+  opacity: 0.45;
+}
+
+@media (max-width: 560px) {
+  .software-route-outputs {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .software-route-outputs > div:last-child {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+.software-analytics {
+  min-width: 0;
+  display: grid;
+  gap: 12px;
+}
+
+.software-analytics__grid {
+  min-width: 0;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.software-analytics__grid > section,
+.software-analytics__count {
+  min-width: 0;
+  display: grid;
+  align-content: start;
+  gap: 12px;
+  padding: 18px;
+  border: 1px solid color-mix(in srgb, var(--border) 72%, transparent);
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--surface) 87%, transparent);
+  box-shadow: var(--shadow);
+}
+
+.software-analytics__grid > section > header,
+.software-analytics__count > header {
+  display: flex;
+  align-items: end;
+  justify-content: space-between;
+  gap: 12px;
+  padding-bottom: 11px;
+  border-bottom: 1px solid color-mix(in srgb, var(--border) 54%, transparent);
+}
+
+.software-analytics header > div {
+  display: grid;
+  gap: 3px;
+}
+
+.software-analytics header span {
+  color: var(--brand);
+  font-size: 0.65rem;
+  font-weight: 900;
+}
+
+.software-analytics h2 {
+  margin: 0;
+  font-size: 1rem;
+}
+
+.software-analytics header small,
+.software-analytics > section > p,
+.software-analytics__grid > section > p {
+  color: var(--muted);
+  font-size: 0.68rem;
+}
+
+.software-analytics__values,
+.software-analytics__list,
+.software-analytics__activity,
+.software-analytics__count > div {
+  display: grid;
+  gap: 7px;
+}
+
+.software-analytics__values article,
+.software-analytics__list article,
+.software-analytics__activity article,
+.software-analytics__count article {
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 10px;
+  border-bottom: 1px solid color-mix(in srgb, var(--border) 48%, transparent);
+}
+
+.software-analytics__values article {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+}
+
+.software-analytics__values article > span {
+  grid-row: span 2;
+  color: var(--brand);
+  font-weight: 900;
+}
+
+.software-analytics__values article > strong {
+  font-size: 1.05rem;
+}
+
+.software-analytics__values article > small {
+  color: var(--muted);
+}
+
+.software-analytics__list article > div,
+.software-analytics__activity article > div,
+.software-analytics__count article > div {
+  min-width: 0;
+  display: grid;
+  gap: 3px;
+}
+
+.software-analytics__list small,
+.software-analytics__activity small,
+.software-analytics__count small {
+  overflow: hidden;
+  color: var(--muted);
+  font-size: 0.65rem;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.software-analytics__list article > span,
+.software-analytics__activity article > span {
+  flex: 0 0 auto;
+  color: var(--brand);
+  font-size: 0.7rem;
+  font-weight: 800;
+}
+
+.software-analytics__count article {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto auto;
+}
+
+.software-analytics__count b {
+  padding: 4px 7px;
+  border: 1px solid var(--border);
+  border-radius: 5px;
+  font-size: 0.62rem;
+}
+
+.software-analytics__count b.is-ready {
+  border-color: color-mix(in srgb, var(--success) 48%, var(--border));
+  color: var(--success);
+}
+
+.software-analytics__count b.is-due {
+  border-color: color-mix(in srgb, var(--warning) 48%, var(--border));
+  color: var(--warning);
+}
+
+.software-crm-forecast {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 8px;
+}
+
+.software-crm-forecast > article {
+  padding: 12px;
+  border: 1px solid color-mix(in srgb, var(--border) 58%, transparent);
+  border-radius: 7px;
+  background: color-mix(in srgb, var(--deep) 44%, transparent);
+}
+
+.software-crm-forecast article > header,
+.software-crm-forecast dl > div {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 9px;
+}
+
+.software-crm-forecast dl {
+  display: grid;
+  gap: 6px;
+  margin: 12px 0 0;
+}
+
+.software-crm-forecast dl > div {
+  padding-top: 6px;
+  border-top: 1px solid color-mix(in srgb, var(--border) 42%, transparent);
+  font-size: 0.7rem;
+}
+
+.software-crm-forecast dt {
+  color: var(--muted);
+}
+
+.software-crm-forecast dd {
+  margin: 0;
+  font-weight: 800;
+}
+
+.software-analytics__formula {
+  margin: 0;
+  padding: 10px;
+  border-inline-start: 3px solid #f4c86a;
+  background: color-mix(in srgb, #f4c86a 5%, transparent);
+  line-height: 1.6;
+}
+
+.software-analytics__activity article {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+}
+
+.software-analytics__activity .icon {
+  color: var(--brand);
+}
+
+.software-project-operations,
+.software-pos-reconciliation {
+  min-width: 0;
+  display: grid;
+  gap: 12px;
+  padding: 18px;
+  border: 1px solid color-mix(in srgb, var(--border) 72%, transparent);
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--surface) 87%, transparent);
+  box-shadow: var(--shadow);
+}
+
+.software-project-operations > header,
+.software-pos-reconciliation > header {
+  display: flex;
+  align-items: end;
+  justify-content: space-between;
+  gap: 12px;
+  padding-bottom: 11px;
+  border-bottom: 1px solid color-mix(in srgb, var(--border) 54%, transparent);
+}
+
+.software-project-operations > div,
+.software-pos-reconciliation > div {
+  display: grid;
+  gap: 9px;
+}
+
+.software-project-operations > div > article {
+  min-width: 0;
+  display: grid;
+  gap: 10px;
+  padding: 14px;
+  border: 1px solid color-mix(in srgb, var(--border) 55%, transparent);
+  border-radius: 7px;
+  background: color-mix(in srgb, var(--deep) 42%, transparent);
+}
+
+.software-project-operations article > header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.software-project-operations article > header > div {
+  min-width: 0;
+  display: grid;
+  gap: 3px;
+}
+
+.software-project-operations article > header > span {
+  color: var(--brand);
+  font-size: 1.15rem;
+  font-weight: 900;
+}
+
+.software-project-operations__track {
+  height: 6px;
+  overflow: hidden;
+  background: color-mix(in srgb, var(--border) 75%, transparent);
+}
+
+.software-project-operations__track i {
+  height: 100%;
+  display: block;
+  background: linear-gradient(90deg, var(--brand), var(--success));
+}
+
+.software-project-operations dl {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+  margin: 0;
+}
+
+.software-project-operations dl > div {
+  min-width: 0;
+  display: grid;
+  gap: 3px;
+  padding: 9px;
+  border-inline-start: 2px solid color-mix(in srgb, var(--brand) 45%, var(--border));
+}
+
+.software-project-operations dt,
+.software-project-operations small,
+.software-project-operations dd {
+  color: var(--muted);
+  font-size: 0.67rem;
+}
+
+.software-project-operations dd {
+  margin: 0;
+  overflow-wrap: anywhere;
+  color: var(--text);
+}
+
+.software-project-operations__phases {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+}
+
+.software-project-operations__phases span {
+  padding: 5px 7px;
+  border: 1px solid var(--border);
+  border-radius: 5px;
+  color: var(--muted);
+  font-size: 0.62rem;
+}
+
+.software-project-operations__phases span.is-completed {
+  border-color: color-mix(in srgb, var(--success) 45%, var(--border));
+  color: var(--success);
+}
+
+.software-analytics__unavailable {
+  min-height: 150px;
+  display: grid;
+  place-items: center;
+  align-content: center;
+  gap: 8px;
+  padding: 20px;
+  color: var(--muted);
+  text-align: center;
+}
+
+.software-analytics__unavailable .icon {
+  color: #f4c86a;
+}
+
+.software-analytics__unavailable p {
+  max-width: 520px;
+  margin: 0;
+  font-size: 0.7rem;
+  line-height: 1.65;
+}
+
+.software-pos-reconciliation article {
+  min-width: 0;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) repeat(3, auto);
+  align-items: center;
+  gap: 12px;
+  padding: 11px;
+  border-bottom: 1px solid color-mix(in srgb, var(--border) 48%, transparent);
+}
+
+.software-pos-reconciliation article > div {
+  min-width: 0;
+  display: grid;
+  gap: 3px;
+}
+
+.software-pos-reconciliation article small {
+  color: var(--muted);
+}
+
+.software-pos-reconciliation article > span,
+.software-pos-reconciliation article > b {
+  font-size: 0.7rem;
+}
+
+.software-pos-reconciliation article > b {
+  padding: 4px 7px;
+  border: 1px solid var(--border);
+  border-radius: 5px;
+}
+
+.software-company-controls {
+  min-width: 0;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(320px, 0.8fr);
+  gap: 12px;
+}
+
+.software-company-branches,
+.software-company-settings {
+  min-width: 0;
+  display: grid;
+  align-content: start;
+  gap: 14px;
+  padding: 18px;
+  border: 1px solid color-mix(in srgb, var(--border) 72%, transparent);
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--surface) 87%, transparent);
+  box-shadow: var(--shadow);
+}
+
+.software-company-branches > header,
+.software-company-settings > header {
+  display: flex;
+  align-items: start;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.software-company-branches header > div,
+.software-company-settings header > div {
+  display: grid;
+  gap: 3px;
+}
+
+.software-company-branches header span,
+.software-company-settings header span {
+  color: var(--brand);
+  font-size: 0.65rem;
+  font-weight: 900;
+}
+
+.software-company-branches h2,
+.software-company-settings h2,
+.software-company-branches header p,
+.software-company-settings header p {
+  margin: 0;
+}
+
+.software-company-branches header p,
+.software-company-settings header p {
+  color: var(--muted);
+  font-size: 0.68rem;
+  line-height: 1.55;
+}
+
+.software-company-branches > header > strong {
+  color: var(--brand);
+  font-size: 1.6rem;
+}
+
+.software-company-branches > form,
+.software-company-settings > form {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.software-company-branches input,
+.software-company-settings input,
+.software-company-settings select {
+  min-width: 0;
+  min-height: 40px;
+  padding: 8px 9px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  color: var(--text);
+  background: var(--deep);
+}
+
+.software-company-branches form > .button,
+.software-company-settings form > .button,
+.software-company-settings__toggle {
+  grid-column: 1 / -1;
+}
+
+.software-company-branches form > .button,
+.software-company-settings form > .button {
+  min-height: 42px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+}
+
+.software-company-branches__list {
+  display: grid;
+  gap: 7px;
+}
+
+.software-company-branches__list article {
+  min-width: 0;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto auto;
+  align-items: center;
+  gap: 9px;
+  padding: 10px;
+  border-bottom: 1px solid color-mix(in srgb, var(--border) 48%, transparent);
+}
+
+.software-company-branches__list article > div {
+  min-width: 0;
+  display: grid;
+  gap: 3px;
+}
+
+.software-company-branches__list article > div > span,
+.software-company-branches__list article small {
+  overflow: hidden;
+  color: var(--muted);
+  font-size: 0.65rem;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.software-company-branches__list article button {
+  min-height: 34px;
+  padding: 6px 8px;
+  border: 1px solid var(--border);
+  border-radius: 5px;
+  color: var(--muted);
+  background: transparent;
+}
+
+.software-company-settings label {
+  min-width: 0;
+  display: grid;
+  gap: 5px;
+  color: var(--muted);
+  font-size: 0.68rem;
+}
+
+.software-company-settings__toggle {
+  grid-template-columns: auto minmax(0, 1fr) !important;
+  align-items: center;
+  padding: 10px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+}
+
+.software-company-settings__toggle input {
+  min-height: 0;
+}
+
+.software-company-settings__toggle small {
+  grid-column: 2;
+  line-height: 1.5;
+}
+
+.software-company-controls > .software-erp__message {
+  grid-column: 1 / -1;
+}
+
+.software-unified-reports {
+  min-width: 0;
+  display: grid;
+  gap: 12px;
+}
+
+.software-unified-reports > nav {
+  min-width: 0;
+  display: flex;
+  gap: 7px;
+  padding: 8px;
+  overflow-x: auto;
+  border: 1px solid var(--border);
+  border-radius: 7px;
+  background: color-mix(in srgb, var(--deep) 54%, transparent);
+}
+
+.software-unified-reports > nav button {
+  flex: 1 0 120px;
+  min-height: 42px;
+  padding: 8px 11px;
+  border: 1px solid transparent;
+  border-radius: 5px;
+  color: var(--muted);
+  background: transparent;
+}
+
+.software-unified-reports > nav button.is-active {
+  border-color: color-mix(in srgb, var(--brand) 50%, var(--border));
+  color: var(--text);
+  background: color-mix(in srgb, var(--brand) 9%, transparent);
+}
+
+.software-unified-reports__document {
+  min-width: 0;
+  display: grid;
+  gap: 18px;
+  padding: 22px;
+  border: 1px solid color-mix(in srgb, var(--border) 72%, transparent);
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--surface) 88%, transparent);
+  box-shadow: var(--shadow);
+}
+
+.software-unified-reports__document > header {
+  display: flex;
+  align-items: start;
+  justify-content: space-between;
+  gap: 18px;
+}
+
+.software-unified-reports__document > header span {
+  color: var(--brand);
+  font-size: 0.68rem;
+  font-weight: 900;
+}
+
+.software-unified-reports__document > header h2,
+.software-unified-reports__document > header p {
+  margin: 4px 0;
+}
+
+.software-unified-reports__document > header p {
+  color: var(--muted);
+}
+
+.software-unified-reports__document > header > div:last-child {
+  display: flex;
+  gap: 7px;
+}
+
+.software-unified-reports__document > header button {
+  min-height: 40px;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 10px;
+  border: 1px solid color-mix(in srgb, var(--brand) 42%, var(--border));
+  border-radius: 5px;
+  color: var(--brand);
+  background: color-mix(in srgb, var(--brand) 6%, transparent);
+}
+
+.software-unified-reports__provenance {
+  display: grid;
+  gap: 4px;
+  padding: 12px;
+  border-inline-start: 3px solid #f4c86a;
+  background: color-mix(in srgb, #f4c86a 5%, transparent);
+}
+
+.software-unified-reports__provenance span {
+  color: var(--muted);
+  font-size: 0.7rem;
+  line-height: 1.6;
+}
+
+.software-unified-reports__metrics {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.software-unified-reports__metrics article {
+  min-width: 0;
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-content: center;
+  gap: 3px 9px;
+  padding: 14px;
+  border-block: 1px solid color-mix(in srgb, var(--border) 58%, transparent);
+}
+
+.software-unified-reports__metrics article > span {
+  grid-row: span 2;
+  color: var(--brand);
+  font-size: 0.65rem;
+  font-weight: 900;
+}
+
+.software-unified-reports__metrics strong {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.software-unified-reports__metrics small {
+  color: var(--muted);
+}
+
+@media (max-width: 850px) {
+  .software-unified-reports__metrics {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 560px) {
+  .software-unified-reports__document > header {
+    display: grid;
+  }
+
+  .software-unified-reports__document > header > div:last-child,
+  .software-unified-reports__metrics {
+    grid-template-columns: 1fr;
+  }
+
+  .software-unified-reports__document > header > div:last-child {
+    display: grid;
+  }
+}
+
+@media print {
+  .software-unified-reports__document,
+  .software-unified-reports__document * {
+    visibility: visible !important;
+  }
+
+  .software-unified-reports__document {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    color: #102034;
+    background: #fff;
+    box-shadow: none;
+  }
+
+  .software-unified-reports__document button {
+    display: none;
+  }
+}
+
+@media (max-width: 850px) {
+  .software-analytics__grid {
+    grid-template-columns: 1fr;
+  }
+
+  .software-company-controls {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 560px) {
+  .software-analytics__grid > section > header,
+  .software-analytics__count > header {
+    align-items: start;
+    flex-direction: column;
+  }
+
+  .software-analytics__count article {
+    grid-template-columns: minmax(0, 1fr) auto;
+  }
+
+  .software-analytics__count article > span {
+    grid-column: 1 / -1;
+  }
+
+  .software-project-operations > header,
+  .software-pos-reconciliation > header {
+    align-items: start;
+    flex-direction: column;
+  }
+
+  .software-project-operations dl {
+    grid-template-columns: 1fr;
+  }
+
+  .software-pos-reconciliation article {
+    grid-template-columns: minmax(0, 1fr) auto;
+  }
+
+  .software-company-branches > form,
+  .software-company-settings > form {
+    grid-template-columns: 1fr;
+  }
+
+  .software-company-branches form > .button,
+  .software-company-settings form > .button,
+  .software-company-settings__toggle {
+    grid-column: auto;
   }
 }

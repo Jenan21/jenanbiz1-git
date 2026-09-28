@@ -36,20 +36,34 @@ function assessCampaignQuality(input: {
   return { score, signals };
 }
 
-async function refreshCampaignPerformance(campaignId: string, transaction: Prisma.TransactionClient = db) {
-  const campaign = await transaction.marketingCampaign.findUnique({
-    where: { id: campaignId },
-    select: { budgetMinor: true, kpiTarget: true, leads: { select: { status: true, valueMinor: true } } },
-  });
-  if (!campaign) return null;
-  const leads = campaign.leads.length;
+export function calculateRecordedMarketingPerformance(campaign: { budgetMinor: number; kpiTarget: number | null; leads: Array<{ createdAt: Date; status: string; valueMinor: number | null }> }) {
+  const leadCount = campaign.leads.length;
   const qualified = campaign.leads.filter((lead) => ["QUALIFIED", "CONTACTED", "CONVERTED"].includes(lead.status)).length;
   const converted = campaign.leads.filter((lead) => lead.status === "CONVERTED").length;
   const pipelineValueMinor = campaign.leads.reduce((total, lead) => total + (lead.valueMinor ?? 0), 0);
-  const conversionRate = leads ? Math.round((converted / leads) * 100) : 0;
+  const conversionRate = leadCount ? Math.round((converted / leadCount) * 100) : 0;
   const kpiProgress = campaign.kpiTarget ? Math.min(100, Math.round((converted / campaign.kpiTarget) * 100)) : 0;
   const pipelineReturnRatio = campaign.budgetMinor > 0 ? Number(((pipelineValueMinor - campaign.budgetMinor) / campaign.budgetMinor).toFixed(2)) : null;
-  const snapshot = { conversionRate, converted, externalMetricsAvailable: false, kpiProgress, leads, pipelineReturnRatio, pipelineValueMinor, qualified, source: "RECORDED_LEADS" };
+  const allocatedBudgetPerLeadMinor = leadCount && campaign.budgetMinor > 0 ? Math.round(campaign.budgetMinor / leadCount) : null;
+  const allocatedBudgetPerConversionMinor = converted && campaign.budgetMinor > 0 ? Math.round(campaign.budgetMinor / converted) : null;
+  const trend = new Map<string, { converted: number; leads: number }>();
+  campaign.leads.forEach((lead) => {
+    const date = lead.createdAt.toISOString().slice(0, 10);
+    const current = trend.get(date) ?? { converted: 0, leads: 0 };
+    current.leads += 1;
+    if (lead.status === "CONVERTED") current.converted += 1;
+    trend.set(date, current);
+  });
+  return { allocatedBudgetPerConversionMinor, allocatedBudgetPerLeadMinor, allocationBasis: "CAMPAIGN_BUDGET_NOT_ACTUAL_SPEND" as const, conversionRate, converted, externalMetricsAvailable: false as const, externalUnavailable: ["REACH", "CLICKS", "IMPRESSIONS", "ACTUAL_SPEND", "ROAS"] as const, kpiProgress, leads: leadCount, pipelineReturnRatio, pipelineValueMinor, qualified, recordedLeadTrend: [...trend.entries()].sort(([left], [right]) => left.localeCompare(right)).map(([date, value]) => ({ date, ...value })), source: "RECORDED_LEADS" as const };
+}
+
+async function refreshCampaignPerformance(campaignId: string, transaction: Prisma.TransactionClient = db) {
+  const campaign = await transaction.marketingCampaign.findUnique({
+    where: { id: campaignId },
+    select: { budgetMinor: true, kpiTarget: true, leads: { select: { createdAt: true, status: true, valueMinor: true } } },
+  });
+  if (!campaign) return null;
+  const snapshot = calculateRecordedMarketingPerformance(campaign);
   await transaction.marketingCampaign.update({ where: { id: campaignId }, data: { performanceSnapshot: snapshot } });
   return snapshot;
 }

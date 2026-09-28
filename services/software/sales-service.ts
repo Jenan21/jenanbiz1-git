@@ -8,8 +8,8 @@ const salesDocumentInclude = {
   receipts: { orderBy: { receivedAt: "desc" as const } },
 } satisfies Prisma.SalesDocumentInclude;
 
-function documentNumber(kind: SalesDocumentKind) {
-  const prefix = { QUOTE: "QUO", ORDER: "ORD", INVOICE: "INV", RETURN: "RET" }[kind];
+function documentNumber(kind: SalesDocumentKind, invoicePrefix?: string) {
+  const prefix = kind === SalesDocumentKind.INVOICE && invoicePrefix ? invoicePrefix : { QUOTE: "QUO", ORDER: "ORD", INVOICE: "INV", RETURN: "RET" }[kind];
   return `${prefix}-${new Date().toISOString().slice(0, 10).replaceAll("-", "")}-${crypto.randomUUID().slice(0, 8).toUpperCase()}`;
 }
 
@@ -65,9 +65,10 @@ export async function saveSoftwareProduct(input: {
   userId: string;
 }) {
   await requireSoftwareMembership(input.organizationId, input.userId);
+  const settings = await db.softwareSettings.findUnique({ where: { organizationId: input.organizationId }, select: { defaultCurrency: true } });
   const data = {
     costMinor: input.costMinor,
-    currency: input.currency?.trim().toUpperCase() || "SAR",
+    currency: input.currency?.trim().toUpperCase() || settings?.defaultCurrency || "SAR",
     description: cleanOptional(input.description),
     name: input.name.trim(),
     priceMinor: input.priceMinor,
@@ -101,18 +102,21 @@ export async function createSalesDocument(input: {
 }) {
   await requireSoftwareMembership(input.organizationId, input.userId);
   if (!input.lines.length || input.lines.length > 50) throw new Error("Sales document requires between 1 and 50 lines");
-  const [customer, products] = await Promise.all([
+  const [customer, products, settings] = await Promise.all([
     input.customerId ? db.softwareCustomer.findFirst({ where: { id: input.customerId, organizationId: input.organizationId }, select: { id: true } }) : null,
     db.softwareProduct.findMany({ where: { organizationId: input.organizationId, id: { in: input.lines.flatMap((line) => line.productId ? [line.productId] : []) } } }),
+    db.softwareSettings.findUnique({ where: { organizationId: input.organizationId }, select: { defaultCurrency: true, invoicePrefix: true, taxRateBps: true } }),
   ]);
   if (input.customerId && !customer) throw new Error("Customer not found");
+  const documentCurrency = input.currency?.trim().toUpperCase() || settings?.defaultCurrency || "SAR";
   const productMap = new Map(products.map((product) => [product.id, product]));
   const lines = input.lines.map((line) => {
     const product = line.productId ? productMap.get(line.productId) : undefined;
     if (line.productId && !product) throw new Error("Product not found");
+    if (product && product.currency !== documentCurrency) throw new Error("Product and sales document currencies must match");
     const unitPriceMinor = line.unitPriceMinor ?? product?.priceMinor;
     if (unitPriceMinor === undefined || unitPriceMinor < 0) throw new Error("Line price is invalid");
-    const taxRateBps = line.taxRateBps ?? 1500;
+    const taxRateBps = line.taxRateBps ?? settings?.taxRateBps ?? 1500;
     const subtotalMinor = line.quantity * unitPriceMinor;
     const taxMinor = Math.round(subtotalMinor * taxRateBps / 10_000);
     return { description: cleanOptional(line.description) ?? product?.name ?? "Sales item", productId: product?.id, quantity: line.quantity, unitPriceMinor, taxRateBps, lineTotalMinor: subtotalMinor + taxMinor, subtotalMinor, taxMinor };
@@ -125,8 +129,8 @@ export async function createSalesDocument(input: {
         organizationId: input.organizationId,
         customerId: input.customerId,
         kind: input.kind,
-        number: documentNumber(input.kind),
-        currency: input.currency?.trim().toUpperCase() || "SAR",
+        number: documentNumber(input.kind, settings?.invoicePrefix),
+        currency: documentCurrency,
         subtotalMinor,
         taxMinor,
         totalMinor: subtotalMinor + taxMinor,

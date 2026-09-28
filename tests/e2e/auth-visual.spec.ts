@@ -21,9 +21,21 @@ const activityFixture = {
   generatedAt: "2026-09-09T12:00:00.000Z",
   windowMinutes: 15,
   locations: [
-    { countryCode: "SA", countryName: { ar: "السعودية", en: "Saudi Arabia" }, activeUsers: 16 },
-    { countryCode: "AE", countryName: { ar: "الإمارات", en: "United Arab Emirates" }, activeUsers: 8 },
-    { countryCode: "US", countryName: { ar: "الولايات المتحدة", en: "United States" }, activeUsers: 4 },
+    {
+      countryCode: "SA",
+      countryName: { ar: "السعودية", en: "Saudi Arabia" },
+      activeUsers: 16,
+    },
+    {
+      countryCode: "AE",
+      countryName: { ar: "الإمارات", en: "United Arab Emirates" },
+      activeUsers: 8,
+    },
+    {
+      countryCode: "US",
+      countryName: { ar: "الولايات المتحدة", en: "United States" },
+      activeUsers: 4,
+    },
   ],
 };
 
@@ -36,9 +48,12 @@ for (const locale of ["ar", "en"] as const) {
       }, testInfo) => {
         const runtimeErrors: string[] = [];
         page.on("pageerror", (error) => runtimeErrors.push(error.message));
-        const shouldCapture = ["1661x947", "1366x768", "1024x1366", "390x844"].includes(
-          viewport.name,
-        );
+        const shouldCapture = [
+          "1661x947",
+          "1366x768",
+          "1024x1366",
+          "390x844",
+        ].includes(viewport.name);
         await page.setViewportSize(viewport);
         await context.addCookies([
           {
@@ -63,12 +78,39 @@ for (const locale of ["ar", "en"] as const) {
           "dir",
           locale === "ar" ? "rtl" : "ltr",
         );
-        await expect(page.locator(".access-page")).toHaveAttribute("data-auth-route", route);
-        await expect(page.locator(".access-page")).toHaveAttribute("data-auth-screen", route.slice(1));
-        await expect(page.locator(".access-page")).toHaveAttribute("data-auth-source", "LIVE_PLATFORM_ACTIVITY");
-        await expect(page.locator(".access-page")).toHaveAttribute("data-auth-privacy", "PUBLIC_AGGREGATE");
+        await expect(page.locator(".access-page")).toHaveAttribute(
+          "data-auth-route",
+          route,
+        );
+        await expect(page.locator(".access-page")).toHaveAttribute(
+          "data-auth-screen",
+          route.slice(1),
+        );
+        await expect(page.locator(".access-page")).toHaveAttribute(
+          "data-auth-source",
+          "LIVE_PLATFORM_ACTIVITY",
+        );
+        await expect(page.locator(".access-page")).toHaveAttribute(
+          "data-auth-privacy",
+          "PUBLIC_AGGREGATE",
+        );
+        await expect(page.locator(".access-page__form-panel")).toBeVisible();
+        await expect(
+          page.locator(".access-page__form-panel form"),
+        ).toBeVisible();
+        if (route === "/login") {
+          await expect(page.locator('input[name="email"]')).toBeVisible();
+          await expect(page.locator('input[name="password"]')).toBeVisible();
+          await expect(page.locator('input[name="remember"]')).toBeVisible();
+          await expect(
+            page.locator('.access-page__form-panel a[href="/auth/forgot"]'),
+          ).toBeVisible();
+        }
+        await page.keyboard.press("Escape");
         await expect(page.locator(".access-page__form-panel")).toHaveCount(0);
-        await expect(page.locator(".access-page__access-action")).toHaveCount(2);
+        await expect(page.locator(".access-page__access-action")).toHaveCount(
+          2,
+        );
         await expect(
           page.locator(".access-page__world-signals > span"),
         ).toHaveCount(activityFixture.locations.length);
@@ -92,28 +134,38 @@ for (const locale of ["ar", "en"] as const) {
           const resources = performance
             .getEntriesByType("resource")
             .map((entry) => entry.name);
-          const city = document.querySelector<HTMLElement>(".access-page__city");
-          const globe = document.querySelector<HTMLElement>(".access-page__globe");
+          const city =
+            document.querySelector<HTMLElement>(".access-page__city");
+          const globe = document.querySelector<HTMLElement>(
+            ".access-page__globe",
+          );
           const heroTitle = document.querySelector<HTMLElement>(
             ".access-page__story h1",
           );
           return {
             cityBackground: city ? getComputedStyle(city).backgroundImage : "",
-            cityBackgroundSize: city ? getComputedStyle(city).backgroundSize : "",
+            cityBackgroundSize: city
+              ? getComputedStyle(city).backgroundSize
+              : "",
             accessIcon: rect(".access-page__access-action .icon"),
             benefits: rect(".access-page__benefits"),
             city: rect(".access-page__city"),
             dock: rect(".access-page__access-dock"),
             footer: rect(".access-page__footer"),
             globe: rect(".access-page__globe"),
-            globeBackground: globe ? getComputedStyle(globe).backgroundImage : "",
-            globeBackgroundSize: globe ? getComputedStyle(globe).backgroundSize : "",
+            globeBackground: globe
+              ? getComputedStyle(globe).backgroundImage
+              : "",
+            globeBackgroundSize: globe
+              ? getComputedStyle(globe).backgroundSize
+              : "",
             headerNavLinks: document.querySelectorAll(
               ".access-page__header nav > a",
             ).length,
             heroTitleOverflow: heroTitle
               ? heroTitle.scrollWidth > heroTitle.clientWidth + 1
               : false,
+            heroTitleText: heroTitle?.textContent,
             intel: rect(".access-page__intel"),
             logo: rect(".access-page__logo"),
             logoMonogram: document.querySelector<HTMLElement>(
@@ -154,6 +206,9 @@ for (const locale of ["ar", "en"] as const) {
         expect(closedLayout.logoMonogram).toBe("J");
         expect(closedLayout.logoName).toContain("Jenan Pro");
         expect(closedLayout.headerNavLinks).toBe(0);
+        expect(closedLayout.heroTitleText).toContain(
+          locale === "ar" ? "جنان برو" : "Jenan Pro",
+        );
         expect(closedLayout.heroTitleOverflow).toBe(false);
         expect(closedLayout.signalCount).toBe(3);
         expect(closedLayout.accessIcon).not.toBeNull();
@@ -200,30 +255,70 @@ for (const locale of ["ar", "en"] as const) {
             const vertical = (value: number) =>
               (value - stage.top) / stage.height;
 
-            expect(horizontal(closedLayout.story!.left)).toBeGreaterThanOrEqual(0.02);
-            expect(horizontal(closedLayout.story!.left)).toBeLessThanOrEqual(0.04);
-            expect(vertical(closedLayout.story!.top)).toBeGreaterThanOrEqual(0.13);
+            expect(horizontal(closedLayout.story!.left)).toBeGreaterThanOrEqual(
+              0.02,
+            );
+            expect(horizontal(closedLayout.story!.left)).toBeLessThanOrEqual(
+              0.04,
+            );
+            expect(vertical(closedLayout.story!.top)).toBeGreaterThanOrEqual(
+              0.13,
+            );
             expect(vertical(closedLayout.story!.top)).toBeLessThanOrEqual(0.17);
-            expect(closedLayout.story!.width / stage.width).toBeGreaterThanOrEqual(0.27);
-            expect(closedLayout.story!.width / stage.width).toBeLessThanOrEqual(0.31);
-            expect(horizontal(closedLayout.globe!.left)).toBeGreaterThanOrEqual(0.33);
-            expect(horizontal(closedLayout.globe!.left)).toBeLessThanOrEqual(0.37);
-            expect(vertical(closedLayout.globe!.top)).toBeGreaterThanOrEqual(0.06);
+            expect(
+              closedLayout.story!.width / stage.width,
+            ).toBeGreaterThanOrEqual(0.27);
+            expect(closedLayout.story!.width / stage.width).toBeLessThanOrEqual(
+              0.31,
+            );
+            expect(horizontal(closedLayout.globe!.left)).toBeGreaterThanOrEqual(
+              0.33,
+            );
+            expect(horizontal(closedLayout.globe!.left)).toBeLessThanOrEqual(
+              0.37,
+            );
+            expect(vertical(closedLayout.globe!.top)).toBeGreaterThanOrEqual(
+              0.06,
+            );
             expect(vertical(closedLayout.globe!.top)).toBeLessThanOrEqual(0.09);
-            expect(closedLayout.globe!.width / stage.width).toBeGreaterThanOrEqual(0.46);
-            expect(closedLayout.globe!.width / stage.width).toBeLessThanOrEqual(0.51);
-            expect(closedLayout.globe!.height / stage.height).toBeGreaterThanOrEqual(0.51);
-            expect(closedLayout.globe!.height / stage.height).toBeLessThanOrEqual(0.57);
-            expect(vertical(closedLayout.benefits!.top)).toBeGreaterThanOrEqual(0.27);
-            expect(vertical(closedLayout.benefits!.top)).toBeLessThanOrEqual(0.34);
-            expect(vertical(closedLayout.intel!.top)).toBeGreaterThanOrEqual(0.61);
+            expect(
+              closedLayout.globe!.width / stage.width,
+            ).toBeGreaterThanOrEqual(0.46);
+            expect(closedLayout.globe!.width / stage.width).toBeLessThanOrEqual(
+              0.51,
+            );
+            expect(
+              closedLayout.globe!.height / stage.height,
+            ).toBeGreaterThanOrEqual(0.51);
+            expect(
+              closedLayout.globe!.height / stage.height,
+            ).toBeLessThanOrEqual(0.57);
+            expect(vertical(closedLayout.benefits!.top)).toBeGreaterThanOrEqual(
+              0.27,
+            );
+            expect(vertical(closedLayout.benefits!.top)).toBeLessThanOrEqual(
+              0.34,
+            );
+            expect(vertical(closedLayout.intel!.top)).toBeGreaterThanOrEqual(
+              0.61,
+            );
             expect(vertical(closedLayout.intel!.top)).toBeLessThanOrEqual(0.65);
-            expect(closedLayout.intel!.height / stage.height).toBeGreaterThanOrEqual(0.18);
-            expect(closedLayout.intel!.height / stage.height).toBeLessThanOrEqual(0.21);
-            expect(vertical(closedLayout.trust!.top)).toBeGreaterThanOrEqual(0.82);
+            expect(
+              closedLayout.intel!.height / stage.height,
+            ).toBeGreaterThanOrEqual(0.18);
+            expect(
+              closedLayout.intel!.height / stage.height,
+            ).toBeLessThanOrEqual(0.21);
+            expect(vertical(closedLayout.trust!.top)).toBeGreaterThanOrEqual(
+              0.82,
+            );
             expect(vertical(closedLayout.trust!.top)).toBeLessThanOrEqual(0.85);
-            expect(vertical(closedLayout.footer!.top)).toBeGreaterThanOrEqual(0.91);
-            expect(vertical(closedLayout.footer!.top)).toBeLessThanOrEqual(0.94);
+            expect(vertical(closedLayout.footer!.top)).toBeGreaterThanOrEqual(
+              0.91,
+            );
+            expect(vertical(closedLayout.footer!.top)).toBeLessThanOrEqual(
+              0.94,
+            );
           }
         } else {
           expect(closedLayout.story!.bottom).toBeLessThanOrEqual(
@@ -264,16 +359,16 @@ for (const locale of ["ar", "en"] as const) {
         });
         await trigger.click();
         await expect(page.locator(".access-page__form-panel")).toBeVisible();
-        await expect(page.locator(".access-page__form-panel form")).toBeVisible();
+        await expect(
+          page.locator(".access-page__form-panel form"),
+        ).toBeVisible();
         await expect(page.locator(".access-page__form-panel")).toHaveAttribute(
           "role",
           "dialog",
         );
         await expect(page.locator(".access-page__alternate a")).toHaveAttribute(
           "href",
-          route === "/login"
-            ? "/register"
-            : "/login",
+          route === "/login" ? "/auth/register" : "/auth/login",
         );
 
         const openLayout = await page.evaluate(() => {

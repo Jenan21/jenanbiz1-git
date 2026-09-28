@@ -4,9 +4,13 @@ import Link from "next/link";
 import { FormEvent, useEffect, useState } from "react";
 
 import { SoftwareModuleView } from "@/components/software/software-module-view";
+import { SoftwareAnalyticsOverview } from "@/components/software/software-analytics-overview";
+import { SoftwareCompanyControls } from "@/components/software/software-company-controls";
+import { SoftwareRouteOutputs } from "@/components/software/software-route-outputs";
 import type { SoftwareApiPayload, SoftwareOrganization, SoftwareWorkspaceData } from "@/components/software/software-erp-types";
 import { Icon, type IconName } from "@/components/ui/icons";
 import { SOFTWARE_FLOW_ROUTES, type SoftwareFlowRoute, type SoftwareRouteId } from "@/lib/software/software-routes";
+import { SOFTWARE_EXPORT_ROUTE_IDS } from "@/lib/software/route-export";
 import type { Locale } from "@/types/i18n";
 
 const primaryRoutes = ["dashboard", "sales", "accounting", "hr", "inventory", "crm", "projects", "pos", "purchases", "company", "reports"] as const;
@@ -115,7 +119,7 @@ export function SoftwareErpWorkspace({ locale, route }: { locale: Locale; route:
   const sectionRoutes = route.section === "sales" ? SOFTWARE_FLOW_ROUTES.filter((definition) => definition.section === "sales") : route.section === "hr" ? SOFTWARE_FLOW_ROUTES.filter((definition) => definition.section === "hr") : [];
 
   return (
-    <section className="software-erp" data-software-module={route.id} data-software-output={route.id.includes("reports") ? "PRINT_PDF" : "OPERATIONAL_RECORDS"} data-software-route={route.route} data-software-section={route.section} data-software-source="ORGANIZATION_RECORDS">
+    <section className="software-erp" data-software-module={route.id} data-software-output={route.id.includes("reports") ? "PRINT_PDF" : SOFTWARE_EXPORT_ROUTE_IDS.has(route.id) ? "CSV,PRINT_PDF" : "OPERATIONAL_RECORDS"} data-software-route={route.route} data-software-section={route.section} data-software-source="ORGANIZATION_RECORDS">
       <nav className="software-erp__nav" aria-label={ar ? "وحدات Jenan Software" : "Jenan Software modules"}>{primaryDefinitions.map((definition) => {
         const active = definition.id === route.id || route.section === "sales" && definition.id === "sales" || route.section === "hr" && definition.id === "hr";
         return <Link aria-current={definition.id === route.id ? "page" : undefined} className={active ? "is-active" : ""} href={definition.route} key={definition.id}>{pick(definition.title, locale)}</Link>;
@@ -138,7 +142,7 @@ export function SoftwareErpWorkspace({ locale, route }: { locale: Locale; route:
         <section className="software-erp__modules">{moduleCards.map((card) => <Link href={card.href} key={card.href}><span><Icon name={card.icon} /></span><div><h2>{card.title}</h2><p>{pick(card.copy, locale)}</p></div><Icon name="arrow" /></Link>)}</section>
       </> : null}
 
-      {!loading && workspace && route.id !== "dashboard" ? <SoftwareModuleView busy={busy} locale={locale} message={message} routeId={route.id} runCommand={runCommand} workspace={workspace} /> : null}
+      {!loading && workspace && route.id !== "dashboard" ? <><SoftwareRouteOutputs locale={locale} routeId={route.id} workspace={workspace} />{route.id === "company" ? <SoftwareCompanyControls busy={busy} locale={locale} message={message} runCommand={runCommand} workspace={workspace} /> : null}<SoftwareAnalyticsOverview locale={locale} routeId={route.id} workspace={workspace} /><SoftwareModuleView busy={busy} locale={locale} message={route.id === "company" ? "" : message} routeId={route.id} runCommand={runCommand} workspace={workspace} /></> : null}
       {!loading && workspace && route.id === "dashboard" && message ? <p className="software-erp__message" role="status">{message}</p> : null}
     </section>
   );

@@ -37,7 +37,7 @@ test.describe.serial("Jenan Talent full flow", () => {
     const organization = await employerPage.request.post("/api/software/operations", { headers: { origin }, data: { action: "createOrganization", name: "E2E Talent Company" } });
     expect(organization.status()).toBe(201);
     const organizationId = (await organization.json()).result.id as string;
-    const posting = await employerPage.request.post("/api/talent", { headers: { origin }, data: { action: "create", organizationId, title: "Senior Growth Operations Lead", description: "Lead measurable market research, sales operations, reporting, and responsible automation programs across regional teams with documented objectives and review practices.", department: "Growth", countryCode: "SA", city: "Riyadh", salaryMinMinor: 2_000_000, salaryMaxMinor: 3_000_000, requiredSkills: "market research, sales operations, reporting, automation", workMode: "HYBRID" } });
+    const posting = await employerPage.request.post("/api/talent", { headers: { origin }, data: { action: "create", organizationId, title: "Senior Growth Operations Lead", description: "Lead measurable market research, sales operations, reporting, and responsible automation programs across regional teams with documented objectives and review practices.", benefits: "Flexible hybrid schedule, learning budget, and documented growth reviews.", conditions: "Six years of relevant experience and authorization to work in the selected location.", department: "Growth", countryCode: "SA", city: "Riyadh", salaryMinMinor: 2_000_000, salaryMaxMinor: 3_000_000, requiredSkills: "market research, sales operations, reporting, automation", questions: [{ prompt: "Describe one measurable growth experiment you led.", required: true }], workMode: "HYBRID" } });
     expect(posting.status()).toBe(201);
     const jobId = (await posting.json()).result.id as string;
     expect((await employerPage.request.post("/api/talent", { headers: { origin }, data: { action: "updateStatus", jobPostingId: jobId, status: "PUBLISHED" } })).status()).toBe(200);
@@ -47,10 +47,27 @@ test.describe.serial("Jenan Talent full flow", () => {
     const cvDocumentId = (await cvResponse.json()).document.id as string;
     expect((await candidatePage.request.post("/api/talent", { headers: { origin }, data: { action: "saveProfile", headline: "Growth operations specialist", summary: "I build measurable operating systems across research, sales, reporting, and automation for growing teams.", city: "Riyadh", countryCode: "SA", yearsExperience: 6, skills: "market research, sales operations, reporting, automation", desiredWorkModes: ["HYBRID", "REMOTE"], availability: "Within 30 days", cvDocumentId, isDiscoverable: true } })).status()).toBe(200);
 
+    await candidatePage.goto("/talent/jobs", { waitUntil: "domcontentloaded" });
+    await candidatePage.getByLabel("Job skills").fill("missing-skill");
+    await expect(candidatePage.locator(".talent-job-grid > article")).toHaveCount(0);
+    await candidatePage.getByLabel("Job skills").fill("automation");
+    await candidatePage.getByLabel("Job country").selectOption("SA");
+    await expect(candidatePage.locator(".talent-job-grid")).toContainText("Senior Growth Operations Lead");
+
+    await employerPage.goto("/talent/search", { waitUntil: "domcontentloaded" });
+    await employerPage.getByLabel("Minimum experience").fill("7");
+    await expect(employerPage.locator(".talent-profile-grid > article")).toHaveCount(0);
+    await employerPage.getByLabel("Minimum experience").fill("5");
+    await employerPage.getByLabel("Candidate skills").fill("automation");
+    await expect(employerPage.locator(".talent-profile-grid")).toContainText("Growth operations specialist");
+
     await candidatePage.goto(`/talent/job/sample?job=${jobId}`, { waitUntil: "domcontentloaded" });
     await expect(candidatePage.locator(".talent-job-detail")).toContainText("Senior Growth Operations Lead");
+    await expect(candidatePage.locator(".talent-job-detail__terms")).toContainText("Flexible hybrid schedule");
+    await expect(candidatePage.locator(".talent-job-detail__terms")).toContainText("Six years of relevant experience");
     await candidatePage.goto(`/talent/apply/sample?job=${jobId}`, { waitUntil: "domcontentloaded" });
     await candidatePage.getByPlaceholder("Connect your experience to the required skills").fill("I bring six years of market research, sales operations, reporting, and automation experience with regional delivery teams.");
+    await candidatePage.getByLabel("Describe one measurable growth experiment you led.").fill("I improved qualified pipeline conversion by 18% through a measured regional experiment.");
     await candidatePage.getByLabel("CV from Studio").selectOption(cvDocumentId);
     await candidatePage.getByRole("checkbox").check();
     const applyResponse = candidatePage.waitForResponse((response) => response.url().endsWith("/api/talent") && response.request().method() === "POST");
@@ -66,6 +83,9 @@ test.describe.serial("Jenan Talent full flow", () => {
     expect(privateSearchPayload.applications[0].profileSnapshot.headline).toBe("Growth operations specialist");
 
     await employerPage.goto("/talent/employer/applicants", { waitUntil: "domcontentloaded" });
+    await employerPage.getByLabel("Applicant status").selectOption("REJECTED");
+    await expect(employerPage.locator(".talent-applicant-list > article")).toHaveCount(0);
+    await employerPage.getByLabel("Applicant status").selectOption("SUBMITTED");
     const applicantCard = employerPage.locator(".talent-applicant-list > article").filter({ hasText: "Senior Growth Operations Lead" });
     await expect(applicantCard).toBeVisible();
     const reviewResponse = employerPage.waitForResponse((response) => response.url().endsWith("/api/talent") && response.request().method() === "POST");
@@ -73,11 +93,33 @@ test.describe.serial("Jenan Talent full flow", () => {
     expect((await reviewResponse).status()).toBe(200);
     await employerPage.goto(`/talent/candidate/sample?application=${applicationId}`, { waitUntil: "domcontentloaded" });
     await expect(employerPage.locator(".talent-candidate-detail")).toContainText("Shared CV");
+    await expect(employerPage.locator(".talent-candidate-answers")).toContainText("qualified pipeline conversion by 18%");
+    await employerPage.getByLabel("Message body").fill("Please confirm your interview availability for next week.");
+    const employerMessageResponse = employerPage.waitForResponse((response) => response.url().endsWith("/api/talent") && response.request().method() === "POST");
+    await employerPage.getByRole("button", { name: "Send message" }).click();
+    expect((await employerMessageResponse).status()).toBe(200);
+    await expect(employerPage.locator(".talent-conversation")).toContainText("Please confirm your interview availability");
+
+    await candidatePage.goto(`/talent/apply/sample?job=${jobId}`, { waitUntil: "domcontentloaded" });
+    await expect(candidatePage.locator(".talent-conversation")).toContainText("Please confirm your interview availability");
+    await candidatePage.getByLabel("Message body").fill("I am available next Tuesday afternoon.");
+    const candidateMessageResponse = candidatePage.waitForResponse((response) => response.url().endsWith("/api/talent") && response.request().method() === "POST");
+    await candidatePage.getByRole("button", { name: "Send message" }).click();
+    expect((await candidateMessageResponse).status()).toBe(200);
+
+    await employerPage.goto(`/talent/candidate/sample?application=${applicationId}`, { waitUntil: "domcontentloaded" });
+    await expect(employerPage.locator(".talent-conversation")).toContainText("I am available next Tuesday afternoon");
     await employerPage.getByLabel("Employer notes").fill("Verified for the structured interview stage.");
     const acceptResponse = employerPage.waitForResponse((response) => response.url().endsWith("/api/talent") && response.request().method() === "POST");
     await employerPage.getByRole("button", { name: "Advance candidate" }).click();
     expect((await acceptResponse).status()).toBe(200);
     await expect(employerPage.getByRole("status")).toContainText("without an employment guarantee");
+
+    await employerPage.goto("/talent/reports", { waitUntil: "domcontentloaded" });
+    await expect(employerPage.locator(".talent-report__postings")).toContainText("Senior Growth Operations Lead");
+    const talentReport = employerPage.waitForEvent("download");
+    await employerPage.getByRole("button", { name: "Excel" }).click();
+    expect((await talentReport).suggestedFilename()).toMatch(/^jenan-talent-report-\d{4}-\d{2}-\d{2}\.xlsx$/);
 
     await candidatePage.goto("/talent/profile", { waitUntil: "domcontentloaded" });
     await expect(candidatePage.locator(".talent-profile__applications")).toContainText("ACCEPTED");

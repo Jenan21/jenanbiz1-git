@@ -22,6 +22,30 @@ services:
     security_opt:
       - no-new-privileges:true
 
+  redis:
+    image: redis:7.4-alpine
+    container_name: jenanbiz-redis
+    restart: unless-stopped
+    command:
+      - /bin/sh
+      - -ec
+      - exec redis-server --appendonly yes --requirepass "$${REDIS_PASSWORD}"
+    environment:
+      REDIS_PASSWORD: ${REDIS_PASSWORD:?REDIS_PASSWORD is required}
+      REDISCLI_AUTH: ${REDIS_PASSWORD:?REDIS_PASSWORD is required}
+    ports:
+      - "127.0.0.1:${REDIS_PORT:-6379}:6379"
+    volumes:
+      - jenanbiz_redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 12
+      start_period: 5s
+    security_opt:
+      - no-new-privileges:true
+
   migrate:
     build: .
     command: ["npx", "prisma", "migrate", "deploy"]
@@ -37,16 +61,30 @@ services:
     container_name: jenanbiz-app
     restart: unless-stopped
     environment:
+      ALLOW_PUBLIC_REGISTRATION: ${ALLOW_PUBLIC_REGISTRATION:-false}
       AUTH_SECRET: ${AUTH_SECRET:?AUTH_SECRET is required}
+      AUTH_RECOVERY_EMAIL_ENDPOINT: ${AUTH_RECOVERY_EMAIL_ENDPOINT:-}
+      AUTH_RECOVERY_EMAIL_FROM: ${AUTH_RECOVERY_EMAIL_FROM:-}
       DATABASE_URL: postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}?schema=public
       METRICS_TOKEN: ${METRICS_TOKEN:?METRICS_TOKEN is required}
+      NEXT_PUBLIC_APP_URL: ${NEXT_PUBLIC_APP_URL:-http://localhost:3000}
+      REDIS_URL: redis://:${REDIS_PASSWORD:?REDIS_PASSWORD is required}@redis:6379/0
+      RESEND_API_KEY: ${RESEND_API_KEY:-}
     ports:
       - "127.0.0.1:${APP_PORT:-3000}:3000"
     depends_on:
       migrate:
         condition: service_completed_successfully
+      redis:
+        condition: service_healthy
     healthcheck:
-      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:3000/api/health/ready').then((response) => process.exit(response.ok ? 0 : 1)).catch(() => process.exit(1))"]
+      test:
+        [
+          "CMD",
+          "node",
+          "-e",
+          "fetch('http://127.0.0.1:3000/api/health/ready').then((response) => process.exit(response.ok ? 0 : 1)).catch(() => process.exit(1))",
+        ]
       interval: 15s
       timeout: 5s
       retries: 6
@@ -83,7 +121,11 @@ services:
           sleep "$${BACKUP_INTERVAL_SECONDS}"
         done
     healthcheck:
-      test: ["CMD-SHELL", "test -f /backups/.last-success && test \"$$(( $$(date +%s) - $$(date -r /backups/.last-success +%s) ))\" -le \"$$(( $${BACKUP_INTERVAL_SECONDS} * 2 + 300 ))\""]
+      test:
+        [
+          "CMD-SHELL",
+          'test -f /backups/.last-success && test "$$(( $$(date +%s) - $$(date -r /backups/.last-success +%s) ))" -le "$$(( $${BACKUP_INTERVAL_SECONDS} * 2 + 300 ))"',
+        ]
       interval: 60s
       timeout: 5s
       retries: 3
@@ -96,3 +138,5 @@ volumes:
     name: jenanbiz_postgres_data
   jenanbiz_postgres_backups:
     name: jenanbiz_postgres_backups
+  jenanbiz_redis_data:
+    name: jenanbiz_redis_data

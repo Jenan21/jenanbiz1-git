@@ -31,6 +31,8 @@ export function AuthForm({ mode, locale, labels }: AuthFormProps) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [registrationStep, setRegistrationStep] = useState<1 | 2>(1);
+  const resetSucceeded =
+    mode === "login" && searchParams.get("reset") === "success";
 
   function validateRegistrationIdentity(form: HTMLFormElement) {
     for (const name of ["name", "email"] as const) {
@@ -127,7 +129,12 @@ export function AuthForm({ mode, locale, labels }: AuthFormProps) {
     <form className="auth-form" onSubmit={handleSubmit} aria-busy={loading}>
       {mode === "register" ? (
         <>
-          <div className="auth-form__progress" aria-label={locale === "ar" ? "خطوات إنشاء الحساب" : "Account creation steps"}>
+          <div
+            className="auth-form__progress"
+            aria-label={
+              locale === "ar" ? "خطوات إنشاء الحساب" : "Account creation steps"
+            }
+          >
             <span data-active={registrationStep === 1 || undefined}>1</span>
             <i />
             <span data-active={registrationStep === 2 || undefined}>2</span>
@@ -150,7 +157,11 @@ export function AuthForm({ mode, locale, labels }: AuthFormProps) {
               disabled={loading}
               icon={<Icon name="mail" />}
             />
-            <Button type="button" className="auth-form__submit" onClick={continueRegistration}>
+            <Button
+              type="button"
+              className="auth-form__submit"
+              onClick={continueRegistration}
+            >
               {locale === "ar" ? "متابعة" : "Continue"}
               <Icon name="arrow" />
             </Button>
@@ -191,14 +202,45 @@ export function AuthForm({ mode, locale, labels }: AuthFormProps) {
             />
             <label className="checkbox auth-form__terms">
               <input name="terms" type="checkbox" required disabled={loading} />
-              <span>{locale === "ar" ? "أوافق على الشروط والأحكام" : "I accept the terms and conditions"}</span>
+              <span>
+                {locale === "ar"
+                  ? "أوافق على الشروط والأحكام"
+                  : "I accept the terms and conditions"}
+              </span>
             </label>
-            {error && <p className="auth-error" role="alert">{error}</p>}
+            <details className="auth-form__terms-details">
+              <summary>
+                {locale === "ar" ? "عرض شروط الاستخدام" : "View terms of use"}
+              </summary>
+              <p>
+                {locale === "ar"
+                  ? "أتعهد باستخدام بيانات صحيحة، وحماية بيانات الدخول، وعدم إساءة استخدام خدمات المنصة أو بيانات الآخرين."
+                  : "I agree to provide accurate information, protect my access credentials, and avoid misuse of platform services or other users' data."}
+              </p>
+            </details>
+            <p className="form-note">
+              <Icon name="shield" />
+              {labels.note}
+            </p>
+            {error && (
+              <p className="auth-error" role="alert">
+                {error}
+              </p>
+            )}
             <div className="auth-form__step-actions">
-              <button type="button" className="text-button" onClick={() => setRegistrationStep(1)} disabled={loading}>
+              <button
+                type="button"
+                className="text-button"
+                onClick={() => setRegistrationStep(1)}
+                disabled={loading}
+              >
                 {locale === "ar" ? "السابق" : "Back"}
               </button>
-              <Button type="submit" className="auth-form__submit" disabled={loading}>
+              <Button
+                type="submit"
+                className="auth-form__submit"
+                disabled={loading}
+              >
                 {loading ? labels.loading : labels.submit}
                 <Icon name="arrow" />
               </Button>
@@ -207,6 +249,14 @@ export function AuthForm({ mode, locale, labels }: AuthFormProps) {
         </>
       ) : (
         <>
+          {resetSucceeded ? (
+            <p className="auth-success" role="status">
+              <Icon name="check" />
+              {locale === "ar"
+                ? "تم تحديث كلمة المرور. يمكنك تسجيل الدخول الآن."
+                : "Your password was updated. You can sign in now."}
+            </p>
+          ) : null}
           <Input
             label={labels.email}
             name="email"
@@ -247,7 +297,11 @@ export function AuthForm({ mode, locale, labels }: AuthFormProps) {
       )}
       {mode === "login" && (
         <>
-          <Button type="submit" className="auth-form__submit" disabled={loading}>
+          <Button
+            type="submit"
+            className="auth-form__submit"
+            disabled={loading}
+          >
             {loading ? labels.loading : labels.submit}
             <Icon name="arrow" />
           </Button>

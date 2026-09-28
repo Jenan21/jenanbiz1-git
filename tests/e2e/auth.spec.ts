@@ -2,6 +2,10 @@ import { expect, test } from "@playwright/test";
 import { e2eIdentity } from "./test-identities";
 import { cleanE2EIdentities, queryE2E, seedE2EAdmin } from "./identity-fixture";
 
+const canonicalFlowEmail = `e2e.user.auth-flow.${process.env.E2E_RUN_ID}@example.test`;
+const canonicalFlowPassword = "Canonical-Auth-2026!";
+const canonicalFlowReplacement = "Canonical-Auth-Reset-2026!";
+
 test.describe.serial("real authentication and server-side RBAC", () => {
   test.setTimeout(90_000);
 
@@ -77,12 +81,104 @@ test.describe.serial("real authentication and server-side RBAC", () => {
     });
     expect(logout.status()).toBe(200);
     await page.goto("/dashboard");
-    await expect(page).toHaveURL(/\/login\?next=%2Fdashboard$/);
+    await expect(page).toHaveURL(/\/auth\/login\?next=%2Fdashboard$/);
     const sessions = await queryE2E<{ count: string }>(
       'SELECT COUNT(*)::text AS count FROM "Session" WHERE "userId" = $1',
       [persisted.rows[0]?.id],
     );
     expect(sessions.rows[0]?.count).toBe("0");
+  });
+
+  test("completes the canonical visual authentication journey", async ({
+    page,
+  }) => {
+    await page.emulateMedia({ reducedMotion: "reduce" });
+    await page.goto("/auth");
+    await expect(page).toHaveURL(/\/auth$/);
+    await expect(page.locator(".access-page__form-panel")).toHaveCount(0);
+    await Promise.all([
+      page.waitForURL(/\/auth\/register$/),
+      page
+        .locator(".access-page__access-dock")
+        .getByRole("link", { name: "New account", exact: true })
+        .click(),
+    ]);
+
+    await page.getByLabel("Full name").fill("Canonical Auth User");
+    await page.getByLabel("Email address").fill(canonicalFlowEmail);
+    await page.getByRole("button", { name: "Continue", exact: true }).click();
+    await page.getByLabel("Country code").fill("SA");
+    await page
+      .getByLabel("Password", { exact: true })
+      .fill(canonicalFlowPassword);
+    await page.getByLabel("Confirm password").fill(canonicalFlowPassword);
+    await page.getByText("View terms of use", { exact: true }).click();
+    await expect(
+      page.getByText("I agree to provide accurate information", {
+        exact: false,
+      }),
+    ).toBeVisible();
+    await page.getByLabel("I accept the terms and conditions").check();
+    await Promise.all([
+      page.waitForURL(/\/user\/onboarding$/),
+      page.getByRole("button", { name: "Create account", exact: true }).click(),
+    ]);
+
+    await page.getByLabel("Account type").selectOption("INDIVIDUAL");
+    await page.getByLabel("Country code").fill("SA");
+    await page.getByLabel("City").fill("Riyadh");
+    await page.getByLabel("Projects").check();
+    await page.getByLabel("Academy").check();
+    await Promise.all([
+      page.waitForURL(/\/dashboard$/),
+      page.getByRole("button", { name: "Save and continue" }).click(),
+    ]);
+    await expect(page.locator(".user-chip")).toContainText(
+      "Canonical Auth User",
+    );
+
+    await Promise.all([
+      page.waitForURL(/\/auth\/login$/),
+      page.getByRole("button", { name: "Logout", exact: true }).click(),
+    ]);
+    await page.getByRole("link", { name: "Recover access" }).click();
+    await expect(page).toHaveURL(/\/auth\/forgot$/);
+    await page.getByLabel("Email address").fill(canonicalFlowEmail);
+    await page.getByRole("button", { name: "Send verification code" }).click();
+    await expect(page.locator(".auth-workflow__dev-code output")).toHaveText(
+      /^\d{6}$/,
+    );
+    await page.getByLabel("New password").fill(canonicalFlowReplacement);
+    await page.getByLabel("Confirm password").fill(canonicalFlowReplacement);
+    await page.getByRole("button", { name: "Confirm password" }).click();
+    await page.waitForURL(/\/auth\/login\?reset=success$/);
+    await expect(page.getByRole("status")).toContainText(
+      "Your password was updated",
+    );
+
+    await page.getByLabel("Email address").fill(canonicalFlowEmail);
+    await page
+      .getByLabel("Password", { exact: true })
+      .fill(canonicalFlowReplacement);
+    await page.getByLabel("Remember me").check();
+    await Promise.all([
+      page.waitForURL(/\/dashboard$/),
+      page.getByRole("button", { name: "Sign in", exact: true }).click(),
+    ]);
+    const remembered = await queryE2E<{ expiresAt: Date }>(
+      'SELECT MAX(s."expiresAt") AS "expiresAt" FROM "Session" s JOIN "User" u ON u.id = s."userId" WHERE u.email = $1',
+      [canonicalFlowEmail],
+    );
+    expect(new Date(remembered.rows[0]!.expiresAt).getTime()).toBeGreaterThan(
+      Date.now() + 29 * 24 * 60 * 60 * 1000,
+    );
+
+    await Promise.all([
+      page.waitForURL(/\/auth\/login$/),
+      page.getByRole("button", { name: "Logout", exact: true }).click(),
+    ]);
+    await page.goto("/account");
+    await expect(page).toHaveURL(/\/auth\/login\?next=%2Faccount$/);
   });
 
   test("rejects a wrong password and accepts the correct password", async ({
@@ -163,6 +259,72 @@ test.describe.serial("real authentication and server-side RBAC", () => {
       );
       expect(overflow, `${route} should not overflow horizontally`).toBe(false);
     }
+  });
+
+  test("rejects cross-origin authentication mutations", async ({ page }) => {
+    const requests = [
+      [
+        "/api/auth/login",
+        {
+          email: "user@example.test",
+          password: "Password-2026!",
+          remember: false,
+        },
+      ],
+      [
+        "/api/auth/register",
+        {
+          displayName: "User",
+          countryCode: "SA",
+          email: "user@example.test",
+          password: "Password-2026!",
+          locale: "en",
+          language: "en",
+        },
+      ],
+      ["/api/auth/forgot", { action: "request", email: "user@example.test" }],
+      ["/api/auth/logout", undefined],
+    ] as const;
+    for (const [route, data] of requests) {
+      const response = await page.request.post(route, {
+        data,
+        headers: { origin: "https://malicious.example.test" },
+      });
+      expect(response.status(), route).toBe(403);
+      await expect(response.json()).resolves.toMatchObject({
+        error: "INVALID_ORIGIN",
+      });
+    }
+    const spoofedProxy = await page.request.post("/api/auth/login", {
+      data: {
+        email: "user@example.test",
+        password: "Password-2026!",
+        remember: false,
+      },
+      headers: {
+        origin: "https://malicious.example.test",
+        "x-forwarded-host": "malicious.example.test",
+        "x-forwarded-proto": "https",
+      },
+    });
+    expect(spoofedProxy.status()).toBe(403);
+  });
+
+  test("rate limits repeated password recovery requests", async ({ page }) => {
+    const email = `e2e.recovery.limit.${process.env.E2E_RUN_ID}@example.test`;
+    let status = 0;
+    let retryAfter: string | undefined;
+    for (let attempt = 0; attempt < 5; attempt += 1) {
+      const response = await page.request.post("/api/auth/forgot", {
+        headers: { origin: "http://127.0.0.1:3101" },
+        data: { action: "request", email },
+      });
+      status = response.status();
+      retryAfter = response.headers()["retry-after"];
+      if (status === 429) break;
+    }
+    expect(status).toBe(429);
+    expect(retryAfter).toBeTruthy();
   });
 
   test("rate limits repeated login and register attempts", async ({ page }) => {

@@ -24,6 +24,8 @@ export async function getSoftwareCompany(organizationId: string, userId: string)
     where: { id: organizationId },
     include: {
       businessPrograms: { orderBy: { createdAt: "asc" } },
+      softwareBranches: { orderBy: [{ status: "asc" }, { name: "asc" }] },
+      softwareSettings: true,
       members: {
         include: { role: { select: { key: true, name: true } }, user: { include: { profile: true } } },
         orderBy: { createdAt: "asc" },

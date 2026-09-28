@@ -65,6 +65,11 @@ describe("marketing domain", () => {
     expect(performance.snapshot?.kpiProgress).toBe(50);
     expect(performance.snapshot?.pipelineValueMinor).toBe(1_800_000);
     expect(performance.snapshot?.pipelineReturnRatio).toBe(0.5);
+    expect(performance.snapshot?.allocatedBudgetPerLeadMinor).toBe(600_000);
+    expect(performance.snapshot?.allocatedBudgetPerConversionMinor).toBe(1_200_000);
+    expect(performance.snapshot?.allocationBasis).toBe("CAMPAIGN_BUDGET_NOT_ACTUAL_SPEND");
+    expect(performance.snapshot?.recordedLeadTrend.reduce((total, day) => total + day.leads, 0)).toBe(2);
+    expect(performance.snapshot?.externalUnavailable).toEqual(["REACH", "CLICKS", "IMPRESSIONS", "ACTUAL_SPEND", "ROAS"]);
     expect(performance.snapshot?.source).toBe("RECORDED_LEADS");
     expect(performance.snapshot?.externalMetricsAvailable).toBe(false);
   });

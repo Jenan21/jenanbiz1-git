@@ -8,17 +8,18 @@ function cleanOptional(value?: string) {
 
 export async function listSoftwareOperations(organizationId: string, userId: string) {
   await requireSoftwareMembership(organizationId, userId);
-  const [leads, products, movements, suppliers, purchaseOrders, posShifts, projects, entries] = await Promise.all([
+  const [leads, crmActivities, products, movements, suppliers, purchaseOrders, posShifts, projects, entries] = await Promise.all([
     db.crmLead.findMany({ where: { organizationId }, include: { customer: true }, orderBy: { updatedAt: "desc" }, take: 200 }),
+    db.auditLog.findMany({ where: { organizationId, action: { startsWith: "software.crm." } }, orderBy: { createdAt: "desc" }, take: 100, select: { id: true, action: true, entityId: true, metadata: true, createdAt: true } }),
     db.softwareProduct.findMany({ where: { organizationId }, orderBy: { updatedAt: "desc" }, take: 200 }),
     db.inventoryMovement.findMany({ where: { organizationId }, include: { product: { select: { name: true, sku: true } } }, orderBy: { occurredAt: "desc" }, take: 200 }),
     db.softwareSupplier.findMany({ where: { organizationId }, orderBy: { updatedAt: "desc" }, take: 200 }),
     db.purchaseOrder.findMany({ where: { organizationId }, include: { supplier: true, lines: { include: { product: true } } }, orderBy: { createdAt: "desc" }, take: 200 }),
-    db.posShift.findMany({ where: { organizationId }, include: { sales: { include: { receipts: true } } }, orderBy: { openedAt: "desc" }, take: 50 }),
-    db.project.findMany({ where: { organizationId }, select: { id: true, name: true, status: true, currentPhase: true, updatedAt: true }, orderBy: { updatedAt: "desc" }, take: 100 }),
+    db.posShift.findMany({ where: { organizationId }, include: { branch: { select: { id: true, code: true, name: true } }, sales: { include: { receipts: true } } }, orderBy: { openedAt: "desc" }, take: 50 }),
+    db.project.findMany({ where: { organizationId }, select: { id: true, name: true, status: true, currentPhase: true, currency: true, updatedAt: true, phases: { select: { id: true, title: true, type: true, status: true, sequence: true, startedAt: true, completedAt: true }, orderBy: { sequence: "asc" } }, members: { select: { id: true, role: true, user: { select: { profile: { select: { displayName: true } } } } }, orderBy: { createdAt: "asc" } }, financialPlans: { select: { version: true, inputs: true, baseCase: true, createdAt: true }, orderBy: { version: "desc" }, take: 1 } }, orderBy: { updatedAt: "desc" }, take: 100 }),
     db.financialEntry.findMany({ where: { organizationId }, orderBy: { occurredAt: "desc" }, take: 200 }),
   ]);
-  return { leads, products, movements, suppliers, purchaseOrders, posShifts, projects, entries };
+  return { leads, crmActivities, products, movements, suppliers, purchaseOrders, posShifts, projects: projects.map(({ financialPlans, ...project }) => ({ ...project, financialPlan: financialPlans[0] ?? null })), entries };
 }
 
 export async function createCrmLead(input: { contact?: string; currency?: string; customerId?: string; name: string; nextAction?: string; organizationId: string; source?: string; userId: string; valueMinor?: number }) {
@@ -110,11 +111,18 @@ export async function updatePurchaseOrderStatus(input: { orderId: string; organi
   });
 }
 
-export async function openPosShift(input: { openingCashMinor: number; organizationId: string; userId: string }) {
+export async function openPosShift(input: { branchId?: string; currency?: string; openingCashMinor: number; organizationId: string; userId: string }) {
   await requireSoftwareMembership(input.organizationId, input.userId);
+  const settings = await db.softwareSettings.findUnique({ where: { organizationId: input.organizationId }, select: { defaultBranchId: true, defaultCurrency: true } });
+  const branchId = input.branchId ?? settings?.defaultBranchId ?? undefined;
+  const currency = input.currency?.trim().toUpperCase() ?? settings?.defaultCurrency ?? "SAR";
+  if (branchId) {
+    const branch = await db.softwareBranch.findFirst({ where: { id: branchId, organizationId: input.organizationId, status: "ACTIVE" }, select: { id: true } });
+    if (!branch) throw new Error("Active POS branch not found");
+  }
   const openShift = await db.posShift.findFirst({ where: { organizationId: input.organizationId, status: PosShiftStatus.OPEN }, select: { id: true } });
   if (openShift) throw new Error("An open POS shift already exists");
-  return db.posShift.create({ data: { organizationId: input.organizationId, openingCashMinor: input.openingCashMinor, openedById: input.userId } });
+  return db.posShift.create({ data: { organizationId: input.organizationId, branchId, currency, openingCashMinor: input.openingCashMinor, openedById: input.userId } });
 }
 
 export async function recordPosSale(input: { customerId?: string; organizationId: string; productId: string; quantity: number; shiftId: string; taxRateBps?: number; userId: string }) {
@@ -127,6 +135,7 @@ export async function recordPosSale(input: { customerId?: string; organizationId
     ]);
     if (!shift) throw new Error("Open POS shift not found");
     if (!product) throw new Error("Product not found");
+    if (product.currency !== shift.currency) throw new Error("Product and POS shift currencies must match");
     if (input.customerId && !customer) throw new Error("Customer not found");
     if (product.stockQuantity < input.quantity) throw new Error("Insufficient inventory for POS sale");
     const subtotalMinor = input.quantity * product.priceMinor;

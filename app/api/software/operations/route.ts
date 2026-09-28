@@ -4,6 +4,7 @@ import { z } from "zod";
 import { hasValidOrigin } from "@/lib/auth/request";
 import { getCurrentUser } from "@/lib/auth/session";
 import { createOrganizationForUser } from "@/services/programs/organization-program-service";
+import { createSoftwareBranch, saveSoftwareSettings, updateSoftwareBranchStatus } from "@/services/software/company-service";
 import { createLeaveRequest, createPayrollRun, createPerformanceReview, createSoftwareEmployee, listSoftwareHr, postPayrollRun, recordAttendance, updateLeaveRequestStatus } from "@/services/software/hr-service";
 import { adjustInventory, closePosShift, createCrmLead, createPurchaseOrder, createSoftwareSupplier, listSoftwareOperations, openPosShift, recordPosSale, summarizeSoftwareOperations, updateCrmLeadStatus, updatePurchaseOrderStatus } from "@/services/software/operations-service";
 import { createSalesDocument, listSalesWorkspace, recordSoftwareReceipt, saveSoftwareCustomer, saveSoftwareProduct, summarizeSalesWorkspace, updateSalesDocumentStatus } from "@/services/software/sales-service";
@@ -16,6 +17,9 @@ const positiveMoney = z.number().int().positive().max(2_000_000_000);
 const optionalText = (max: number) => z.string().trim().max(max).optional();
 const commandSchema = z.discriminatedUnion("action", [
   z.object({ action: z.literal("createOrganization"), name: z.string().trim().min(2).max(160) }),
+  z.object({ action: z.literal("createBranch"), ...organizationId, code: z.string().trim().min(1).max(24).regex(/^[A-Za-z0-9_-]+$/), name: z.string().trim().min(2).max(160), countryCode: z.string().trim().length(2).optional(), city: optionalText(120), address: optionalText(500) }),
+  z.object({ action: z.literal("updateBranchStatus"), ...organizationId, branchId: cuid, status: z.enum(["ACTIVE", "INACTIVE"]) }),
+  z.object({ action: z.literal("saveSoftwareSettings"), ...organizationId, defaultBranchId: cuid.optional(), defaultCurrency: z.string().trim().length(3), taxRateBps: z.number().int().min(0).max(10_000), fiscalYearStartMonth: z.number().int().min(1).max(12), invoicePrefix: z.string().trim().min(1).max(12).regex(/^[A-Za-z0-9_-]+$/), allowNegativeInventory: z.boolean(), timezone: z.string().trim().min(1).max(80) }),
   z.object({ action: z.literal("saveCustomer"), ...organizationId, customerId: cuid.optional(), name: z.string().trim().min(2).max(160), email: optionalText(254), phone: optionalText(50), taxNumber: optionalText(80) }),
   z.object({ action: z.literal("saveProduct"), ...organizationId, productId: cuid.optional(), sku: z.string().trim().min(1).max(80), name: z.string().trim().min(2).max(160), description: optionalText(1000), priceMinor: money, costMinor: money, initialStock: z.number().int().min(0).max(1_000_000).optional(), reorderLevel: z.number().int().min(0).max(1_000_000).optional(), currency: z.string().trim().length(3).optional() }),
   z.object({ action: z.literal("createSalesDocument"), ...organizationId, customerId: cuid.optional(), kind: z.enum(["QUOTE", "ORDER", "INVOICE", "RETURN"]), currency: z.string().trim().length(3).optional(), dueAt: z.string().datetime().optional(), notes: optionalText(2000), lines: z.array(z.object({ productId: cuid.optional(), description: optionalText(500), quantity: z.number().int().positive().max(1_000_000), unitPriceMinor: money.optional(), taxRateBps: z.number().int().min(0).max(10_000).optional() })).min(1).max(50) }),
@@ -27,7 +31,7 @@ const commandSchema = z.discriminatedUnion("action", [
   z.object({ action: z.literal("createSupplier"), ...organizationId, name: z.string().trim().min(2).max(160), email: optionalText(254), phone: optionalText(50) }),
   z.object({ action: z.literal("createPurchase"), ...organizationId, supplierId: cuid.optional(), currency: z.string().trim().length(3).optional(), expectedAt: z.string().datetime().optional(), lines: z.array(z.object({ productId: cuid.optional(), description: optionalText(500), quantity: z.number().int().positive().max(1_000_000), unitCostMinor: money })).min(1).max(50) }),
   z.object({ action: z.literal("updatePurchaseStatus"), ...organizationId, orderId: cuid, status: z.enum(["DRAFT", "ORDERED", "RECEIVED", "CANCELLED"]) }),
-  z.object({ action: z.literal("openShift"), ...organizationId, openingCashMinor: money }),
+  z.object({ action: z.literal("openShift"), ...organizationId, branchId: cuid.optional(), currency: z.string().trim().length(3).optional(), openingCashMinor: money }),
   z.object({ action: z.literal("recordPosSale"), ...organizationId, shiftId: cuid, productId: cuid, customerId: cuid.optional(), quantity: z.number().int().positive().max(100_000), taxRateBps: z.number().int().min(0).max(10_000).optional() }),
   z.object({ action: z.literal("closeShift"), ...organizationId, shiftId: cuid, closingCashMinor: money }),
   z.object({ action: z.literal("createEmployee"), ...organizationId, employeeNumber: z.string().trim().min(1).max(80), name: z.string().trim().min(2).max(160), email: optionalText(254), roleTitle: z.string().trim().min(2).max(160), salaryMinor: money, currency: z.string().trim().length(3).optional(), hiredAt: z.string().datetime(), memberId: cuid.optional() }),
@@ -69,6 +73,9 @@ export async function POST(request: NextRequest) {
   try {
     const input = parsed.data;
     const result = input.action === "createOrganization" ? await createOrganizationForUser({ name: input.name, userId: user.id })
+      : input.action === "createBranch" ? await createSoftwareBranch({ ...input, userId: user.id })
+      : input.action === "updateBranchStatus" ? await updateSoftwareBranchStatus({ ...input, userId: user.id })
+      : input.action === "saveSoftwareSettings" ? await saveSoftwareSettings({ ...input, userId: user.id })
       : input.action === "saveCustomer" ? await saveSoftwareCustomer({ ...input, userId: user.id })
       : input.action === "saveProduct" ? await saveSoftwareProduct({ ...input, userId: user.id })
       : input.action === "createSalesDocument" ? await createSalesDocument({ ...input, dueAt: input.dueAt ? new Date(input.dueAt) : undefined, userId: user.id })
@@ -90,7 +97,7 @@ export async function POST(request: NextRequest) {
       : input.action === "createPayroll" ? await createPayrollRun({ ...input, periodStart: new Date(input.periodStart), periodEnd: new Date(input.periodEnd), userId: user.id })
       : input.action === "postPayroll" ? await postPayrollRun({ ...input, userId: user.id })
       : await createPerformanceReview({ ...input, userId: user.id });
-    const createdActions = new Set(["createOrganization", "saveCustomer", "saveProduct", "createSalesDocument", "recordReceipt", "createLead", "createSupplier", "createPurchase", "openShift", "recordPosSale", "createEmployee", "recordAttendance", "createLeave", "createPayroll", "createPerformance"]);
+    const createdActions = new Set(["createOrganization", "createBranch", "saveCustomer", "saveProduct", "createSalesDocument", "recordReceipt", "createLead", "createSupplier", "createPurchase", "openShift", "recordPosSale", "createEmployee", "recordAttendance", "createLeave", "createPayroll", "createPerformance"]);
     return NextResponse.json({ success: true, result }, { status: createdActions.has(input.action) ? 201 : 200 });
   } catch (error) {
     const message = error instanceof Error ? error.message : "Software command failed";

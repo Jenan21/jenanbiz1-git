@@ -89,7 +89,7 @@ npx playwright install chromium
 npm run test:e2e
 ```
 
-The authentication E2E suite exercises real registration, login failure and success, logout, protected dashboard access, USER denial from `/admin`, and ADMIN access. Run-scoped users are deleted in global teardown, including failure runs that reach teardown. Do not run E2E against a shared production database.
+The authentication E2E suite exercises real registration, onboarding, login failure and success, password recovery, logout, protected dashboard access, origin checks, rate limits, USER denial from `/admin`, and ADMIN access. Run-scoped users are deleted in global teardown, including failure runs that reach teardown. Do not run E2E against a shared production database.
 
 ## Initial SUPER_ADMIN bootstrap
 
@@ -105,13 +105,17 @@ Never place real values in Git. The command uses Argon2id, a serializable Postgr
 
 `login`, `register`, and sensitive project operations use a vendor-neutral `RateLimitProvider` contract. Development and tests default to the documented in-memory adapter. When `REDIS_URL` is configured, the application uses Redis with atomic increment and expiry semantics across instances. Production fails closed if no distributed provider is configured.
 
+## Password recovery delivery
+
+Development returns a local single-use recovery code for testing. Production sends the code through Resend when both `RESEND_API_KEY` and `AUTH_RECOVERY_EMAIL_FROM` are configured; `AUTH_RECOVERY_EMAIL_ENDPOINT` may override the API endpoint for a compatible approved provider. Responses never reveal whether an account exists. If no provider is configured, the interface reports that recovery delivery is unavailable. Provider failures are audited, the undelivered token is invalidated, and the public response remains neutral to prevent account enumeration.
+
 ## Security posture
 
 Session cookies are HttpOnly, SameSite=Lax, scoped to `/`, and Secure in production. Opaque session values are never stored directly in PostgreSQL, sessions have explicit expiry and are deleted on logout or expiry, passwords use Argon2id, validation is server-side, duplicate emails return a conflict, invalid login paths perform password verification against a dummy Argon2id hash, RBAC is enforced in server components, and security-relevant auth actions are audited without passwords or tokens.
 
 ## Production Operations
 
-`compose.yaml` provides PostgreSQL, Redis, migration, application, and scheduled PostgreSQL backup services. Set non-empty `POSTGRES_PASSWORD`, `REDIS_PASSWORD`, `AUTH_SECRET`, and `METRICS_TOKEN` values in the deployment environment, then run:
+`compose.yaml` provides PostgreSQL, Redis, migration, application, and scheduled PostgreSQL backup services. Set non-empty `POSTGRES_PASSWORD`, `REDIS_PASSWORD`, `AUTH_SECRET`, and `METRICS_TOKEN` values in the deployment environment. Set `ALLOW_PUBLIC_REGISTRATION=true` only when public account creation is intended, and configure the password-recovery email variables before production launch. Then run:
 
 ```bash
 docker compose up -d --build

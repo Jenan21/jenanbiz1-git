@@ -32,6 +32,21 @@ test.describe.serial("Jenan Software full flow", () => {
     const organizationResponse = await page.request.post("/api/software/operations", { headers: { origin }, data: { action: "createOrganization", name: "E2E Software Company" } });
     expect(organizationResponse.status()).toBe(201);
 
+    await page.goto("/software/company", { waitUntil: "domcontentloaded" });
+    await page.getByPlaceholder("Branch code").fill("RUH");
+    await page.getByPlaceholder("Branch name").fill("Riyadh HQ");
+    await page.getByPlaceholder("City").fill("Riyadh");
+    const branchResponse = page.waitForResponse((response) => response.url().endsWith("/api/software/operations") && response.request().method() === "POST");
+    await page.getByRole("button", { name: "Create branch" }).click();
+    expect((await branchResponse).status()).toBe(201);
+    await expect(page.locator(".software-company-branches__list")).toContainText("Riyadh HQ");
+    await page.getByLabel("Default branch").selectOption({ label: "RUH · Riyadh HQ" });
+    await page.getByLabel("Invoice prefix").fill("SALE");
+    const settingsResponse = page.waitForResponse((response) => response.url().endsWith("/api/software/operations") && response.request().method() === "POST");
+    await page.getByRole("button", { name: "Save settings" }).click();
+    expect((await settingsResponse).status()).toBe(200);
+    await expect(page.getByRole("status")).toContainText("Operating settings saved");
+
     await page.goto("/software/sales/customers", { waitUntil: "domcontentloaded" });
     await page.getByPlaceholder("Customer name").fill("E2E Customer");
     await page.getByPlaceholder("Email").fill("buyer@example.test");
@@ -39,6 +54,10 @@ test.describe.serial("Jenan Software full flow", () => {
     await page.getByRole("button", { name: "Save customer" }).click();
     expect((await customerResponse).status()).toBe(201);
     await expect(page.locator(".software-table")).toContainText("E2E Customer");
+    await expect(page.locator(".software-route-outputs")).toContainText("1 records");
+    const customerExport = page.waitForEvent("download");
+    await page.locator(".software-route-outputs").getByRole("button", { name: "CSV" }).click();
+    expect((await customerExport).suggestedFilename()).toBe("jenan-customers.csv");
 
     await page.goto("/software/sales/products", { waitUntil: "domcontentloaded" });
     await page.getByPlaceholder("SKU").fill("E2E-SKU");
@@ -103,6 +122,45 @@ test.describe.serial("Jenan Software full flow", () => {
     await page.goto("/software/accounting", { waitUntil: "domcontentloaded" });
     await expect(page.locator(".software-table")).toContainText("Receipt");
     await expect(page.locator(".software-table")).toContainText("Payroll");
+    await expect(page.locator('[data-accounting-statement="income"]')).toContainText("SAR 230.00");
+    await expect(page.locator('[data-accounting-statement="income"]')).toContainText("SAR 12,000.00");
+    await page.getByRole("button", { name: "Balance sheet" }).click();
+    await expect(page.locator('[data-accounting-statement="balance"]')).toContainText("Inventory at cost");
+    await expect(page.locator('[data-accounting-statement="balance"]')).toContainText("Balance sheet incomplete");
+    await page.getByRole("button", { name: "Cash flow" }).click();
+    await expect(page.locator('[data-accounting-statement="cash"]')).toContainText("Invoice receipts");
+    await expect(page.locator('[data-accounting-statement="cash"]')).toContainText("Payroll");
+
+    await page.goto("/software/crm", { waitUntil: "domcontentloaded" });
+    await page.getByPlaceholder("Opportunity name").fill("E2E Pipeline");
+    await page.getByPlaceholder("Expected value").fill("1000");
+    await page.getByPlaceholder("Next action").fill("Discovery call");
+    const leadResponse = page.waitForResponse((response) => response.url().endsWith("/api/software/operations") && response.request().method() === "POST");
+    await page.getByRole("button", { name: "Add lead" }).click();
+    expect((await leadResponse).status()).toBe(201);
+    await expect(page.locator('[data-software-analytics="crm"]')).toContainText("SAR 100.00");
+    await expect(page.locator('[data-software-analytics="crm"]')).toContainText("Lead created");
+
+    await page.goto("/software/inventory", { waitUntil: "domcontentloaded" });
+    await expect(page.locator('[data-software-analytics="inventory"]')).toContainText("Inventory value at cost");
+    await expect(page.locator('[data-software-analytics="inventory"]')).toContainText("E2E Product");
+
+    await page.goto("/software/purchases", { waitUntil: "domcontentloaded" });
+    await expect(page.locator('[data-software-analytics="purchases"]')).toContainText("Supplier invoices");
+    await expect(page.locator('[data-software-analytics="purchases"]')).toContainText("NOT_CONNECTED");
+
+    await page.goto("/software/pos", { waitUntil: "domcontentloaded" });
+    await expect(page.locator('[data-software-analytics="pos"]')).toContainText("Riyadh HQ");
+
+    await page.goto("/software/projects", { waitUntil: "domcontentloaded" });
+    await expect(page.locator('[data-software-analytics="projects"]')).toContainText("Work phases, time, budget, and team");
+
+    await page.goto("/software/reports", { waitUntil: "domcontentloaded" });
+    await expect(page.locator('[data-report-section="sales"]')).toContainText("Sales report");
+    for (const report of ["Finance", "HR", "Inventory", "CRM", "Projects"]) {
+      await page.getByRole("button", { name: report, exact: true }).click();
+      await expect(page.locator(".software-unified-reports")).toHaveAttribute("data-report-section", report.toLocaleLowerCase());
+    }
 
     for (const route of SOFTWARE_FLOW_ROUTES) {
       const response = await page.goto(route.route, { waitUntil: "domcontentloaded" });
@@ -118,7 +176,7 @@ test.describe.serial("Jenan Software full flow", () => {
 
     for (const viewport of acceptanceViewports) {
       await page.setViewportSize(viewport);
-      for (const route of ["/software", "/software/sales/invoices", "/software/hr/payroll", "/software/reports"]) {
+      for (const route of ["/software", "/software/sales/invoices", "/software/accounting", "/software/inventory", "/software/crm", "/software/projects", "/software/pos", "/software/purchases", "/software/company", "/software/hr/payroll", "/software/reports"]) {
         expect((await page.goto(route, { waitUntil: "domcontentloaded" }))?.status()).toBe(200);
         const layout = await page.evaluate(() => ({ scrollWidth: document.documentElement.scrollWidth, viewportWidth: document.documentElement.clientWidth }));
         expect(layout.scrollWidth, `${route} at ${viewport.width}x${viewport.height}`).toBeLessThanOrEqual(layout.viewportWidth + 1);

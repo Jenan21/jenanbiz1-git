@@ -290,6 +290,55 @@
   box-shadow: 0 0 0 3px color-mix(in srgb, var(--brand) 10%, transparent);
 }
 
+.talent-flow__filters--advanced {
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  align-items: center;
+}
+
+.talent-flow__filters--advanced > .is-search {
+  grid-column: span 2;
+}
+
+.talent-flow__filters--advanced > input {
+  border: 1px solid var(--border);
+  background: var(--deep);
+}
+
+.talent-flow__filters--advanced > footer {
+  grid-column: 1 / -1;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding-top: 9px;
+  border-top: 1px solid color-mix(in srgb, var(--border) 52%, transparent);
+}
+
+.talent-flow__filters--advanced > footer span {
+  color: var(--muted);
+  font-size: 0.7rem;
+}
+
+.talent-flow__filters--advanced > footer button {
+  min-height: 34px;
+  padding: 6px 9px;
+  border: 1px solid color-mix(in srgb, var(--brand) 40%, var(--border));
+  border-radius: 5px;
+  color: var(--brand);
+  background: color-mix(in srgb, var(--brand) 6%, transparent);
+}
+
+@media (max-width: 560px) {
+  .talent-flow__filters--advanced,
+  .talent-flow__filters--advanced > .is-search {
+    grid-template-columns: 1fr;
+  }
+
+  .talent-flow__filters--advanced > .is-search {
+    grid-column: auto;
+  }
+}
+
 .talent-job-grid,
 .talent-profile-grid {
   display: grid;
@@ -436,6 +485,71 @@
   display: grid;
   grid-template-columns: minmax(0, 1.5fr) minmax(240px, 0.7fr);
   gap: 14px;
+}
+
+.talent-job-detail > .talent-job-detail__terms {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.talent-job-detail__terms > div {
+  min-width: 0;
+  padding: 14px;
+  border-inline-start: 3px solid color-mix(in srgb, var(--brand) 62%, var(--border));
+  background: color-mix(in srgb, var(--brand) 5%, transparent);
+}
+
+.talent-job-detail__terms h3,
+.talent-job-detail__terms p {
+  margin: 0;
+}
+
+.talent-screening-questions {
+  min-width: 0;
+  display: grid;
+  gap: 10px;
+  margin: 0;
+  padding: 14px;
+  border: 1px solid color-mix(in srgb, var(--brand) 32%, var(--border));
+  border-radius: 7px;
+}
+
+.talent-screening-questions legend {
+  padding-inline: 6px;
+  color: var(--brand);
+  font-size: 0.72rem;
+  font-weight: 850;
+}
+
+.talent-screening-questions label {
+  display: grid;
+  gap: 6px;
+}
+
+.talent-screening-questions textarea {
+  min-height: 82px;
+}
+
+.talent-candidate-detail > .talent-candidate-answers {
+  grid-template-columns: 1fr;
+  gap: 8px;
+  padding: 14px;
+  border-block: 1px solid color-mix(in srgb, var(--border) 56%, transparent);
+}
+
+.talent-candidate-answers h3 {
+  margin: 0 0 4px;
+}
+
+.talent-candidate-answers article {
+  display: grid;
+  gap: 5px;
+  padding: 10px;
+  border-inline-start: 3px solid var(--brand);
+  background: color-mix(in srgb, var(--deep) 40%, transparent);
+}
+
+.talent-candidate-answers article p {
+  margin: 0;
 }
 
 .talent-job-detail aside,
@@ -712,6 +826,34 @@
   gap: 18px;
 }
 
+.talent-report > header > div:last-child {
+  display: flex;
+  gap: 7px;
+}
+
+.talent-report > header button {
+  min-height: 40px;
+  padding: 8px 11px;
+  border: 1px solid color-mix(in srgb, var(--brand) 44%, var(--border));
+  border-radius: 5px;
+  color: var(--brand);
+  background: color-mix(in srgb, var(--brand) 6%, transparent);
+}
+
+.talent-report__source {
+  display: grid;
+  gap: 4px;
+  padding: 12px 14px;
+  border-inline-start: 3px solid #f4c86a;
+  background: color-mix(in srgb, #f4c86a 5%, transparent);
+}
+
+.talent-report__source span {
+  color: var(--muted);
+  font-size: 0.7rem;
+  line-height: 1.6;
+}
+
 .talent-report__pipeline {
   display: grid;
   grid-template-columns: repeat(5, minmax(0, 1fr));
@@ -720,6 +862,7 @@
 
 .talent-report__pipeline article {
   display: grid;
+  grid-template-rows: auto 8px auto;
   gap: 9px;
   padding: 13px;
   border: 1px solid color-mix(in srgb, var(--border) 60%, transparent);
@@ -727,8 +870,196 @@
   background: color-mix(in srgb, var(--deep) 44%, transparent);
 }
 
+.talent-report__pipeline article > i {
+  width: var(--talent-pipeline);
+  max-width: 100%;
+  height: 8px;
+  display: block;
+  background: linear-gradient(90deg, var(--brand), var(--success));
+}
+
 .talent-report__pipeline article > strong {
   font-size: 1.5rem;
+}
+
+.talent-report__postings,
+.talent-report__decisions {
+  min-width: 0;
+  display: grid;
+  gap: 12px;
+  padding-top: 14px;
+  border-top: 1px solid color-mix(in srgb, var(--border) 58%, transparent);
+}
+
+.talent-report__postings > header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.talent-report__postings h3,
+.talent-report__decisions h3 {
+  margin: 0;
+}
+
+.talent-report__postings > header small {
+  color: var(--muted);
+}
+
+.talent-report__decisions article {
+  min-width: 0;
+  display: grid;
+  grid-template-columns: minmax(150px, 0.8fr) minmax(180px, 1.2fr) auto;
+  align-items: center;
+  gap: 10px;
+}
+
+.talent-report__decisions article > span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.talent-report__decisions article > i {
+  width: var(--talent-decision);
+  max-width: 100%;
+  height: 8px;
+  display: block;
+  background: linear-gradient(90deg, #f4c86a, var(--brand));
+}
+
+.talent-report__decisions article > strong {
+  color: var(--brand);
+  font-size: 0.72rem;
+}
+
+.talent-conversation {
+  min-width: 0;
+  display: grid;
+  gap: 12px;
+  padding: 16px;
+  border: 1px solid color-mix(in srgb, var(--brand) 28%, var(--border));
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--deep) 44%, transparent);
+}
+
+.talent-conversation > header {
+  display: flex;
+  align-items: end;
+  justify-content: space-between;
+  gap: 12px;
+  padding-bottom: 10px;
+  border-bottom: 1px solid color-mix(in srgb, var(--border) 52%, transparent);
+}
+
+.talent-conversation > header > div {
+  display: grid;
+  gap: 3px;
+}
+
+.talent-conversation > header span {
+  color: var(--brand);
+  font-size: 0.65rem;
+  font-weight: 900;
+}
+
+.talent-conversation h3,
+.talent-conversation p {
+  margin: 0;
+}
+
+.talent-conversation > header small,
+.talent-conversation time {
+  color: var(--muted);
+  font-size: 0.65rem;
+}
+
+.talent-conversation__messages {
+  max-height: 360px;
+  display: grid;
+  gap: 8px;
+  overflow-y: auto;
+}
+
+.talent-conversation__messages > article {
+  width: min(82%, 620px);
+  display: grid;
+  gap: 6px;
+  padding: 11px;
+  border-inline-start: 3px solid var(--border);
+  background: color-mix(in srgb, var(--surface) 62%, transparent);
+}
+
+.talent-conversation__messages > article.is-mine {
+  margin-inline-start: auto;
+  border-inline-start-color: var(--brand);
+  background: color-mix(in srgb, var(--brand) 7%, var(--surface));
+}
+
+.talent-conversation__messages article > header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.talent-conversation__messages article p {
+  color: var(--text);
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.talent-conversation__empty,
+.talent-conversation__closed {
+  min-height: 86px;
+  display: grid;
+  place-items: center;
+  align-content: center;
+  gap: 7px;
+  color: var(--muted);
+  text-align: center;
+}
+
+.talent-conversation__empty .icon,
+.talent-conversation__closed .icon {
+  color: var(--brand);
+}
+
+.talent-conversation > form {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: end;
+  gap: 8px;
+}
+
+.talent-conversation textarea {
+  min-height: 74px;
+  padding: 9px 11px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  color: var(--text);
+  resize: vertical;
+  background: var(--deep);
+}
+
+.talent-conversation > form .button {
+  min-height: 44px;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+@media (max-width: 560px) {
+  .talent-conversation > header,
+  .talent-conversation > form {
+    display: grid;
+    grid-template-columns: 1fr;
+  }
+
+  .talent-conversation__messages > article {
+    width: 92%;
+  }
 }
 
 @media (max-width: 950px) {
@@ -828,6 +1159,25 @@
     grid-template-columns: 1fr;
     align-items: start;
   }
+
+  .talent-report > header,
+  .talent-report__postings > header {
+    display: grid;
+  }
+
+  .talent-report > header > div:last-child {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .talent-report__decisions article {
+    grid-template-columns: 1fr auto;
+  }
+
+  .talent-report__decisions article > i {
+    grid-column: 1 / -1;
+    grid-row: 2;
+  }
 }
 
 @media print {
@@ -845,7 +1195,7 @@
     box-shadow: none;
   }
 
-  .talent-report .button {
+  .talent-report button {
     display: none;
   }
 }

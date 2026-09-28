@@ -46,10 +46,10 @@ export const STUDIO_ROUTE_KINDS: Partial<Record<string, StudioDocumentKind>> = {
 };
 
 export function createBlankStudioContent(kind: StudioDocumentKind): Record<string, unknown> {
-  if (kind === "DOCS") return { body: "", template: "blank" };
+  if (kind === "DOCS") return { body: "", footer: "", header: "", imageData: "", imageHeight: 0, imageName: "", imageWidth: 0, pageSize: "A4", style: "executive", template: "blank" };
   if (kind === "SHEETS") return { rows: [["Item", "Value", "Owner", "Status"], ["", "", "", ""], ["", "", "", ""]] };
-  if (kind === "PRESENTATION") return { slides: [{ title: "", body: "" }], selectedSlide: 0 };
-  if (kind === "LOGO") return { name: "", tagline: "", initials: "", primary: "#16d9c5", accent: "#f4c86a", style: "geometric" };
-  if (kind === "LETTERHEAD") return { company: "", address: "", contact: "", footer: "", accent: "#16d9c5" };
-  return { name: "", role: "", summary: "", experience: "", education: "", skills: "", accent: "#16d9c5" };
+  if (kind === "PRESENTATION") return { slides: [{ title: "", body: "", layout: "title" }], selectedSlide: 0, accent: "#16d9c5", theme: "midnight" };
+  if (kind === "LOGO") return { name: "", tagline: "", industry: "", initials: "", primary: "#16d9c5", accent: "#f4c86a", style: "geometric" };
+  if (kind === "LETTERHEAD") return { company: "", address: "", contact: "", footer: "", accent: "#16d9c5", pageSize: "A4", logoData: "" };
+  return { name: "", role: "", summary: "", experience: "", education: "", skills: "", accent: "#16d9c5", template: "executive" };
 }

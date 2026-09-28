@@ -28,7 +28,7 @@ async function createPdf(label: string) {
 }
 
 test.describe.serial("Jenan Studio full flow", () => {
-  test.setTimeout(240_000);
+  test.setTimeout(600_000);
 
   test.beforeAll(async () => {
     await cleanE2EIdentities();
@@ -50,6 +50,15 @@ test.describe.serial("Jenan Studio full flow", () => {
     await expect(page.locator(".studio-editor--docs")).toBeVisible();
     await page.getByLabel("Project title").fill("E2E operations memo");
     await page.getByLabel("Document content").fill("Version one: approved operating direction.");
+    await page.getByLabel("Document header").fill("Verified operations");
+    await page.getByLabel("Document footer").fill("Controlled document");
+    await page.getByLabel("Document style").selectOption("editorial");
+    await expect(page.locator(".studio-paper")).toHaveClass(/studio-paper--editorial/);
+    await expect(page.locator(".studio-paper > header")).toHaveText("Verified operations");
+    await expect(page.locator(".studio-paper > footer")).toHaveText("Controlled document");
+    const docxDownload = page.waitForEvent("download");
+    await page.getByRole("button", { name: "DOCX", exact: true }).click();
+    expect((await docxDownload).suggestedFilename()).toBe("E2E operations memo.docx");
     const createResponse = page.waitForResponse((response) => response.url().endsWith("/api/studio/documents") && response.request().method() === "POST");
     await page.getByRole("button", { name: "Save version" }).click();
     expect((await createResponse).status()).toBe(201);
@@ -77,9 +86,34 @@ test.describe.serial("Jenan Studio full flow", () => {
     await page.goto("/studio/sheets", { waitUntil: "domcontentloaded" });
     await page.getByLabel("Project title").fill("E2E sheet");
     await page.getByLabel("Cell 2-1").fill("Verified row");
+    await page.getByLabel("Cell 2-2").fill("10");
+    await page.getByLabel("Cell 3-2").fill("=B2*2");
+    await expect(page.locator(".studio-sheet-grid td").filter({ has: page.getByLabel("Cell 3-2") }).locator("small")).toHaveText("20");
+    await expect(page.locator(".studio-sheet-kpis")).toContainText("30");
+    await expect(page.locator(".studio-sheet-kpis")).toContainText("15");
+    await page.getByLabel("Filter column 1").selectOption("0");
+    await page.getByLabel("Filter value 1").fill("Verified");
+    await expect(page.locator(".studio-sheet-grid tr")).toHaveCount(2);
+    await expect(page.locator(".studio-sheet-kpis")).toContainText("1");
     const csvDownload = page.waitForEvent("download");
     await page.getByRole("button", { name: "CSV", exact: true }).click();
     expect((await csvDownload).suggestedFilename()).toBe("E2E sheet.csv");
+    const xlsxDownload = page.waitForEvent("download");
+    await page.getByRole("button", { name: "XLSX", exact: true }).click();
+    expect((await xlsxDownload).suggestedFilename()).toBe("E2E sheet.xlsx");
+
+    await page.goto("/studio/presentations", { waitUntil: "domcontentloaded" });
+    await page.getByLabel("Project title").fill("E2E presentation");
+    await page.getByLabel("Slide title").fill("Verified operations");
+    await page.getByLabel("Slide content").fill("Evidence, execution, and measurable outcomes.");
+    await page.getByLabel("Slide layout").selectOption("statement");
+    await page.getByRole("button", { name: "Paper brief" }).click();
+    await expect(page.locator(".studio-slide")).toHaveClass(/studio-slide--theme-paper/);
+    await page.getByLabel("Slide chart data").fill("Q1:20,Q2:35");
+    await expect(page.locator(".studio-slide__chart > span")).toHaveCount(2);
+    const pptxDownload = page.waitForEvent("download");
+    await page.getByRole("button", { name: "PPTX", exact: true }).click();
+    expect((await pptxDownload).suggestedFilename()).toBe("E2E presentation.pptx");
 
     await page.goto("/studio/logo", { waitUntil: "domcontentloaded" });
     await page.getByLabel("Project title").fill("E2E identity");
@@ -88,6 +122,9 @@ test.describe.serial("Jenan Studio full flow", () => {
     const pngDownload = page.waitForEvent("download");
     await page.getByRole("button", { name: "PNG", exact: true }).click();
     expect((await pngDownload).suggestedFilename()).toBe("E2E identity.png");
+    const svgDownload = page.waitForEvent("download");
+    await page.getByRole("button", { name: "SVG", exact: true }).click();
+    expect((await svgDownload).suggestedFilename()).toBe("E2E identity.svg");
 
     await page.goto("/studio/pdf/editor", { waitUntil: "domcontentloaded" });
     const mergeForm = page.locator(".studio-pdf-editor form").filter({ hasText: "Merge files" });
@@ -95,10 +132,31 @@ test.describe.serial("Jenan Studio full flow", () => {
       { name: "studio-one.pdf", mimeType: "application/pdf", buffer: await createPdf("Studio one") },
       { name: "studio-two.pdf", mimeType: "application/pdf", buffer: await createPdf("Studio two") },
     ]);
+    await expect(page.locator(".studio-pdf-preview__pages li")).toHaveCount(2);
+    await expect(page.locator(".studio-pdf-preview__stage object")).toHaveAttribute("data", /^blob:/);
+    await expect(page.locator(".studio-pdf-preview__plan")).toContainText("Merge PDF");
     const pdfDownload = page.waitForEvent("download");
     await mergeForm.getByRole("button", { name: "Merge and download" }).click();
     expect((await pdfDownload).suggestedFilename()).toBe("jenan-merged.pdf");
     await expect(page.getByRole("status")).toContainText("created and downloaded");
+    const advancedForm = page.locator(".studio-pdf-advanced");
+    await advancedForm.getByLabel("PDF operation").selectOption("rotate");
+    await advancedForm.locator('input[type="file"]').setInputFiles({ name: "studio-rotate.pdf", mimeType: "application/pdf", buffer: await createPdf("Rotate me") });
+    const rotateDownload = page.waitForEvent("download");
+    await advancedForm.getByRole("button", { name: "Process and download" }).click();
+    expect((await rotateDownload).suggestedFilename()).toBe("jenan-rotate.pdf");
+
+    await page.goto("/studio/pdf", { waitUntil: "domcontentloaded" });
+    await expect(page.locator(".studio-pdf-catalog__signals article")).toHaveCount(4);
+    await expect(page.locator(".studio-tool-card")).toHaveCount(11);
+    await expect(page.locator(".studio-pdf-output")).toContainText("PDF");
+    await expect(page.locator(".studio-pdf-catalog__action").getByRole("link")).toHaveAttribute("href", "/studio/pdf/editor");
+    await expect(page.getByRole("link", { name: /Redaction/ })).toBeVisible();
+
+    const expectedOutputs = new Map([
+      ["dashboard", "NONE"], ["pdf", "PDF"], ["pdf-editor", "PDF"], ["docs", "DOCX,PRINT_PDF"], ["sheets", "XLSX,CSV,PRINT_PDF"],
+      ["presentations", "PPTX,PRINT_PDF"], ["logo", "PNG,SVG,PRINT_PDF"], ["letterhead", "DOCX,PRINT_PDF"], ["cv", "PRINT_PDF"], ["history", "VERSIONING"],
+    ]);
 
     for (const route of STUDIO_FLOW_ROUTES) {
       const response = await page.goto(route.href, { waitUntil: "domcontentloaded" });
@@ -106,7 +164,7 @@ test.describe.serial("Jenan Studio full flow", () => {
       await expect(page.locator(".studio-flow")).toBeVisible();
       await expect(page.locator(".studio-flow")).toHaveAttribute("data-studio-route", route.href);
       await expect(page.locator(".studio-flow")).toHaveAttribute("data-studio-tool", route.id);
-      await expect(page.locator(".studio-flow")).not.toHaveAttribute("data-studio-output", /DOCX|XLSX|PPTX/);
+      await expect(page.locator(".studio-flow")).toHaveAttribute("data-studio-output", expectedOutputs.get(route.id)!);
       await expect(page.locator(".studio-flow__nav a.is-active")).toHaveAttribute("href", route.href);
       const layout = await page.evaluate(() => ({ scrollWidth: document.documentElement.scrollWidth, viewportWidth: document.documentElement.clientWidth }));
       expect(layout.scrollWidth, route.href).toBeLessThanOrEqual(layout.viewportWidth + 1);
@@ -114,10 +172,10 @@ test.describe.serial("Jenan Studio full flow", () => {
 
     for (const viewport of acceptanceViewports) {
       await page.setViewportSize(viewport);
-      for (const route of ["/studio", "/studio/docs", "/studio/sheets", "/studio/history"]) {
-        expect((await page.goto(route, { waitUntil: "domcontentloaded" }))?.status()).toBe(200);
+      for (const route of STUDIO_FLOW_ROUTES) {
+        expect((await page.goto(route.href, { waitUntil: "domcontentloaded" }))?.status()).toBe(200);
         const layout = await page.evaluate(() => ({ scrollWidth: document.documentElement.scrollWidth, viewportWidth: document.documentElement.clientWidth }));
-        expect(layout.scrollWidth, `${route} at ${viewport.width}x${viewport.height}`).toBeLessThanOrEqual(layout.viewportWidth + 1);
+        expect(layout.scrollWidth, `${route.href} at ${viewport.width}x${viewport.height}`).toBeLessThanOrEqual(layout.viewportWidth + 1);
       }
     }
   });

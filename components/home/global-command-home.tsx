@@ -112,7 +112,7 @@ export function GlobalCommandHome({
           </nav>
           <div className="global-home__tools">
             <Link className="global-home__tool-icon" href="/market" aria-label={ar ? "البحث" : "Search"}><Icon name="search" /></Link>
-            <Link className="global-home__tool-icon" href="/login" aria-label={ar ? "الإشعارات" : "Notifications"}><Icon name="bell" /></Link>
+            <Link className="global-home__tool-icon" href="/auth/login" aria-label={ar ? "الإشعارات" : "Notifications"}><Icon name="bell" /></Link>
             <LanguageSwitcher locale={locale} label={ar ? "العربية" : "English"} showChevron />
           </div>
         </header>
@@ -174,7 +174,7 @@ export function GlobalCommandHome({
           ["brain", ar ? "ذكاء اصطناعي متقدم" : "Advanced AI", ar ? "يعمل من أجلك" : "Working for you"],
         ] as const).map(([icon, title, note]) => <article key={title}><Icon name={icon} /><span><strong>{title}</strong><small>{note}</small></span></article>)}</section>
 
-        <footer className="global-home__footer"><span className="global-home__footer-brand"><b>Jenan <em>Pro</em></b><small>Business Without Limits</small></span><nav><Link href="/benefits">{ar ? "المزايا" : "Benefits"}</Link><Link href="/pricing">{ar ? "الباقات" : "Plans"}</Link><Link href="/login">{ar ? "تسجيل الدخول" : "Sign in"}</Link></nav><span>{ar ? "© 2026 منصة جنان برو. جميع الحقوق محفوظة." : "© 2026 Jenan Pro. All rights reserved."}</span></footer>
+        <footer className="global-home__footer"><span className="global-home__footer-brand"><b>Jenan <em>Pro</em></b><small>Business Without Limits</small></span><nav><Link href="/benefits">{ar ? "المزايا" : "Benefits"}</Link><Link href="/pricing">{ar ? "الباقات" : "Plans"}</Link><Link href="/auth/login">{ar ? "تسجيل الدخول" : "Sign in"}</Link></nav><span>{ar ? "© 2026 منصة جنان برو. جميع الحقوق محفوظة." : "© 2026 Jenan Pro. All rights reserved."}</span></footer>
       </div>
     </main>
   );

@@ -55,6 +55,8 @@ test.describe.serial("Jenan Marketing full flow", () => {
 
     await page.goto(`/marketing/campaign/sample?campaign=${campaignId}`, { waitUntil: "domcontentloaded" });
     await expect(page.locator(".marketing-campaign-detail")).toContainText("External channel provider: not connected");
+    await expect(page.locator(".marketing-flow__signals--six > article")).toHaveCount(6);
+    await expect(page.locator(".marketing-metric--unavailable")).toHaveCount(2);
     const confirmResponse = page.waitForResponse((response) => response.url().endsWith("/api/marketing") && response.request().method() === "POST");
     await page.getByRole("button", { name: "Internal confirm and assign" }).click();
     expect((await confirmResponse).status()).toBe(200);
@@ -87,7 +89,11 @@ test.describe.serial("Jenan Marketing full flow", () => {
 
     await page.goto("/marketing/analytics", { waitUntil: "domcontentloaded" });
     await expect(page.locator(".marketing-analytics")).toContainText("Recorded conversions");
-    await expect(page.locator(".marketing-analytics")).toContainText("Unavailable");
+    await expect(page.locator(".marketing-efficiency")).toContainText("Allocated per lead");
+    await expect(page.locator(".marketing-efficiency")).toContainText("Not actual CAC/CPL");
+    await expect(page.locator(".marketing-trend")).toContainText("Recorded lead trend");
+    await expect(page.locator(".marketing-external-state")).toContainText("Actual spend");
+    await expect(page.locator(".marketing-external-state")).toContainText("ROAS");
     const refreshed = await (await page.request.post("/api/marketing", { headers: { origin }, data: { action: "refreshPerformance", campaignId } })).json();
     expect(refreshed.result.snapshot.externalMetricsAvailable).toBe(false);
     expect(refreshed.result.snapshot.source).toBe("RECORDED_LEADS");
@@ -95,7 +101,10 @@ test.describe.serial("Jenan Marketing full flow", () => {
 
     await page.goto(`/marketing/report/sample?campaign=${campaignId}`, { waitUntil: "domcontentloaded" });
     await expect(page.locator(".marketing-report")).toContainText("Pipeline-to-budget ratio");
-    await expect(page.locator(".marketing-report")).toContainText("only print/PDF is supported");
+    await expect(page.locator(".marketing-report")).toContainText("Channels");
+    await expect(page.locator(".marketing-report__recommendations")).toContainText("Recommendations");
+    await expect(page.getByRole("button", { name: "Share" })).toBeDisabled();
+    await expect(page.getByRole("button", { name: "Email" })).toBeDisabled();
 
     for (const definition of MARKETING_FLOW_ROUTES) {
       const suffix = definition.id === "campaign-detail" || definition.id === "report" ? `?campaign=${campaignId}` : "";
