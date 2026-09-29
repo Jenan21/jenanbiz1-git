@@ -259,10 +259,12 @@ export type DivisionDetail = NonNullable<
 export function DivisionWorkspace({
   detail,
   locale,
+  userId,
   userLabel,
 }: {
   detail: DivisionDetail;
   locale: Locale;
+  userId: string;
   userLabel: string;
 }) {
   const ar = locale === "ar";
@@ -276,6 +278,7 @@ export function DivisionWorkspace({
         locale={locale}
         module={detail.module}
         service={detail.division}
+        userId={userId}
         userLabel={userLabel}
       />
     );

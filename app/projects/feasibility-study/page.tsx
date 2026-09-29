@@ -1,20 +1,21 @@
 import { notFound } from "next/navigation";
 
-import { ProjectsAnalysisCinematic } from "@/components/source/projects-analysis-cinematic";
+import { ProjectsFeasibilityCinematic } from "@/components/source/projects-feasibility-cinematic";
 import { requireUser } from "@/lib/auth/session";
 import { getRequestDictionary } from "@/lib/i18n/server";
 import { findPlatformService } from "@/lib/platform/catalog";
 
-export default async function ProjectsAnalysisReviewPage() {
-  const [{ locale }, user] = await Promise.all([
+export default async function ProjectFeasibilityPage() {
+  const [match, { locale }, user] = await Promise.all([
+    findPlatformService("projects", "feasibility-study"),
     getRequestDictionary(),
-    requireUser("/projects/analysis"),
+    requireUser("/projects/feasibility-study"),
   ]);
-  const match = await findPlatformService("projects", "analysis");
+
   if (!match) notFound();
 
   return (
-    <ProjectsAnalysisCinematic
+    <ProjectsFeasibilityCinematic
       locale={locale}
       module={match.module}
       service={match.service}
