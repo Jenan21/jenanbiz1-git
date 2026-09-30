@@ -1,9 +1,10 @@
-import { describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import { NextRequest } from "next/server";
 import { hasValidOrigin } from "@/lib/auth/request";
 
 describe("hasValidOrigin", () => {
   it("accepts the public forwarded origin", () => {
+    vi.stubEnv("NEXT_PUBLIC_APP_URL", "https://app.example.com");
     const request = new NextRequest("http://internal:3000/api/auth/login", {
       headers: {
         origin: "https://app.example.com",
@@ -24,4 +25,8 @@ describe("hasValidOrigin", () => {
     });
     expect(hasValidOrigin(request)).toBe(false);
   });
+});
+
+afterEach(() => {
+  vi.unstubAllEnvs();
 });

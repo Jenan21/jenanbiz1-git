@@ -9,11 +9,20 @@ jobs:
   readiness:
     runs-on: ubuntu-latest
     steps:
+      - name: Explain skipped readiness check
+        if: ${{ vars.PRODUCTION_READINESS_URL == '' }}
+        run: |
+          echo "::notice::Production readiness check skipped because PRODUCTION_READINESS_URL is not configured."
+          {
+            echo "## Production readiness check skipped"
+            echo ""
+            echo 'Set the repository variable `PRODUCTION_READINESS_URL` to the public readiness endpoint in Settings → Secrets and variables → Actions → Variables.'
+          } >> "$GITHUB_STEP_SUMMARY"
       - name: Check public readiness
+        if: ${{ vars.PRODUCTION_READINESS_URL != '' }}
         env:
           PRODUCTION_READINESS_URL: ${{ vars.PRODUCTION_READINESS_URL }}
         run: |
-          test -n "$PRODUCTION_READINESS_URL"
           curl --fail --silent --show-error --location \
             --connect-timeout 10 \
             --max-time 30 \
