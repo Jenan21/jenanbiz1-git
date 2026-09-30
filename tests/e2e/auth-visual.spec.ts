@@ -16,9 +16,9 @@ const viewports = [
 ] as const;
 
 const routes = [
-  { route: "/auth", screen: "gateway" },
-  { route: "/auth/login", screen: "login" },
-  { route: "/auth/register", screen: "register" },
+  { route: "/auth", screen: "login" },
+  { route: "/login", screen: "login" },
+  { route: "/register", screen: "register" },
   { route: "/auth/forgot", screen: "forgot" },
 ] as const;
 
@@ -62,7 +62,7 @@ async function setLocale(
 
 for (const locale of ["ar", "en"] as const) {
   for (const viewport of viewports) {
-    test(`Auth gateway ${viewport.name} ${locale} preserves the approved access flow`, async ({
+    test(`Canonical Auth ${viewport.name} ${locale} preserves the approved access flow`, async ({
       context,
       page,
     }, testInfo) => {
@@ -96,23 +96,11 @@ for (const locale of ["ar", "en"] as const) {
           "data-auth-source",
           route.screen === "forgot"
             ? "PASSWORD_RECOVERY_SERVICE"
-            : "LIVE_PLATFORM_ACTIVITY",
+            : "CANONICAL_PUBLIC_SCENE",
         );
-        await expect(page.locator(".access-page__scene")).toBeVisible();
-        await expect(page.locator(".access-page__globe")).toBeVisible();
-        await expect(page.locator(".access-page__story h1")).toHaveCount(0);
-        await expect(page.locator(".access-page__story-lead")).toBeVisible();
-
-        if (route.screen === "gateway") {
-          await expect(page.locator(".access-page__form-panel")).toHaveCount(0);
-          await expect(page.locator(".access-page__access-action")).toHaveCount(2);
-          await expect(
-            page.locator('.access-page__access-action[href="/auth/login"]'),
-          ).toBeVisible();
-          await expect(
-            page.locator('.access-page__access-action[href="/auth/register"]'),
-          ).toBeVisible();
-        }
+        await expect(page.locator(".global-home__world")).toBeVisible();
+        await expect(page.locator(".global-home__globe")).toBeVisible();
+        await expect(page.locator(".access-page__form-panel")).toBeVisible();
 
         if (route.screen === "login") {
           await expect(page.locator(".access-page__form-panel")).toBeVisible();
@@ -154,16 +142,19 @@ for (const locale of ["ar", "en"] as const) {
             page.locator('.access-page__form-panel form button[type="submit"]'),
           ).toBeVisible();
           await expect(
-            page.locator('.access-page__form-panel a[href="/auth/login"]'),
+            page.locator('.access-page__form-panel a[href="/auth"]'),
           ).toHaveCount(1);
         }
 
         const layout = await page.evaluate(() => {
           const visible = Array.from(
             document.querySelectorAll<HTMLElement>(
-              ".access-page__header,.access-page__story,.access-page__access-dock,.access-page__metrics,.access-page__intel,.access-page__trust,.access-page__footer,.access-page__form-panel",
+              ".access-page__form-panel",
             ),
           ).filter((element) => element.checkVisibility());
+          const panelRoot = document.querySelector<HTMLElement>(
+            ".access-page__form-panel",
+          );
           const panel = document
             .querySelector<HTMLElement>(".access-page__form-panel")
             ?.getBoundingClientRect();
@@ -172,17 +163,17 @@ for (const locale of ["ar", "en"] as const) {
             .map((entry) => decodeURIComponent(entry.name));
           return {
             clippedButtons: Array.from(
-              document.querySelectorAll<HTMLElement>("button,a"),
+              panelRoot?.querySelectorAll<HTMLElement>("button,a") ?? [],
             )
               .filter((element) => element.checkVisibility())
               .some(
                 (element) => element.scrollWidth > element.clientWidth + 1,
               ),
             cityBackground: getComputedStyle(
-              document.querySelector<HTMLElement>(".access-page__city")!,
+              document.querySelector<HTMLElement>(".global-home__city")!,
             ).backgroundImage,
             globeBackground: getComputedStyle(
-              document.querySelector<HTMLElement>(".access-page__globe")!,
+              document.querySelector<HTMLElement>(".global-home__earth-texture")!,
             ).backgroundImage,
             offscreen: visible.some((element) => {
               const bounds = element.getBoundingClientRect();
@@ -202,7 +193,7 @@ for (const locale of ["ar", "en"] as const) {
                 }
               : null,
             referenceLoaded: resources.some((resource) =>
-              /home_layout_REFERENCE_ONLY|login_candidate|register\.png/.test(
+              /APPROVED_AUTH_REFERENCES|home_layout_REFERENCE_ONLY|login_candidate/.test(
                 resource,
               ),
             ),
@@ -241,7 +232,7 @@ for (const locale of ["ar", "en"] as const) {
 
       if (["1347x768", "820x1180", "390x844"].includes(viewport.name)) {
         await page.goto("/auth");
-        await testInfo.attach(`auth-gateway-${viewport.name}-${locale}`, {
+        await testInfo.attach(`canonical-auth-${viewport.name}-${locale}`, {
           body: await page.screenshot({
             animations: "disabled",
             fullPage: viewport.width <= 1100,

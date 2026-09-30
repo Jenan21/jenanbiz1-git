@@ -136,8 +136,8 @@ test.describe
   test("canonical Auth routes remain available", async ({ page }) => {
     for (const route of [
       "/auth",
-      "/auth/login",
-      "/auth/register",
+      "/login",
+      "/register",
       "/auth/forgot",
     ]) {
       expect((await page.goto(route))?.status(), route).toBe(200);
@@ -150,27 +150,25 @@ test.describe
     await page.goto("/auth");
     await expect(page.locator(".access-page")).toHaveAttribute(
       "data-auth-screen",
-      "gateway",
+      "login",
     );
-    await expect(page.locator(".access-page__form-panel")).toHaveCount(0);
-    await expect(page.locator(".access-page__access-action")).toHaveCount(2);
-    await expect(
-      page.locator('.access-page__access-dock a[href="/auth/login"]'),
-    ).toBeVisible();
-    await expect(
-      page.locator('.access-page__access-dock a[href="/auth/register"]'),
-    ).toBeVisible();
-    await page.goto("/auth/login");
     await expect(page.locator(".access-page__form-panel")).toBeVisible();
     await expect(page.locator('input[name="email"]')).toBeVisible();
     await page.locator(".access-page__panel-close").click();
-    await expect(page).toHaveURL(/\/auth$/);
+    await expect(page).toHaveURL(/\/$/);
     await expect(page.locator(".access-page__form-panel")).toHaveCount(0);
-    await page.goto("/auth/register");
+    await expect(
+      page.locator('.global-home__access-action[href="/auth"]'),
+    ).toBeVisible();
+    await expect(
+      page.locator('.global-home__access-action[href="/register"]'),
+    ).toBeVisible();
+    await page.locator('.global-home__access-action[href="/register"]').click();
+    await expect(page).toHaveURL(/\/register$/);
     await expect(page.locator(".access-page__form-panel")).toBeVisible();
     await expect(page.locator('input[name="name"]')).toBeVisible();
     await page.locator(".access-page__panel-close").click();
-    await expect(page).toHaveURL(/\/auth$/);
+    await expect(page).toHaveURL(/\/$/);
     await expect(page.locator(".access-page__form-panel")).toHaveCount(0);
   });
 
@@ -184,7 +182,7 @@ test.describe
     ]);
     await page.emulateMedia({ reducedMotion: "reduce" });
 
-    await page.goto("/auth/register");
+    await page.goto("/register");
     await page.getByLabel("الاسم الكامل").fill("مستخدم اختبار");
     await page
       .getByLabel("البريد الإلكتروني")
@@ -246,7 +244,7 @@ test.describe
     );
     expect(recoveryLayout.clippedButtons).toBe(false);
 
-    await page.goto("/auth/login?reset=success");
+    await page.goto("/auth?reset=success");
     await expect(page.getByRole("status")).toContainText(
       "تم تحديث كلمة المرور",
     );

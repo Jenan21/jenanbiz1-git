@@ -22,7 +22,7 @@ const legacyAdminPaths = [
 ] as const;
 
 export const AUTHORITATIVE_UI_ROUTES: readonly AuthoritativeUiRoute[] = [
-  ...["/auth", "/auth/login", "/auth/register", "/auth/forgot", "/user/onboarding"].map((path) => define(path, "auth")),
+  ...["/auth", "/login", "/register", "/auth/forgot", "/user/onboarding"].map((path) => define(path, "auth")),
   define("/home", "home"),
   ...USER_CENTER_ROUTES.filter((route) => route.path.startsWith("/user")).map((route) => define(route.path, "user")),
   define("/projects", "projects"),

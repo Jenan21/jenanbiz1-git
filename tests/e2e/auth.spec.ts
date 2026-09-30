@@ -81,7 +81,7 @@ test.describe.serial("real authentication and server-side RBAC", () => {
     });
     expect(logout.status()).toBe(200);
     await page.goto("/dashboard");
-    await expect(page).toHaveURL(/\/auth\/login\?next=%2Fdashboard$/);
+    await expect(page).toHaveURL(/\/auth\?next=%2Fdashboard$/);
     const sessions = await queryE2E<{ count: string }>(
       'SELECT COUNT(*)::text AS count FROM "Session" WHERE "userId" = $1',
       [persisted.rows[0]?.id],
@@ -93,14 +93,13 @@ test.describe.serial("real authentication and server-side RBAC", () => {
     page,
   }) => {
     await page.emulateMedia({ reducedMotion: "reduce" });
-    await page.goto("/auth");
-    await expect(page).toHaveURL(/\/auth$/);
-    await expect(page.locator(".access-page__form-panel")).toHaveCount(0);
+    await page.goto("/");
+    await expect(page).toHaveURL(/\/$/);
     await Promise.all([
-      page.waitForURL(/\/auth\/register$/),
+      page.waitForURL(/\/register$/),
       page
-        .locator(".access-page__access-dock")
-        .getByRole("link", { name: "New account", exact: true })
+        .locator(".global-home__access")
+        .getByRole("link", { name: /Create account/ })
         .click(),
     ]);
 
@@ -124,7 +123,7 @@ test.describe.serial("real authentication and server-side RBAC", () => {
     ]);
 
     await page.getByLabel("Account type").selectOption("INDIVIDUAL");
-    await page.getByLabel("Country code").selectOption("SA");
+    await page.getByLabel("Country code").fill("SA");
     await page.getByLabel("City").fill("Riyadh");
     await page.getByLabel("Projects").check();
     await page.getByLabel("Academy").check();
@@ -137,7 +136,7 @@ test.describe.serial("real authentication and server-side RBAC", () => {
     );
 
     await Promise.all([
-      page.waitForURL(/\/auth\/login$/),
+      page.waitForURL(/\/auth$/),
       page.getByRole("button", { name: "Logout", exact: true }).click(),
     ]);
     await page.getByRole("link", { name: "Recover access" }).click();
@@ -150,7 +149,7 @@ test.describe.serial("real authentication and server-side RBAC", () => {
     await page.getByLabel("New password").fill(canonicalFlowReplacement);
     await page.getByLabel("Confirm password").fill(canonicalFlowReplacement);
     await page.getByRole("button", { name: "Confirm password" }).click();
-    await page.waitForURL(/\/auth\/login\?reset=success$/);
+    await page.waitForURL(/\/auth\?reset=success$/);
     await expect(page.getByRole("status")).toContainText(
       "Your password was updated",
     );
@@ -173,11 +172,11 @@ test.describe.serial("real authentication and server-side RBAC", () => {
     );
 
     await Promise.all([
-      page.waitForURL(/\/auth\/login$/),
+      page.waitForURL(/\/auth$/),
       page.getByRole("button", { name: "Logout", exact: true }).click(),
     ]);
     await page.goto("/account");
-    await expect(page).toHaveURL(/\/auth\/login\?next=%2Faccount$/);
+    await expect(page).toHaveURL(/\/auth\?next=%2Faccount$/);
   });
 
   test("rejects a wrong password and accepts the correct password", async ({

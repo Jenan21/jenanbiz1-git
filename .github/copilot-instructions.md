@@ -3,7 +3,9 @@
 ## Authority
 
 - Treat `design-references/Jenan-PRO/EXECUTION_MASTER.md` and the three archives under `design-references/Jenan-PRO/` as the authoritative implementation references.
-- For authentication only, `design-references/Jenan-PRO/APPROVED_AUTH_REFERENCES/login.png` and `register.png` are the highest visual authority and supersede Auth `reference.html`, `spec.txt`, and alternate/legacy candidates.
+- For the public front door and authentication, the only visual authorities are `design-references/Jenan-PRO/APPROVED_AUTH_REFERENCES/pre-entry.png`, `login.png`, and `register.png`. They supersede Home/Auth `reference.html`, `spec.txt`, and alternate/legacy candidates.
+- Keep exactly one production public interface, Auth flow, Auth component, and Auth stylesheet. `/` is pre-entry, `/auth` and `/login` are sign-in, and `/register` is account creation; compatibility aliases must reuse the same implementation.
+- The large left-side platform title shown in the historical pre-entry source is an intentionally removed element. Keep the approved Jenan PRO logo, but never restore a large repeated platform name there.
 - The archives complement one another. Follow the newest detailed Jenan PRO page reference first, then its `reference.html`, `spec.txt`, and general blueprint.
 - Use legacy Jenan BIZ material only for visual direction. All new visible identity must read `Jenan PRO` or `جنان برو`.
 

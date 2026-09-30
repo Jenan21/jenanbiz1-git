@@ -61,7 +61,7 @@ test.describe.serial("real Jenan Pro user journey", () => {
       { name: "locale", value: "en", url: "http://127.0.0.1:3101" },
     ]);
 
-    await page.goto("/auth/register");
+    await page.goto("/register");
     await page.getByLabel("Full name").fill(e2eIdentity.user.displayName);
     await page.getByLabel("Email address").fill(e2eIdentity.user.email);
     await page.getByRole("button", { name: "Continue", exact: true }).click();
@@ -90,7 +90,7 @@ test.describe.serial("real Jenan Pro user journey", () => {
     );
 
     await Promise.all([
-      page.waitForURL(/\/auth\/login$/),
+      page.waitForURL(/\/auth$/),
       page.getByRole("button", { name: "Logout", exact: true }).click(),
     ]);
     expect((await page.request.get("/api/account/overview")).status()).toBe(
@@ -119,7 +119,7 @@ test.describe.serial("real Jenan Pro user journey", () => {
     );
     await page.getByRole("button", { name: "Confirm password" }).click();
     expect((await resetConfirmation).status()).toBe(200);
-    await page.waitForURL(/\/auth\/login\?reset=success$/);
+    await page.waitForURL(/\/auth\?reset=success$/);
     await expect(page.getByRole("status")).toContainText(
       "Your password was updated",
     );
@@ -435,7 +435,7 @@ test.describe.serial("real Jenan Pro user journey", () => {
     });
     expect(logout.status()).toBe(200);
     await page.goto("/studio/visual-dna");
-    await expect(page).toHaveURL(/\/auth\/login\?next=%2Fstudio%2Fvisual-dna$/);
+    await expect(page).toHaveURL(/\/auth\?next=%2Fstudio%2Fvisual-dna$/);
     expect(serverErrors).toEqual([]);
     expect(browserErrors).toEqual([]);
   });

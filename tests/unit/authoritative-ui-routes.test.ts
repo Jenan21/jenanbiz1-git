@@ -25,14 +25,25 @@ function readActiveCatalogRoutes() {
 }
 
 describe("authoritative Jenan PRO UI routes", () => {
-  it("matches the 152 active legacy references exactly", () => {
+  it("matches the 152 active references with canonical Auth routes", () => {
     const catalogRoutes = readActiveCatalogRoutes();
+    const canonicalCatalogRoutes = catalogRoutes.map((path) =>
+      path === "/auth/login"
+        ? "/login"
+        : path === "/auth/register"
+          ? "/register"
+          : path,
+    );
     const implementedRoutes = AUTHORITATIVE_UI_ROUTES.map((route) => route.path);
 
     expect(catalogRoutes).toHaveLength(152);
     expect(implementedRoutes).toHaveLength(152);
     expect(new Set(implementedRoutes).size).toBe(152);
-    expect([...implementedRoutes].sort()).toEqual([...catalogRoutes].sort());
+    expect([...implementedRoutes].sort()).toEqual(
+      [...canonicalCatalogRoutes].sort(),
+    );
+    expect(implementedRoutes).not.toContain("/auth/login");
+    expect(implementedRoutes).not.toContain("/auth/register");
   });
 
   it("never includes the permanently removed Funding section", () => {

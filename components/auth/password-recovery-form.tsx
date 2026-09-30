@@ -106,7 +106,7 @@ export function PasswordRecoveryForm({ locale }: { locale: Locale }) {
         .json()
         .catch(() => null)) as RecoveryResponse | null;
       if (response.ok) {
-        router.replace("/auth/login?reset=success");
+        router.replace("/auth?reset=success");
         router.refresh();
         return;
       }
@@ -246,7 +246,7 @@ export function PasswordRecoveryForm({ locale }: { locale: Locale }) {
           {error}
         </p>
       ) : null}
-      <Link className="auth-workflow__return" href="/auth/login">
+      <Link className="auth-workflow__return" href="/auth">
         {ar ? "العودة إلى تسجيل الدخول" : "Return to sign in"}
       </Link>
     </div>

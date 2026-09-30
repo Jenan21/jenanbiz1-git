@@ -1,15 +1,18 @@
-import { AuthAccessPage } from "@/components/auth/auth-access-page";
+import { CanonicalAuthAccessPage } from "@/components/auth/canonical-auth-access-page";
 import { getRequestDictionary } from "@/lib/i18n/server";
+import { readPlatformCatalog } from "@/lib/platform/catalog";
 
 export default async function ForgotPasswordPage() {
-  const { locale } = await getRequestDictionary();
-  const ar = locale === "ar";
+  const [{ locale }, catalog] = await Promise.all([
+    getRequestDictionary(),
+    readPlatformCatalog(),
+  ]);
   return (
-    <AuthAccessPage
+    <CanonicalAuthAccessPage
       locale={locale}
       mode="login"
+      modules={catalog.modules.filter((module) => module.id !== "dashboard")}
       recovery
-      languageLabel={ar ? "التبديل إلى الإنجليزية" : "Switch to Arabic"}
     />
   );
 }

@@ -66,7 +66,7 @@ export function AuthWorkflowShell({
       </div>
       <footer className="auth-workflow__footer">
         <span>{ar ? "© 2026 منصة جنان برو" : "© 2026 Jenan Pro"}</span>
-        <Link href="/auth/login">{ar ? "تسجيل الدخول" : "Sign in"}</Link>
+        <Link href="/auth">{ar ? "تسجيل الدخول" : "Sign in"}</Link>
       </footer>
     </main>
   );

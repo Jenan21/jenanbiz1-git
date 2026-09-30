@@ -20,6 +20,8 @@ Reference priority:
 4. Page `spec.txt`.
 5. General blueprint.
 
+For the public front door and Auth section, `APPROVED_AUTH_REFERENCES/pre-entry.png`, `login.png`, and `register.png` are the canonical single source of truth and override older Home/Auth references. Production uses one public interface and one Auth overlay implementation: `/` for pre-entry, `/auth` and `/login` for sign-in, and `/register` for account creation. Password recovery and onboarding inherit this visual DNA. The large repeated platform title on the left side of the historical pre-entry image is intentionally removed and must not return; the Jenan PRO logo remains.
+
 Legacy `Jenan BIZ` or `جنان بيز` names are visual-history references only. New UI uses `Jenan PRO` and `جنان برو` exclusively.
 
 ## Permanent Product Decisions

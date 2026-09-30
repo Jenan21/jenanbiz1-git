@@ -33,14 +33,12 @@ for (const path of ["/login", "/register"] as const) {
       locale === "ar" ? "rtl" : "ltr",
     );
     await expect(page.locator(".access-page")).toBeVisible();
-    await expect(page.locator(".access-page__logo")).toBeInViewport();
-    await expect(page.locator(".access-page__access-dock")).toBeInViewport();
-    await page.getByRole("button", { name: path === "/login" ? (locale === "ar" ? "دخول" : "Sign in") : (locale === "ar" ? "حساب جديد" : "New account") }).click();
+    await expect(page.locator(".global-home__brand")).toBeInViewport();
     await expect(page.locator(".access-page__form-panel")).toBeInViewport();
     await expect(page.locator(".access-page__form-panel form")).toBeVisible();
     await expect(page.locator(".access-page__alternate a")).toHaveAttribute(
       "href",
-      path === "/login" ? "/register" : "/login",
+      path === "/login" ? "/register" : "/auth",
     );
     await expect(page.locator(".gateway-world-map__activity > g")).toHaveCount(2);
     const activityRadii = await page
@@ -50,7 +48,6 @@ for (const path of ["/login", "/register"] as const) {
     const initialLayout = await page.evaluate(() => {
       const viewportHeight = document.documentElement.clientHeight;
       const selectors = [
-        ".access-page__logo",
         ".access-page__form-panel",
         ".access-page__form-panel form",
       ];
@@ -66,10 +63,7 @@ for (const path of ["/login", "/register"] as const) {
     const layout = await page.evaluate(() => {
       const viewportWidth = document.documentElement.clientWidth;
       const selectors = [
-        "main",
         "form",
-        "header",
-        ".access-page__story",
         ".access-page__form-panel",
       ];
       const violations = selectors.flatMap((selector) =>
@@ -100,7 +94,7 @@ for (const path of ["/login", "/register"] as const) {
     if (testInfo.project.metadata.viewportKind !== "tablet" &&
         testInfo.project.metadata.viewportKind !== "mobile") {
       const composition = await page.evaluate(() => {
-        const city = document.querySelector<HTMLElement>(".access-page__city");
+        const city = document.querySelector<HTMLElement>(".global-home__city");
         return { cityAsset: city ? getComputedStyle(city).backgroundImage : "" };
       });
       expect(composition.cityAsset).toContain("global-city-night.jpg");

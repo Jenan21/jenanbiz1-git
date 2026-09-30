@@ -100,6 +100,16 @@ for (const locale of ["ar", "en"] as const) {
       await expect(page.locator(".global-home")).toHaveAttribute("data-home-source", "LIVE_PLATFORM_ACTIVITY");
       await expect(page.locator(".global-home")).toHaveAttribute("data-home-privacy", "PUBLIC_AGGREGATE");
       await expect(page.locator(".global-home__network i")).toHaveCount(6);
+      await expect(page.locator(".global-home__hero-copy h1")).toHaveClass(
+        /global-home__sr-only/,
+      );
+      await expect(page.locator(".global-home__access-action")).toHaveCount(2);
+      await expect(
+        page.locator('.global-home__access-action[href="/auth"]'),
+      ).toBeVisible();
+      await expect(
+        page.locator('.global-home__access-action[href="/register"]'),
+      ).toBeVisible();
       await expect(page.locator(".global-home__quote cite")).toHaveText("Jenan Pro");
       await expect(page.locator(".global-home__region")).toHaveCount(0);
       await expect(page.locator(".global-home__kpis article:nth-child(2) strong")).toHaveText("28");
@@ -147,8 +157,11 @@ for (const locale of ["ar", "en"] as const) {
                     bounds.top >= orderedRects[index - 1]!.bottom - 1)),
             ),
             referenceLoaded: resources.some((resource) =>
-              resource.includes("reference-home.png"),
+              /APPROVED_AUTH_REFERENCES|home_layout_REFERENCE_ONLY/.test(
+                resource,
+              ),
             ),
+            heroTitle: rect(".global-home__hero-copy h1"),
             scrollWidth: document.documentElement.scrollWidth,
             stage,
             stageBackground: getComputedStyle(
@@ -172,6 +185,8 @@ for (const locale of ["ar", "en"] as const) {
       expect(layout.scrollWidth).toBeLessThanOrEqual(layout.viewportWidth + 1);
       expect(layout.violations).toEqual([]);
       expect(layout.referenceLoaded).toBe(false);
+      expect(layout.heroTitle?.width).toBeLessThanOrEqual(1);
+      expect(layout.heroTitle?.height).toBeLessThanOrEqual(1);
       expect(layout.stageBackground).not.toBe("none");
       expect(layout.earthBackground).toContain("earth-night-texture.jpg");
       expect(layout.cityBackground).toContain("global-city-night.jpg");

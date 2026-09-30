@@ -1,14 +1,18 @@
-import { AuthAccessPage } from "@/components/auth/auth-access-page";
+import { CanonicalAuthAccessPage } from "@/components/auth/canonical-auth-access-page";
 import { getRequestDictionary } from "@/lib/i18n/server";
+import { readPlatformCatalog } from "@/lib/platform/catalog";
 
 export default async function RegisterPage() {
-  const { locale } = await getRequestDictionary();
+  const [{ locale }, catalog] = await Promise.all([
+    getRequestDictionary(),
+    readPlatformCatalog(),
+  ]);
   const ar = locale === "ar";
   return (
-    <AuthAccessPage
+    <CanonicalAuthAccessPage
       locale={locale}
       mode="register"
-      languageLabel={ar ? "التبديل إلى الإنجليزية" : "Switch to Arabic"}
+      modules={catalog.modules.filter((module) => module.id !== "dashboard")}
       labels={{
         name: ar ? "الاسم الكامل" : "Full name",
         countryCode: ar ? "رمز الدولة" : "Country code",

@@ -112,13 +112,25 @@ export function GlobalCommandHome({
           </nav>
           <div className="global-home__tools">
             <Link className="global-home__tool-icon" href="/market" aria-label={ar ? "البحث" : "Search"}><Icon name="search" /></Link>
-            <Link className="global-home__tool-icon" href="/auth/login" aria-label={ar ? "الإشعارات" : "Notifications"}><Icon name="bell" /></Link>
+            <Link className="global-home__tool-icon" href="/auth" aria-label={ar ? "تسجيل الدخول" : "Sign in"}><Icon name="shield" /></Link>
             <LanguageSwitcher locale={locale} label={ar ? "العربية" : "English"} showChevron />
           </div>
         </header>
 
-        <section className="global-home__hero-copy">
-          <h1>{ar ? <>منصة جنان برو<br />مركز الأعمال الذكي</> : <>Jenan Pro<br />Intelligent Business Command</>}</h1>
+        <section className="global-home__hero-copy" aria-label={ar ? "الوصول إلى منصة جنان برو" : "Access Jenan Pro"}>
+          <h1 className="global-home__sr-only">Jenan PRO</h1>
+          <div className="global-home__access" aria-label={ar ? "بوابة الوصول" : "Access gateway"}>
+            <Link href="/auth" className="global-home__access-action">
+              <span><Icon name="shield" /></span>
+              <b>{ar ? "دخول" : "Sign in"}</b>
+              <small>{ar ? "الوصول إلى حسابك" : "Access your account"}</small>
+            </Link>
+            <Link href="/register" className="global-home__access-action">
+              <span><Icon name="people" /></span>
+              <b>{ar ? "إنشاء حساب" : "Create account"}</b>
+              <small>{ar ? "ابدأ رحلتك الآن" : "Start your journey"}</small>
+            </Link>
+          </div>
           <strong>{ar ? "خدمات متكاملة · تحليلات ذكية · فرص عالمية" : "Integrated services · Smart analytics · Global opportunity"}</strong>
           <p>{ar ? "تمكّن الأفراد والشركات من النمو والتوسع ببيانات دقيقة ورؤى استشرافية وتقنية متقدمة تقودك إلى فرص أكبر." : "Helping people and organizations grow with precise data, forward insight, and advanced technology."}</p>
         </section>
@@ -174,7 +186,7 @@ export function GlobalCommandHome({
           ["brain", ar ? "ذكاء اصطناعي متقدم" : "Advanced AI", ar ? "يعمل من أجلك" : "Working for you"],
         ] as const).map(([icon, title, note]) => <article key={title}><Icon name={icon} /><span><strong>{title}</strong><small>{note}</small></span></article>)}</section>
 
-        <footer className="global-home__footer"><span className="global-home__footer-brand"><b>Jenan <em>Pro</em></b><small>Business Without Limits</small></span><nav><Link href="/benefits">{ar ? "المزايا" : "Benefits"}</Link><Link href="/pricing">{ar ? "الباقات" : "Plans"}</Link><Link href="/auth/login">{ar ? "تسجيل الدخول" : "Sign in"}</Link></nav><span>{ar ? "© 2026 منصة جنان برو. جميع الحقوق محفوظة." : "© 2026 Jenan Pro. All rights reserved."}</span></footer>
+        <footer className="global-home__footer"><span className="global-home__footer-brand"><b>Jenan <em>Pro</em></b><small>Business Without Limits</small></span><nav><Link href="/benefits">{ar ? "المزايا" : "Benefits"}</Link><Link href="/pricing">{ar ? "الباقات" : "Plans"}</Link><Link href="/auth">{ar ? "تسجيل الدخول" : "Sign in"}</Link></nav><span>{ar ? "© 2026 منصة جنان برو. جميع الحقوق محفوظة." : "© 2026 Jenan Pro. All rights reserved."}</span></footer>
       </div>
     </main>
   );
