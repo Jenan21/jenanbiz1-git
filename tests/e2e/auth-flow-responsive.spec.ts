@@ -60,12 +60,12 @@ test.describe
           "dir",
           locale === "ar" ? "rtl" : "ltr",
         );
-        await expect(page.locator(".auth-workflow__panel")).toBeVisible();
-        await expect(page.locator(".auth-workflow")).toHaveAttribute(
+        await expect(page.locator(".access-page__form-panel")).toBeVisible();
+        await expect(page.locator(".access-page")).toHaveAttribute(
           "data-auth-route",
           "/auth/forgot",
         );
-        await expect(page.locator(".auth-workflow")).toHaveAttribute(
+        await expect(page.locator(".access-page")).toHaveAttribute(
           "data-auth-source",
           "PASSWORD_RECOVERY_SERVICE",
         );
@@ -163,9 +163,15 @@ test.describe
     await page.goto("/auth/login");
     await expect(page.locator(".access-page__form-panel")).toBeVisible();
     await expect(page.locator('input[name="email"]')).toBeVisible();
+    await page.locator(".access-page__panel-close").click();
+    await expect(page).toHaveURL(/\/auth$/);
+    await expect(page.locator(".access-page__form-panel")).toHaveCount(0);
     await page.goto("/auth/register");
     await expect(page.locator(".access-page__form-panel")).toBeVisible();
     await expect(page.locator('input[name="name"]')).toBeVisible();
+    await page.locator(".access-page__panel-close").click();
+    await expect(page).toHaveURL(/\/auth$/);
+    await expect(page.locator(".access-page__form-panel")).toHaveCount(0);
   });
 
   test("360x800 keeps extended registration and recovery states usable", async ({
@@ -183,8 +189,8 @@ test.describe
     await page
       .getByLabel("البريد الإلكتروني")
       .fill("responsive.auth@example.test");
-    await page.getByRole("button", { name: "متابعة" }).click();
     await expect(page.getByLabel("رمز الدولة")).toBeVisible();
+    await page.getByLabel("رمز الدولة").selectOption("SA");
     await expect(page.getByLabel("تأكيد كلمة المرور")).toBeVisible();
     await page.getByText("عرض شروط الاستخدام", { exact: true }).click();
     await expect(page.locator(".auth-form__terms-details p")).toBeVisible();

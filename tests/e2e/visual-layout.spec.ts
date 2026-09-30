@@ -113,14 +113,12 @@ for (const path of ["/login", "/register"] as const) {
       await expect(password).toHaveAttribute("type", "text");
     } else {
       await expect(page.locator('input[name="name"]')).toBeVisible();
-      await expect(page.locator('input[name="countryCode"]')).toBeHidden();
+      await expect(page.locator('select[name="countryCode"]')).toBeVisible();
       await page.locator('input[name="name"]').fill("Visual Test User");
       await page.locator('input[name="email"]').fill("visual@example.test");
-      await page.locator(".auth-form__step:not([hidden]) .auth-form__submit").click();
-      await expect(page.locator('input[name="countryCode"]')).toBeVisible();
       await expect(page.locator('input[name="confirmPassword"]')).toBeVisible();
       await expect(page.locator('input[name="terms"]')).toBeVisible();
-      await page.locator('input[name="countryCode"]').fill("SA");
+      await page.locator('select[name="countryCode"]').selectOption("SA");
       await page.locator('input[name="password"]').fill("Correct-Horse-2026!");
       await page.locator('input[name="confirmPassword"]').fill("Different-Horse-2026!");
       await page.locator('input[name="terms"]').check();

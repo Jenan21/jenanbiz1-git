@@ -65,7 +65,7 @@ test.describe.serial("real Jenan Pro user journey", () => {
     await page.getByLabel("Full name").fill(e2eIdentity.user.displayName);
     await page.getByLabel("Email address").fill(e2eIdentity.user.email);
     await page.getByRole("button", { name: "Continue", exact: true }).click();
-    await page.getByLabel("Country code").fill("SA");
+    await page.getByLabel("Country code").selectOption("SA");
     await page
       .getByLabel("Password", { exact: true })
       .fill(e2eIdentity.user.password);
@@ -76,7 +76,7 @@ test.describe.serial("real Jenan Pro user journey", () => {
       page.locator(".auth-form button[type=submit]").click(),
     ]);
     await page.getByLabel("Account type").selectOption("ORGANIZATION");
-    await page.getByLabel("Country code").fill("SA");
+    await page.getByLabel("Country code").selectOption("SA");
     await page.getByLabel("City").fill("Riyadh");
     await page.getByLabel("Projects").check();
     await page.getByLabel("Market", { exact: true }).check();

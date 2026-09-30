@@ -4,7 +4,6 @@ import type { ReactNode } from "react";
 import { getDirection, resolveLocale } from "@/lib/i18n";
 import "@fontsource-variable/alexandria";
 import "@/styles/globals.css";
-import "@/styles/login-gateway.css";
 import "@/styles/global-home.css";
 import "@/styles/auth-access.css";
 import "@/styles/market-stage.css";

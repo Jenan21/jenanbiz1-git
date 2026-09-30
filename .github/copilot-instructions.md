@@ -3,6 +3,7 @@
 ## Authority
 
 - Treat `design-references/Jenan-PRO/EXECUTION_MASTER.md` and the three archives under `design-references/Jenan-PRO/` as the authoritative implementation references.
+- For authentication only, `design-references/Jenan-PRO/APPROVED_AUTH_REFERENCES/login.png` and `register.png` are the highest visual authority and supersede Auth `reference.html`, `spec.txt`, and alternate/legacy candidates.
 - The archives complement one another. Follow the newest detailed Jenan PRO page reference first, then its `reference.html`, `spec.txt`, and general blueprint.
 - Use legacy Jenan BIZ material only for visual direction. All new visible identity must read `Jenan PRO` or `جنان برو`.
 

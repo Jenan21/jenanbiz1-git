@@ -1,8 +1,9 @@
 "use client";
 
 import Link from "next/link";
-import { useState, type FormEvent, type MouseEvent } from "react";
+import { useEffect, useRef, useState, type FormEvent } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
+import countries from "world-countries";
 import { Button } from "@/components/ui/button";
 import { Icon } from "@/components/ui/icons";
 import { Input } from "@/components/ui/input";
@@ -25,43 +26,135 @@ interface AuthFormProps {
   };
 }
 
+const countryOptions = countries
+  .filter((country) => country.cca2)
+  .map((country) => ({
+    ar: country.translations.ara?.common ?? country.name.common,
+    code: country.cca2.toUpperCase(),
+    en: country.name.common,
+  }));
+
+const countriesByLocale = {
+  ar: [...countryOptions].sort((left, right) =>
+    left.ar.localeCompare(right.ar, "ar"),
+  ),
+  en: [...countryOptions].sort((left, right) =>
+    left.en.localeCompare(right.en, "en"),
+  ),
+};
+
+function countryFlag(countryCode: string) {
+  return String.fromCodePoint(
+    ...countryCode
+      .toUpperCase()
+      .split("")
+      .map((character) => 127397 + character.charCodeAt(0)),
+  );
+}
+
+function CountrySelector({
+  disabled,
+  label,
+  locale,
+}: {
+  disabled: boolean;
+  label: string;
+  locale: Locale;
+}) {
+  const changedByUser = useRef(false);
+  const [countryCode, setCountryCode] = useState(locale === "ar" ? "SA" : "US");
+  const [source, setSource] = useState<"default" | "manual" | "network">(
+    "default",
+  );
+
+  useEffect(() => {
+    const controller = new AbortController();
+    async function detectCountry() {
+      try {
+        const response = await fetch("/api/auth/country", {
+          cache: "no-store",
+          signal: controller.signal,
+        });
+        const payload = (await response.json()) as {
+          countryCode?: string;
+          source?: "default" | "network";
+        };
+        if (
+          response.ok &&
+          payload.countryCode &&
+          countriesByLocale.en.some(
+            (country) => country.code === payload.countryCode,
+          ) &&
+          !changedByUser.current
+        ) {
+          setCountryCode(payload.countryCode);
+          setSource(payload.source === "network" ? "network" : "default");
+        }
+      } catch (error) {
+        if (!(error instanceof DOMException && error.name === "AbortError")) {
+          setSource("default");
+        }
+      }
+    }
+    void detectCountry();
+    return () => controller.abort();
+  }, []);
+
+  return (
+    <label className="field auth-country">
+      <span className="field__label">{label}</span>
+      <span className="auth-country__control">
+        <span className="auth-country__flag" aria-hidden="true">
+          {countryFlag(countryCode)}
+        </span>
+        <select
+          aria-label={label}
+          disabled={disabled}
+          name="countryCode"
+          value={countryCode}
+          onChange={(event) => {
+            changedByUser.current = true;
+            setCountryCode(event.target.value);
+            setSource("manual");
+          }}
+        >
+          {countriesByLocale[locale].map((country) => (
+            <option key={country.code} value={country.code}>
+              {countryFlag(country.code)} {country[locale]}
+            </option>
+          ))}
+        </select>
+        <span className="auth-country__source">
+          <i data-source={source} />
+          {source === "network"
+            ? locale === "ar"
+              ? "تم التعرف عبر عنوان IP"
+              : "Detected from your IP"
+            : source === "manual"
+              ? locale === "ar"
+                ? "اختيارك اليدوي"
+                : "Your manual choice"
+              : locale === "ar"
+                ? "يمكنك تغيير الدولة"
+                : "You can change the country"}
+        </span>
+      </span>
+    </label>
+  );
+}
+
 export function AuthForm({ mode, locale, labels }: AuthFormProps) {
   const router = useRouter();
   const searchParams = useSearchParams();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [registrationStep, setRegistrationStep] = useState<1 | 2>(1);
   const resetSucceeded =
     mode === "login" && searchParams.get("reset") === "success";
-
-  function validateRegistrationIdentity(form: HTMLFormElement) {
-    for (const name of ["name", "email"] as const) {
-      const control = form.elements.namedItem(name);
-      if (control instanceof HTMLInputElement && !control.reportValidity()) {
-        return false;
-      }
-    }
-    return true;
-  }
-
-  function continueRegistration(event: MouseEvent<HTMLButtonElement>) {
-    const form = event.currentTarget.form;
-    if (form && validateRegistrationIdentity(form)) {
-      setError(null);
-      setRegistrationStep(2);
-    }
-  }
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setError(null);
     const form = new FormData(event.currentTarget);
-    if (mode === "register" && registrationStep === 1) {
-      if (validateRegistrationIdentity(event.currentTarget)) {
-        setRegistrationStep(2);
-      }
-      return;
-    }
     if (mode === "register") {
       if (form.get("password") !== form.get("confirmPassword")) {
         setError(
@@ -126,80 +219,65 @@ export function AuthForm({ mode, locale, labels }: AuthFormProps) {
   }
 
   return (
-    <form className="auth-form" onSubmit={handleSubmit} aria-busy={loading}>
+    <form
+      id={`auth-${mode}-form`}
+      className="auth-form"
+      onSubmit={handleSubmit}
+      aria-busy={loading}
+    >
       {mode === "register" ? (
-        <>
-          <div
-            className="auth-form__progress"
-            aria-label={
-              locale === "ar" ? "خطوات إنشاء الحساب" : "Account creation steps"
+        <div className="auth-form__step auth-form__step--all">
+          <Input
+            label={labels.name}
+            name="name"
+            autoComplete="name"
+            placeholder={labels.name}
+            required
+            disabled={loading}
+            icon={<Icon name="user" />}
+          />
+          <Input
+            label={labels.email}
+            name="email"
+            type="email"
+            autoComplete="email"
+            placeholder={labels.email}
+            required
+            disabled={loading}
+            icon={<Icon name="mail" />}
+          />
+          <CountrySelector
+            disabled={loading}
+            label={labels.countryCode}
+            locale={locale}
+          />
+          <Input
+            label={labels.password}
+            name="password"
+            type="password"
+            autoComplete="new-password"
+            placeholder={labels.password}
+            required
+            minLength={12}
+            maxLength={128}
+            disabled={loading}
+            icon={<Icon name="lock" />}
+          />
+          <Input
+            label={locale === "ar" ? "تأكيد كلمة المرور" : "Confirm password"}
+            name="confirmPassword"
+            type="password"
+            autoComplete="new-password"
+            placeholder={
+              locale === "ar" ? "تأكيد كلمة المرور" : "Confirm password"
             }
-          >
-            <span data-active={registrationStep === 1 || undefined}>1</span>
-            <i />
-            <span data-active={registrationStep === 2 || undefined}>2</span>
-          </div>
-          <div className="auth-form__step" hidden={registrationStep !== 1}>
-            <Input
-              label={labels.name}
-              name="name"
-              autoComplete="name"
-              required
-              disabled={loading}
-              icon={<Icon name="user" />}
-            />
-            <Input
-              label={labels.email}
-              name="email"
-              type="email"
-              autoComplete="email"
-              required
-              disabled={loading}
-              icon={<Icon name="mail" />}
-            />
-            <Button
-              type="button"
-              className="auth-form__submit"
-              onClick={continueRegistration}
-            >
-              {locale === "ar" ? "متابعة" : "Continue"}
-              <Icon name="arrow" />
-            </Button>
-          </div>
-          <div className="auth-form__step" hidden={registrationStep !== 2}>
-            <Input
-              label={labels.countryCode}
-              name="countryCode"
-              autoComplete="country"
-              required
-              minLength={2}
-              maxLength={2}
-              placeholder="SA"
-              disabled={loading}
-              icon={<Icon name="globe" />}
-            />
-            <Input
-              label={labels.password}
-              name="password"
-              type="password"
-              autoComplete="new-password"
-              required
-              minLength={12}
-              maxLength={128}
-              disabled={loading}
-              icon={<Icon name="lock" />}
-            />
-            <Input
-              label={locale === "ar" ? "تأكيد كلمة المرور" : "Confirm password"}
-              name="confirmPassword"
-              type="password"
-              autoComplete="new-password"
-              required
-              minLength={12}
-              maxLength={128}
-              disabled={loading}
-              icon={<Icon name="lock" />}
-            />
+            required
+            minLength={12}
+            maxLength={128}
+            disabled={loading}
+            icon={<Icon name="lock" />}
+          />
+          <div className="auth-form__terms-field">
             <label className="checkbox auth-form__terms">
               <input name="terms" type="checkbox" required disabled={loading} />
               <span>
@@ -218,35 +296,25 @@ export function AuthForm({ mode, locale, labels }: AuthFormProps) {
                   : "I agree to provide accurate information, protect my access credentials, and avoid misuse of platform services or other users' data."}
               </p>
             </details>
-            <p className="form-note">
-              <Icon name="shield" />
-              {labels.note}
-            </p>
-            {error && (
-              <p className="auth-error" role="alert">
-                {error}
-              </p>
-            )}
-            <div className="auth-form__step-actions">
-              <button
-                type="button"
-                className="text-button"
-                onClick={() => setRegistrationStep(1)}
-                disabled={loading}
-              >
-                {locale === "ar" ? "السابق" : "Back"}
-              </button>
-              <Button
-                type="submit"
-                className="auth-form__submit"
-                disabled={loading}
-              >
-                {loading ? labels.loading : labels.submit}
-                <Icon name="arrow" />
-              </Button>
-            </div>
           </div>
-        </>
+          <p className="form-note">
+            <Icon name="shield" />
+            {labels.note}
+          </p>
+          {error && (
+            <p className="auth-error" role="alert">
+              {error}
+            </p>
+          )}
+          <Button
+            type="submit"
+            className="auth-form__submit"
+            disabled={loading}
+          >
+            {loading ? labels.loading : labels.submit}
+            <Icon name="arrow" />
+          </Button>
+        </div>
       ) : (
         <>
           {resetSucceeded ? (

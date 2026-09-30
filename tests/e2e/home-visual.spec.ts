@@ -8,6 +8,7 @@ const homeViewports = [
   { name: "1661x947", width: 1661, height: 947 },
   { name: "1440x900", width: 1440, height: 900 },
   { name: "1280x800", width: 1280, height: 800 },
+  { name: "1265x590", width: 1265, height: 590 },
   { name: "820x1180", width: 820, height: 1180 },
   { name: "390x844", width: 390, height: 844 },
 ] as const;
@@ -175,7 +176,8 @@ for (const locale of ["ar", "en"] as const) {
       expect(layout.earthBackground).toContain("earth-night-texture.jpg");
       expect(layout.cityBackground).toContain("global-city-night.jpg");
 
-      if (viewport.width > 900) {
+      const usesFixedStage = viewport.width > 1100 && viewport.height > 700;
+      if (usesFixedStage) {
         expect(layout.stage).not.toBeNull();
         expect(layout.stage!.width).toBeLessThanOrEqual(1662);
         expect(layout.stage!.width / layout.stage!.height).toBeCloseTo(

@@ -106,8 +106,7 @@ test.describe.serial("real authentication and server-side RBAC", () => {
 
     await page.getByLabel("Full name").fill("Canonical Auth User");
     await page.getByLabel("Email address").fill(canonicalFlowEmail);
-    await page.getByRole("button", { name: "Continue", exact: true }).click();
-    await page.getByLabel("Country code").fill("SA");
+    await page.getByLabel("Country code").selectOption("SA");
     await page
       .getByLabel("Password", { exact: true })
       .fill(canonicalFlowPassword);
@@ -125,7 +124,7 @@ test.describe.serial("real authentication and server-side RBAC", () => {
     ]);
 
     await page.getByLabel("Account type").selectOption("INDIVIDUAL");
-    await page.getByLabel("Country code").fill("SA");
+    await page.getByLabel("Country code").selectOption("SA");
     await page.getByLabel("City").fill("Riyadh");
     await page.getByLabel("Projects").check();
     await page.getByLabel("Academy").check();

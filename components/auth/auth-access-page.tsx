@@ -1,8 +1,9 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import {
+  useCallback,
   useEffect,
   useRef,
   useState,
@@ -11,6 +12,7 @@ import {
 } from "react";
 
 import { AuthForm } from "@/components/auth/auth-form";
+import { PasswordRecoveryForm } from "@/components/auth/password-recovery-form";
 import {
   GatewayWorldMap,
   type GatewayActivityLocation,
@@ -30,7 +32,8 @@ interface AuthAccessPageProps {
   locale: Locale;
   mode: "login" | "register";
   languageLabel: string;
-  labels: ComponentProps<typeof AuthForm>["labels"];
+  labels?: ComponentProps<typeof AuthForm>["labels"];
+  recovery?: boolean;
 }
 
 const distributionColors = [
@@ -46,11 +49,14 @@ export function AuthAccessPage({
   mode,
   languageLabel,
   labels,
+  recovery = false,
 }: AuthAccessPageProps) {
   const ar = locale === "ar";
   const registering = mode === "register";
   const pathname = usePathname();
+  const router = useRouter();
   const gateway = pathname === "/auth";
+  const recovering = recovery || pathname === "/auth/forgot";
   const [panelOpen, setPanelOpen] = useState(!gateway);
   const panelRef = useRef<HTMLElement>(null);
   const triggerRef = useRef<HTMLButtonElement>(null);
@@ -75,6 +81,11 @@ export function AuthAccessPage({
         .join(", ")})`
     : "conic-gradient(rgba(89,243,255,.14) 0 100%)";
 
+  const closePanel = useCallback(() => {
+    setPanelOpen(false);
+    if (!gateway) router.replace("/auth");
+  }, [gateway, router]);
+
   useEffect(() => {
     if (!panelOpen) return;
     const previousOverflow = document.body.style.overflow;
@@ -86,7 +97,7 @@ export function AuthAccessPage({
       window.scrollTo(0, 0);
     }, 0);
     const closeOnEscape = (event: KeyboardEvent) => {
-      if (event.key === "Escape") setPanelOpen(false);
+      if (event.key === "Escape") closePanel();
     };
     document.body.style.overflow = "hidden";
     window.addEventListener("keydown", closeOnEscape);
@@ -96,7 +107,7 @@ export function AuthAccessPage({
       document.body.style.overflow = previousOverflow;
       trigger?.focus();
     };
-  }, [panelOpen]);
+  }, [closePanel, panelOpen]);
 
   useEffect(() => {
     const controller = new AbortController();
@@ -138,8 +149,10 @@ export function AuthAccessPage({
       data-auth-access="PUBLIC"
       data-auth-privacy="PUBLIC_AGGREGATE"
       data-auth-route={pathname}
-      data-auth-screen={gateway ? "gateway" : mode}
-      data-auth-source={activitySource}
+      data-auth-screen={gateway ? "gateway" : recovering ? "forgot" : mode}
+      data-auth-source={
+        recovering ? "PASSWORD_RECOVERY_SERVICE" : activitySource
+      }
       data-mode={mode}
       data-panel-open={panelOpen || undefined}
     >
@@ -180,7 +193,13 @@ export function AuthAccessPage({
               </small>
             </span>
           </Link>
-          <nav aria-label={ar ? "إعدادات اللغة" : "Language settings"}>
+          <nav aria-label={ar ? "التنقل الرئيسي" : "Primary navigation"}>
+            <Link href="/">{ar ? "الرئيسية" : "Home"}</Link>
+            <Link href="/benefits">{ar ? "من نحن" : "About"}</Link>
+            <Link href="/projects">{ar ? "خدماتنا" : "Services"}</Link>
+            <Link href="/academy">{ar ? "الأكاديمية" : "Academy"}</Link>
+            <Link href="/pricing">{ar ? "الأسعار" : "Pricing"}</Link>
+            <Link href="/dashboard">{ar ? "مركز الأمر" : "Command center"}</Link>
             <LanguageSwitcher
               locale={locale}
               label={languageLabel}
@@ -194,14 +213,17 @@ export function AuthAccessPage({
             <i />
             {ar ? "منظومة أعمال عالمية" : "Global business ecosystem"}
           </span>
-          <h1>{ar ? "جنان برو" : "Jenan Pro"}</h1>
           <strong className="access-page__story-lead">
             {ar
               ? "خدمات متكاملة · تحليلات ذكية · فرص عالمية"
               : "Integrated services · Smart analytics · Global opportunity"}
           </strong>
           <p>
-            {registering
+            {recovering
+              ? ar
+                ? "استعد وصولك بأمان عبر بريدك المسجل، ثم عيّن كلمة مرور جديدة لحسابك."
+                : "Recover access securely through your registered email, then set a new account password."
+              : registering
               ? ar
                 ? "أنشئ هويتك داخل منصة جنان برو وابدأ الوصول إلى المشاريع والأكاديمية والسوق والبرمجيات والفرص الذكية."
                 : "Create your Jenan Pro identity and unlock projects, academy, market, software, and intelligent opportunities."
@@ -209,6 +231,60 @@ export function AuthAccessPage({
                 ? "نمكّن الأفراد والشركات من النمو والتوسع ببيانات دقيقة ورؤى استشرافية وتقنية متقدمة تقودك إلى فرص أكبر."
                 : "Helping people and organizations grow with precise data, forward insight, and advanced technology."}
           </p>
+          <div
+            className="access-page__access-dock"
+            aria-label={ar ? "بوابة الوصول" : "Access gateway"}
+            aria-hidden={panelOpen || undefined}
+          >
+            {registering || gateway ? (
+              <Link href="/auth/login" className="access-page__access-action">
+                <Icon name="shield" />
+                <span>
+                  <b>{ar ? "دخول" : "Sign in"}</b>
+                  <small>{ar ? "الوصول إلى حسابك" : "Access your account"}</small>
+                </span>
+              </Link>
+            ) : (
+              <button
+                ref={triggerRef}
+                type="button"
+                className="access-page__access-action"
+                onClick={() => setPanelOpen(true)}
+                aria-expanded={panelOpen}
+                aria-controls="access-panel"
+              >
+                <Icon name="shield" />
+                <span>
+                  <b>{ar ? "دخول" : "Sign in"}</b>
+                  <small>{ar ? "الوصول إلى حسابك" : "Access your account"}</small>
+                </span>
+              </button>
+            )}
+            {registering ? (
+              <button
+                ref={triggerRef}
+                type="button"
+                className="access-page__access-action"
+                onClick={() => setPanelOpen(true)}
+                aria-expanded={panelOpen}
+                aria-controls="access-panel"
+              >
+                <Icon name="people" />
+                <span>
+                  <b>{ar ? "إنشاء حساب" : "Create account"}</b>
+                  <small>{ar ? "ابدأ رحلتك الآن" : "Start your journey"}</small>
+                </span>
+              </button>
+            ) : (
+              <Link href="/auth/register" className="access-page__access-action">
+                <Icon name="people" />
+                <span>
+                  <b>{ar ? "إنشاء حساب" : "Create account"}</b>
+                  <small>{ar ? "ابدأ رحلتك الآن" : "Start your journey"}</small>
+                </span>
+              </Link>
+            )}
+          </div>
           <div className="access-page__benefits">
             <span>
               <Icon name="rocket" />
@@ -250,57 +326,13 @@ export function AuthAccessPage({
           <cite>Jenan Pro</cite>
         </blockquote>
 
-        <div
-          className="access-page__access-dock"
-          aria-label={ar ? "بوابة الوصول" : "Access gateway"}
-          aria-hidden={panelOpen || undefined}
-        >
-          {registering || gateway ? (
-            <Link href="/auth/login" className="access-page__access-action">
-              <Icon name="shield" />
-              <span>{ar ? "دخول" : "Sign in"}</span>
-            </Link>
-          ) : (
-            <button
-              ref={triggerRef}
-              type="button"
-              className="access-page__access-action"
-              onClick={() => setPanelOpen(true)}
-              aria-expanded={panelOpen}
-              aria-controls="access-panel"
-            >
-              <Icon name="shield" />
-              <span>{ar ? "دخول" : "Sign in"}</span>
-            </button>
-          )}
-          <span className="access-page__access-orbit" aria-hidden="true" />
-          {registering ? (
-            <button
-              ref={triggerRef}
-              type="button"
-              className="access-page__access-action"
-              onClick={() => setPanelOpen(true)}
-              aria-expanded={panelOpen}
-              aria-controls="access-panel"
-            >
-              <Icon name="people" />
-              <span>{ar ? "حساب جديد" : "New account"}</span>
-            </button>
-          ) : (
-            <Link href="/auth/register" className="access-page__access-action">
-              <Icon name="people" />
-              <span>{ar ? "حساب جديد" : "New account"}</span>
-            </Link>
-          )}
-        </div>
-
         {panelOpen ? (
           <>
             <button
               type="button"
               tabIndex={-1}
               className="access-page__panel-scrim"
-              onClick={() => setPanelOpen(false)}
+              onClick={closePanel}
               aria-label={ar ? "إغلاق نافذة الوصول" : "Close access panel"}
             />
             <section
@@ -314,52 +346,82 @@ export function AuthAccessPage({
               <button
                 type="button"
                 className="access-page__panel-close"
-                onClick={() => setPanelOpen(false)}
+                onClick={closePanel}
                 aria-label={ar ? "إغلاق" : "Close"}
               >
                 ×
               </button>
+              <div className="access-page__panel-brand" aria-label="Jenan PRO">
+                <span className="access-page__panel-mark" aria-hidden="true">
+                  <i />
+                  <i />
+                </span>
+                <span>
+                  <strong>
+                    Jenan <b>PRO</b>
+                  </strong>
+                  <small>{ar ? "مركز الأعمال الذكي" : "Intelligent Business Center"}</small>
+                </span>
+              </div>
               <span className="access-page__code">
-                {registering
+                {recovering
+                  ? ar
+                    ? "استعادة الوصول الآمن"
+                    : "SECURE RECOVERY"
+                  : registering
                   ? ar
                     ? "إنشاء الهوية الذكية"
                     : "SMART IDENTITY"
                   : ar
-                    ? "تسجيل الدخول الذكي"
-                    : "SMART ACCESS"}
+                    ? "بوابة الدخول"
+                    : "ACCESS GATEWAY"}
               </span>
               <h2 id="access-page-title">
-                {registering
+                {recovering
+                  ? ar
+                    ? "استعادة كلمة المرور"
+                    : "Recover your password"
+                  : registering
                   ? ar
                     ? "إنشاء حساب جديد"
                     : "Create a new account"
                   : ar
-                    ? "مرحباً بعودتك"
-                    : "Welcome back"}
+                    ? "تسجيل الدخول"
+                    : "Sign in"}
               </h2>
               <p>
-                {registering
+                {recovering
+                  ? ar
+                    ? "أدخل بريدك لاستلام رمز التحقق ومتابعة استعادة الحساب."
+                    : "Enter your email to receive a verification code and recover your account."
+                  : registering
                   ? ar
                     ? "أنشئ هويتك داخل منصة جنان برو."
                     : "Create your identity inside Jenan Pro."
                   : ar
-                    ? "سجّل الدخول إلى حسابك لمتابعة أعمالك وفرصك."
-                    : "Sign in to continue your work and opportunities."}
+                    ? "ادخل إلى حسابك داخل منصة جنان برو."
+                    : "Access your account inside Jenan Pro."}
               </p>
-              <AuthForm mode={mode} locale={locale} labels={labels} />
-              <div className="access-page__alternate">
-                <span>{ar ? "أو" : "or"}</span>
-                <Link href={registering ? "/auth/login" : "/auth/register"}>
-                  {registering
-                    ? ar
-                      ? "لديك حساب؟ تسجيل الدخول"
-                      : "Already registered? Sign in"
-                    : ar
-                      ? "إنشاء حساب جديد"
-                      : "Create a new account"}
-                  <Icon name="arrow" />
-                </Link>
-              </div>
+              {recovering ? (
+                <PasswordRecoveryForm locale={locale} />
+              ) : (
+                <AuthForm mode={mode} locale={locale} labels={labels!} />
+              )}
+              {!recovering ? (
+                <div className="access-page__alternate">
+                  <span>{ar ? "أو" : "or"}</span>
+                  <Link href={registering ? "/auth/login" : "/auth/register"}>
+                    {registering
+                      ? ar
+                        ? "لديك حساب؟ تسجيل الدخول"
+                        : "Already registered? Sign in"
+                      : ar
+                        ? "إنشاء حساب جديد"
+                        : "Create a new account"}
+                    <Icon name="arrow" />
+                  </Link>
+                </div>
+              ) : null}
             </section>
           </>
         ) : null}

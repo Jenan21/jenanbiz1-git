@@ -1862,6 +1862,64 @@
   }
 }
 
+/* Canonical page-reference composition for /auth. */
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+@media (max-width: 1050px) {
+}
+
+@media (max-width: 620px) {
+
+
+
+}
+
 @media (max-width: 390px) {
   .access-page__story {
     min-height: 438px;
@@ -4210,4 +4268,744 @@
     min-height: 174px;
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
+}
+
+@media (min-width: 1101px) {
+
+
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+@media (max-width: 620px) {
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+@media (max-width: 1050px) {
+}
+
+/* Approved Auth gateway: global business scene with two primary access commands. */
+.access-page .access-page__signal {
+  display: none;
+}
+
+.access-page .access-page__story h1 {
+  margin-top: 0;
+  font-size: clamp(2.7rem, 4vw, 4.15rem);
+  font-weight: 760;
+  line-height: 1.08;
+}
+
+.access-page .access-page__story > .access-page__access-dock {
+  position: static;
+  inset: auto;
+  display: flex;
+  align-items: stretch;
+  justify-content: flex-start;
+  gap: 12px;
+  width: 100%;
+  min-width: 0;
+  margin: 18px 0 0;
+  transform: none;
+}
+
+.access-page .access-page__access-action {
+  display: grid;
+  grid-template-columns: 52px minmax(0, 1fr);
+  align-items: center;
+  justify-items: stretch;
+  gap: 11px;
+  min-width: 176px;
+  min-height: 70px;
+  padding: 8px 12px;
+  border: 1px solid rgba(31, 231, 255, 0.38);
+  border-radius: 14px;
+  color: #effdff;
+  background:
+    radial-gradient(circle at 16% 20%, rgba(31, 231, 255, 0.14), transparent 40%),
+    linear-gradient(145deg, rgba(4, 47, 67, 0.92), rgba(2, 24, 38, 0.94));
+  box-shadow:
+    0 14px 34px rgba(0, 0, 0, 0.35),
+    inset 0 1px rgba(255, 255, 255, 0.08),
+    0 0 26px rgba(31, 231, 255, 0.06);
+  text-align: start;
+  transition:
+    transform 180ms ease,
+    border-color 180ms ease,
+    box-shadow 180ms ease;
+}
+
+.access-page .access-page__access-action:last-child {
+  border-color: rgba(77, 246, 162, 0.4);
+  background:
+    radial-gradient(circle at 16% 20%, rgba(77, 246, 162, 0.13), transparent 40%),
+    linear-gradient(145deg, rgba(4, 49, 61, 0.92), rgba(2, 24, 38, 0.94));
+}
+
+.access-page .access-page__access-action:hover,
+.access-page .access-page__access-action:focus-visible {
+  transform: translateY(-4px);
+  border-color: #59f3ff;
+  box-shadow:
+    0 18px 42px rgba(0, 0, 0, 0.42),
+    0 0 30px rgba(31, 231, 255, 0.16),
+    inset 0 1px rgba(255, 255, 255, 0.1);
+}
+
+.access-page .access-page__access-action .icon {
+  width: 52px;
+  height: 52px;
+  padding: 13px;
+  border-radius: 12px;
+}
+
+.access-page .access-page__access-action > span {
+  display: grid;
+  gap: 5px;
+  min-width: 0;
+}
+
+.access-page .access-page__access-action b,
+.access-page .access-page__access-action small {
+  display: block;
+}
+
+.access-page .access-page__access-action b {
+  font-size: 0.76rem;
+}
+
+.access-page .access-page__access-action small {
+  color: #9eb8c1;
+  font-size: 0.52rem;
+  line-height: 1.4;
+}
+
+.access-page .access-page__benefits {
+  margin-top: 18px;
+}
+
+@media (min-width: 1101px) {
+  .access-page .access-page__header nav {
+    direction: rtl;
+  }
+
+  .access-page .access-page__logo {
+    width: clamp(210px, 18vw, 320px);
+  }
+
+  .access-page .access-page__story {
+    margin-top: clamp(44px, 6.5vh, 60px);
+  }
+
+  .access-page .access-page__story h1 {
+    font-size: clamp(2.15rem, 3.3vw, 4.15rem);
+    white-space: nowrap;
+  }
+
+  .access-page .access-page__story > .access-page__access-dock {
+    margin-top: 12px;
+  }
+
+  .access-page .access-page__access-action {
+    min-height: 64px;
+    padding-block: 6px;
+  }
+
+  .access-page .access-page__access-action .icon {
+    width: 48px;
+    height: 48px;
+    padding: 12px;
+  }
+
+  .access-page .access-page__benefits {
+    margin-top: 10px;
+  }
+}
+
+@media (min-width: 621px) and (max-width: 1100px) {
+  .access-page .access-page__intel {
+    grid-template-columns: 1fr;
+    gap: 12px;
+  }
+
+  .access-page .access-page__intel > article {
+    min-height: 180px;
+  }
+
+  .access-page .access-page__news-card {
+    min-height: 120px;
+  }
+}
+
+@media (max-width: 620px) {
+  .access-page .access-page__story h1 {
+    font-size: clamp(1.9rem, 9vw, 2.35rem);
+  }
+
+  .access-page .access-page__story > .access-page__access-dock {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 8px;
+    margin-top: 20px;
+  }
+
+  .access-page .access-page__access-action {
+    grid-template-columns: 42px minmax(0, 1fr);
+    min-width: 0;
+    min-height: 62px;
+    padding: 7px 8px;
+  }
+
+  .access-page .access-page__access-action .icon {
+    width: 42px;
+    height: 42px;
+    padding: 10px;
+  }
+
+  .access-page .access-page__access-action b {
+    font-size: 0.66rem;
+  }
+
+  .access-page .access-page__access-action small {
+    font-size: 0.46rem;
+  }
+}
+
+/* Centered futuristic access panels and compact gateway commands. */
+.access-page .access-page__access-action {
+  grid-template-columns: 44px minmax(0, 1fr);
+  min-width: 160px;
+  min-height: 58px;
+  padding: 6px 10px;
+  border-radius: 12px;
+}
+
+.access-page .access-page__access-action .icon {
+  width: 44px;
+  height: 44px;
+  padding: 11px;
+  border-radius: 10px;
+}
+
+.access-page .access-page__access-action b {
+  font-size: 0.7rem;
+}
+
+.access-page .access-page__panel-scrim {
+  background:
+    radial-gradient(circle at 50% 46%, rgba(11, 102, 132, 0.08), transparent 34%),
+    rgba(0, 7, 14, 0.54);
+  -webkit-backdrop-filter: blur(8px) saturate(0.82);
+  backdrop-filter: blur(8px) saturate(0.82);
+}
+
+.access-page .access-page__form-panel,
+[dir="rtl"] .access-page .access-page__form-panel {
+  top: 50%;
+  right: auto;
+  left: 50%;
+  width: min(460px, calc(100vw - 32px));
+  max-height: calc(100dvh - 32px);
+  padding: 30px 32px 25px;
+  overflow-x: hidden;
+  border: 1px solid rgba(89, 243, 255, 0.3);
+  border-radius: 18px;
+  background:
+    radial-gradient(circle at 12% 8%, rgba(31, 231, 255, 0.13), transparent 35%),
+    radial-gradient(circle at 92% 96%, rgba(77, 246, 162, 0.08), transparent 34%),
+    linear-gradient(145deg, rgba(4, 35, 50, 0.76), rgba(2, 15, 27, 0.84));
+  -webkit-backdrop-filter: blur(32px) saturate(1.32);
+  backdrop-filter: blur(32px) saturate(1.32);
+  box-shadow:
+    0 34px 110px rgba(0, 0, 0, 0.68),
+    0 0 0 1px rgba(255, 255, 255, 0.05) inset,
+    0 0 72px rgba(31, 231, 255, 0.16),
+    0 0 150px rgba(22, 140, 255, 0.08);
+  transform: translate(-50%, -50%);
+  animation: approved-access-panel-in 420ms cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+.access-page[data-mode="register"] .access-page__form-panel {
+  width: min(540px, calc(100vw - 32px));
+}
+
+.access-page .access-page__form-panel::before {
+  height: 1px;
+  background: linear-gradient(90deg, transparent, #59f3ff 28%, #4df6a2 68%, transparent);
+  box-shadow: 0 0 28px rgba(89, 243, 255, 0.5);
+}
+
+.access-page .access-page__form-panel::after {
+  inset: 0;
+  width: auto;
+  height: auto;
+  opacity: 0.18;
+  background-image:
+    linear-gradient(rgba(89, 243, 255, 0.08) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(89, 243, 255, 0.08) 1px, transparent 1px);
+  background-size: 28px 28px;
+  -webkit-mask-image: radial-gradient(circle at center, black, transparent 74%);
+  mask-image: radial-gradient(circle at center, black, transparent 74%);
+}
+
+.access-page .access-page__panel-close {
+  width: 36px;
+  height: 36px;
+  border-color: rgba(89, 243, 255, 0.3);
+  border-radius: 10px;
+  color: #d9fdff;
+  background: rgba(2, 24, 36, 0.72);
+  box-shadow: 0 0 22px rgba(31, 231, 255, 0.08);
+}
+
+.access-page .access-page__form-panel .field__control,
+.access-page .auth-workflow__form-stack input {
+  border: 1px solid rgba(89, 243, 255, 0.24);
+  border-radius: 10px;
+  background: rgba(0, 12, 22, 0.58);
+  box-shadow: inset 0 0 22px rgba(31, 231, 255, 0.025);
+}
+
+.access-page .auth-workflow__form-stack form {
+  display: grid;
+  gap: 12px;
+}
+
+.access-page .auth-workflow__form-stack label {
+  color: #bdced1;
+  font-size: 0.62rem;
+}
+
+.access-page .auth-workflow__form-stack input {
+  display: block;
+  width: 100%;
+  height: 48px;
+  margin-top: 7px;
+  padding: 0 12px;
+  outline: 0;
+  color: #f3fbfc;
+  font: inherit;
+}
+
+.access-page .auth-workflow__form-stack input:focus {
+  border-color: #59f3ff;
+  box-shadow:
+    0 0 0 3px rgba(89, 243, 255, 0.08),
+    0 0 26px rgba(31, 231, 255, 0.1);
+}
+
+.access-page .auth-workflow__return {
+  display: inline-flex;
+  margin-top: 12px;
+  color: #8feaf0;
+  font-size: 0.62rem;
+}
+
+@media (min-width: 700px) {
+  .access-page[data-mode="register"] .auth-form__step--all {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .access-page[data-mode="register"] .auth-form__step--all > .form-note,
+  .access-page[data-mode="register"] .auth-form__step--all > .auth-error,
+  .access-page[data-mode="register"] .auth-form__step--all > .auth-form__submit {
+    grid-column: 1 / -1;
+  }
+}
+
+@media (max-width: 620px) {
+  .access-page .access-page__access-action {
+    grid-template-columns: 38px minmax(0, 1fr);
+    min-height: 54px;
+    padding: 5px 7px;
+  }
+
+  .access-page .access-page__access-action .icon {
+    width: 38px;
+    height: 38px;
+    padding: 9px;
+  }
+
+  .access-page .access-page__form-panel,
+  [dir="rtl"] .access-page .access-page__form-panel {
+    width: calc(100vw - 16px);
+    max-height: calc(100dvh - 16px);
+    padding: 26px 20px 20px;
+    border-radius: 14px;
+  }
+}
+
+@keyframes approved-access-panel-in {
+  from {
+    opacity: 0;
+    filter: blur(8px);
+    transform: translate(-50%, calc(-50% + 22px)) scale(0.96);
+  }
+  to {
+    opacity: 1;
+    filter: blur(0);
+    transform: translate(-50%, -50%) scale(1);
+  }
+}
+
+.access-page .auth-country__control {
+  position: relative;
+  display: grid;
+  grid-template-columns: 42px minmax(0, 1fr);
+  align-items: center;
+  min-height: 64px;
+  overflow: hidden;
+  border: 1px solid rgba(89, 243, 255, 0.26);
+  border-radius: 10px;
+  background:
+    radial-gradient(circle at 9% 22%, rgba(31, 231, 255, 0.14), transparent 42%),
+    rgba(0, 12, 22, 0.58);
+  box-shadow: inset 0 0 22px rgba(31, 231, 255, 0.025);
+}
+
+.access-page .auth-country__flag {
+  display: grid;
+  place-items: center;
+  width: 42px;
+  height: 42px;
+  margin-inline-start: 8px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 9px;
+  background: rgba(2, 24, 36, 0.68);
+  font-size: 1.25rem;
+  box-shadow: 0 0 18px rgba(31, 231, 255, 0.08);
+}
+
+.access-page .auth-country__control select {
+  width: 100%;
+  height: 38px;
+  padding: 0 12px;
+  border: 0;
+  outline: 0;
+  color: #effdff;
+  background: transparent;
+  font: inherit;
+  font-size: 0.67rem;
+  cursor: pointer;
+}
+
+.access-page .auth-country__control select option {
+  color: #e9fbff;
+  background: #062031;
+}
+
+.access-page .auth-country__source {
+  grid-column: 2;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin: -7px 12px 7px;
+  color: #89aab3;
+  font-size: 0.48rem;
+}
+
+.access-page .auth-country__source i {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: #75919b;
+}
+
+.access-page .auth-country__source i[data-source="network"] {
+  background: #4df6a2;
+  box-shadow: 0 0 10px rgba(77, 246, 162, 0.72);
+}
+
+.access-page .auth-country__source i[data-source="manual"] {
+  background: #59f3ff;
+  box-shadow: 0 0 10px rgba(89, 243, 255, 0.6);
+}
+
+/* Approved login.png/register.png overlays. */
+.access-page .access-page__form-panel,
+[dir="rtl"] .access-page .access-page__form-panel {
+  top: 51.2%;
+  width: min(462px, calc(100vw - 32px));
+  height: min(724px, calc(100dvh - 32px));
+  padding: 26px 28px 20px;
+  border-color: rgba(89, 243, 255, 0.72);
+  background:
+    linear-gradient(180deg, rgba(1, 13, 25, 0.55), rgba(1, 10, 20, 0.72)),
+    url("/assets/earth-night-texture.jpg") 112% -10% / 62% auto no-repeat,
+    url("/assets/global-city-night.jpg") center bottom / 100% 40% no-repeat,
+    linear-gradient(145deg, rgba(3, 36, 54, 0.9), rgba(1, 12, 24, 0.96));
+  box-shadow:
+    0 32px 120px rgba(0, 0, 0, 0.72),
+    -3px 0 18px rgba(240, 200, 91, 0.34),
+    3px 0 24px rgba(31, 231, 255, 0.36),
+    0 0 0 1px rgba(255, 255, 255, 0.08) inset,
+    0 0 82px rgba(31, 231, 255, 0.2);
+}
+
+.access-page[data-mode="register"] .access-page__form-panel {
+  width: min(462px, calc(100vw - 32px));
+  padding-inline: 28px;
+}
+
+.access-page .access-page__panel-brand {
+  position: relative;
+  z-index: 2;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 13px;
+  margin: 0 auto 17px;
+  direction: ltr;
+}
+
+.access-page .access-page__panel-brand > span:last-child {
+  display: grid;
+  gap: 5px;
+}
+
+.access-page .access-page__panel-brand strong {
+  color: #f5fcff;
+  font-size: 1.35rem;
+  line-height: 1;
+}
+
+.access-page .access-page__panel-brand strong b {
+  color: #1fe7ff;
+}
+
+.access-page .access-page__panel-brand small {
+  color: #a8c6d0;
+  font-size: 0.62rem;
+  text-align: center;
+}
+
+.access-page .access-page__panel-mark {
+  position: relative;
+  display: block;
+  width: 42px;
+  height: 54px;
+  transform: rotate(5deg);
+}
+
+.access-page .access-page__panel-mark i {
+  position: absolute;
+  display: block;
+  width: 19px;
+  height: 42px;
+  border: 3px solid #17e7ff;
+  border-radius: 100% 0 100% 0;
+  background: linear-gradient(180deg, rgba(31, 231, 255, 0.3), rgba(3, 35, 55, 0.16));
+  box-shadow: 0 0 18px rgba(31, 231, 255, 0.38);
+}
+
+.access-page .access-page__panel-mark i:first-child {
+  top: 0;
+  right: 2px;
+}
+
+.access-page .access-page__panel-mark i:last-child {
+  bottom: 0;
+  left: 2px;
+  border-color: #36c1ff;
+  transform: rotate(180deg);
+}
+
+.access-page .access-page__code {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  color: #d9f9fc;
+  font-family: inherit;
+  font-size: 0.72rem;
+  font-weight: 650;
+  text-align: center;
+}
+
+.access-page .access-page__code::before,
+.access-page .access-page__code::after {
+  content: "";
+  width: 46px;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, #59f3ff);
+  box-shadow: 0 0 10px rgba(89, 243, 255, 0.55);
+}
+
+.access-page .access-page__code::after {
+  background: linear-gradient(90deg, #59f3ff, transparent);
+}
+
+.access-page .access-page__form-panel h2 {
+  margin-top: 13px;
+  font-size: clamp(2rem, 3vw, 2.65rem);
+  text-align: center;
+}
+
+.access-page .access-page__form-panel > p {
+  margin-bottom: 24px;
+  font-size: 0.8rem;
+  text-align: center;
+}
+
+.access-page .access-page__form-panel .auth-form__submit {
+  min-height: 52px;
+  border-radius: 12px;
+  color: #00121a;
+  font-size: 0.9rem;
+  font-weight: 850;
+  background: linear-gradient(105deg, #0edfff, #20e5d6 58%, #f0d883);
+  box-shadow:
+    0 0 25px rgba(31, 231, 255, 0.3),
+    0 0 20px rgba(240, 200, 91, 0.18),
+    inset 0 1px rgba(255, 255, 255, 0.5);
+}
+
+.access-page .access-page__alternate a {
+  min-height: 48px;
+  border: 1px solid rgba(31, 231, 255, 0.7);
+  border-radius: 12px;
+  color: #27e8f4;
+  background: rgba(1, 20, 32, 0.64);
+  box-shadow: inset 0 0 22px rgba(31, 231, 255, 0.05);
+}
+
+.access-page[data-mode="register"] .auth-form__step--all {
+  grid-template-columns: 1fr;
+}
+
+.access-page[data-mode="register"] .auth-form__step--all > * {
+  grid-column: 1;
+}
+
+@media (min-width: 701px) {
+  .access-page[data-mode="register"] .access-page__form-panel {
+    padding-top: 19px;
+    padding-bottom: 17px;
+  }
+
+  .access-page[data-mode="register"] .access-page__panel-brand {
+    margin-bottom: 8px;
+  }
+
+  .access-page[data-mode="register"] .access-page__form-panel h2 {
+    margin-top: 8px;
+    margin-bottom: 2px;
+    font-size: 2.15rem;
+  }
+
+  .access-page[data-mode="register"] .access-page__form-panel > p {
+    margin-bottom: 13px;
+  }
+
+  .access-page[data-mode="register"] .auth-form__step--all {
+    gap: 6px;
+  }
+
+  .access-page[data-mode="register"] .auth-form__step--all > .field > .field__label {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip: rect(0 0 0 0);
+    clip-path: inset(50%);
+    white-space: nowrap;
+  }
+
+  .access-page[data-mode="register"] .field__control {
+    height: 44px;
+  }
+
+  .access-page[data-mode="register"] .auth-country__control {
+    min-height: 54px;
+  }
+
+  .access-page[data-mode="register"] .access-page__form-panel .auth-form__submit {
+    min-height: 48px;
+  }
+
+  .access-page[data-mode="register"] .access-page__alternate {
+    gap: 5px;
+    margin-top: 8px;
+  }
+
+  .access-page[data-mode="register"] .access-page__alternate a {
+    min-height: 44px;
+  }
+}
+
+@media (max-width: 700px) {
+  .access-page .access-page__form-panel,
+  [dir="rtl"] .access-page .access-page__form-panel,
+  .access-page[data-mode="register"] .access-page__form-panel {
+    width: calc(100vw - 16px);
+    padding: 24px 20px 20px;
+    background:
+      linear-gradient(180deg, rgba(1, 13, 25, 0.6), rgba(1, 10, 20, 0.78)),
+      url("/assets/earth-night-texture.jpg") 118% -4% / 76% auto no-repeat,
+      url("/assets/global-city-night.jpg") center bottom / 100% 30% no-repeat,
+      linear-gradient(145deg, rgba(3, 36, 54, 0.94), rgba(1, 12, 24, 0.98));
+  }
+
+  .access-page .access-page__panel-brand {
+    margin-bottom: 12px;
+  }
+
+  .access-page .access-page__panel-brand strong {
+    font-size: 1.1rem;
+  }
+
+  .access-page .access-page__form-panel h2 {
+    font-size: 1.85rem;
+  }
+}
+
+@media (max-width: 620px) {
 }
