@@ -9,7 +9,16 @@
   color: #f4fbff;
   background: #020b14;
   font-family: "Alexandria Variable", "Segoe UI", sans-serif;
+  -webkit-font-smoothing: antialiased;
+  text-rendering: geometricPrecision;
   isolation: isolate;
+}
+
+.access-page[data-mode="register"] {
+  --auth-cyan: #26e3cf;
+  --auth-cyan-soft: #62ead5;
+  --auth-mint: #72efb8;
+  --auth-gold: #f0ca71;
 }
 
 .access-page *,
@@ -24,7 +33,7 @@
   z-index: -2;
   overflow: hidden;
   pointer-events: none;
-  filter: blur(2.4px) brightness(0.54) saturate(0.88);
+  filter: blur(2.4px) brightness(0.31) saturate(1.23);
   transform: scale(1.012);
   transform-origin: center;
 }
@@ -500,6 +509,21 @@
 
 .access-page[data-mode="register"] .access-page__form-panel {
   padding: 19px 28px 17px;
+  background:
+    linear-gradient(180deg, rgba(8, 16, 24, 0.5), rgba(8, 10, 18, 0.76)),
+    url("/assets/earth-night-texture.jpg") 112% -10% / 62% auto no-repeat,
+    url("/assets/global-city-night.jpg") center bottom / 100% 40% no-repeat,
+    linear-gradient(145deg, rgba(10, 32, 42, 0.92), rgba(7, 11, 19, 0.98));
+  animation-name: canonical-auth-register-in;
+}
+
+.access-page[data-mode="register"] .access-page__form-panel::after {
+  opacity: 0.17;
+  background-image:
+    radial-gradient(circle at 0 100%, rgba(240, 202, 113, 0.38), transparent 42%),
+    linear-gradient(rgba(98, 234, 213, 0.07) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(98, 234, 213, 0.07) 1px, transparent 1px);
+  background-size: 100% 100%, 28px 28px, 28px 28px;
 }
 
 .access-page[data-mode="register"] .access-page__panel-brand {
@@ -748,5 +772,18 @@
     animation-duration: 0.01ms !important;
     animation-iteration-count: 1 !important;
     transition-duration: 0.01ms !important;
+  }
+}
+
+@keyframes canonical-auth-register-in {
+  from {
+    opacity: 0;
+    filter: blur(8px) brightness(0.95);
+    transform: translate(-50%, calc(-50% + 22px)) scale(0.96);
+  }
+  to {
+    opacity: 1;
+    filter: blur(0) brightness(0.95);
+    transform: translate(-50%, -50%) scale(1);
   }
 }
