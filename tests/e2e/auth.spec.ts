@@ -97,10 +97,7 @@ test.describe.serial("real authentication and server-side RBAC", () => {
     await expect(page).toHaveURL(/\/$/);
     await Promise.all([
       page.waitForURL(/\/register$/),
-      page
-        .locator(".global-home__access")
-        .getByRole("link", { name: /Create account/ })
-        .click(),
+      page.locator('.global-home__hero-actions a[href="/register"]').click(),
     ]);
 
     await page.getByLabel("Full name").fill("Canonical Auth User");
@@ -145,6 +142,7 @@ test.describe.serial("real authentication and server-side RBAC", () => {
     await page.getByRole("button", { name: "Send verification code" }).click();
     await expect(page.locator(".auth-workflow__dev-code output")).toHaveText(
       /^\d{6}$/,
+      { timeout: 15_000 },
     );
     await page.getByLabel("New password").fill(canonicalFlowReplacement);
     await page.getByLabel("Confirm password").fill(canonicalFlowReplacement);

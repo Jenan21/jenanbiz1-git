@@ -5,7 +5,7 @@ test.setTimeout(90_000);
 const homeViewports = [
   { name: "2560x1440", width: 2560, height: 1440 },
   { name: "1920x1080", width: 1920, height: 1080 },
-  { name: "1661x947", width: 1661, height: 947 },
+  { name: "1672x941", width: 1672, height: 941 },
   { name: "1440x900", width: 1440, height: 900 },
   { name: "1280x800", width: 1280, height: 800 },
   { name: "1265x590", width: 1265, height: 590 },
@@ -15,44 +15,23 @@ const homeViewports = [
 
 const activityFixture = {
   activeUsers: 28,
-  generatedAt: "2026-05-20T12:00:00.000Z",
+  generatedAt: "2026-09-30T12:00:00.000Z",
   windowMinutes: 15,
   locations: [
     { countryCode: "SA", countryName: { ar: "السعودية", en: "Saudi Arabia" }, activeUsers: 10 },
     { countryCode: "AE", countryName: { ar: "الإمارات", en: "United Arab Emirates" }, activeUsers: 7 },
     { countryCode: "US", countryName: { ar: "الولايات المتحدة", en: "United States" }, activeUsers: 5 },
-    { countryCode: "DE", countryName: { ar: "ألمانيا", en: "Germany" }, activeUsers: 4 },
-    { countryCode: "JP", countryName: { ar: "اليابان", en: "Japan" }, activeUsers: 2 },
+    { countryCode: "DE", countryName: { ar: "أوروبا", en: "Europe" }, activeUsers: 4 },
   ],
   sourceState: "LIVE",
 };
 
 const zones = [
   ".global-home__header",
-  ".global-home__hero-copy",
-  ".global-home__world",
-  ".global-home__kpis",
-  ".global-home__capabilities",
-  ".global-home__quote",
-  ".global-home__news",
-  ".global-home__stats",
-  ".global-home__distribution",
-  ".global-home__trust",
-  ".global-home__footer",
-];
-
-const mobileFlow = [
-  ".global-home__header",
-  ".global-home__hero-copy",
-  ".global-home__world",
-  ".global-home__kpis",
-  ".global-home__capabilities",
-  ".global-home__quote",
-  ".global-home__news",
-  ".global-home__stats",
-  ".global-home__distribution",
-  ".global-home__trust",
-  ".global-home__footer",
+  ".global-home__hero",
+  ".global-home__services",
+  ".global-home__ecosystem",
+  ".global-home__markets",
 ];
 
 async function setLocaleCookie(
@@ -71,10 +50,12 @@ async function setLocaleCookie(
 
 for (const locale of ["ar", "en"] as const) {
   for (const viewport of homeViewports) {
-    test(`homepage ${viewport.name} ${locale} preserves the approved composition`, async ({
+    test(`canonical homepage ${viewport.name} ${locale} preserves the approved composition`, async ({
       context,
       page,
     }, testInfo) => {
+      const runtimeErrors: string[] = [];
+      page.on("pageerror", (error) => runtimeErrors.push(error.message));
       await page.setViewportSize(viewport);
       await setLocaleCookie(context, locale, testInfo.project.use.baseURL);
       await page.emulateMedia({ reducedMotion: "reduce" });
@@ -86,117 +67,116 @@ for (const locale of ["ar", "en"] as const) {
       });
 
       const activityResponse = page.waitForResponse("**/api/platform/activity");
-      await page.goto("/");
+      const response = await page.goto("/");
       await activityResponse;
       await page.evaluate(() => document.fonts.ready);
 
+      expect(response?.status()).toBe(200);
       await expect(page.locator("html")).toHaveAttribute("lang", locale);
       await expect(page.locator("html")).toHaveAttribute(
         "dir",
         locale === "ar" ? "rtl" : "ltr",
       );
-      await expect(page.locator(".global-home__stage")).toBeVisible();
       await expect(page.locator(".global-home")).toHaveAttribute("data-home-route", "/");
-      await expect(page.locator(".global-home")).toHaveAttribute("data-home-source", "LIVE_PLATFORM_ACTIVITY");
-      await expect(page.locator(".global-home")).toHaveAttribute("data-home-privacy", "PUBLIC_AGGREGATE");
-      await expect(page.locator(".global-home__network i")).toHaveCount(6);
-      await expect(page.locator(".global-home__hero-copy h1")).toHaveClass(
-        /global-home__sr-only/,
+      await expect(page.locator(".global-home")).toHaveAttribute(
+        "data-home-source",
+        "LIVE_PLATFORM_ACTIVITY",
       );
-      await expect(page.locator(".global-home__access-action")).toHaveCount(2);
-      await expect(
-        page.locator('.global-home__access-action[href="/auth"]'),
-      ).toBeVisible();
-      await expect(
-        page.locator('.global-home__access-action[href="/register"]'),
-      ).toBeVisible();
-      await expect(page.locator(".global-home__quote cite")).toHaveText("Jenan Pro");
-      await expect(page.locator(".global-home__region")).toHaveCount(0);
-      await expect(page.locator(".global-home__kpis article:nth-child(2) strong")).toHaveText("28");
-      await expect(page.locator(".global-home__kpis article:nth-child(3) strong")).toHaveText("5");
-
-      const layout = await page.evaluate(
-        ({ mobileFlow, zones }) => {
-          const rect = (selector: string) => {
-            const bounds = document
-              .querySelector<HTMLElement>(selector)
-              ?.getBoundingClientRect();
-            return bounds
-              ? {
-                  bottom: bounds.bottom,
-                  height: bounds.height,
-                  left: bounds.left,
-                  right: bounds.right,
-                  top: bounds.top,
-                  width: bounds.width,
-                }
-              : null;
-          };
-          const stage = rect(".global-home__stage");
-          const zoneRects = zones.map((selector) => ({
-            rect: rect(selector),
-            selector,
-          }));
-          const orderedRects = mobileFlow.map(rect);
-          const resources = performance
-            .getEntriesByType("resource")
-            .map((entry) => entry.name);
-
-          return {
-            cityBackground: getComputedStyle(
-              document.querySelector<HTMLElement>(".global-home__city")!,
-            ).backgroundImage,
-            earthBackground: getComputedStyle(
-              document.querySelector<HTMLElement>(".global-home__earth-texture")!,
-            ).backgroundImage,
-            ordered: orderedRects.every(
-              (bounds, index) =>
-                bounds &&
-                (index === 0 ||
-                  (orderedRects[index - 1] &&
-                    bounds.top >= orderedRects[index - 1]!.bottom - 1)),
-            ),
-            referenceLoaded: resources.some((resource) =>
-              /APPROVED_AUTH_REFERENCES|home_layout_REFERENCE_ONLY/.test(
-                resource,
-              ),
-            ),
-            heroTitle: rect(".global-home__hero-copy h1"),
-            scrollWidth: document.documentElement.scrollWidth,
-            stage,
-            stageBackground: getComputedStyle(
-              document.querySelector<HTMLElement>(".global-home__stage")!,
-            ).backgroundImage,
-            viewportWidth: document.documentElement.clientWidth,
-            violations: zoneRects.filter(
-              ({ rect: bounds }) =>
-                bounds &&
-                (bounds.left < -1 ||
-                  bounds.right > document.documentElement.clientWidth + 1),
-            ),
-            zones: Object.fromEntries(
-              zoneRects.map(({ rect: bounds, selector }) => [selector, bounds]),
-            ),
-          };
-        },
-        { mobileFlow, zones },
+      await expect(page.locator(".global-home__stage")).toBeVisible();
+      await expect(page.locator(".global-home__service")).toHaveCount(6);
+      await expect(page.locator(".global-home__hero-locations span")).toHaveCount(4);
+      await expect(page.locator(".global-home__hero-actions a")).toHaveCount(3);
+      await expect(page.locator('.global-home__service[href="/projects"]')).toBeVisible();
+      await expect(page.locator('.global-home__service[href="/academy"]')).toBeVisible();
+      await expect(page.locator('.global-home__service[href="/software"]')).toBeVisible();
+      await expect(page.locator('.global-home__service[href="/market"]')).toBeVisible();
+      await expect(page.locator('.global-home__service[href="/talent"]')).toBeVisible();
+      await expect(page.locator('.global-home__service[href="/account"]')).toBeVisible();
+      await expect(page.locator(".global-home__markets")).toHaveAttribute(
+        "data-market-source",
+        "UNAVAILABLE",
       );
+      await expect(page.locator(".global-home__markets article > strong")).toHaveText([
+        "—",
+        "—",
+        "—",
+      ]);
+      await expect(page.locator(".global-home__hero-copy h1")).not.toContainText(
+        locale === "ar" ? "منصة جنان برو" : "Jenan Pro platform",
+      );
+
+      const layout = await page.evaluate((selectors) => {
+        const rect = (selector: string) => {
+          const bounds = document
+            .querySelector<HTMLElement>(selector)
+            ?.getBoundingClientRect();
+          return bounds
+            ? {
+                bottom: bounds.bottom,
+                height: bounds.height,
+                left: bounds.left,
+                right: bounds.right,
+                top: bounds.top,
+                width: bounds.width,
+              }
+            : null;
+        };
+        const stage = rect(".global-home__stage");
+        const zoneRects = selectors.map((selector) => ({
+          rect: rect(selector),
+          selector,
+        }));
+        const resources = performance
+          .getEntriesByType("resource")
+          .map((entry) => decodeURIComponent(entry.name));
+        const hero = document.querySelector<HTMLElement>(".global-home__hero")!;
+
+        return {
+          cityBackground: getComputedStyle(hero, "::before").backgroundImage,
+          clippedInteractive: Array.from(
+            document.querySelectorAll<HTMLElement>("a,button"),
+          )
+            .filter((element) => element.checkVisibility())
+            .some((element) => element.scrollWidth > element.clientWidth + 1),
+          ordered: zoneRects.every(
+            ({ rect: bounds }, index) =>
+              bounds &&
+              (index === 0 ||
+                (zoneRects[index - 1].rect &&
+                  bounds.top >= zoneRects[index - 1].rect!.bottom - 1)),
+          ),
+          referenceLoaded: resources.some((resource) =>
+            /APPROVED_HOME_REFERENCE|الصفحه الرئيسيه\.png/.test(resource),
+          ),
+          scrollHeight: document.documentElement.scrollHeight,
+          scrollWidth: document.documentElement.scrollWidth,
+          stage,
+          viewportHeight: document.documentElement.clientHeight,
+          viewportWidth: document.documentElement.clientWidth,
+          violations: zoneRects.filter(
+            ({ rect: bounds }) =>
+              bounds &&
+              (bounds.left < -1 ||
+                bounds.right > document.documentElement.clientWidth + 1),
+          ),
+          zones: Object.fromEntries(
+            zoneRects.map(({ rect: bounds, selector }) => [selector, bounds]),
+          ),
+        };
+      }, zones);
 
       expect(layout.scrollWidth).toBeLessThanOrEqual(layout.viewportWidth + 1);
       expect(layout.violations).toEqual([]);
+      expect(layout.clippedInteractive).toBe(false);
       expect(layout.referenceLoaded).toBe(false);
-      expect(layout.heroTitle?.width).toBeLessThanOrEqual(1);
-      expect(layout.heroTitle?.height).toBeLessThanOrEqual(1);
-      expect(layout.stageBackground).not.toBe("none");
-      expect(layout.earthBackground).toContain("earth-night-texture.jpg");
       expect(layout.cityBackground).toContain("global-city-night.jpg");
 
       const usesFixedStage = viewport.width > 1100 && viewport.height > 700;
       if (usesFixedStage) {
         expect(layout.stage).not.toBeNull();
-        expect(layout.stage!.width).toBeLessThanOrEqual(1662);
+        expect(layout.stage!.width).toBeLessThanOrEqual(1673);
         expect(layout.stage!.width / layout.stage!.height).toBeCloseTo(
-          1661 / 947,
+          1672 / 941,
           2,
         );
         expect(
@@ -208,17 +188,16 @@ for (const locale of ["ar", "en"] as const) {
       } else {
         expect(layout.ordered).toBe(true);
         expect(layout.stage!.width).toBeCloseTo(layout.viewportWidth, 0);
-        expect(layout.stage!.height).toBeGreaterThan(viewport.height);
+        expect(layout.scrollHeight).toBeGreaterThanOrEqual(layout.viewportHeight);
       }
 
-      if (viewport.name === "1661x947") {
+      if (viewport.name === "1672x941") {
         const expectedGeometry = {
-          ".global-home__hero-copy": { left: 48, top: 144 },
-          ".global-home__world": { left: 457, top: 63 },
-          ".global-home__kpis": { left: 1390, top: 101 },
-          ".global-home__news": { left: 360, top: 596 },
-          ".global-home__trust": { left: 0, top: 791 },
-          ".global-home__footer": { left: 37, top: 876 },
+          ".global-home__header": { left: 0, top: 0 },
+          ".global-home__hero": { left: 0, top: 64 },
+          ".global-home__services": { left: 36, top: 463 },
+          ".global-home__ecosystem": { left: 36, top: 711 },
+          ".global-home__markets": { left: 36, top: 853 },
         } as const;
         for (const [selector, expected] of Object.entries(expectedGeometry)) {
           const bounds = layout.zones[selector];
@@ -228,21 +207,22 @@ for (const locale of ["ar", "en"] as const) {
         }
       }
 
-      await testInfo.attach(`homepage-${viewport.name}-${locale}`, {
+      await testInfo.attach(`canonical-home-${viewport.name}-${locale}`, {
         body: await page.screenshot({
           animations: "disabled",
-          fullPage: viewport.width <= 900,
+          fullPage: viewport.width <= 1100 || viewport.height <= 700,
         }),
         contentType: "image/png",
       });
+      expect(runtimeErrors).toEqual([]);
     });
   }
 
-  test(`homepage ${locale} exposes an unavailable-data state`, async ({
+  test(`canonical homepage ${locale} exposes truthful unavailable states`, async ({
     context,
     page,
   }, testInfo) => {
-    await page.setViewportSize({ width: 1661, height: 947 });
+    await page.setViewportSize({ width: 1672, height: 941 });
     await setLocaleCookie(context, locale, testInfo.project.use.baseURL);
     await page.route("**/api/platform/activity", async (route) => {
       await route.fulfill({ status: 503 });
@@ -252,12 +232,18 @@ for (const locale of ["ar", "en"] as const) {
     await page.goto("/");
     await activityResponse;
 
-    await expect(page.locator(".global-home")).toHaveAttribute("data-home-source", "UNAVAILABLE");
-    await expect(page.locator(".global-home__region")).toHaveCount(0);
-    await expect(page.locator(".global-home__distribution .global-home__empty")).toContainText(
-      locale === "ar" ? "لا توجد جلسات نشطة حالياً" : "No active sessions now",
+    await expect(page.locator(".global-home")).toHaveAttribute(
+      "data-home-source",
+      "UNAVAILABLE",
     );
-    await expect(page.locator(".global-home__kpis article:nth-child(2) strong")).toHaveText("0");
-    await expect(page.locator(".global-home__kpis article:nth-child(3) strong")).toHaveText("0");
+    await expect(page.locator(".global-home__hero-locations span")).toHaveCount(0);
+    await expect(page.locator(".global-home__markets article > strong")).toHaveText([
+      "—",
+      "—",
+      "—",
+    ]);
+    await expect(page.locator(".global-home__markets em").first()).toContainText(
+      locale === "ar" ? "المصدر غير متصل" : "Source unavailable",
+    );
   });
 }

@@ -158,12 +158,12 @@ test.describe
     await expect(page).toHaveURL(/\/$/);
     await expect(page.locator(".access-page__form-panel")).toHaveCount(0);
     await expect(
-      page.locator('.global-home__access-action[href="/auth"]'),
+      page.locator('.global-home__account[href="/auth"]'),
     ).toBeVisible();
     await expect(
-      page.locator('.global-home__access-action[href="/register"]'),
+      page.locator('.global-home__button[href="/register"]'),
     ).toBeVisible();
-    await page.locator('.global-home__access-action[href="/register"]').click();
+    await page.locator('.global-home__button[href="/register"]').click();
     await expect(page).toHaveURL(/\/register$/);
     await expect(page.locator(".access-page__form-panel")).toBeVisible();
     await expect(page.locator('input[name="name"]')).toBeVisible();

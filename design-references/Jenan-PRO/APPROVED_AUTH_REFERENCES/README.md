@@ -1,16 +1,16 @@
-# Jenan PRO Canonical Front Door and Auth References
+# Jenan PRO Canonical Auth References
 
-These three images are the sole binding visual references for the public front door and authentication UI:
+These two panel images are the sole binding visual references for authentication UI:
 
-- `pre-entry.png` — canonical public platform interface before authentication.
 - `login.png` — canonical sign-in overlay.
 - `register.png` — canonical account-creation overlay.
 
-`pre-entry.png` is `1672×941`. The two panel references are `462×725` and combine with the same public interface behind them.
+The two panel references are `462×725` and combine with the canonical homepage behind them.
 
 ## Authority
 
-- These images supersede generic Home/Auth `reference.html`, `spec.txt`, legacy candidates, and alternate layouts for this phase.
+- These images supersede generic Auth `reference.html`, `spec.txt`, legacy candidates, and alternate Auth layouts for this phase.
+- The homepage authority is `../APPROVED_HOME_REFERENCE/homepage.png`; no Auth reference defines an alternate public homepage.
 - Production must recreate the designs with real React/CSS/components. The images must never be used as page backgrounds.
 - Replace every visible legacy `Jenan BIZ` mark with `Jenan PRO` or `جنان برو`.
 - The large left-side platform title from the source image is intentionally omitted and must not be restored. The approved logo remains.
@@ -23,6 +23,5 @@ These three images are the sole binding visual references for the public front d
 
 ## Integrity
 
-- `pre-entry.png` SHA-256: `7850621B6F4E5062BE265AA231C2B18684F5D2BFC0576DFF6BAA7103837AFE5F`
 - `login.png` SHA-256: `D745E12EE6588C9A9D3235CA69E1C35CF583BB311225ABB2049D152BAD2F2CD2`
 - `register.png` SHA-256: `8065AF3563F6DCC173FF33B43630DB69D84AF32ED5FE224C7FC8CF273AA89A75`

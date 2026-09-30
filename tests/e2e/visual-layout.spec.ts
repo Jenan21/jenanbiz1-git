@@ -94,8 +94,12 @@ for (const path of ["/login", "/register"] as const) {
     if (testInfo.project.metadata.viewportKind !== "tablet" &&
         testInfo.project.metadata.viewportKind !== "mobile") {
       const composition = await page.evaluate(() => {
-        const city = document.querySelector<HTMLElement>(".global-home__city");
-        return { cityAsset: city ? getComputedStyle(city).backgroundImage : "" };
+        const hero = document.querySelector<HTMLElement>(".global-home__hero");
+        return {
+          cityAsset: hero
+            ? getComputedStyle(hero, "::before").backgroundImage
+            : "",
+        };
       });
       expect(composition.cityAsset).toContain("global-city-night.jpg");
     }

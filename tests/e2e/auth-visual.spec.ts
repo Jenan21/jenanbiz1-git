@@ -98,8 +98,8 @@ for (const locale of ["ar", "en"] as const) {
             ? "PASSWORD_RECOVERY_SERVICE"
             : "CANONICAL_PUBLIC_SCENE",
         );
-        await expect(page.locator(".global-home__world")).toBeVisible();
-        await expect(page.locator(".global-home__globe")).toBeVisible();
+        await expect(page.locator(".global-home__hero")).toBeVisible();
+        await expect(page.locator(".global-home__hero-visual")).toBeVisible();
         await expect(page.locator(".access-page__form-panel")).toBeVisible();
 
         if (route.screen === "login") {
@@ -170,11 +170,12 @@ for (const locale of ["ar", "en"] as const) {
                 (element) => element.scrollWidth > element.clientWidth + 1,
               ),
             cityBackground: getComputedStyle(
-              document.querySelector<HTMLElement>(".global-home__city")!,
+              document.querySelector<HTMLElement>(".global-home__hero")!,
+              "::before",
             ).backgroundImage,
-            globeBackground: getComputedStyle(
-              document.querySelector<HTMLElement>(".global-home__earth-texture")!,
-            ).backgroundImage,
+            visualMapCount: document.querySelectorAll(
+              ".global-home__hero-visual .gateway-world-map",
+            ).length,
             offscreen: visible.some((element) => {
               const bounds = element.getBoundingClientRect();
               return (
@@ -208,7 +209,7 @@ for (const locale of ["ar", "en"] as const) {
         expect(layout.clippedButtons).toBe(false);
         expect(layout.referenceLoaded).toBe(false);
         expect(layout.cityBackground).toContain("global-city-night.jpg");
-        expect(layout.globeBackground).toContain("earth-night-texture.jpg");
+        expect(layout.visualMapCount).toBe(1);
         if (layout.panel) {
           expect(layout.panel.left).toBeGreaterThanOrEqual(-1);
           expect(layout.panel.right).toBeLessThanOrEqual(
