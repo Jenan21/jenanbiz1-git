@@ -400,10 +400,6 @@
   font-size: 0.56rem;
 }
 
-.access-page[data-mode="login"] .access-page__form-panel .form-note {
-  display: none;
-}
-
 .access-page__form-panel .auth-success,
 .access-page__form-panel .auth-error,
 .access-page__form-panel .auth-workflow__message,
@@ -469,6 +465,10 @@
 }
 
 [dir="rtl"] .access-page__alternate a[href="/auth"] .icon {
+  transform: rotate(180deg);
+}
+
+[dir="rtl"] .access-page__alternate a[href="/register"] .icon {
   transform: rotate(180deg);
 }
 
@@ -794,24 +794,59 @@
     top: 50%;
     width: min(620px, 100vw);
     height: 100dvh;
-    padding: 24px 20px 20px;
+    padding: 24px 28px 20px;
     border-radius: 15px;
     background:
       linear-gradient(180deg, rgba(1, 13, 25, 0.58), rgba(1, 10, 20, 0.8)),
-      url("/assets/global-city-night.jpg") center bottom / 100% 30% no-repeat,
+      url("/assets/global-city-night.jpg") center bottom / 100% 40% no-repeat,
       linear-gradient(145deg, rgba(3, 36, 54, 0.95), rgba(1, 12, 24, 0.99));
   }
 
+  .access-page[data-mode="login"] .access-page__form-panel .auth-form,
+  .access-page[data-mode="login"] .access-page__alternate {
+    width: min(100%, 404px);
+  }
+
   .access-page__panel-brand {
-    margin-bottom: 12px;
+    margin-bottom: 20px;
   }
 
-  .access-page__panel-brand strong {
-    font-size: 1.1rem;
+  .access-page[data-mode="login"] .access-page__panel-close {
+    top: 19px;
+    left: 18px;
+    width: 36px;
+    height: 36px;
+    border-radius: 11px;
+    transform: rotate(6deg);
   }
 
-  .access-page__form-panel h1 {
-    font-size: 1.85rem;
+  .access-page[data-mode="login"] .access-page__panel-brand strong {
+    font-size: 1.3rem;
+  }
+
+  .access-page[data-mode="login"] .access-page__form-panel h1 {
+    margin-bottom: 8px;
+    font-size: 2.62rem;
+  }
+
+  .access-page[data-mode="login"] .access-page__form-panel > p {
+    margin-bottom: 24px;
+  }
+
+  .access-page[data-mode="login"] .access-page__form-panel .field {
+    gap: 3px;
+  }
+
+  .access-page[data-mode="login"] .access-page__form-panel .field__control {
+    height: 48px;
+  }
+
+  .access-page[data-mode="login"] .auth-form__options {
+    margin-bottom: 8px;
+  }
+
+  .access-page[data-mode="login"] .access-page__alternate {
+    margin-top: 10px;
   }
 
   .access-page[data-mode="register"] .access-page__form-panel {

@@ -194,7 +194,7 @@ export function CanonicalAuthAccessPage({
           <div className="access-page__alternate">
             <span>{ar ? "أو" : "or"}</span>
             <Link href={registering ? "/auth" : "/register"}>
-              <Icon name={registering ? "arrow" : "people"} />
+              <Icon name="arrow" />
               {registering
                 ? ar
                   ? "لديك حساب؟ تسجيل الدخول"

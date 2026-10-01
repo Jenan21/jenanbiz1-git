@@ -111,8 +111,37 @@ for (const locale of ["ar", "en"] as const) {
           await expect(page.locator('input[name="password"]')).toBeVisible();
           await expect(page.locator('input[name="remember"]')).toBeVisible();
           await expect(
+            page.locator(".access-page__form-panel .form-note"),
+          ).toBeVisible();
+          await expect(
             page.locator('.access-page__form-panel a[href="/auth/forgot"]'),
           ).toBeVisible();
+          if (viewport.name === "462x725") {
+            const emailControl = await page
+              .locator(".access-page__form-panel .field__control")
+              .first()
+              .boundingBox();
+            const submit = await page
+              .locator(".access-page__form-panel .auth-form__submit")
+              .boundingBox();
+            const alternate = await page
+              .locator('.access-page__alternate a[href="/register"]')
+              .boundingBox();
+            if (!emailControl || !submit || !alternate) {
+              throw new Error("Approved login controls should have a layout box");
+            }
+            expect(Math.round(emailControl.x)).toBe(29);
+            expect(Math.round(emailControl.y)).toBeGreaterThanOrEqual(245);
+            expect(Math.round(emailControl.y)).toBeLessThanOrEqual(249);
+            expect(Math.round(emailControl.width)).toBe(404);
+            expect(Math.round(emailControl.height)).toBe(48);
+            expect(Math.round(submit.y)).toBeGreaterThanOrEqual(443);
+            expect(Math.round(submit.y)).toBeLessThanOrEqual(448);
+            expect(Math.round(submit.width)).toBe(404);
+            expect(Math.round(alternate.y)).toBeGreaterThanOrEqual(555);
+            expect(Math.round(alternate.y)).toBeLessThanOrEqual(560);
+            expect(Math.round(alternate.height)).toBe(48);
+          }
         }
 
         if (route.screen === "register") {
