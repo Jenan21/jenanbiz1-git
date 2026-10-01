@@ -192,7 +192,7 @@ for (const locale of ["ar", "en"] as const) {
         const expectedGeometry = {
           ".global-home__header": { left: 0, top: 0 },
           ".global-home__hero": { left: 0, top: 78 },
-          ".global-home__services": { left: 36, top: 479 },
+          ".global-home__services": { left: 22, top: 487 },
           ".global-home__ecosystem": { left: 0, top: 818 },
           ".global-home__footer": { left: 0, top: 876 },
         } as const;

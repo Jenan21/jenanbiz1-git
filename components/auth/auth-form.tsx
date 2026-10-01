@@ -31,7 +31,6 @@ const countryOptions = countries
   .map((country) => ({
     ar: country.translations.ara?.common ?? country.name.common,
     code: country.cca2.toUpperCase(),
-    dialCode: `${country.idd.root}${country.idd.suffixes.length === 1 ? country.idd.suffixes[0] : ""}`,
     en: country.name.common,
   }));
 
@@ -66,6 +65,9 @@ function CountrySelector({
   const [countryCode, setCountryCode] = useState(locale === "ar" ? "SA" : "US");
   const [source, setSource] = useState<"default" | "manual" | "network">(
     "default",
+  );
+  const selectedCountry = countriesByLocale[locale].find(
+    (country) => country.code === countryCode,
   );
 
   useEffect(() => {
@@ -103,17 +105,23 @@ function CountrySelector({
 
   return (
     <div className="field auth-country">
-      <label className="field__label" htmlFor="auth-phone">
-        {locale === "ar" ? "رمز الدولة / رقم الجوال" : "Country / mobile number"}
+      <label className="field__label" htmlFor="auth-country-code">
+        {label}
       </label>
-      <span className="auth-country__control">
-        <Icon name="phone" />
+      <div className="auth-country__control">
         <span className="auth-country__selector">
-          <Icon name="globe" />
+          <Icon name="chevron" />
+          <span className="auth-country__selected" aria-hidden="true">
+            <strong>{selectedCountry?.[locale]}</strong>
+            <small>
+              {locale === "ar" ? "يمكنك تغيير الدولة" : "You can change country"}
+            </small>
+          </span>
           <span className="auth-country__flag" aria-hidden="true">
             {countryFlag(countryCode)}
           </span>
           <select
+            id="auth-country-code"
             aria-label={label}
             disabled={disabled}
             name="countryCode"
@@ -126,27 +134,11 @@ function CountrySelector({
           >
             {countriesByLocale[locale].map((country) => (
               <option key={country.code} value={country.code}>
-                {countryFlag(country.code)} {country.code}
+                {countryFlag(country.code)} {country[locale]}
               </option>
             ))}
           </select>
-          <Icon name="chevron" />
         </span>
-        <span className="auth-phone__dial">
-          {countryOptions.find((country) => country.code === countryCode)
-            ?.dialCode ?? ""}
-        </span>
-        <input
-          id="auth-phone"
-          aria-label={locale === "ar" ? "رقم الجوال" : "Mobile number"}
-          autoComplete="tel-national"
-          disabled={disabled}
-          inputMode="tel"
-          name="phone"
-          placeholder={locale === "ar" ? "50 123 4567" : "50 123 4567"}
-          required
-          type="tel"
-        />
         <span className="auth-country__source" aria-live="polite">
           <i data-source={source} />
           {source === "network"
@@ -161,7 +153,7 @@ function CountrySelector({
                 ? "يمكنك تغيير الدولة"
                 : "You can change the country"}
         </span>
-      </span>
+      </div>
     </div>
   );
 }
@@ -204,15 +196,6 @@ export function AuthForm({ mode, locale, labels }: AuthFormProps) {
             email: form.get("email"),
             password: form.get("password"),
             countryCode: form.get("countryCode"),
-            phone: (() => {
-              const country = countryOptions.find(
-                (item) => item.code === form.get("countryCode"),
-              );
-              const nationalNumber = String(form.get("phone") ?? "")
-                .replace(/\D/g, "")
-                .replace(/^0+/, "");
-              return `${country?.dialCode ?? ""}${nationalNumber}`;
-            })(),
             locale,
             language: locale,
           }
@@ -322,11 +305,15 @@ export function AuthForm({ mode, locale, labels }: AuthFormProps) {
                     : "I accept the terms and conditions"
                 }
               />
-              <span>{locale === "ar" ? "أوافق على" : "I accept the"}</span>
+              <span>
+                {locale === "ar"
+                  ? "أوافق على الشروط والأحكام"
+                  : "I agree to the terms and conditions"}
+              </span>
             </label>
             <details className="auth-form__terms-details">
               <summary>
-                {locale === "ar" ? "الشروط والأحكام" : "terms and conditions"}
+                {locale === "ar" ? "عرض شروط الاستخدام" : "View terms of use"}
               </summary>
               <p>
                 {locale === "ar"

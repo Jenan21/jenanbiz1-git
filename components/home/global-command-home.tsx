@@ -52,40 +52,13 @@ export function GlobalCommandHome({
   const topLocations = activity.locations.slice(0, 4);
   const serviceCards: HomeServiceCard[] = [
     {
-      accent: "teal",
+      accent: "blue",
       description: ar
-        ? "خطط الحملات وتابع نمو أعمالك"
-        : "Plan campaigns and track business growth",
-      href: "/marketing",
-      icon: "megaphone",
-      title: ar ? "التسويق" : "Marketing",
-    },
-    {
-      accent: "purple",
-      description: ar
-        ? "مواهب وفرص عمل في مختلف المجالات"
-        : "Talent and opportunities across industries",
-      href: "/talent",
-      icon: "people",
-      title: ar ? "الوظائف" : "Careers",
-    },
-    {
-      accent: "indigo",
-      description: ar
-        ? "فرص وأسواق عالمية للنمو والاستثمار"
-        : "Global markets and growth opportunities",
-      href: "/market",
-      icon: "trend",
-      title: ar ? "السوق" : "Market",
-    },
-    {
-      accent: "gold",
-      description: ar
-        ? "أدوات تشغيل ونمو للأعمال"
-        : "Tools for business operations and growth",
-      href: "/software",
-      icon: "building",
-      title: ar ? "البرمجيات" : "Software",
+        ? "تحليل وتقييم ودراسة جدوى ودعم مشروع"
+        : "Analysis, evaluation, feasibility, and launch support",
+      href: "/projects",
+      icon: "briefcase",
+      title: ar ? "المشاريع" : "Projects",
     },
     {
       accent: "cyan",
@@ -97,35 +70,77 @@ export function GlobalCommandHome({
       title: ar ? "الأكاديمية" : "Academy",
     },
     {
-      accent: "blue",
+      accent: "gold",
       description: ar
-        ? "تحليل وتقييم ودراسة جدوى ودعم مشروع"
-        : "Analysis, evaluation, feasibility, and launch support",
-      href: "/projects",
-      icon: "briefcase",
-      title: ar ? "المشاريع" : "Projects",
+        ? "أدوات تشغيل ونمو للأعمال"
+        : "Tools for business operations and growth",
+      href: "/software",
+      icon: "building",
+      title: ar ? "البرمجيات" : "Software",
+    },
+    {
+      accent: "indigo",
+      description: ar
+        ? "فرص وأسواق عالمية للنمو والاستثمار"
+        : "Global markets and growth opportunities",
+      href: "/market",
+      icon: "trend",
+      title: ar ? "السوق" : "Market",
+    },
+    {
+      accent: "purple",
+      description: ar
+        ? "مواهب وفرص عمل في مختلف المجالات"
+        : "Talent and opportunities across industries",
+      href: "/talent",
+      icon: "people",
+      title: ar ? "المواهب" : "Talent",
+    },
+    {
+      accent: "teal",
+      description: ar
+        ? "خطط الحملات وتابع نمو أعمالك"
+        : "Plan campaigns and track business growth",
+      href: "/marketing",
+      icon: "megaphone",
+      title: ar ? "التسويق" : "Marketing",
     },
   ];
   const assurances = [
     {
-      icon: "globe" as const,
-      note: ar ? "في اقتصاد واحد" : "In one economy",
-      title: ar ? "فرص عالمية" : "Global opportunity",
-    },
-    {
-      icon: "rocket" as const,
-      note: ar ? "للتطوير والاستثمار" : "For growth and investment",
-      title: ar ? "أدوات متقدمة" : "Advanced tools",
-    },
-    {
-      icon: "people" as const,
-      note: ar ? "من الخبراء والمستثمرين" : "Experts and investors",
-      title: ar ? "مجتمع داعم" : "Supportive community",
+      icon: "barChart" as const,
+      note: ar ? "مع مصدر وحالة لكل قيمة" : "With source and status for each value",
+      title: ar ? "بيانات شفافة" : "Transparent data",
     },
     {
       icon: "shield" as const,
-      note: ar ? "لقرارات أفضل" : "For better decisions",
-      title: ar ? "بيانات دقيقة" : "Trusted data",
+      note: ar ? "لحسابك وبياناتك" : "For your account and data",
+      title: ar ? "خصوصية وأمان" : "Privacy and security",
+    },
+    {
+      icon: "globe" as const,
+      note: ar ? "من خلال خدمات مترابطة" : "Across connected services",
+      title: ar ? "وصول عالمي" : "Global access",
+    },
+    {
+      icon: "rocket" as const,
+      note: ar ? "لتجربة أعمال سلسة" : "For a smooth business experience",
+      title: ar ? "إنجاز أسرع" : "Move faster",
+    },
+    {
+      icon: "people" as const,
+      note: ar ? "للأعمال والشراكات" : "For business and partnerships",
+      title: ar ? "مجتمع أعمال" : "Business community",
+    },
+    {
+      icon: "building" as const,
+      note: ar ? "لتطوير أعمالك" : "To build and grow your business",
+      title: ar ? "أدوات متقدمة" : "Advanced tools",
+    },
+    {
+      icon: "sparkles" as const,
+      note: ar ? "للتخطيط واتخاذ القرار" : "For planning and decision-making",
+      title: ar ? "تحليلات ذكية" : "Smart insights",
     },
   ];
   const liveActivity =
@@ -192,19 +207,13 @@ export function GlobalCommandHome({
       <div className="global-home__stage">
         <header className="global-home__header">
           <Link className="global-home__brand" href="/" aria-label="Jenan PRO">
-            <span className="global-home__brand-mark" aria-hidden="true">
-              <Icon name="grid" />
-            </span>
             <strong>
               Jenan <b>PRO</b>
             </strong>
+            <small>{ar ? "مركز الأعمال الذكي" : "Intelligent Business Center"}</small>
           </Link>
 
           <nav aria-label={ar ? "التنقل الرئيسي" : "Primary navigation"}>
-            <Link href="/account">
-              <Icon name="wallet" />
-              {ar ? "بياناتي" : "My account"}
-            </Link>
             <Link href="/marketing">
               <Icon name="megaphone" />
               {ar ? "التسويق" : "Marketing"}
@@ -317,6 +326,29 @@ export function GlobalCommandHome({
                 {ar ? "ابدأ الآن" : "Get started"}
               </Link>
             </div>
+          </div>
+
+          <div className="global-home__hero-brand" aria-label="Jenan PRO">
+            <strong>
+              Jenan <b>PRO</b>
+            </strong>
+            <small>{ar ? "مركز الأعمال الذكي" : "Intelligent Business Center"}</small>
+            <i aria-hidden="true" />
+            <p>
+              {ar ? (
+                <>
+                  منصة واحدة لفرص أكبر
+                  <br />
+                  تقنية · معرفة · أسواق · شراكات · نمو مستدام
+                </>
+              ) : (
+                <>
+                  One platform for bigger opportunities
+                  <br />
+                  Technology · learning · markets · partnerships
+                </>
+              )}
+            </p>
           </div>
 
           <aside className="global-home__hero-insights">

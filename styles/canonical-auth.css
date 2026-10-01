@@ -85,20 +85,17 @@
 
 .access-page__panel-world {
   position: absolute;
-  top: -15%;
-  right: -14%;
+  top: -24%;
+  right: -17%;
   z-index: 0;
-  width: 66%;
+  width: 74%;
   aspect-ratio: 1;
-  border: 1px solid rgba(25, 209, 255, 0.26);
   border-radius: 50%;
   background:
-    radial-gradient(circle at 44% 44%, transparent 46%, rgba(0, 205, 255, 0.3) 47%, transparent 48%),
-    radial-gradient(circle at 42% 44%, rgba(10, 144, 190, 0.12), rgba(0, 7, 17, 0.78) 67%),
-    url("/assets/earth-night-texture.jpg") center / auto 88% no-repeat;
-  box-shadow: 0 0 42px rgba(0, 196, 255, 0.28), inset 0 0 30px rgba(8, 145, 199, 0.2);
-  opacity: 0.88;
-  mask-image: radial-gradient(circle, #000 60%, transparent 73%);
+    radial-gradient(circle at 42% 44%, rgba(10, 144, 190, 0.06), rgba(0, 7, 17, 0.68) 70%),
+    url("/assets/earth-night-texture.jpg") center / auto 78% no-repeat;
+  opacity: 0.46;
+  mask-image: radial-gradient(circle, #000 56%, transparent 72%);
 }
 
 .access-page__panel-city {
@@ -477,16 +474,13 @@
 
 .access-page .auth-country__control {
   position: relative;
-  display: grid;
-  grid-template-columns: 28px minmax(102px, 0.95fr) auto minmax(0, 1.35fr);
-  align-items: center;
-  min-height: 50px;
+  display: block;
+  min-height: 54px;
   overflow: hidden;
   border: 1px solid rgba(89, 243, 255, 0.66);
-  border-radius: 11px;
+  border-radius: 10px;
   background: rgba(0, 12, 22, 0.68);
   box-shadow: inset 0 0 22px rgba(31, 231, 255, 0.035);
-  direction: ltr;
 }
 
 .access-page .auth-country > .field__label {
@@ -498,83 +492,73 @@
   white-space: nowrap;
 }
 
-.access-page .auth-country__control > .icon {
-  width: 20px;
-  height: 20px;
-  justify-self: center;
-  color: var(--auth-cyan-soft);
-}
-
 .access-page .auth-country__selector {
+  position: relative;
   display: grid;
-  grid-template-columns: 18px minmax(0, 1fr) 12px;
+  grid-template-columns: 22px minmax(0, 1fr) 42px;
   align-items: center;
-  gap: 4px;
-  min-width: 0;
-  padding-inline: 5px;
-  border-inline: 1px solid rgba(89, 243, 255, 0.2);
+  height: 52px;
+  gap: 8px;
+  padding: 5px 8px;
   color: var(--auth-cyan-soft);
-}
-
-.access-page .auth-country__selector .icon {
-  width: 16px;
-  height: 16px;
-}
-
-.access-page .auth-country__flag {
-  display: none;
-}
-
-.access-page .auth-country__selector select {
-  width: 100%;
-  min-width: 0;
-  height: 38px;
-  padding: 0;
-  border: 0;
-  outline: 0;
-  color: #effdff;
-  background: transparent;
-  font: inherit;
-  font-size: 0.59rem;
-  cursor: pointer;
   direction: ltr;
 }
 
-.access-page .auth-country__selector > .icon:last-child {
-  width: 11px;
+.access-page .auth-country__selector .icon {
+  width: 14px;
+  height: 14px;
   transform: rotate(90deg);
+}
+
+.access-page .auth-country__flag {
+  display: grid;
+  place-items: center;
+  width: 38px;
+  height: 38px;
+  border: 1px solid rgba(89, 243, 255, 0.16);
+  border-radius: 8px;
+  color: #effdff;
+  background: rgba(3, 27, 43, 0.8);
+  font-size: 1.1rem;
+}
+
+.access-page .auth-country__selected {
+  display: grid;
+  justify-items: end;
+  min-width: 0;
+  direction: rtl;
+  line-height: 1.35;
+}
+
+.access-page .auth-country__selected strong {
+  overflow: hidden;
+  max-width: 100%;
+  color: #effdff;
+  font-size: 0.68rem;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.access-page .auth-country__selected small {
+  color: #a9c0ca;
+  font-size: 0.48rem;
+}
+
+.access-page .auth-country__selector select {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  width: 100%;
+  height: 100%;
+  opacity: 0;
+  border: 0;
+  outline: 0;
+  cursor: pointer;
 }
 
 .access-page .auth-country__control select option {
   color: #e9fbff;
   background: #062031;
-}
-
-.access-page .auth-phone__dial {
-  padding-inline: 7px;
-  border-inline-end: 1px solid rgba(89, 243, 255, 0.2);
-  color: #b6cbd3;
-  font-size: 0.63rem;
-  white-space: nowrap;
-}
-
-.access-page .auth-country__control input[name="phone"] {
-  width: 100%;
-  min-width: 0;
-  height: 38px;
-  padding-inline: 7px;
-  border: 0;
-  outline: 0;
-  color: #effdff;
-  background: transparent;
-  font: inherit;
-  font-size: 0.64rem;
-  direction: ltr;
-  text-align: start;
-}
-
-.access-page .auth-country__control input[name="phone"]::placeholder {
-  color: #8399a3;
 }
 
 .access-page .auth-country__source {
@@ -610,7 +594,7 @@
   padding: 19px 28px 17px;
   background:
     linear-gradient(180deg, rgba(8, 16, 24, 0.5), rgba(8, 10, 18, 0.76)),
-    url("/assets/global-city-night.jpg") center bottom / 100% 40% no-repeat,
+    url("/assets/global-city-night.jpg") center bottom / 100% 44% no-repeat,
     linear-gradient(145deg, rgba(10, 32, 42, 0.92), rgba(7, 11, 19, 0.98));
   animation-name: canonical-auth-register-in;
 }
@@ -670,11 +654,13 @@
 }
 
 .access-page[data-mode="register"] .auth-form__terms-field {
-  order: 7;
+  order: 6;
+  margin-top: 2px;
 }
 
 .access-page[data-mode="register"] .form-note {
-  order: 6;
+  order: 7;
+  margin-top: 17px;
 }
 
 .access-page[data-mode="register"] .auth-error {
@@ -684,6 +670,9 @@
 .access-page[data-mode="register"] .auth-form__submit {
   order: 9;
   min-height: 48px;
+  margin-top: -1px;
+  background: linear-gradient(105deg, #2b9e91, #63d5a5 58%, #f0d883);
+  box-shadow: 0 0 25px rgba(56, 208, 173, 0.25), 0 0 20px rgba(240, 200, 91, 0.18), inset 0 1px rgba(255, 255, 255, 0.5);
 }
 
 .access-page__form-panel .auth-form__terms {
@@ -693,15 +682,16 @@
 
 .access-page__form-panel .auth-form__terms-field {
   position: relative;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 10px;
-  direction: ltr;
+  display: grid;
+  grid-template-columns: 1fr;
+  justify-items: start;
+  gap: 6px;
+  margin-top: 12px;
+  direction: rtl;
 }
 
 .access-page__form-panel .auth-form__terms {
-  direction: ltr;
+  direction: rtl;
 }
 
 .access-page__form-panel .auth-form__terms > span {
@@ -802,8 +792,8 @@
 @media (max-width: 700px) {
   .access-page__form-panel {
     top: 50%;
-    width: min(620px, calc(100vw - 16px));
-    height: calc(100dvh - 16px);
+    width: min(620px, 100vw);
+    height: 100dvh;
     padding: 24px 20px 20px;
     border-radius: 15px;
     background:
@@ -825,44 +815,45 @@
   }
 
   .access-page[data-mode="register"] .access-page__form-panel {
-    width: min(532px, calc(100vw - 16px));
-    padding: 17px 18px 14px;
+    top: 50%;
+    width: min(532px, 100vw);
+    height: 100dvh;
+    padding: 23px 18px 14px;
+  }
+
+  .access-page[data-mode="register"] .access-page__form-panel .auth-form,
+  .access-page[data-mode="register"] .access-page__alternate {
+    width: min(100%, 404px);
   }
 
   .access-page[data-mode="register"] .access-page__panel-brand {
-    margin-bottom: 4px;
-  }
-
-  .access-page[data-mode="register"] .access-page__panel-mark {
-    width: 34px;
-    height: 44px;
-  }
-
-  .access-page[data-mode="register"] .access-page__panel-mark i {
-    width: 16px;
-    height: 34px;
+    margin-bottom: 10px;
   }
 
   .access-page[data-mode="register"] .access-page__form-panel h1 {
     margin-top: 5px;
-    font-size: 1.65rem;
+    font-size: 2rem;
   }
 
   .access-page[data-mode="register"] .access-page__form-panel > p {
-    margin-bottom: 8px;
+    margin-bottom: 16px;
     font-size: 0.68rem;
   }
 
   .access-page[data-mode="register"] .auth-form__step--all {
-    gap: 5px;
+    gap: 7px;
   }
 
   .access-page[data-mode="register"] .field__control {
-    height: 42px;
+    height: 44px;
   }
 
   .access-page[data-mode="register"] .auth-country__control {
-    min-height: 50px;
+    min-height: 54px;
+  }
+
+  .access-page[data-mode="register"] .access-page__alternate {
+    margin-top: 0;
   }
 
 }

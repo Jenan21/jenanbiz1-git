@@ -106,12 +106,11 @@ test.describe.serial("real authentication and server-side RBAC", () => {
     await page.getByLabel("Full name").fill("Canonical Auth User");
     await page.getByLabel("Email address").fill(canonicalFlowEmail);
     await page.getByLabel("Country code").selectOption("SA");
-    await page.getByLabel("Mobile number").fill("50 123 4567");
     await page
       .getByLabel("Password", { exact: true })
       .fill(canonicalFlowPassword);
     await page.getByLabel("Confirm password").fill(canonicalFlowPassword);
-    await page.getByText("terms and conditions", { exact: true }).click();
+    await page.getByText("View terms of use", { exact: true }).click();
     await expect(
       page.getByText("I agree to provide accurate information", {
         exact: false,

@@ -13,6 +13,7 @@ const viewports = [
   { name: "1024x1366", width: 1024, height: 1366 },
   { name: "820x1180", width: 820, height: 1180 },
   { name: "430x932", width: 430, height: 932 },
+  { name: "462x725", width: 462, height: 725 },
   { name: "390x844", width: 390, height: 844 },
   { name: "360x800", width: 360, height: 800 },
 ] as const;
@@ -120,7 +121,6 @@ for (const locale of ["ar", "en"] as const) {
             "name",
             "email",
             "countryCode",
-            "phone",
             "password",
             "confirmPassword",
             "terms",
@@ -130,14 +130,18 @@ for (const locale of ["ar", "en"] as const) {
           const country = page.locator('select[name="countryCode"]');
           await expect(country).toHaveValue("SA");
           await expect(page.locator(".auth-country__flag")).toHaveText("🇸🇦");
-          await expect(page.locator(".auth-phone__dial")).toHaveText("+966");
+          await expect(page.locator(".auth-country__selected strong")).toHaveText(
+            locale === "ar" ? "السعودية" : "Saudi Arabia",
+          );
           await expect(page.locator(".auth-country__source i")).toHaveAttribute(
             "data-source",
             "network",
           );
           await country.selectOption("US");
           await expect(page.locator(".auth-country__flag")).toHaveText("🇺🇸");
-          await expect(page.locator(".auth-phone__dial")).toHaveText("+1");
+          await expect(page.locator(".auth-country__selected strong")).toHaveText(
+            locale === "ar" ? "الولايات المتحدة" : "United States",
+          );
           await expect(page.locator(".auth-country__source i")).toHaveAttribute(
             "data-source",
             "manual",
@@ -259,11 +263,20 @@ for (const locale of ["ar", "en"] as const) {
             expect(Math.round(layout.panel.width)).toBe(532);
             expect(Math.round(layout.panel.height)).toBe(665);
           }
+          if (
+            viewport.name === "462x725" &&
+            (route.screen === "login" || route.screen === "register")
+          ) {
+            expect(Math.round(layout.panel.left)).toBe(0);
+            expect(Math.round(layout.panel.top)).toBe(0);
+            expect(Math.round(layout.panel.width)).toBe(462);
+            expect(Math.round(layout.panel.height)).toBe(725);
+          }
         }
       }
 
       if (
-        ["1365x768", "1024x768", "1347x768", "820x1180", "390x844"].includes(
+        ["1365x768", "1024x768", "1347x768", "820x1180", "462x725", "390x844"].includes(
           viewport.name,
         )
       ) {
