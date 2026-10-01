@@ -27,6 +27,10 @@
   box-sizing: border-box;
 }
 
+body:has(.access-page) nextjs-portal {
+  display: none !important;
+}
+
 .canonical-auth__background {
   position: fixed;
   inset: -8px;
@@ -812,12 +816,17 @@
   }
 
   .access-page[data-mode="login"] .access-page__panel-close {
-    top: 19px;
-    left: 18px;
+    top: 17px;
+    left: 16px;
     width: 36px;
     height: 36px;
+    border-color: rgba(240, 220, 180, 0.92);
     border-radius: 11px;
     transform: rotate(6deg);
+  }
+
+  .access-page[data-mode="login"] .access-page__panel-brand {
+    transform: translate(-2px, 2px);
   }
 
   .access-page[data-mode="login"] .access-page__panel-brand strong {
@@ -825,16 +834,21 @@
   }
 
   .access-page[data-mode="login"] .access-page__form-panel h1 {
+    margin-top: 11px;
     margin-bottom: 8px;
     font-size: 2.62rem;
   }
 
   .access-page[data-mode="login"] .access-page__form-panel > p {
-    margin-bottom: 24px;
+    margin-bottom: 26px;
   }
 
   .access-page[data-mode="login"] .access-page__form-panel .field {
     gap: 3px;
+  }
+
+  .access-page[data-mode="login"] .access-page__form-panel .field__label {
+    font-weight: 500;
   }
 
   .access-page[data-mode="login"] .access-page__form-panel .field__control {
@@ -843,6 +857,15 @@
 
   .access-page[data-mode="login"] .auth-form__options {
     margin-bottom: 8px;
+    transform: translateY(4px);
+  }
+
+  .access-page[data-mode="login"] .auth-form__options .text-button {
+    font-weight: 600;
+  }
+
+  .access-page[data-mode="login"] .auth-form__submit {
+    transform: translateY(-1px);
   }
 
   .access-page[data-mode="login"] .access-page__alternate {

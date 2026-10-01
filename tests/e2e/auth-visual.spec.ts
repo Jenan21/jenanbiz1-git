@@ -242,6 +242,9 @@ for (const locale of ["ar", "en"] as const) {
                 resource,
               ),
             ),
+            visibleDevPortal:
+              document.querySelector<HTMLElement>("nextjs-portal")
+                ?.checkVisibility() ?? false,
             scrollWidth: document.documentElement.scrollWidth,
             viewportHeight: document.documentElement.clientHeight,
             viewportWidth: document.documentElement.clientWidth,
@@ -252,6 +255,7 @@ for (const locale of ["ar", "en"] as const) {
         expect(layout.offscreen).toBe(false);
         expect(layout.clippedButtons).toBe(false);
         expect(layout.referenceLoaded).toBe(false);
+        expect(layout.visibleDevPortal).toBe(false);
         expect(layout.cityBackground).toContain("global-city-night.jpg");
         expect(layout.visualMapCount).toBe(1);
         if (layout.panel) {
