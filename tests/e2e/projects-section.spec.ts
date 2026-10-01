@@ -26,6 +26,7 @@ test.describe.serial("projects section acceptance", () => {
       data: {
         displayName: e2eIdentity.user.displayName,
         countryCode: "SA",
+        phone: "+966501234567",
         email: e2eIdentity.user.email,
         password: e2eIdentity.user.password,
         locale: "en",

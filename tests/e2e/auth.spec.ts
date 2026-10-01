@@ -32,6 +32,7 @@ test.describe.serial("real authentication and server-side RBAC", () => {
       data: {
         displayName: e2eIdentity.user.displayName,
         countryCode: "SA",
+        phone: "+966501234567",
         email: e2eIdentity.user.email,
         password: e2eIdentity.user.password,
         locale: "en",
@@ -68,12 +69,14 @@ test.describe.serial("real authentication and server-side RBAC", () => {
     const persisted = await queryE2E<{
       id: string;
       countryCode: string;
+      phone: string;
       sessionCount: string;
     }>(
-      'SELECT u.id, p."countryCode", COUNT(s.id)::text AS "sessionCount" FROM "User" u JOIN "Profile" p ON p."userId" = u.id LEFT JOIN "Session" s ON s."userId" = u.id WHERE u.email = $1 GROUP BY u.id, p."countryCode"',
+      'SELECT u.id, p."countryCode", p."phone", COUNT(s.id)::text AS "sessionCount" FROM "User" u JOIN "Profile" p ON p."userId" = u.id LEFT JOIN "Session" s ON s."userId" = u.id WHERE u.email = $1 GROUP BY u.id, p."countryCode", p."phone"',
       [e2eIdentity.user.email],
     );
     expect(persisted.rows[0]?.countryCode).toBe("SA");
+    expect(persisted.rows[0]?.phone).toBe("+966501234567");
     expect(persisted.rows[0]?.sessionCount).toBe("1");
 
     const logout = await page.request.post("/api/auth/logout", {
@@ -103,11 +106,12 @@ test.describe.serial("real authentication and server-side RBAC", () => {
     await page.getByLabel("Full name").fill("Canonical Auth User");
     await page.getByLabel("Email address").fill(canonicalFlowEmail);
     await page.getByLabel("Country code").selectOption("SA");
+    await page.getByLabel("Mobile number").fill("50 123 4567");
     await page
       .getByLabel("Password", { exact: true })
       .fill(canonicalFlowPassword);
     await page.getByLabel("Confirm password").fill(canonicalFlowPassword);
-    await page.getByText("View terms of use", { exact: true }).click();
+    await page.getByText("terms and conditions", { exact: true }).click();
     await expect(
       page.getByText("I agree to provide accurate information", {
         exact: false,
@@ -136,7 +140,7 @@ test.describe.serial("real authentication and server-side RBAC", () => {
       page.waitForURL(/\/auth$/),
       page.getByRole("button", { name: "Logout", exact: true }).click(),
     ]);
-    await page.getByRole("link", { name: "Recover access" }).click();
+    await page.getByRole("link", { name: "Forgot password?" }).click();
     await expect(page).toHaveURL(/\/auth\/forgot$/);
     await page.getByLabel("Email address").fill(canonicalFlowEmail);
     await page.getByRole("button", { name: "Send verification code" }).click();
@@ -208,6 +212,7 @@ test.describe.serial("real authentication and server-side RBAC", () => {
       data: {
         displayName: e2eIdentity.user.displayName,
         countryCode: "SA",
+        phone: "+966501234567",
         email: e2eIdentity.user.email,
         password: e2eIdentity.user.password,
         locale: "en",
@@ -272,6 +277,7 @@ test.describe.serial("real authentication and server-side RBAC", () => {
         {
           displayName: "User",
           countryCode: "SA",
+          phone: "+966501234567",
           email: "user@example.test",
           password: "Password-2026!",
           locale: "en",

@@ -28,6 +28,7 @@ const baseRegistration = {
   locale: "en" as const,
   language: "en" as const,
   countryCode: "SA",
+  phone: "+966501234567",
 };
 
 async function cleanIdentityData() {
@@ -71,7 +72,12 @@ describe.sequential("real PostgreSQL authentication integration", () => {
     expect(stored).toMatchObject({
       email: baseRegistration.email,
       systemRole: SystemRole.USER,
-      profile: { locale: "en", language: "en", countryCode: "SA" },
+      profile: {
+        locale: "en",
+        language: "en",
+        countryCode: "SA",
+        phone: baseRegistration.phone,
+      },
     });
     expect(stored?.sessions).toHaveLength(1);
     expect(stored?.sessions[0]?.tokenHash).not.toBe(result.token);

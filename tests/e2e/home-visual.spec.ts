@@ -30,8 +30,9 @@ const zones = [
   ".global-home__header",
   ".global-home__hero",
   ".global-home__services",
+  ".global-home__dashboard",
   ".global-home__ecosystem",
-  ".global-home__markets",
+  ".global-home__footer",
 ];
 
 async function setLocaleCookie(
@@ -91,16 +92,12 @@ for (const locale of ["ar", "en"] as const) {
       await expect(page.locator('.global-home__service[href="/software"]')).toBeVisible();
       await expect(page.locator('.global-home__service[href="/market"]')).toBeVisible();
       await expect(page.locator('.global-home__service[href="/talent"]')).toBeVisible();
-      await expect(page.locator('.global-home__service[href="/account"]')).toBeVisible();
-      await expect(page.locator(".global-home__markets")).toHaveAttribute(
+      await expect(page.locator('.global-home__service[href="/marketing"]')).toBeVisible();
+      await expect(page.locator(".global-home__market-panel")).toHaveAttribute(
         "data-market-source",
         "UNAVAILABLE",
       );
-      await expect(page.locator(".global-home__markets article > strong")).toHaveText([
-        "—",
-        "—",
-        "—",
-      ]);
+      await expect(page.locator(".global-home__market-panel article > strong")).toHaveText(["—", "—", "—", "—"]);
       await expect(page.locator(".global-home__hero-copy h1")).not.toContainText(
         locale === "ar" ? "منصة جنان برو" : "Jenan Pro platform",
       );
@@ -194,10 +191,10 @@ for (const locale of ["ar", "en"] as const) {
       if (viewport.name === "1672x941") {
         const expectedGeometry = {
           ".global-home__header": { left: 0, top: 0 },
-          ".global-home__hero": { left: 0, top: 64 },
-          ".global-home__services": { left: 36, top: 463 },
-          ".global-home__ecosystem": { left: 36, top: 711 },
-          ".global-home__markets": { left: 36, top: 853 },
+          ".global-home__hero": { left: 0, top: 78 },
+          ".global-home__services": { left: 36, top: 479 },
+          ".global-home__ecosystem": { left: 0, top: 818 },
+          ".global-home__footer": { left: 0, top: 876 },
         } as const;
         for (const [selector, expected] of Object.entries(expectedGeometry)) {
           const bounds = layout.zones[selector];
@@ -237,12 +234,13 @@ for (const locale of ["ar", "en"] as const) {
       "UNAVAILABLE",
     );
     await expect(page.locator(".global-home__hero-locations span")).toHaveCount(0);
-    await expect(page.locator(".global-home__markets article > strong")).toHaveText([
+    await expect(page.locator(".global-home__market-panel article > strong")).toHaveText([
+      "—",
       "—",
       "—",
       "—",
     ]);
-    await expect(page.locator(".global-home__markets em").first()).toContainText(
+    await expect(page.locator(".global-home__market-panel em").first()).toContainText(
       locale === "ar" ? "المصدر غير متصل" : "Source unavailable",
     );
   });

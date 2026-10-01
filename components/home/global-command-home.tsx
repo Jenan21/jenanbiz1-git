@@ -54,11 +54,11 @@ export function GlobalCommandHome({
     {
       accent: "teal",
       description: ar
-        ? "إدارة الاستثمارات والفرص ونتائج الأداء"
-        : "Manage investments, opportunities, and performance",
-      href: "/account",
-      icon: "barChart",
-      title: ar ? "بياناتي الاستثمارية" : "My investment data",
+        ? "خطط الحملات وتابع نمو أعمالك"
+        : "Plan campaigns and track business growth",
+      href: "/marketing",
+      icon: "megaphone",
+      title: ar ? "التسويق" : "Marketing",
     },
     {
       accent: "purple",
@@ -128,6 +128,22 @@ export function GlobalCommandHome({
       title: ar ? "بيانات دقيقة" : "Trusted data",
     },
   ];
+  const liveActivity =
+    activitySource === "LIVE_PLATFORM_ACTIVITY" ? activity : null;
+  const distributionColors = ["#24c7ff", "#1de0c1", "#f2c84f", "#ff865c"];
+  let distributionPosition = 0;
+  const distributionGradient =
+    liveActivity && liveActivity.activeUsers > 0
+      ? `conic-gradient(${liveActivity.locations
+          .slice(0, 4)
+          .map((location, index) => {
+            const start = distributionPosition;
+            distributionPosition +=
+              (location.activeUsers / liveActivity.activeUsers) * 100;
+            return `${distributionColors[index % distributionColors.length]} ${start}% ${distributionPosition}%`;
+          })
+          .join(", ")})`
+      : "conic-gradient(#174055 0 100%)";
 
   useEffect(() => {
     const controller = new AbortController();
@@ -185,13 +201,32 @@ export function GlobalCommandHome({
           </Link>
 
           <nav aria-label={ar ? "التنقل الرئيسي" : "Primary navigation"}>
-            <Link href="/benefits">{ar ? "من نحن" : "About"}</Link>
-            <Link href="/talent">{ar ? "الوظائف" : "Careers"}</Link>
-            <Link href="/market">{ar ? "السوق" : "Market"}</Link>
-            <Link href="/software">{ar ? "البرمجيات" : "Software"}</Link>
-            <Link href="/academy">{ar ? "الأكاديمية" : "Academy"}</Link>
-            <Link href="/projects">{ar ? "المشاريع" : "Projects"}</Link>
+            <Link href="/account">
+              <Icon name="wallet" />
+              {ar ? "بياناتي" : "My account"}
+            </Link>
+            <Link href="/marketing">
+              <Icon name="megaphone" />
+              {ar ? "التسويق" : "Marketing"}
+            </Link>
+            <Link href="/talent">
+              <Icon name="people" />
+              {ar ? "الموظفون" : "Talent"}
+            </Link>
+            <Link href="/market">
+              <Icon name="barChart" />
+              {ar ? "السوق" : "Market"}
+            </Link>
+            <Link href="/academy">
+              <Icon name="graduation" />
+              {ar ? "الأكاديميات" : "Academy"}
+            </Link>
+            <Link href="/projects">
+              <Icon name="briefcase" />
+              {ar ? "المشاريع" : "Projects"}
+            </Link>
             <Link className="global-home__nav-active" href="/">
+              <Icon name="grid" />
               {ar ? "الرئيسية" : "Home"}
             </Link>
           </nav>
@@ -220,7 +255,9 @@ export function GlobalCommandHome({
 
         <section className="global-home__hero">
           <div className="global-home__hero-visual" aria-hidden="true">
-            <GatewayWorldMap activity={activity.locations} locale={locale} />
+            <div className="global-home__hero-globe">
+              <GatewayWorldMap activity={activity.locations} locale={locale} />
+            </div>
             <div className="global-home__hero-routes">
               <i />
               <i />
@@ -238,10 +275,15 @@ export function GlobalCommandHome({
           </div>
 
           <div className="global-home__hero-copy">
+            <span className="global-home__eyebrow">
+              {ar
+                ? "منصة عالمية لرواد الأعمال والمستثمرين"
+                : "A global platform for business and investment"}
+            </span>
             <h1>
               {ar ? (
                 <>
-                  مستقبل أعمالك يبدأ <em>من هنا</em>
+                  مستقبل الأعمال <em>يبدأ من هنا</em>
                 </>
               ) : (
                 <>
@@ -276,6 +318,58 @@ export function GlobalCommandHome({
               </Link>
             </div>
           </div>
+
+          <aside className="global-home__hero-insights">
+            <article>
+              <Icon name="trend" />
+              <span>
+                <small>{ar ? "فرص عالمية" : "Global opportunity"}</small>
+                <strong>{serviceCount}</strong>
+                <em>{ar ? "خدمة متاحة بالمنصة" : "available services"}</em>
+              </span>
+            </article>
+            <article>
+              <Icon name="people" />
+              <span>
+                <small>{ar ? "مجتمع الأعمال" : "Business community"}</small>
+                <strong>
+                  {liveActivity ? liveActivity.activeUsers.toLocaleString(locale) : "—"}
+                </strong>
+                <em>
+                  {liveActivity
+                    ? ar
+                      ? `نشط خلال ${liveActivity.windowMinutes} دقيقة`
+                      : `active in ${liveActivity.windowMinutes} minutes`
+                    : ar
+                      ? "بيانات النشاط غير متاحة"
+                      : "Activity unavailable"}
+                </em>
+              </span>
+            </article>
+            <article>
+              <Icon name="globe" />
+              <span>
+                <small>{ar ? "شبكة عالمية" : "Global network"}</small>
+                <strong>{liveActivity ? liveActivity.locations.length : "—"}</strong>
+                <em>{ar ? "مناطق نشطة حالياً" : "active regions"}</em>
+              </span>
+            </article>
+            <p>
+              {ar ? (
+                <>
+                  مستقبل أعمالك
+                  <br />
+                  يبدأ من هنا
+                </>
+              ) : (
+                <>
+                  Build what is next
+                  <br />
+                  with Jenan PRO
+                </>
+              )}
+            </p>
+          </aside>
         </section>
 
         <section
@@ -301,19 +395,138 @@ export function GlobalCommandHome({
           ))}
         </section>
 
+        <section className="global-home__dashboard">
+          <section
+            className="global-home__market-panel"
+            data-market-source="UNAVAILABLE"
+            aria-label={ar ? "الأسواق العالمية" : "Global markets"}
+          >
+            <header>
+              <h2>{ar ? "الأسواق العالمية" : "Global markets"}</h2>
+              <span>{ar ? "الكل" : "All"}</span>
+            </header>
+            {([
+              ["trend", "TASI", ar ? "مؤشر السوق السعودي" : "Saudi market index"],
+              ["wallet", "BTC", ar ? "بيتكوين" : "Bitcoin"],
+              ["sparkles", "XAU", ar ? "الذهب" : "Gold"],
+              ["trend", "DXY", ar ? "مؤشر الدولار" : "US Dollar Index"],
+            ] as const).map(([icon, symbol, title]) => (
+              <article key={symbol}>
+                <Icon name={icon} />
+                <span>
+                  <b>{symbol}</b>
+                  <small>{title}</small>
+                </span>
+                <strong>—</strong>
+                <em>{ar ? "المصدر غير متصل" : "Source unavailable"}</em>
+              </article>
+            ))}
+          </section>
+
+          <section className="global-home__platform-stats">
+            <header>
+              <h2>{ar ? "إحصائيات المنصة" : "Platform statistics"}</h2>
+              <Link href="/benefits">{ar ? "عرض الكل" : "Explore"}</Link>
+            </header>
+            <div className="global-home__stat-grid">
+              <article>
+                <Icon name="briefcase" />
+                <span>
+                  <strong>{serviceCount.toLocaleString(locale)}</strong>
+                  <small>{ar ? "خدمة ضمن المنصة" : "platform services"}</small>
+                </span>
+              </article>
+              <article>
+                <Icon name="people" />
+                <span>
+                  <strong>
+                    {liveActivity
+                      ? liveActivity.activeUsers.toLocaleString(locale)
+                      : "—"}
+                  </strong>
+                  <small>{ar ? "مستخدم نشط" : "active users"}</small>
+                </span>
+              </article>
+              <article>
+                <Icon name="globe" />
+                <span>
+                  <strong>
+                    {liveActivity ? liveActivity.locations.length.toLocaleString(locale) : "—"}
+                  </strong>
+                  <small>{ar ? "مناطق متصلة" : "connected regions"}</small>
+                </span>
+              </article>
+              <article>
+                <Icon name="trend" />
+                <span>
+                  <strong>—</strong>
+                  <small>{ar ? "نمو المشاريع" : "project growth"}</small>
+                </span>
+              </article>
+            </div>
+          </section>
+
+          <section className="global-home__distribution">
+            <header>
+              <h2>{ar ? "توزيع المستخدمين" : "User distribution"}</h2>
+            </header>
+            <div
+              className="global-home__donut"
+              style={{ background: distributionGradient }}
+              aria-hidden="true"
+            >
+              <span>
+                <strong>
+                  {liveActivity
+                    ? liveActivity.activeUsers.toLocaleString(locale)
+                    : "—"}
+                </strong>
+                <small>{ar ? "نشط" : "active"}</small>
+              </span>
+            </div>
+            <ul>
+              {liveActivity?.locations.slice(0, 4).map((location, index) => (
+                <li key={location.countryCode}>
+                  <i style={{ background: distributionColors[index] }} />
+                  <span>{location.countryName[locale]}</span>
+                  <b>
+                    {liveActivity.activeUsers
+                      ? `${Math.round((location.activeUsers / liveActivity.activeUsers) * 100)}%`
+                      : "—"}
+                  </b>
+                </li>
+              ))}
+              {!liveActivity ? (
+                <li className="global-home__distribution-empty">
+                  {ar ? "بيانات التوزيع غير متاحة" : "Distribution unavailable"}
+                </li>
+              ) : null}
+            </ul>
+          </section>
+
+          <section className="global-home__news">
+            <header>
+              <h2>{ar ? "أحدث الأخبار والفرص" : "Latest news and opportunities"}</h2>
+              <Link href="/market">{ar ? "استكشف السوق" : "Explore market"}</Link>
+            </header>
+            <div className="global-home__news-empty">
+              <span>
+                <Icon name="globe" />
+              </span>
+              <strong>
+                {ar ? "الفرص العالمية تبدأ بخطوة" : "Global opportunities start with a step"}
+              </strong>
+              <p>
+                {ar
+                  ? "استكشف السوق والمشاريع المنشورة في المنصة."
+                  : "Explore market listings and published projects."}
+              </p>
+              <Link href="/market">{ar ? "تصفح الفرص" : "Browse opportunities"}</Link>
+            </div>
+          </section>
+        </section>
+
         <section className="global-home__ecosystem">
-          <div className="global-home__ecosystem-copy">
-            <small>
-              {ar ? "استكشف عوالم " : "Explore "}
-              <b>Jenan PRO</b>
-            </small>
-            <h2>{ar ? "شريكك الاستراتيجي لنمو أعمالك" : "Your strategic growth partner"}</h2>
-            <p>
-              {ar
-                ? "من الفكرة إلى التوسع، نتائج أوضح في منظومة واحدة."
-                : "From idea to scale, clearer results in one ecosystem."}
-            </p>
-          </div>
           <div className="global-home__assurances">
             {assurances.map((item) => (
               <span key={item.title}>
@@ -325,49 +538,33 @@ export function GlobalCommandHome({
               </span>
             ))}
           </div>
-          <Link className="global-home__video" href="/benefits">
-            <span>
-              <Icon name="arrow" />
-            </span>
-            <b>{ar ? "شاهد كيف تعمل المنصة" : "See how the platform works"}</b>
-            <small>{ar ? "دقيقتان فقط" : "Two minutes"}</small>
+        </section>
+
+        <footer className="global-home__footer">
+          <Link className="global-home__footer-brand" href="/" aria-label="Jenan PRO">
+            Jenan <b>PRO</b>
+            <small>{ar ? "مركز الأعمال الذكي" : "Intelligent Business Center"}</small>
           </Link>
-        </section>
-
-        <section
-          className="global-home__markets"
-          data-market-source="UNAVAILABLE"
-          aria-label={ar ? "مؤشرات الأسواق" : "Market indicators"}
-        >
-          {([
-            ["trend", ar ? "الأسهم العالمية" : "Global equities", "S&P 500"],
-            ["sparkles", ar ? "المعادن النفيسة" : "Precious metals", "XAU/USD"],
-            ["wallet", ar ? "العملات الرقمية" : "Digital assets", "BTC/USD"],
-          ] as const).map(([icon, title, symbol], index) => (
-            <article key={symbol}>
-              <Icon name={icon} />
-              <span>
-                <b>{title}</b>
-                <small>{symbol}</small>
-              </span>
-              <strong>—</strong>
-              <div className={`global-home__spark global-home__spark--${index + 1}`} aria-hidden="true">
-                <i />
-                <i />
-                <i />
-                <i />
-                <i />
-              </div>
-              <em>{ar ? "المصدر غير متصل" : "Source unavailable"}</em>
-            </article>
-          ))}
-        </section>
-
-        <span className="global-home__sr-only">
-          {ar
-            ? `${serviceCount} خدمة في كتالوج المنصة، ${activity.activeUsers} مستخدم نشط خلال ${activity.windowMinutes} دقيقة.`
-            : `${serviceCount} catalog services and ${activity.activeUsers} active users in the last ${activity.windowMinutes} minutes.`}
-        </span>
+          <p>
+            {ar
+              ? "© 2026 جنان برو. جميع الحقوق محفوظة."
+              : "© 2026 Jenan PRO. All rights reserved."}
+          </p>
+          <nav aria-label={ar ? "روابط المنصة" : "Platform links"}>
+            <Link href="/benefits">{ar ? "حول المنصة" : "About"}</Link>
+            <Link href="/benefits">{ar ? "الخصوصية" : "Privacy"}</Link>
+            <Link href="/benefits">{ar ? "الشروط" : "Terms"}</Link>
+          </nav>
+          <span className="global-home__sr-only">
+            {ar
+              ? `${serviceCount} خدمة في كتالوج المنصة، ${
+                  liveActivity?.activeUsers ?? "بيانات النشاط غير متاحة"
+                } مستخدم نشط.`
+              : `${serviceCount} catalog services and ${
+                  liveActivity?.activeUsers ?? "unavailable activity"
+                } active users.`}
+          </span>
+        </footer>
       </div>
     </main>
   );

@@ -134,6 +134,8 @@ export function CanonicalAuthAccessPage({
         aria-labelledby="access-page-title"
         aria-describedby="access-page-description"
       >
+        <span className="access-page__panel-world" aria-hidden="true" />
+        <span className="access-page__panel-city" aria-hidden="true" />
         <button
           type="button"
           className="access-page__panel-close"

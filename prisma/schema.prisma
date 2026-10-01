@@ -868,6 +868,7 @@ model Profile {
   locale      String    @default("ar")
   language    String    @default("ar")
   countryCode String?
+  phone       String?
   currency    String?
   timezone    String    @default("Asia/Riyadh")
   avatarUrl   String?

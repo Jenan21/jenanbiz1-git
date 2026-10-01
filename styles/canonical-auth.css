@@ -57,18 +57,17 @@
 .access-page__form-panel {
   position: fixed;
   z-index: 21;
-  top: 51.2%;
+  top: 53.2%;
   left: 50%;
-  width: min(462px, calc(100vw - 32px));
-  height: min(724px, calc(100dvh - 32px));
-  padding: 26px 28px 20px;
+  width: min(620px, calc(100vw - 32px));
+  height: min(628px, calc(100dvh - 32px));
+  padding: 26px 36px 20px;
   overflow-x: hidden;
   overflow-y: auto;
   border: 1px solid rgba(89, 243, 255, 0.72);
   border-radius: 18px;
   background:
     linear-gradient(180deg, rgba(1, 13, 25, 0.52), rgba(1, 10, 20, 0.74)),
-    url("/assets/earth-night-texture.jpg") 112% -10% / 62% auto no-repeat,
     url("/assets/global-city-night.jpg") center bottom / 100% 40% no-repeat,
     linear-gradient(145deg, rgba(3, 36, 54, 0.92), rgba(1, 12, 24, 0.97));
   -webkit-backdrop-filter: blur(30px) saturate(1.28);
@@ -82,6 +81,39 @@
   scrollbar-color: rgba(89, 243, 255, 0.42) transparent;
   transform: translate(-50%, -50%);
   animation: canonical-auth-panel-in 420ms cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+.access-page__panel-world {
+  position: absolute;
+  top: -15%;
+  right: -14%;
+  z-index: 0;
+  width: 66%;
+  aspect-ratio: 1;
+  border: 1px solid rgba(25, 209, 255, 0.26);
+  border-radius: 50%;
+  background:
+    radial-gradient(circle at 44% 44%, transparent 46%, rgba(0, 205, 255, 0.3) 47%, transparent 48%),
+    radial-gradient(circle at 42% 44%, rgba(10, 144, 190, 0.12), rgba(0, 7, 17, 0.78) 67%),
+    url("/assets/earth-night-texture.jpg") center / auto 88% no-repeat;
+  box-shadow: 0 0 42px rgba(0, 196, 255, 0.28), inset 0 0 30px rgba(8, 145, 199, 0.2);
+  opacity: 0.88;
+  mask-image: radial-gradient(circle, #000 60%, transparent 73%);
+}
+
+.access-page__panel-city {
+  position: absolute;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  z-index: 0;
+  height: 39%;
+  pointer-events: none;
+  background:
+    linear-gradient(180deg, #03121b 0%, rgba(1, 13, 22, 0.56) 28%, rgba(1, 13, 22, 0.2) 100%),
+    url("/assets/global-city-night.jpg") center 64% / cover no-repeat;
+  opacity: 0.77;
+  mask-image: linear-gradient(180deg, transparent, #000 25%);
 }
 
 .access-page__form-panel::before {
@@ -154,6 +186,12 @@
 .access-page__alternate {
   position: relative;
   z-index: 2;
+}
+
+.access-page[data-mode="login"] .access-page__form-panel .auth-form,
+.access-page[data-mode="login"] .access-page__alternate {
+  width: min(100%, 420px);
+  margin-inline: auto;
 }
 
 .access-page__panel-brand {
@@ -244,7 +282,7 @@
 .access-page__form-panel h1 {
   margin: 13px 0 5px;
   color: #f5fcff;
-  font-size: clamp(2rem, 3vw, 2.65rem);
+  font-size: clamp(1.8rem, 2.5vw, 2.3rem);
   line-height: 1.22;
   letter-spacing: 0;
   text-align: center;
@@ -440,39 +478,71 @@
 .access-page .auth-country__control {
   position: relative;
   display: grid;
-  grid-template-columns: 42px minmax(0, 1fr);
+  grid-template-columns: 28px minmax(102px, 0.95fr) auto minmax(0, 1.35fr);
   align-items: center;
-  min-height: 54px;
+  min-height: 50px;
   overflow: hidden;
   border: 1px solid rgba(89, 243, 255, 0.66);
   border-radius: 11px;
   background: rgba(0, 12, 22, 0.68);
   box-shadow: inset 0 0 22px rgba(31, 231, 255, 0.035);
+  direction: ltr;
+}
+
+.access-page .auth-country > .field__label {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+.access-page .auth-country__control > .icon {
+  width: 20px;
+  height: 20px;
+  justify-self: center;
+  color: var(--auth-cyan-soft);
+}
+
+.access-page .auth-country__selector {
+  display: grid;
+  grid-template-columns: 18px minmax(0, 1fr) 12px;
+  align-items: center;
+  gap: 4px;
+  min-width: 0;
+  padding-inline: 5px;
+  border-inline: 1px solid rgba(89, 243, 255, 0.2);
+  color: var(--auth-cyan-soft);
+}
+
+.access-page .auth-country__selector .icon {
+  width: 16px;
+  height: 16px;
 }
 
 .access-page .auth-country__flag {
-  display: grid;
-  place-items: center;
-  width: 38px;
-  height: 38px;
-  margin-inline-start: 6px;
-  border: 1px solid rgba(255, 255, 255, 0.12);
-  border-radius: 9px;
-  background: rgba(2, 24, 36, 0.7);
-  font-size: 1.08rem;
+  display: none;
 }
 
-.access-page .auth-country__control select {
+.access-page .auth-country__selector select {
   width: 100%;
-  height: 34px;
-  padding: 0 10px;
+  min-width: 0;
+  height: 38px;
+  padding: 0;
   border: 0;
   outline: 0;
   color: #effdff;
   background: transparent;
   font: inherit;
-  font-size: 0.65rem;
+  font-size: 0.59rem;
   cursor: pointer;
+  direction: ltr;
+}
+
+.access-page .auth-country__selector > .icon:last-child {
+  width: 11px;
+  transform: rotate(90deg);
 }
 
 .access-page .auth-country__control select option {
@@ -480,14 +550,40 @@
   background: #062031;
 }
 
+.access-page .auth-phone__dial {
+  padding-inline: 7px;
+  border-inline-end: 1px solid rgba(89, 243, 255, 0.2);
+  color: #b6cbd3;
+  font-size: 0.63rem;
+  white-space: nowrap;
+}
+
+.access-page .auth-country__control input[name="phone"] {
+  width: 100%;
+  min-width: 0;
+  height: 38px;
+  padding-inline: 7px;
+  border: 0;
+  outline: 0;
+  color: #effdff;
+  background: transparent;
+  font: inherit;
+  font-size: 0.64rem;
+  direction: ltr;
+  text-align: start;
+}
+
+.access-page .auth-country__control input[name="phone"]::placeholder {
+  color: #8399a3;
+}
+
 .access-page .auth-country__source {
-  grid-column: 2;
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  margin: -5px 10px 6px;
-  color: #89aab3;
-  font-size: 0.46rem;
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
 }
 
 .access-page .auth-country__source i {
@@ -508,10 +604,12 @@
 }
 
 .access-page[data-mode="register"] .access-page__form-panel {
+  top: 51.2%;
+  width: min(532px, calc(100vw - 32px));
+  height: min(665px, calc(100dvh - 32px));
   padding: 19px 28px 17px;
   background:
     linear-gradient(180deg, rgba(8, 16, 24, 0.5), rgba(8, 10, 18, 0.76)),
-    url("/assets/earth-night-texture.jpg") 112% -10% / 62% auto no-repeat,
     url("/assets/global-city-night.jpg") center bottom / 100% 40% no-repeat,
     linear-gradient(145deg, rgba(10, 32, 42, 0.92), rgba(7, 11, 19, 0.98));
   animation-name: canonical-auth-register-in;
@@ -528,6 +626,18 @@
 
 .access-page[data-mode="register"] .access-page__panel-brand {
   margin-bottom: 8px;
+}
+
+.access-page[data-mode="register"] .access-page__panel-world {
+  top: -12%;
+  right: -16%;
+  width: 74%;
+}
+
+.access-page[data-mode="register"] .access-page__form-panel .auth-form,
+.access-page[data-mode="register"] .access-page__alternate {
+  width: min(100%, 384px);
+  margin-inline: auto;
 }
 
 .access-page[data-mode="register"] .access-page__form-panel h1 {
@@ -587,12 +697,22 @@
   align-items: center;
   justify-content: space-between;
   gap: 10px;
+  direction: ltr;
+}
+
+.access-page__form-panel .auth-form__terms {
+  direction: ltr;
+}
+
+.access-page__form-panel .auth-form__terms > span {
+  direction: rtl;
 }
 
 .access-page__form-panel .auth-form__terms-details {
   position: relative;
   color: var(--auth-cyan);
   font-size: 0.56rem;
+  direction: rtl;
 }
 
 .access-page__form-panel .auth-form__terms-details summary {
@@ -682,13 +802,12 @@
 @media (max-width: 700px) {
   .access-page__form-panel {
     top: 50%;
-    width: calc(100vw - 16px);
+    width: min(620px, calc(100vw - 16px));
     height: calc(100dvh - 16px);
     padding: 24px 20px 20px;
     border-radius: 15px;
     background:
       linear-gradient(180deg, rgba(1, 13, 25, 0.58), rgba(1, 10, 20, 0.8)),
-      url("/assets/earth-night-texture.jpg") 118% -4% / 76% auto no-repeat,
       url("/assets/global-city-night.jpg") center bottom / 100% 30% no-repeat,
       linear-gradient(145deg, rgba(3, 36, 54, 0.95), rgba(1, 12, 24, 0.99));
   }
@@ -706,6 +825,7 @@
   }
 
   .access-page[data-mode="register"] .access-page__form-panel {
+    width: min(532px, calc(100vw - 16px));
     padding: 17px 18px 14px;
   }
 

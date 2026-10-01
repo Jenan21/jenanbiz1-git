@@ -22,7 +22,7 @@ describe.sequential("user dashboard integration", () => {
   });
 
   it("summarizes only the authenticated user's real activity", async () => {
-    const user = await registerUser({ displayName: "Dashboard User", email, password: "Correct-Horse-2026!", locale: "en", language: "en", countryCode: "SA" });
+    const user = await registerUser({ displayName: "Dashboard User", email, password: "Correct-Horse-2026!", locale: "en", language: "en", countryCode: "SA", phone: "+966501234567" });
     await createProject({ name: "Dashboard Project", description: "An authenticated dashboard project." }, user.user.id);
     await db.notification.create({ data: { userId: user.user.id, type: "TEST", title: "Dashboard notification" } });
 

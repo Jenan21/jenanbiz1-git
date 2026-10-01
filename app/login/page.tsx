@@ -20,7 +20,7 @@ export default async function LoginPage() {
         password: ar ? "كلمة المرور" : "Password",
         submit: ar ? "تسجيل الدخول" : "Sign in",
         remember: ar ? "تذكرني" : "Remember me",
-        forgot: ar ? "استعادة الوصول" : "Recover access",
+        forgot: ar ? "نسيت كلمة المرور؟" : "Forgot password?",
         loading: ar ? "جارٍ التحقق..." : "Verifying...",
         note: ar
           ? "اتصال مشفر وجلسة آمنة"

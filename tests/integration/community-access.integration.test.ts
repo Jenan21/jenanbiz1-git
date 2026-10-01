@@ -43,7 +43,7 @@ describe.sequential("community access integration", () => {
   });
 
   it("only grants free access through a configured community channel", async () => {
-    const user = await registerUser({ displayName: "Community User", email, password: "Correct-Horse-2026!", locale: "en", language: "en", countryCode: "SA" });
+    const user = await registerUser({ displayName: "Community User", email, password: "Correct-Horse-2026!", locale: "en", language: "en", countryCode: "SA", phone: "+966501234567" });
     expect(await getCommunityAccess(user.user.id)).toMatchObject({ hasAccess: false, grants: [] });
     await expect(grantCommunityAccess(user.user.id, CommunitySocialPlatform.FACEBOOK)).rejects.toBeInstanceOf(CommunityAccessError);
 

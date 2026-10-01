@@ -6,8 +6,10 @@ const viewports = [
   { name: "2560x1440", width: 2560, height: 1440 },
   { name: "1920x1080", width: 1920, height: 1080 },
   { name: "1440x900", width: 1440, height: 900 },
+  { name: "1365x768", width: 1365, height: 768 },
   { name: "1347x768", width: 1347, height: 768 },
   { name: "1280x800", width: 1280, height: 800 },
+  { name: "1024x768", width: 1024, height: 768 },
   { name: "1024x1366", width: 1024, height: 1366 },
   { name: "820x1180", width: 820, height: 1180 },
   { name: "430x932", width: 430, height: 932 },
@@ -118,6 +120,7 @@ for (const locale of ["ar", "en"] as const) {
             "name",
             "email",
             "countryCode",
+            "phone",
             "password",
             "confirmPassword",
             "terms",
@@ -127,10 +130,18 @@ for (const locale of ["ar", "en"] as const) {
           const country = page.locator('select[name="countryCode"]');
           await expect(country).toHaveValue("SA");
           await expect(page.locator(".auth-country__flag")).toHaveText("🇸🇦");
-          await expect(page.locator('.auth-country__source i[data-source="network"]')).toBeVisible();
+          await expect(page.locator(".auth-phone__dial")).toHaveText("+966");
+          await expect(page.locator(".auth-country__source i")).toHaveAttribute(
+            "data-source",
+            "network",
+          );
           await country.selectOption("US");
           await expect(page.locator(".auth-country__flag")).toHaveText("🇺🇸");
-          await expect(page.locator('.auth-country__source i[data-source="manual"]')).toBeVisible();
+          await expect(page.locator(".auth-phone__dial")).toHaveText("+1");
+          await expect(page.locator(".auth-country__source i")).toHaveAttribute(
+            "data-source",
+            "manual",
+          );
         }
 
         if (route.screen === "forgot") {
@@ -223,15 +234,39 @@ for (const locale of ["ar", "en"] as const) {
             viewport.name === "1440x900" &&
             (route.screen === "login" || route.screen === "register")
           ) {
-            expect(Math.round(layout.panel.left)).toBe(489);
-            expect(Math.round(layout.panel.top)).toBe(99);
-            expect(Math.round(layout.panel.width)).toBe(462);
-            expect(Math.round(layout.panel.height)).toBe(724);
+            expect(Math.round(layout.panel.left)).toBe(
+              route.screen === "register" ? 454 : 410,
+            );
+            expect(Math.round(layout.panel.top)).toBe(
+              route.screen === "register" ? 128 : 165,
+            );
+            expect(Math.round(layout.panel.width)).toBe(
+              route.screen === "register" ? 532 : 620,
+            );
+            expect(Math.round(layout.panel.height)).toBe(
+              route.screen === "register" ? 665 : 628,
+            );
+          }
+          if (viewport.name === "1365x768" && route.screen === "login") {
+            expect(Math.round(layout.panel.left)).toBe(373);
+            expect(Math.round(layout.panel.top)).toBe(95);
+            expect(Math.round(layout.panel.width)).toBe(620);
+            expect(Math.round(layout.panel.height)).toBe(628);
+          }
+          if (viewport.name === "1024x768" && route.screen === "register") {
+            expect(Math.round(layout.panel.left)).toBe(246);
+            expect(Math.round(layout.panel.top)).toBe(61);
+            expect(Math.round(layout.panel.width)).toBe(532);
+            expect(Math.round(layout.panel.height)).toBe(665);
           }
         }
       }
 
-      if (["1347x768", "820x1180", "390x844"].includes(viewport.name)) {
+      if (
+        ["1365x768", "1024x768", "1347x768", "820x1180", "390x844"].includes(
+          viewport.name,
+        )
+      ) {
         await page.goto("/auth");
         await testInfo.attach(`canonical-auth-${viewport.name}-${locale}`, {
           body: await page.screenshot({

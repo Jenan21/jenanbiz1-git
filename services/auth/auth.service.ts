@@ -73,6 +73,7 @@ export async function registerUser(
               locale: input.locale,
               language: input.language,
               countryCode: input.countryCode,
+              phone: input.phone,
             },
           },
         },

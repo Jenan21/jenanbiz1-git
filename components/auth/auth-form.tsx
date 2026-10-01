@@ -31,6 +31,7 @@ const countryOptions = countries
   .map((country) => ({
     ar: country.translations.ara?.common ?? country.name.common,
     code: country.cca2.toUpperCase(),
+    dialCode: `${country.idd.root}${country.idd.suffixes.length === 1 ? country.idd.suffixes[0] : ""}`,
     en: country.name.common,
   }));
 
@@ -101,30 +102,52 @@ function CountrySelector({
   }, []);
 
   return (
-    <label className="field auth-country">
-      <span className="field__label">{label}</span>
+    <div className="field auth-country">
+      <label className="field__label" htmlFor="auth-phone">
+        {locale === "ar" ? "رمز الدولة / رقم الجوال" : "Country / mobile number"}
+      </label>
       <span className="auth-country__control">
-        <span className="auth-country__flag" aria-hidden="true">
-          {countryFlag(countryCode)}
+        <Icon name="phone" />
+        <span className="auth-country__selector">
+          <Icon name="globe" />
+          <span className="auth-country__flag" aria-hidden="true">
+            {countryFlag(countryCode)}
+          </span>
+          <select
+            aria-label={label}
+            disabled={disabled}
+            name="countryCode"
+            value={countryCode}
+            onChange={(event) => {
+              changedByUser.current = true;
+              setCountryCode(event.target.value);
+              setSource("manual");
+            }}
+          >
+            {countriesByLocale[locale].map((country) => (
+              <option key={country.code} value={country.code}>
+                {countryFlag(country.code)} {country.code}
+              </option>
+            ))}
+          </select>
+          <Icon name="chevron" />
         </span>
-        <select
-          aria-label={label}
+        <span className="auth-phone__dial">
+          {countryOptions.find((country) => country.code === countryCode)
+            ?.dialCode ?? ""}
+        </span>
+        <input
+          id="auth-phone"
+          aria-label={locale === "ar" ? "رقم الجوال" : "Mobile number"}
+          autoComplete="tel-national"
           disabled={disabled}
-          name="countryCode"
-          value={countryCode}
-          onChange={(event) => {
-            changedByUser.current = true;
-            setCountryCode(event.target.value);
-            setSource("manual");
-          }}
-        >
-          {countriesByLocale[locale].map((country) => (
-            <option key={country.code} value={country.code}>
-              {countryFlag(country.code)} {country[locale]}
-            </option>
-          ))}
-        </select>
-        <span className="auth-country__source">
+          inputMode="tel"
+          name="phone"
+          placeholder={locale === "ar" ? "50 123 4567" : "50 123 4567"}
+          required
+          type="tel"
+        />
+        <span className="auth-country__source" aria-live="polite">
           <i data-source={source} />
           {source === "network"
             ? locale === "ar"
@@ -139,7 +162,7 @@ function CountrySelector({
                 : "You can change the country"}
         </span>
       </span>
-    </label>
+    </div>
   );
 }
 
@@ -181,6 +204,15 @@ export function AuthForm({ mode, locale, labels }: AuthFormProps) {
             email: form.get("email"),
             password: form.get("password"),
             countryCode: form.get("countryCode"),
+            phone: (() => {
+              const country = countryOptions.find(
+                (item) => item.code === form.get("countryCode"),
+              );
+              const nationalNumber = String(form.get("phone") ?? "")
+                .replace(/\D/g, "")
+                .replace(/^0+/, "");
+              return `${country?.dialCode ?? ""}${nationalNumber}`;
+            })(),
             locale,
             language: locale,
           }
@@ -279,16 +311,22 @@ export function AuthForm({ mode, locale, labels }: AuthFormProps) {
           />
           <div className="auth-form__terms-field">
             <label className="checkbox auth-form__terms">
-              <input name="terms" type="checkbox" required disabled={loading} />
-              <span>
-                {locale === "ar"
-                  ? "أوافق على الشروط والأحكام"
-                  : "I accept the terms and conditions"}
-              </span>
+              <input
+                name="terms"
+                type="checkbox"
+                required
+                disabled={loading}
+                aria-label={
+                  locale === "ar"
+                    ? "أوافق على الشروط والأحكام"
+                    : "I accept the terms and conditions"
+                }
+              />
+              <span>{locale === "ar" ? "أوافق على" : "I accept the"}</span>
             </label>
             <details className="auth-form__terms-details">
               <summary>
-                {locale === "ar" ? "عرض شروط الاستخدام" : "View terms of use"}
+                {locale === "ar" ? "الشروط والأحكام" : "terms and conditions"}
               </summary>
               <p>
                 {locale === "ar"

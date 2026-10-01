@@ -97,7 +97,7 @@ test.describe.serial("real Jenan Pro user journey", () => {
       401,
     );
 
-    await page.getByRole("link", { name: "Recover access" }).click();
+    await page.getByRole("link", { name: "Forgot password?" }).click();
     await expect(page).toHaveURL(/\/auth\/forgot$/);
     await page.getByLabel("Email address").fill(e2eIdentity.user.email);
     const resetRequest = page.waitForResponse(
