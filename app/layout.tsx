@@ -6,6 +6,7 @@ import "@fontsource-variable/alexandria";
 import "@/styles/globals.css";
 import "@/styles/global-home.css";
 import "@/styles/canonical-auth.css";
+import "@/styles/authenticated-home.css";
 import "@/styles/market-stage.css";
 import "@/styles/projects-stage.css";
 import "@/styles/programs-stage.css";

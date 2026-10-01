@@ -22,6 +22,8 @@ Reference priority:
 
 For the homepage, `APPROVED_HOME_REFERENCE/homepage.png` is the canonical single source of truth and overrides every older Home, landing, pre-entry, experimental, or alternate homepage reference. Production uses one homepage implementation at `/`; `/home` may only redirect to it. For Auth panels, `APPROVED_AUTH_REFERENCES/login.png` and `register.png` remain canonical. `/auth` and `/login` are sign-in, and `/register` is account creation. Password recovery and onboarding inherit the same visual DNA. Elements intentionally removed by prior product decisions must not return merely to match an older reference.
 
+For the authenticated user homepage, `APPROVED_AUTHENTICATED_HOME_REFERENCE/authenticated-home.png` is the canonical visual source for `/dashboard`. It defines the post-login composition and must remain separate from the public homepage reference. Permanent product decisions still override legacy content shown inside the image, including the removed funding service and the prohibition on presenting demo market or opportunity values as live data.
+
 Legacy `Jenan BIZ` or `جنان بيز` names are visual-history references only. New UI uses `Jenan PRO` and `جنان برو` exclusively.
 
 ## Permanent Product Decisions

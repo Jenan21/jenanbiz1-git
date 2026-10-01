@@ -88,6 +88,10 @@ test.describe.serial("real Jenan Pro user journey", () => {
     await expect(page.locator(".user-chip")).toContainText(
       e2eIdentity.user.displayName,
     );
+    await expect(page.locator(".authenticated-home")).toHaveAttribute(
+      "data-dashboard-route",
+      "/dashboard",
+    );
 
     await Promise.all([
       page.waitForURL(/\/auth$/),

@@ -45,6 +45,11 @@ test.describe.serial("real authentication and server-side RBAC", () => {
     ).toBe(201);
     await page.goto("/dashboard");
     await expect(page).toHaveURL(/\/dashboard$/);
+    await expect(page.locator(".authenticated-home")).toHaveAttribute(
+      "data-dashboard-source",
+      "AUTHENTICATED_PLATFORM",
+    );
+    await expect(page.locator(".authenticated-home__service")).toHaveCount(6);
 
     for (const route of [
       "/projects",
@@ -134,6 +139,7 @@ test.describe.serial("real authentication and server-side RBAC", () => {
     await expect(page.locator(".user-chip")).toContainText(
       "Canonical Auth User",
     );
+    await expect(page.locator(".authenticated-home")).toBeVisible();
 
     await Promise.all([
       page.waitForURL(/\/auth$/),
