@@ -110,7 +110,7 @@ test.describe.serial("real authentication and server-side RBAC", () => {
 
     await page.getByLabel("Full name").fill("Canonical Auth User");
     await page.getByLabel("Email address").fill(canonicalFlowEmail);
-    await page.getByLabel("Country code").selectOption("SA");
+    await page.getByLabel("Country").selectOption("SA");
     await page
       .getByLabel("Password", { exact: true })
       .fill(canonicalFlowPassword);
@@ -184,6 +184,32 @@ test.describe.serial("real authentication and server-side RBAC", () => {
     ]);
     await page.goto("/account");
     await expect(page).toHaveURL(/\/auth\?next=%2Faccount$/);
+  });
+
+  test("registration validates required fields, email, name length, and matching passwords", async ({
+    page,
+  }) => {
+    await page.goto("/register");
+    const form = page.locator("#auth-register-form");
+    const name = page.getByLabel("Full name");
+    const email = page.getByLabel("Email address");
+    const password = page.getByLabel("Password", { exact: true });
+    const confirmation = page.getByLabel("Confirm password");
+
+    expect(await form.evaluate((element: HTMLFormElement) => element.checkValidity())).toBe(false);
+    await name.fill("A");
+    expect(await name.evaluate((element: HTMLInputElement) => element.checkValidity())).toBe(false);
+    expect(await name.getAttribute("maxlength")).toBe("80");
+    await name.fill("Valid User");
+    await email.fill("not-an-email");
+    expect(await email.evaluate((element: HTMLInputElement) => element.validity.typeMismatch)).toBe(true);
+    await email.fill("valid.registration@example.test");
+    await page.getByLabel("Country").selectOption("SA");
+    await password.fill("Canonical-Auth-2026!");
+    await confirmation.fill("Different-Auth-2026!");
+    await page.getByLabel("I accept the terms and conditions").check();
+    await page.getByRole("button", { name: "Create account", exact: true }).click();
+    await expect(page.getByRole("alert")).toHaveText("Passwords do not match.");
   });
 
   test("rejects a wrong password and accepts the correct password", async ({

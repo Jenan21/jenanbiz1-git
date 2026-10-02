@@ -6,6 +6,7 @@ const viewports = [
   { name: "2560x1440", width: 2560, height: 1440 },
   { name: "1920x1080", width: 1920, height: 1080 },
   { name: "1440x900", width: 1440, height: 900 },
+  { name: "1366x768", width: 1366, height: 768 },
   { name: "1365x768", width: 1365, height: 768 },
   { name: "1347x768", width: 1347, height: 768 },
   { name: "1280x800", width: 1280, height: 800 },
@@ -156,7 +157,20 @@ for (const locale of ["ar", "en"] as const) {
           ]) {
             await expect(page.locator(`[name="${name}"]`)).toBeVisible();
           }
+          await expect(
+            page.locator(".auth-form__step--all > .field > .field__label"),
+          ).toHaveCount(5);
+          await expect(page.locator(".auth-country > .field__label")).toBeVisible();
           const country = page.locator('select[name="countryCode"]');
+          await expect(country).toHaveAttribute(
+            "aria-label",
+            locale === "ar" ? "الدولة" : "Country",
+          );
+          await country.focus();
+          await expect(page.locator(".auth-country__control")).toHaveCSS(
+            "outlineStyle",
+            "solid",
+          );
           await expect(country).toHaveValue("SA");
           await expect(page.locator(".auth-country__flag")).toHaveText("🇸🇦");
           await expect(page.locator(".auth-country__selected strong")).toHaveText(

@@ -14,10 +14,11 @@ interface InputProps extends InputHTMLAttributes<HTMLInputElement> {
   label: string;
   icon?: ReactNode;
   hint?: string;
+  passwordToggleLabels?: { hide: string; show: string };
 }
 
 export const Input = forwardRef<HTMLInputElement, InputProps>(function Input(
-  { className, label, icon, hint, type, ...props },
+  { className, label, icon, hint, type, passwordToggleLabels, ...props },
   ref,
 ) {
   const [visible, setVisible] = useState(false);
@@ -36,7 +37,11 @@ export const Input = forwardRef<HTMLInputElement, InputProps>(function Input(
           <IconButton
             type="button"
             className="field__action"
-            aria-label={visible ? "Hide password" : "Show password"}
+            aria-label={
+              visible
+                ? passwordToggleLabels?.hide ?? "Hide password"
+                : passwordToggleLabels?.show ?? "Show password"
+            }
             onClick={() => setVisible((value) => !value)}
           >
             <Icon name={visible ? "eyeOff" : "eye"} />

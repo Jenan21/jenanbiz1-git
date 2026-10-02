@@ -19,6 +19,19 @@ const viewports = [
   { name: "360x800", width: 360, height: 800 },
 ] as const;
 
+const dashboardViewports = [
+  { width: 2560, height: 1440 },
+  { width: 1920, height: 1080 },
+  { width: 1440, height: 900 },
+  { width: 1366, height: 768 },
+  { width: 1280, height: 800 },
+  { width: 1024, height: 1366 },
+  { width: 820, height: 1180 },
+  { width: 430, height: 932 },
+  { width: 390, height: 844 },
+  { width: 360, height: 800 },
+] as const;
+
 test.describe
   .serial("Auth recovery and onboarding responsive acceptance", () => {
   test.setTimeout(90_000);
@@ -187,8 +200,8 @@ test.describe
     await page
       .getByLabel("البريد الإلكتروني")
       .fill("responsive.auth@example.test");
-    await expect(page.getByLabel("رمز الدولة")).toBeVisible();
-    await page.getByLabel("رمز الدولة").selectOption("SA");
+    await expect(page.getByLabel("الدولة")).toBeVisible();
+    await page.getByLabel("الدولة").selectOption("SA");
     await expect(page.getByLabel("تأكيد كلمة المرور")).toBeVisible();
     await page.getByText("عرض شروط الاستخدام", { exact: true }).click();
     await expect(page.locator(".auth-form__terms-details p")).toBeVisible();
@@ -248,5 +261,73 @@ test.describe
     await expect(page.getByRole("status")).toContainText(
       "تم تحديث كلمة المرور",
     );
+  });
+
+  test("dashboard remains responsive and logout recovers from network errors on mobile", async ({
+    context,
+    page,
+  }) => {
+    let failLogout = false;
+    await page.route("**/api/auth/logout", async (route) => {
+      if (failLogout) {
+        await route.fulfill({ status: 503, body: "Unavailable" });
+        return;
+      }
+      await route.continue();
+    });
+
+    for (const locale of ["ar", "en"] as const) {
+      for (const viewport of dashboardViewports) {
+        await page.setViewportSize(viewport);
+        await context.addCookies([
+          { name: "locale", value: locale, url: "http://127.0.0.1:3101" },
+          {
+            name: "jenan_session",
+            value: await createE2ESession(e2eIdentity.user.email),
+            url: "http://127.0.0.1:3101",
+            httpOnly: true,
+            sameSite: "Lax",
+          },
+        ]);
+        const response = await page.goto("/dashboard");
+        expect(response?.status()).toBe(200);
+        await expect(page.locator(".authenticated-home")).toHaveAttribute(
+          "dir",
+          locale === "ar" ? "rtl" : "ltr",
+        );
+        const layout = await page.evaluate(() => ({
+          scrollWidth: document.documentElement.scrollWidth,
+          viewportWidth: document.documentElement.clientWidth,
+        }));
+        expect(layout.scrollWidth).toBeLessThanOrEqual(layout.viewportWidth + 1);
+        await expect(
+          page.locator(".authenticated-home__tools .logout-button"),
+        ).toBeVisible();
+        await expect(page.getByText(/\+\d+%/)).toHaveCount(0);
+        await expect(
+          page.locator(".authenticated-home__header nav"),
+        ).toHaveCSS("direction", locale === "ar" ? "rtl" : "ltr");
+
+        if (viewport.width <= 430) {
+          failLogout = true;
+          await page.getByRole("button", {
+            name: locale === "ar" ? "خروج" : "Logout",
+          }).click();
+          await expect(page.getByRole("alert")).toHaveText(
+            locale === "ar"
+              ? "تعذر تسجيل الخروج. تحقق من اتصالك وحاول مجددًا."
+              : "Could not log out. Check your connection and try again.",
+          );
+          await expect(
+            page.locator(".authenticated-home__tools .logout-button"),
+          ).toBeEnabled();
+          failLogout = false;
+          await page.getByRole("button", {
+            name: locale === "ar" ? "خروج" : "Logout",
+          }).click();
+          await expect(page).toHaveURL(/\/auth$/);
+        }
+      }
+    }
   });
 });

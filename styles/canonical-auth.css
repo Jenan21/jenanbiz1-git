@@ -553,12 +553,15 @@ body:has(.access-page) nextjs-portal {
 }
 
 .access-page .auth-country > .field__label {
-  position: absolute;
-  width: 1px;
-  height: 1px;
-  overflow: hidden;
-  clip-path: inset(50%);
-  white-space: nowrap;
+  position: static;
+  width: auto;
+  height: auto;
+  overflow: visible;
+  clip-path: none;
+  color: #d1e2e6;
+  font-size: 0.65rem;
+  font-weight: 650;
+  white-space: normal;
 }
 
 .access-page .auth-country__selector {
@@ -623,6 +626,17 @@ body:has(.access-page) nextjs-portal {
   border: 0;
   outline: 0;
   cursor: pointer;
+}
+
+.access-page .auth-country__control:focus-within {
+  outline: 2px solid var(--auth-cyan-soft);
+  outline-offset: 3px;
+  box-shadow: 0 0 0 5px rgba(89, 243, 255, 0.13), inset 0 0 22px rgba(31, 231, 255, 0.08);
+}
+
+[dir="ltr"] .access-page .auth-country__selected {
+  justify-items: start;
+  direction: ltr;
 }
 
 .access-page .auth-country__control select option {
@@ -710,12 +724,15 @@ body:has(.access-page) nextjs-portal {
 }
 
 .access-page[data-mode="register"] .auth-form__step--all > .field > .field__label {
-  position: absolute;
-  width: 1px;
-  height: 1px;
-  overflow: hidden;
-  clip-path: inset(50%);
-  white-space: nowrap;
+  position: static;
+  width: auto;
+  height: auto;
+  overflow: visible;
+  clip-path: none;
+  color: #d1e2e6;
+  font-size: 0.65rem;
+  font-weight: 650;
+  white-space: normal;
 }
 
 .access-page[data-mode="register"] .field__control {
