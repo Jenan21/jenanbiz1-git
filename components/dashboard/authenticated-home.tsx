@@ -149,22 +149,24 @@ export function AuthenticatedHome({
         </div>
       </section>
 
-      <section className="authenticated-home__services" aria-label={ar ? "خدمات المنصة" : "Platform services"}>
-        {services.map((service) => (
-          <Link className={`authenticated-home__service tone-${service.tone}`} href={service.href} key={service.href}>
-            <span><Icon name={service.icon} /></span>
-            <h2>{copy(service.title, locale)}</h2>
-            <p>{copy(service.description, locale)}</p>
-            <b>{ar ? "اكتشف المزيد" : "Discover more"} <Icon name="arrow" /></b>
-          </Link>
-        ))}
-      </section>
-
-      <section className="authenticated-home__insights">
+      <section className="authenticated-home__primary">
+        <section className="authenticated-home__services" aria-label={ar ? "خدمات المنصة" : "Platform services"}>
+          {services.map((service) => (
+            <Link className={`authenticated-home__service tone-${service.tone}`} href={service.href} key={service.href}>
+              <span><Icon name={service.icon} /></span>
+              <h2>{copy(service.title, locale)}</h2>
+              <p>{copy(service.description, locale)}</p>
+              <b>{ar ? "اكتشف المزيد" : "Discover more"} <Icon name="arrow" /></b>
+            </Link>
+          ))}
+        </section>
         <article className="authenticated-home__market">
           <header><h2>{ar ? "نبض الأسواق العالمية" : "Global market pulse"}</h2><span>{ar ? "بيانات مباشرة غير متاحة" : "Live data unavailable"}</span></header>
           <div className="authenticated-home__market-empty"><Icon name="barChart" /><strong>—</strong><p>{ar ? "سيظهر السوق عند اتصال مصدر بيانات معتمد." : "Market data appears when an approved source is connected."}</p></div>
         </article>
+      </section>
+
+      <section className="authenticated-home__insights">
         <article className="authenticated-home__success">
           <header><h2>{ar ? "فرص نجاح" : "Success opportunities"}</h2><Link href="/projects">{ar ? "عرض الكل" : "View all"}</Link></header>
           <div><Icon name="globe" /><strong>{ar ? "ابدأ قصتك العالمية" : "Start your global story"}</strong><p>{ar ? "استكشف المشاريع والفرص المتاحة داخل أقسام المنصة." : "Explore projects and opportunities across the platform."}</p><Link href="/projects">{ar ? "استكشف" : "Explore"} <Icon name="arrow" /></Link></div>
