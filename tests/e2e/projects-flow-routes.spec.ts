@@ -60,6 +60,13 @@ test.describe.serial("Projects full route flow", () => {
     await page.setViewportSize({ width: 390, height: 844 });
     for (const route of ["/projects", "/projects/analysis/map", "/projects/evaluation/risks", "/projects/feasibility/pro/financial", "/projects/start/team"]) {
       expect((await page.goto(route, { waitUntil: "domcontentloaded" }))?.status()).toBe(200);
+      if (route === "/projects") {
+        await expect(page.locator(".projects-dashboard")).toHaveAttribute(
+          "data-projects-source",
+          "ACCOUNT_PROJECT_RECORDS",
+        );
+        await expect(page.locator(".projects-dashboard__services > a")).toHaveCount(4);
+      }
       const layout = await page.evaluate(() => ({ scrollWidth: document.documentElement.scrollWidth, viewportWidth: document.documentElement.clientWidth }));
       expect(layout.scrollWidth, route).toBeLessThanOrEqual(layout.viewportWidth + 1);
     }

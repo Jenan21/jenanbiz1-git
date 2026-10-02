@@ -18,7 +18,7 @@ export async function GET(request: Request, context: { params: Promise<{ project
       status: 200,
       headers: {
         "content-type": "application/pdf",
-        "content-disposition": `attachment; filename="jenan-biz-project-${projectId}.pdf"`,
+        "content-disposition": `attachment; filename="jenan-pro-project-${projectId}.pdf"`,
         "cache-control": "no-store",
       },
     });

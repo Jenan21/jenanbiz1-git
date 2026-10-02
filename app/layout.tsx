@@ -9,6 +9,7 @@ import "@/styles/canonical-auth.css";
 import "@/styles/authenticated-home.css";
 import "@/styles/market-stage.css";
 import "@/styles/projects-stage.css";
+import "@/styles/projects-dashboard.css";
 import "@/styles/programs-stage.css";
 import "@/styles/talent-stage.css";
 import "@/styles/software-stage.css";

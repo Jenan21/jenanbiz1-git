@@ -26,6 +26,8 @@ For the authenticated user homepage, `APPROVED_AUTHENTICATED_HOME_REFERENCE/auth
 
 For the user investment workspace, `APPROVED_USER_INVESTMENTS_REFERENCE/user-investments.png` is the canonical visual source for `/user/investments`. Preserve its investment-command composition while sourcing values from the authenticated user's records. Missing valuations, returns, market values, allocations, or opportunities must use explicit unavailable states rather than the sample numbers shown in the reference. Funding eligibility remains removed from navigation and content.
 
+For the projects section home, `APPROVED_PROJECTS_REFERENCE/projects-home.png` is the canonical visual source for `/projects`. Preserve its city command scene, four primary project services, project statistics, sector distribution, outputs, recent projects, activity, and sector intelligence. All values must come from the authenticated user's project records or use explicit unavailable states. The funding eligibility navigation item visible in the historical reference remains permanently removed.
+
 Legacy `Jenan BIZ` or `جنان بيز` names are visual-history references only. New UI uses `Jenan PRO` and `جنان برو` exclusively.
 
 ## Permanent Product Decisions
