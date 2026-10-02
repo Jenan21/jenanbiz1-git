@@ -639,6 +639,13 @@ body:has(.access-page) nextjs-portal {
   direction: ltr;
 }
 
+[dir="ltr"] .access-page .auth-form__terms-field,
+[dir="ltr"] .access-page .auth-form__terms,
+[dir="ltr"] .access-page .auth-form__terms > span,
+[dir="ltr"] .access-page .auth-form__terms-details {
+  direction: ltr;
+}
+
 .access-page .auth-country__control select option {
   color: #e9fbff;
   background: #062031;
@@ -797,12 +804,9 @@ body:has(.access-page) nextjs-portal {
 }
 
 .access-page__form-panel .auth-form__terms-details p {
-  position: absolute;
-  z-index: 5;
-  right: 0;
-  bottom: calc(100% + 8px);
+  position: static;
   width: min(310px, calc(100vw - 70px));
-  margin: 0;
+  margin: 6px 0 0;
   padding: 10px 12px;
   border: 1px solid rgba(89, 243, 255, 0.3);
   border-radius: 9px;

@@ -307,13 +307,22 @@ test.describe
         await expect(
           page.locator(".authenticated-home__header nav"),
         ).toHaveCSS("direction", locale === "ar" ? "rtl" : "ltr");
+        await expect(
+          page.locator(".authenticated-home__market"),
+        ).toHaveCSS("direction", locale === "ar" ? "rtl" : "ltr");
+        await expect(
+          page.locator(".authenticated-home__footer a[href='/benefits']"),
+        ).toHaveCount(0);
+        await expect(
+          page.locator(".authenticated-home__news header a"),
+        ).toHaveCount(0);
 
         if (viewport.width <= 430) {
           failLogout = true;
           await page.getByRole("button", {
             name: locale === "ar" ? "خروج" : "Logout",
           }).click();
-          await expect(page.getByRole("alert")).toHaveText(
+          await expect(page.locator(".logout-error")).toHaveText(
             locale === "ar"
               ? "تعذر تسجيل الخروج. تحقق من اتصالك وحاول مجددًا."
               : "Could not log out. Check your connection and try again.",

@@ -49,6 +49,7 @@
 .authenticated-home[dir="ltr"] .authenticated-home__services,
 .authenticated-home[dir="ltr"] .authenticated-home__insights,
 .authenticated-home[dir="ltr"] .authenticated-home__footer nav { direction: ltr; }
+.authenticated-home[dir="ltr"] .authenticated-home__market { direction: ltr; }
 .authenticated-home[dir="ltr"] .authenticated-home__hero-copy { text-align: left; }
 .authenticated-home[dir="ltr"] .authenticated-home__hero-copy p { margin-right: auto; margin-left: 0; }
 

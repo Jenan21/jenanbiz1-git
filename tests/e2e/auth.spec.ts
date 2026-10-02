@@ -128,7 +128,7 @@ test.describe.serial("real authentication and server-side RBAC", () => {
     ]);
 
     await page.getByLabel("Account type").selectOption("INDIVIDUAL");
-    await page.getByLabel("Country code").fill("SA");
+    await page.getByLabel("Country").fill("SA");
     await page.getByLabel("City").fill("Riyadh");
     await page.getByLabel("Projects").check();
     await page.getByLabel("Academy").check();
@@ -209,7 +209,9 @@ test.describe.serial("real authentication and server-side RBAC", () => {
     await confirmation.fill("Different-Auth-2026!");
     await page.getByLabel("I accept the terms and conditions").check();
     await page.getByRole("button", { name: "Create account", exact: true }).click();
-    await expect(page.getByRole("alert")).toHaveText("Passwords do not match.");
+    await expect(page.locator(".auth-form .auth-error")).toHaveText(
+      "Passwords do not match.",
+    );
   });
 
   test("rejects a wrong password and accepts the correct password", async ({

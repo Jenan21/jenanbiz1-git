@@ -166,11 +166,6 @@ for (const locale of ["ar", "en"] as const) {
             "aria-label",
             locale === "ar" ? "الدولة" : "Country",
           );
-          await country.focus();
-          await expect(page.locator(".auth-country__control")).toHaveCSS(
-            "outlineStyle",
-            "solid",
-          );
           await expect(country).toHaveValue("SA");
           await expect(page.locator(".auth-country__flag")).toHaveText("🇸🇦");
           await expect(page.locator(".auth-country__selected strong")).toHaveText(
@@ -180,6 +175,18 @@ for (const locale of ["ar", "en"] as const) {
             "data-source",
             "network",
           );
+          await country.focus();
+          await expect(country).toBeFocused();
+          expect(
+            await country.evaluate((element) =>
+              getComputedStyle(
+                element.closest(".auth-country__control")!,
+              ).outlineStyle,
+            ),
+          ).toBe("solid");
+          await expect(
+            page.locator(".auth-form__terms-details"),
+          ).toHaveCSS("direction", locale === "ar" ? "rtl" : "ltr");
           await country.selectOption("US");
           await expect(page.locator(".auth-country__flag")).toHaveText("🇺🇸");
           await expect(page.locator(".auth-country__selected strong")).toHaveText(
