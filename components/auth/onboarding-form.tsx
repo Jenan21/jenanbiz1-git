@@ -99,7 +99,7 @@ export function OnboardingForm({
           </select>
         </label>
         <label>
-          {ar ? "الدولة" : "Country code"}
+          {ar ? "الدولة" : "Country"}
           <input
             required
             disabled={busy}

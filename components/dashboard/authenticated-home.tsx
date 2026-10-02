@@ -116,7 +116,14 @@ export function AuthenticatedHome({
           <button type="button" disabled aria-label={ar ? "البحث غير متاح حاليًا" : "Search is currently unavailable"}><Icon name="search" /></button>
           <LanguageSwitcher locale={locale} label={ar ? "Switch to English" : "التبديل إلى العربية"} />
           <span className="user-chip" title={userLabel}>{userLabel}</span>
-          <LogoutButton label={ar ? "خروج" : "Logout"} />
+          <LogoutButton
+            label={ar ? "خروج" : "Logout"}
+            errorMessage={
+              ar
+                ? "تعذر تسجيل الخروج. تحقق من اتصالك وحاول مجددًا."
+                : "Could not log out. Check your connection and try again."
+            }
+          />
         </div>
       </header>
 
@@ -132,15 +139,7 @@ export function AuthenticatedHome({
             </article>
           ))}
         </div>
-        <div className="authenticated-home__globe" aria-hidden="true">
-          {[
-            ["أوروبا", "+18%"],
-            ["آسيا", "+24%"],
-            ["الشرق الأوسط", "+32%"],
-            ["أفريقيا", "+16%"],
-            ["أمريكا", "+12%"],
-          ].map(([region, value]) => <span key={region}><b>{region}</b><strong>{value}</strong></span>)}
-        </div>
+        <div className="authenticated-home__globe" aria-hidden="true" />
         <div className="authenticated-home__hero-copy">
           <h1>{ar ? <>فرص عالمية<br /><em>لأعمال أكبر</em></> : <>Global opportunities<br /><em>for bigger business</em></>}</h1>
           <strong>{ar ? "أدوات ذكية · تحليلات دقيقة · شراكات حقيقية" : "Smart tools · accurate insights · real partnerships"}</strong>
@@ -181,7 +180,7 @@ export function AuthenticatedHome({
           <div>{[ar ? "مستخدم نشط" : "Active users", ar ? "نمو شهري" : "Monthly growth", ar ? "مشروع جديد" : "New projects", ar ? "قيمة الفرص" : "Opportunity value"].map((label) => <span key={label}><Icon name="trend" /><b>—</b><small>{label}</small></span>)}</div>
         </article>
         <article className="authenticated-home__news">
-          <header><h2>{ar ? "أحدث الأخبار والتحديثات" : "Latest news and updates"}</h2><Link href="/benefits">{ar ? "عرض الكل" : "View all"}</Link></header>
+          <header><h2>{ar ? "أحدث الأخبار والتحديثات" : "Latest news and updates"}</h2></header>
           <div><Icon name="sparkles" /><strong>{ar ? "لا توجد أخبار منشورة حاليًا" : "No published news yet"}</strong><p>{ar ? "ستظهر التحديثات المعتمدة هنا." : "Approved updates will appear here."}</p></div>
         </article>
       </section>
@@ -192,7 +191,7 @@ export function AuthenticatedHome({
 
       <footer className="authenticated-home__footer">
         <strong>Jenan <b>PRO</b></strong>
-        <nav><Link href="/dashboard">{ar ? "الرئيسية" : "Home"}</Link><Link href="/benefits">{ar ? "عن المنصة" : "About"}</Link><Link href="/benefits">{ar ? "الشروط والأحكام" : "Terms"}</Link><Link href="/benefits">{ar ? "سياسة الخصوصية" : "Privacy"}</Link></nav>
+        <nav><Link href="/dashboard">{ar ? "الرئيسية" : "Home"}</Link><Link href="/">{ar ? "عن المنصة" : "About"}</Link></nav>
         <small>© 2026 Jenan PRO</small>
       </footer>
     </main>

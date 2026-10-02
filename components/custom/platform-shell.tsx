@@ -106,7 +106,14 @@ export function PlatformShell({
             <ThemeToggle label={ar ? "المظهر" : "Theme"} />
             <LanguageSwitcher locale={locale} label={ar ? "Switch to English" : "التبديل إلى العربية"} />
             <span className="user-chip">{userLabel}</span>
-            <LogoutButton label={ar ? "خروج" : "Logout"} />
+            <LogoutButton
+              label={ar ? "خروج" : "Logout"}
+              errorMessage={
+                ar
+                  ? "تعذر تسجيل الخروج. تحقق من اتصالك وحاول مجددًا."
+                  : "Could not log out. Check your connection and try again."
+              }
+            />
           </div>
         </header>
 

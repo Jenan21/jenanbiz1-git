@@ -36,10 +36,22 @@
 .authenticated-home__header nav a { display: flex; align-items: center; gap: 7px; padding: 0 17px; border-inline-end: 1px solid rgba(20,163,206,.18); color: #c3d4dc; font-size: .76rem; }
 .authenticated-home__header nav a.is-active { color: #fff; background: linear-gradient(180deg, rgba(12,111,164,.58), rgba(8,52,83,.42)); box-shadow: inset 0 -3px var(--ah-cyan), 0 0 22px rgba(19,233,244,.16); }
 .authenticated-home__header nav .icon { color: var(--ah-cyan); }
-.authenticated-home__tools { display: flex; align-items: center; gap: 7px; min-width: 0; direction: rtl; }
+.authenticated-home__tools { position: relative; display: flex; align-items: center; gap: 7px; min-width: 0; direction: rtl; }
 .authenticated-home__tools > button { display: grid; place-items: center; width: 40px; height: 40px; padding: 0; border: 1px solid rgba(39,190,230,.45); border-radius: 9px; color: #d8f7ff; background: transparent; opacity: .76; }
 .authenticated-home__tools > span { max-width: 105px; overflow: hidden; color: #b8cbd4; font-size: .62rem; text-overflow: ellipsis; white-space: nowrap; }
 .authenticated-home__tools .button { min-width: 54px; height: 38px; padding: 0 10px; font-size: .62rem; }
+.authenticated-home .logout-error { position: absolute; top: calc(100% + 8px); inset-inline-end: 0; z-index: 5; display: block; max-width: min(260px, calc(100vw - 24px)); padding: 8px 10px; border: 1px solid rgba(255,120,120,.5); border-radius: 7px; color: #ffb6b6; background: #321820; font-size: .68rem; line-height: 1.5; }
+
+.authenticated-home[dir="ltr"] .authenticated-home__header nav,
+.authenticated-home[dir="ltr"] .authenticated-home__tools,
+.authenticated-home[dir="ltr"] .authenticated-home__opportunities,
+.authenticated-home[dir="ltr"] .authenticated-home__hero-copy,
+.authenticated-home[dir="ltr"] .authenticated-home__services,
+.authenticated-home[dir="ltr"] .authenticated-home__insights,
+.authenticated-home[dir="ltr"] .authenticated-home__footer nav { direction: ltr; }
+.authenticated-home[dir="ltr"] .authenticated-home__market { direction: ltr; }
+.authenticated-home[dir="ltr"] .authenticated-home__hero-copy { text-align: left; }
+.authenticated-home[dir="ltr"] .authenticated-home__hero-copy p { margin-right: auto; margin-left: 0; }
 
 .authenticated-home__hero {
   position: relative;
@@ -65,14 +77,6 @@
 .authenticated-home__opportunities small { color: #75e6c4; font-size: .48rem; }
 .authenticated-home__globe { position: relative; z-index: 1; justify-self: center; width: min(100%, 590px); height: 282px; margin-top: 0; overflow: hidden; border-radius: 50% 50% 8% 8%; background: radial-gradient(circle, rgba(0,185,255,.28), rgba(0,30,58,.16) 58%, transparent 72%), url("/assets/earth-night-texture.jpg") center 38% / 104% auto no-repeat; filter: saturate(1.75) brightness(1.52) hue-rotate(8deg); box-shadow: 0 0 64px rgba(0,181,255,.38); }
 .authenticated-home__globe::after { content: ""; position: absolute; inset: 0; pointer-events: none; background: radial-gradient(circle at 52% 48%, rgba(0,187,255,.2), transparent 58%); mix-blend-mode: screen; }
-.authenticated-home__globe span { position: absolute; display: grid; min-width: 82px; padding: 5px 7px; border: 1px solid rgba(20,229,244,.7); border-radius: 5px; background: rgba(1,26,40,.88); text-align: center; filter: brightness(.75); }
-.authenticated-home__globe span:nth-child(1) { top: 18%; left: 42%; }
-.authenticated-home__globe span:nth-child(2) { top: 22%; right: 8%; }
-.authenticated-home__globe span:nth-child(3) { top: 45%; right: 23%; }
-.authenticated-home__globe span:nth-child(4) { bottom: 9%; right: 42%; }
-.authenticated-home__globe span:nth-child(5) { bottom: 13%; left: 14%; }
-.authenticated-home__globe b { font-size: .58rem; }
-.authenticated-home__globe strong { color: #1ff7d3; font-size: .8rem; }
 .authenticated-home__hero-copy { position: relative; z-index: 2; align-self: start; padding: 27px 5% 0 0; text-align: right; direction: rtl; }
 .authenticated-home__hero-copy h1 { margin: 0; font-size: clamp(2rem, 3.2vw, 3.45rem); line-height: 1.08; }
 .authenticated-home__hero-copy em { color: #69f2ef; font-style: normal; }
@@ -110,8 +114,7 @@
 .authenticated-home__distribution { display: grid; grid-template-columns: 1fr 1fr; align-items: center; padding: 7px; }
 .authenticated-home__distribution h2 { grid-column: 1 / -1; }
 .authenticated-home__distribution p { color: #9ab4be; font-size: .5rem; line-height: 1.5; }
-.authenticated-home__donut { display: grid; place-items: center; width: 75px; aspect-ratio: 1; border-radius: 50%; background: conic-gradient(#14dfed 0 30%, #258cf2 30% 54%, #9a64f7 54% 72%, #f7d55c 72%); }
-.authenticated-home__donut::before { content: ""; grid-area: 1/1; width: 58px; aspect-ratio: 1; border-radius: 50%; background: #062237; }
+.authenticated-home__donut { display: grid; place-items: center; width: 75px; aspect-ratio: 1; border-radius: 50%; background: radial-gradient(circle, #062237 0 58%, rgba(169,193,202,.3) 59% 100%); }
 .authenticated-home__donut span { z-index: 1; grid-area: 1/1; display: grid; text-align: center; }
 .authenticated-home__donut small { color: #a9c1ca; font-size: .42rem; }
 .authenticated-home__stats { padding: 7px; }
@@ -147,6 +150,7 @@
   .authenticated-home__header { padding: 8px 12px 0; }
   .authenticated-home__brand strong { font-size: 1.25rem; }
   .authenticated-home__tools > span,.authenticated-home__tools .button { display: none; }
+  .authenticated-home .authenticated-home__tools .logout-button { display: inline-flex; }
   .authenticated-home__header nav { justify-content: flex-start; height: 52px; }
   .authenticated-home__header nav a { flex: 0 0 auto; padding: 0 11px; font-size: .62rem; }
   .authenticated-home__hero { min-height: 430px; }
