@@ -19,6 +19,7 @@ import "@/styles/admin-operations.css";
 import "@/styles/reports.css";
 import "@/styles/auth-workflow.css";
 import "@/styles/user-center.css";
+import "@/styles/user-investments-dashboard.css";
 import "@/styles/academy-flow.css";
 import "@/styles/market-flow.css";
 import "@/styles/studio-flow.css";

@@ -58,7 +58,10 @@ test.describe.serial("User center responsive acceptance", () => {
             waitUntil: "domcontentloaded",
           });
           expect(response?.status(), definition.path).toBe(200);
-          if (definition.path !== "/account")
+          if (
+            definition.path !== "/account" &&
+            definition.path !== "/user/investments"
+          )
             await expect(page.locator(".user-center-nav")).toBeVisible();
           const contract = page.locator(".user-center-contract");
           await expect(contract).toHaveAttribute(
@@ -145,15 +148,21 @@ test.describe.serial("User center responsive acceptance", () => {
 
         await page.goto("/user/investments");
         await expect(
-          page.getByText(locale === "ar" ? "غير متوفر" : "Unavailable").first(),
+          page.getByText(locale === "ar" ? "غير متاح" : "Unavailable").first(),
+        ).toBeVisible();
+        await expect(page.locator(".investment-dashboard")).toHaveAttribute(
+          "data-investment-source",
+          "ACCOUNT_RECORDS",
+        );
+        await expect(
+          page.locator(".investment-dashboard__performance"),
         ).toBeVisible();
         await expect(
-          page.locator(".user-investments__performance"),
+          page.locator(".investment-dashboard__allocation"),
         ).toBeVisible();
         await expect(
-          page.locator(".user-investments__allocation"),
-        ).toBeVisible();
-        await expect(page.locator(".user-investments__export")).toBeDisabled();
+          page.locator(".investment-dashboard__bottom button:disabled"),
+        ).toHaveCount(2);
         if (["1440x900", "820x1180", "390x844"].includes(viewport.name)) {
           await testInfo.attach(`user-center-${viewport.name}-${locale}`, {
             body: await page.screenshot({

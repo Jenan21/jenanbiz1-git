@@ -24,6 +24,8 @@ For the homepage, `APPROVED_HOME_REFERENCE/homepage.png` is the canonical single
 
 For the authenticated user homepage, `APPROVED_AUTHENTICATED_HOME_REFERENCE/authenticated-home.png` is the canonical visual source for `/dashboard`. It defines the post-login composition and must remain separate from the public homepage reference. Permanent product decisions still override legacy content shown inside the image, including the removed funding service and the prohibition on presenting demo market or opportunity values as live data.
 
+For the user investment workspace, `APPROVED_USER_INVESTMENTS_REFERENCE/user-investments.png` is the canonical visual source for `/user/investments`. Preserve its investment-command composition while sourcing values from the authenticated user's records. Missing valuations, returns, market values, allocations, or opportunities must use explicit unavailable states rather than the sample numbers shown in the reference. Funding eligibility remains removed from navigation and content.
+
 Legacy `Jenan BIZ` or `جنان بيز` names are visual-history references only. New UI uses `Jenan PRO` and `جنان برو` exclusively.
 
 ## Permanent Product Decisions
