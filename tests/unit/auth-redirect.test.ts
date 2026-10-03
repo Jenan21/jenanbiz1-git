@@ -6,6 +6,9 @@ describe("post-login redirect", () => {
     null, "", "//attacker.test", "/\\attacker.test", "/\t/attacker.test",
     "/\n/attacker.test", "/\r/attacker.test", "https://attacker.test",
     "javascript:alert(1)",
+    "/a/..//attacker.test",
+    "/a/%2e%2e//attacker.test",
+    "/%2e//attacker.test",
     new URLSearchParams("next=/%5Cattacker.test").get("next"),
     new URLSearchParams("next=/%09/attacker.test").get("next"),
   ])("rejects unsafe destination %j", (value) => {

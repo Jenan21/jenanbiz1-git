@@ -2,11 +2,13 @@ import ExcelJS from "exceljs";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { db } from "@/lib/db";
 import { getUserPayments } from "@/services/account/user-center-service";
+import { getAccountOverview } from "@/services/account/account-overview-service";
 import { listSoftwareHr } from "@/services/software/hr-service";
 import { listSoftwareOperations } from "@/services/software/operations-service";
 import { getSoftwareCompany } from "@/services/software/software-access";
 import { getUserProject, addProjectMember } from "@/services/projects/project-service";
-import { listMarketListings } from "@/services/market/market-service";
+import { listMarketListings, listMarketInquiries, listMarketDeals, updateMarketListingStatus, updateMarketInquiryStatus, updateMarketOfferStatus, updateMarketViewingStatus } from "@/services/market/market-service";
+import { listUserFiles, downloadUserFile, deleteUserFile, uploadUserFile } from "@/services/files/file-asset-service";
 import {
   createMarketingCampaign, createMarketingLead, createMarketingAudienceSegment,
   listMarketingCampaigns, updateMarketingCampaignStatus, updateMarketingLead,
@@ -32,6 +34,13 @@ let postingId: string;
 let applicationId: string;
 let personalPaymentId: string;
 let organizationPaymentId: string;
+let personalCampaignId: string;
+let personalPostingId: string;
+let listingId: string;
+let inquiryId: string;
+let offerId: string;
+let viewingId: string;
+let fileId: string;
 
 function expectSafeUsers(value: unknown) {
   const serialized = JSON.stringify(value);
@@ -70,17 +79,25 @@ beforeAll(async () => {
   personalPaymentId = (await db.payment.create({ data: { payerUserId: memberId, amountMinor: 100, status: "SUCCEEDED", provider: "TEST" } })).id;
   organizationPaymentId = (await db.payment.create({ data: { organizationId, amountMinor: 200, status: "SUCCEEDED", provider: "TEST" } })).id;
   campaignId = (await createMarketingCampaign({ budgetMinor: 1000, channel: "CONTENT", customerType: "ORGANIZATION", organizationId, name: "Security campaign", objective: "Security ownership regression campaign" }, ownerId)).id;
+  personalCampaignId = (await createMarketingCampaign({ budgetMinor: 1000, channel: "CONTENT", customerType: "INDIVIDUAL", name: "Personal campaign", objective: "Personal ownership retained" }, ownerId)).id;
   leadId = (await createMarketingLead({ campaignId, label: "Private lead" }, ownerId)).id;
   postingId = (await createJobPosting({ organizationId, title: "Security role", description: "Security ownership regression role description", workMode: "REMOTE" }, ownerId)).id;
+  personalPostingId = (await createJobPosting({ title: "Personal role", description: "Personal ownership retained role", workMode: "REMOTE" }, ownerId)).id;
   const cv = await db.studioDocument.create({ data: { ownerId: memberId, kind: "CV", title: "Private CV", content: { privateCv: true } } });
   applicationId = (await db.jobApplication.create({ data: { jobPostingId: postingId, applicantId: memberId, cvDocumentId: cv.id, consentVersion: "talent-profile-v1" } })).id;
   await db.jobApplication.create({ data: { jobPostingId: postingId, applicantId: outsiderId } });
   await db.jobPosting.update({ where: { id: postingId }, data: { status: "PUBLISHED" } });
   await db.marketListing.create({ data: { createdById: ownerId, kind: "PROJECT", title: "Security public listing", slug: `security-listing-${suffix}`, summary: "Security listing privacy regression", status: "PUBLISHED" } });
+  listingId = (await db.marketListing.create({ data: { createdById: ownerId, organizationId, kind: "BUSINESS", title: "Organization listing", slug: `security-org-listing-${suffix}`, summary: "Imported organization listing", status: "PUBLISHED", requiresNda: true, confidentialDetails: "private-organization-details" } })).id;
+  inquiryId = (await db.marketInquiry.create({ data: { listingId, requesterId: memberId, message: "Private inquiry" } })).id;
+  offerId = (await db.marketOffer.create({ data: { listingId, buyerId: memberId, amountMinor: 1000, terms: "Private offer" } })).id;
+  viewingId = (await db.marketViewingRequest.create({ data: { listingId, requesterId: memberId, preferredAt: new Date(Date.now() + 86400000), attendees: 1 } })).id;
+  fileId = (await db.fileAsset.create({ data: { uploadedById: ownerId, marketListingId: listingId, marketVisibility: "NDA_REQUIRED", fileName: "private.txt", mimeType: "text/plain", sizeBytes: 10, storageKey: `security-${suffix}` } })).id;
 });
 
 afterAll(async () => {
   if (users.length) {
+    await db.fileAsset.deleteMany({ where: { uploadedById: { in: users } } });
     await db.marketingCampaign.deleteMany({ where: { createdById: { in: users } } });
     await db.jobPosting.deleteMany({ where: { createdById: { in: users } } });
     await db.marketListing.deleteMany({ where: { createdById: { in: users } } });
@@ -133,7 +150,27 @@ describe.sequential("security ownership and DTO boundaries", () => {
 
   it.each(["suspended", "demoted"] as const)("revokes hiring and campaign access when the owner is %s", async (mode) => {
     await db.organizationMember.updateMany({ where: { organizationId, userId: ownerId }, data: { status: mode === "suspended" ? "SUSPENDED" : "ACTIVE", isOwner: mode !== "demoted" } });
-    expect(await listMarketingCampaigns(ownerId)).toEqual([]);
+    expect((await listMarketingCampaigns(ownerId)).map(({ id }) => id)).toEqual([personalCampaignId]);
+    const overview = await getAccountOverview(ownerId);
+    expect(overview.services.marketingCampaigns.map(({ id }) => id)).toEqual([personalCampaignId]);
+    expect(overview.services.jobPostings.map(({ id }) => id)).toEqual([personalPostingId]);
+    if (mode === "suspended") expect(overview.organizations).toEqual([]);
+    expect(overview.services.marketListings.some(({ id }) => id === listingId)).toBe(false);
+    expect(overview.services.fileCount).toBe(0);
+    const listing = (await listMarketListings(ownerId)).find(({ id }) => id === listingId);
+    expect(listing).toMatchObject({ isOwner: false, confidentialDetails: null, ndaAccepted: false, files: [] });
+    expect(await listMarketInquiries(ownerId)).toEqual([]);
+    expect(await listMarketDeals(ownerId)).toEqual({ offers: [], viewings: [] });
+    await expect(updateMarketListingStatus(listingId, "PAUSED", ownerId)).rejects.toThrow("not found");
+    await expect(updateMarketInquiryStatus(inquiryId, "CLOSED", ownerId)).rejects.toThrow("not found");
+    await expect(updateMarketOfferStatus(offerId, "REJECTED", ownerId)).rejects.toThrow("not found");
+    await expect(updateMarketViewingStatus(viewingId, "CONFIRMED", ownerId)).rejects.toThrow("not found");
+    expect(await listUserFiles(ownerId)).toEqual([]);
+    expect(await downloadUserFile(ownerId, fileId)).toBeNull();
+    expect(await deleteUserFile(ownerId, fileId)).toBe(false);
+    await expect(uploadUserFile(ownerId, new File(["Safe text"], "safe.txt", { type: "text/plain" }), undefined, listingId)).rejects.toThrow("not found");
+    expect((await listMarketInquiries(memberId)).some(({ id }) => id === inquiryId)).toBe(true);
+    expect((await listMarketDeals(memberId)).offers.some(({ id }) => id === offerId)).toBe(true);
     expect(await listOwnedJobApplications(ownerId)).toEqual([]);
     await expect(updateMarketingCampaignStatus(campaignId, "PAUSED", ownerId)).rejects.toThrow("not found");
     await expect(createMarketingLead({ campaignId, label: "Forbidden" }, ownerId)).rejects.toThrow("not found");
@@ -146,7 +183,7 @@ describe.sequential("security ownership and DTO boundaries", () => {
     const workbook = new ExcelJS.Workbook();
     await workbook.xlsx.load((await exportTalentReport(ownerId)).bytes as unknown as Parameters<typeof workbook.xlsx.load>[0]);
     expect(workbook.getWorksheet("Applications")?.rowCount).toBe(1);
-    expect(workbook.getWorksheet("Postings")?.rowCount).toBe(1);
+    expect(workbook.getWorksheet("Postings")?.rowCount).toBe(2);
     expect((await listMyJobApplications(memberId)).some(({ id }) => id === applicationId)).toBe(true);
     await sendTalentMessage({ applicationId, body: "Applicant retains access" }, memberId);
     expect((await db.marketingLead.findUniqueOrThrow({ where: { id: leadId } })).status).toBe("NEW");

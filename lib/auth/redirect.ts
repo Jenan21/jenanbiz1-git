@@ -9,7 +9,7 @@ export function safeAuthRedirect(value: string | null, origin: string) {
   try {
     const base = new URL(origin);
     const target = new URL(value, base);
-    return target.origin === base.origin
+    return target.origin === base.origin && !target.pathname.startsWith("//")
       ? `${target.pathname}${target.search}${target.hash}`
       : "/dashboard";
   } catch {

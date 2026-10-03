@@ -2,6 +2,7 @@ import { createHash, randomUUID } from "node:crypto";
 import { db } from "@/lib/db";
 import { localDocumentStorage } from "@/lib/storage/local-document-storage";
 import { validateFileContent, validateFileName } from "./file-validation";
+import { ownedOrganizationRecordWhere } from "@/lib/auth/organization-scope";
 
 const maxFileBytes = 10 * 1024 * 1024;
 const allowedMimeTypes = new Set([
@@ -40,6 +41,13 @@ function serializeFileAsset(asset: {
   };
 }
 
+function uploadedFileAccessWhere(userId: string) {
+  return {
+    uploadedById: userId,
+    OR: [{ marketListingId: null }, { marketListing: ownedOrganizationRecordWhere(userId) }],
+  };
+}
+
 export async function uploadUserFile(userId: string, file: File, projectId?: string, marketListingId?: string, marketVisibility: "PUBLIC" | "NDA_REQUIRED" = "NDA_REQUIRED") {
   if (!allowedMimeTypes.has(file.type))
     throw new FileAssetError("This file type is not supported");
@@ -69,7 +77,7 @@ export async function uploadUserFile(userId: string, file: File, projectId?: str
     if (!project) throw new FileAssetError("Project not found");
   }
   if (marketListingId) {
-    const listing = await db.marketListing.findFirst({ where: { id: marketListingId, createdById: userId }, select: { id: true } });
+    const listing = await db.marketListing.findFirst({ where: { id: marketListingId, ...ownedOrganizationRecordWhere(userId) }, select: { id: true } });
     if (!listing) throw new FileAssetError("Market listing not found");
   }
   const storageKey = `users/${userId}/${randomUUID()}`;
@@ -106,7 +114,7 @@ export async function uploadUserFile(userId: string, file: File, projectId?: str
 
 export async function listUserFiles(userId: string) {
   const assets = await db.fileAsset.findMany({
-    where: { uploadedById: userId },
+    where: uploadedFileAccessWhere(userId),
     orderBy: { createdAt: "desc" },
   });
   return assets.map(serializeFileAsset);
@@ -117,7 +125,7 @@ async function findUserDownloadFile(userId: string, fileId: string) {
     where: {
       id: fileId,
       OR: [
-        { uploadedById: userId },
+        uploadedFileAccessWhere(userId),
         {
           project: {
             OR: [
@@ -129,7 +137,7 @@ async function findUserDownloadFile(userId: string, fileId: string) {
         {
           marketListing: {
             OR: [
-              { createdById: userId },
+              ownedOrganizationRecordWhere(userId),
               { status: "PUBLISHED", files: { some: { id: fileId, marketVisibility: "PUBLIC" } } },
               { status: "PUBLISHED", requiresNda: false },
               { status: "PUBLISHED", ndaAcceptances: { some: { userId } } },
@@ -146,9 +154,9 @@ async function findUserManagedFile(userId: string, fileId: string) {
     where: {
       id: fileId,
       OR: [
-        { uploadedById: userId },
+        uploadedFileAccessWhere(userId),
         { project: { OR: [{ createdById: userId }, { members: { some: { userId, role: { in: ["OWNER", "EDITOR"] } } } }] } },
-        { marketListing: { createdById: userId } },
+        { marketListing: ownedOrganizationRecordWhere(userId) },
       ],
     },
   });

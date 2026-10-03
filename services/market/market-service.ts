@@ -1,6 +1,7 @@
 import { MarketInquiryStatus, MarketListingStatus, MarketOfferStatus, MarketViewingStatus, Prisma } from "@/generated/prisma/client";
 import { db } from "@/lib/db";
 import { publicUserSelect } from "@/lib/auth/user-select";
+import { ownedOrganizationRecordWhere } from "@/lib/auth/organization-scope";
 
 const listingInclude = {
   createdBy: { select: publicUserSelect },
@@ -66,7 +67,7 @@ export async function listMarketListings(userId: string, filters: MarketListingF
   const listings = await db.marketListing.findMany({
     where: {
       AND: [
-        { OR: [{ status: MarketListingStatus.PUBLISHED }, { createdById: userId }] },
+        { OR: [{ status: MarketListingStatus.PUBLISHED }, ownedOrganizationRecordWhere(userId)] },
         filters.status ? { status: MarketListingStatus[filters.status] } : {},
         filters.kind ? { kind: filters.kind } : {},
         filters.countryCode ? { countryCode: filters.countryCode.trim().toUpperCase() } : {},
@@ -82,9 +83,13 @@ export async function listMarketListings(userId: string, filters: MarketListingF
     skip: offset,
     take: limit,
   });
+  const ownedIds = new Set((await db.marketListing.findMany({
+    where: { id: { in: listings.map(({ id }) => id) }, ...ownedOrganizationRecordWhere(userId) },
+    select: { id: true },
+  })).map(({ id }) => id));
   return listings.map((listing) => {
     const { ndaAcceptances, files, ...record } = listing;
-    const isOwner = listing.createdById === userId;
+    const isOwner = ownedIds.has(listing.id);
     const ndaAccepted = isOwner || !listing.requiresNda || ndaAcceptances.length > 0;
     return {
       ...record,
@@ -158,7 +163,7 @@ export async function updateMarketListingStatus(
 ) {
   return db.$transaction(async (transaction) => {
     const current = await transaction.marketListing.findFirst({
-      where: { id: listingId, createdById: userId },
+      where: { id: listingId, ...ownedOrganizationRecordWhere(userId) },
       select: { id: true, qualityScore: true },
     });
     if (!current) throw new Error("Listing not found");
@@ -177,7 +182,7 @@ export async function updateMarketListingStatus(
 
 export async function listMarketInquiries(userId: string) {
   const inquiries = await db.marketInquiry.findMany({
-    where: { OR: [{ requesterId: userId }, { listing: { createdById: userId } }] },
+    where: { OR: [{ requesterId: userId }, { listing: ownedOrganizationRecordWhere(userId) }] },
     include: {
       listing: { select: { id: true, title: true, createdById: true } },
       requester: { select: { email: true, profile: { select: { displayName: true } } } },
@@ -197,7 +202,7 @@ export async function createMarketInquiry(listingId: string, message: string, us
       select: { id: true, createdById: true },
     });
     if (!listing) throw new Error("Published listing not found");
-    if (listing.createdById === userId) throw new Error("Listing owner cannot create an inquiry");
+    if (await transaction.marketListing.findFirst({ where: { id: listingId, ...ownedOrganizationRecordWhere(userId) }, select: { id: true } })) throw new Error("Listing owner cannot create an inquiry");
     const inquiry = await transaction.marketInquiry.create({
       data: { listingId: listing.id, requesterId: userId, message: message.trim() },
     });
@@ -220,7 +225,7 @@ export async function createMarketInquiry(listingId: string, message: string, us
 export async function updateMarketInquiryStatus(inquiryId: string, status: "CONTACTED" | "CLOSED", userId: string) {
   return db.$transaction(async (transaction) => {
     const inquiry = await transaction.marketInquiry.findFirst({
-      where: { id: inquiryId, listing: { createdById: userId } },
+      where: { id: inquiryId, listing: ownedOrganizationRecordWhere(userId) },
       select: { id: true, listingId: true },
     });
     if (!inquiry) throw new Error("Market inquiry not found");
@@ -241,7 +246,7 @@ async function requireProtectedMarketAccess(listingId: string, userId: string, t
     select: { id: true, createdById: true, requiresNda: true, currency: true },
   });
   if (!listing) throw new Error("Published listing not found");
-  if (listing.createdById === userId) throw new Error("Listing owner cannot perform a buyer action");
+  if (await transaction.marketListing.findFirst({ where: { id: listingId, ...ownedOrganizationRecordWhere(userId) }, select: { id: true } })) throw new Error("Listing owner cannot perform a buyer action");
   if (listing.requiresNda) {
     const acceptance = await transaction.marketNdaAcceptance.findUnique({ where: { listingId_userId: { listingId, userId } }, select: { id: true } });
     if (!acceptance) throw new Error("NDA acceptance is required");
@@ -253,7 +258,7 @@ export async function acceptMarketNda(listingId: string, userId: string) {
   return db.$transaction(async (transaction) => {
     const listing = await transaction.marketListing.findFirst({ where: { id: listingId, status: MarketListingStatus.PUBLISHED }, select: { id: true, createdById: true } });
     if (!listing) throw new Error("Published listing not found");
-    if (listing.createdById === userId) throw new Error("Listing owner does not need an NDA acceptance");
+    if (await transaction.marketListing.findFirst({ where: { id: listingId, ...ownedOrganizationRecordWhere(userId) }, select: { id: true } })) throw new Error("Listing owner does not need an NDA acceptance");
     const acceptance = await transaction.marketNdaAcceptance.upsert({
       where: { listingId_userId: { listingId, userId } },
       update: { acceptedAt: new Date(), termsVersion: "v1" },
@@ -287,7 +292,7 @@ export async function updateMarketOfferStatus(offerId: string, status: "NEGOTIAT
   return db.$transaction(async (transaction) => {
     const offer = await transaction.marketOffer.findUnique({ where: { id: offerId }, include: { listing: { select: { createdById: true } } } });
     if (!offer) throw new Error("Market offer not found");
-    const owner = offer.listing.createdById === userId;
+    const owner = Boolean(await transaction.marketListing.findFirst({ where: { id: offer.listingId, ...ownedOrganizationRecordWhere(userId) }, select: { id: true } }));
     const buyer = offer.buyerId === userId;
     if ((!owner && !buyer) || (status === "WITHDRAWN" ? !buyer : !owner)) throw new Error("Market offer not found");
     const finalStatuses = new Set<MarketOfferStatus>([MarketOfferStatus.ACCEPTED, MarketOfferStatus.REJECTED, MarketOfferStatus.WITHDRAWN, MarketOfferStatus.CLOSED]);
@@ -301,7 +306,7 @@ export async function updateMarketOfferStatus(offerId: string, status: "NEGOTIAT
 
 export async function updateMarketViewingStatus(viewingId: string, status: "CONFIRMED" | "COMPLETED" | "CANCELLED", userId: string) {
   return db.$transaction(async (transaction) => {
-    const viewing = await transaction.marketViewingRequest.findFirst({ where: { id: viewingId, listing: { createdById: userId } }, select: { id: true, listingId: true } });
+    const viewing = await transaction.marketViewingRequest.findFirst({ where: { id: viewingId, listing: ownedOrganizationRecordWhere(userId) }, select: { id: true, listingId: true } });
     if (!viewing) throw new Error("Market viewing not found");
     const updated = await transaction.marketViewingRequest.update({ where: { id: viewing.id }, data: { status: MarketViewingStatus[status] } });
     await transaction.auditLog.create({ data: { actorId: userId, action: "market.viewing.status.updated", entityType: "MarketViewingRequest", entityId: viewing.id, metadata: { listingId: viewing.listingId, status } } });
@@ -312,7 +317,7 @@ export async function updateMarketViewingStatus(viewingId: string, status: "CONF
 export async function listMarketDeals(userId: string) {
   const [viewings, offers] = await Promise.all([
     db.marketViewingRequest.findMany({
-      where: { OR: [{ requesterId: userId }, { listing: { createdById: userId } }] },
+      where: { OR: [{ requesterId: userId }, { listing: ownedOrganizationRecordWhere(userId) }] },
       include: {
         listing: { select: { id: true, title: true, createdById: true } },
         requester: { select: { email: true, profile: { select: { displayName: true } } } },
@@ -320,7 +325,7 @@ export async function listMarketDeals(userId: string) {
       orderBy: { updatedAt: "desc" },
     }),
     db.marketOffer.findMany({
-      where: { OR: [{ buyerId: userId }, { listing: { createdById: userId } }] },
+      where: { OR: [{ buyerId: userId }, { listing: ownedOrganizationRecordWhere(userId) }] },
       include: {
         listing: { select: { id: true, title: true, createdById: true } },
         buyer: { select: { email: true, profile: { select: { displayName: true } } } },

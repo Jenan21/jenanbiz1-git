@@ -1,6 +1,5 @@
 import JSZip from "jszip";
 import type { Readable } from "node:stream";
-import { PDFDocument } from "pdf-lib";
 import sharp from "sharp";
 
 export function validateFileName(name: string) {
@@ -22,12 +21,24 @@ export async function validateFileContent(bytes: Uint8Array, mimeType: string) {
     return;
   }
   if (mimeType === "application/pdf") {
+    const decoder = new TextDecoder();
+    const footer = decoder.decode(bytes.subarray(-1024));
+    const trailer = /startxref\s+(\d+)\s+%%EOF\s*$/.exec(footer);
+    const offset = trailer ? Number(trailer[1]) : NaN;
     if (
-      new TextDecoder().decode(bytes.subarray(0, 5)) !== "%PDF-" ||
-      !/%%EOF\s*$/.test(new TextDecoder().decode(bytes.subarray(-1024)))
-    )
+      !/^%PDF-(?:1\.[0-7]|2\.0)[\r\n]/.test(
+        decoder.decode(bytes.subarray(0, 16)),
+      ) ||
+      !Number.isSafeInteger(offset) ||
+      offset < 8 ||
+      offset >= bytes.length ||
+      !/^(?:xref\s|\d+\s+\d+\s+obj\b)/.test(
+        decoder.decode(bytes.subarray(offset, offset + 64)),
+      )
+    ) {
       throw new Error("Invalid PDF");
-    await PDFDocument.load(bytes, { updateMetadata: false });
+    }
+    // Inspect the container without inflating attacker-controlled PDF object streams.
     return;
   }
   const imageFormats: Record<string, string> = {

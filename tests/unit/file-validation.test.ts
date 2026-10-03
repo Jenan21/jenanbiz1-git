@@ -1,4 +1,5 @@
 import JSZip from "jszip";
+import { deflateSync } from "node:zlib";
 import { PDFDocument } from "pdf-lib";
 import sharp from "sharp";
 import { describe, expect, it, vi } from "vitest";
@@ -64,7 +65,7 @@ describe("uploaded file validation", () => {
       validateFileContent(new Uint8Array([0]), "text/plain"),
     ).rejects.toThrow();
   });
-  it("accepts valid PDFs but not spoofed or truncated PDFs", async () => {
+  it("accepts valid PDF containers but not spoofed or truncated PDFs", async () => {
     const pdf = await PDFDocument.create();
     pdf.addPage();
     await expect(
@@ -82,6 +83,31 @@ describe("uploaded file validation", () => {
         "application/pdf",
       ),
     ).rejects.toThrow();
+  });
+  it("does not inflate attacker-controlled PDF object streams", async () => {
+    const compressed = deflateSync(Buffer.from("a".repeat(2_000_000)));
+    const body = Buffer.concat([
+      Buffer.from(
+        `%PDF-1.7\n1 0 obj\n<< /Type /ObjStm /N 1 /First 4 /Filter /FlateDecode /Length ${compressed.length} >>\nstream\n`,
+      ),
+      compressed,
+      Buffer.from("\nendstream\nendobj\n"),
+    ]);
+    const bytes = Buffer.concat([
+      body,
+      Buffer.from(
+        `xref\n0 1\n0000000000 65535 f\ntrailer\n<< /Size 1 >>\nstartxref\n${body.length}\n%%EOF\n`,
+      ),
+    ]);
+    const parser = vi.spyOn(PDFDocument, "load");
+    try {
+      await expect(
+        validateFileContent(bytes, "application/pdf"),
+      ).resolves.toBeUndefined();
+      expect(parser).not.toHaveBeenCalled();
+    } finally {
+      parser.mockRestore();
+    }
   });
   it.each([
     ["png", "image/png"],

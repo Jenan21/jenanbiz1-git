@@ -142,24 +142,19 @@ test.describe.serial("account security HTTP boundaries", () => {
     await page
       .context()
       .addCookies([{ name: "locale", value: "en", url: origin }]);
-    await page.goto("/auth?next=/%5Cattacker.example/login");
-    await page.getByLabel("Email address").fill(e2eIdentity.user.email);
-    await page
-      .getByLabel("Password", { exact: true })
-      .fill(e2eIdentity.user.password);
-    await Promise.all([
-      page.waitForURL(`${origin}/dashboard`),
-      page.getByRole("button", { name: "Sign in", exact: true }).click(),
-    ]);
-    expect(new URL(page.url()).origin).toBe(origin);
-    const cookie = (await page.context().cookies()).find(
-      ({ name }) => name === "jenan_session",
-    );
-    expect(cookie).toMatchObject({
-      httpOnly: true,
-      sameSite: "Lax",
-      path: "/",
-    });
+    for (const next of ["/%5Cattacker.example/login", "/a/..//attacker.example/login"]) {
+      await page.goto(`/auth?next=${next}`);
+      await page.getByLabel("Email address").fill(e2eIdentity.user.email);
+      await page.getByLabel("Password", { exact: true }).fill(e2eIdentity.user.password);
+      await Promise.all([
+        page.waitForURL(`${origin}/dashboard`),
+        page.getByRole("button", { name: "Sign in", exact: true }).click(),
+      ]);
+      expect(new URL(page.url()).origin).toBe(origin);
+      const cookie = (await page.context().cookies()).find(({ name }) => name === "jenan_session");
+      expect(cookie).toMatchObject({ httpOnly: true, sameSite: "Lax", path: "/" });
+      expect((await page.request.post("/api/auth/logout", { headers: { origin } })).status()).toBe(200);
+    }
   });
 
   test("prevents cross-account project downloads and file mutations", async () => {
