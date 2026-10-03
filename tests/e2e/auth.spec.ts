@@ -1,10 +1,284 @@
-import { expect, test } from "@playwright/test";
+import { expect, test, type APIRequestContext } from "@playwright/test";
 import { e2eIdentity } from "./test-identities";
-import { cleanE2EIdentities, queryE2E, seedE2EAdmin } from "./identity-fixture";
+import {
+  cleanE2EIdentities,
+  createE2ESession,
+  queryE2E,
+  seedE2EAdmin,
+  seedE2EUser,
+} from "./identity-fixture";
 
 const canonicalFlowEmail = `e2e.user.auth-flow.${process.env.E2E_RUN_ID}@example.test`;
 const canonicalFlowPassword = "Canonical-Auth-2026!";
 const canonicalFlowReplacement = "Canonical-Auth-Reset-2026!";
+
+test.describe.serial("account security HTTP boundaries", () => {
+  test.setTimeout(90_000);
+  const origin =
+    process.env.PLAYWRIGHT_BASE_URL ??
+    `http://127.0.0.1:${process.env.PLAYWRIGHT_PORT ?? "3101"}`;
+  const otherEmail = `e2e.user.security-other.${process.env.E2E_RUN_ID}@example.test`;
+  let owner: APIRequestContext;
+  let other: APIRequestContext;
+  let anonymous: APIRequestContext;
+  let token: string;
+  let projectId: string;
+  let organizationId: string;
+  let fileId: string;
+
+  test.beforeAll(async ({ playwright }) => {
+    await cleanE2EIdentities();
+    await seedE2EUser();
+    await queryE2E(
+      'INSERT INTO "User" (id, email, status, "systemRole", "createdAt", "updatedAt") VALUES ($1, $2, \'ACTIVE\', \'USER\', NOW(), NOW())',
+      [crypto.randomUUID(), otherEmail],
+    );
+    token = await createE2ESession(e2eIdentity.user.email);
+    owner = await playwright.request.newContext({
+      baseURL: origin,
+      extraHTTPHeaders: { origin, cookie: `jenan_session=${token}` },
+    });
+    other = await playwright.request.newContext({
+      baseURL: origin,
+      extraHTTPHeaders: {
+        origin,
+        cookie: `jenan_session=${await createE2ESession(otherEmail)}`,
+      },
+    });
+    anonymous = await playwright.request.newContext({ baseURL: origin });
+    const identity = await queryE2E<{ id: string }>(
+      'SELECT id FROM "User" WHERE email = $1',
+      [e2eIdentity.user.email],
+    );
+    const otherIdentity = await queryE2E<{ id: string }>(
+      'SELECT id FROM "User" WHERE email = $1',
+      [otherEmail],
+    );
+    organizationId = crypto.randomUUID();
+    await queryE2E(
+      'INSERT INTO "Organization" (id, name, slug, "updatedAt") VALUES ($1, $2, $3, NOW())',
+      [organizationId, "Security organization", `security-${organizationId}`],
+    );
+    for (const [userId, isOwner] of [
+      [identity.rows[0]!.id, true],
+      [otherIdentity.rows[0]!.id, false],
+    ] as const) {
+      await queryE2E(
+        'INSERT INTO "OrganizationMember" (id, "organizationId", "userId", status, "isOwner", "updatedAt") VALUES ($1, $2, $3, \'ACTIVE\', $4, NOW())',
+        [crypto.randomUUID(), organizationId, userId, isOwner],
+      );
+    }
+    await queryE2E(
+      'INSERT INTO "SoftwareEmployee" (id, "organizationId", "employeeNumber", name, "roleTitle", "salaryMinor", "hiredAt", "createdById", "updatedAt") VALUES ($1, $2, $3, $4, $5, $6, NOW(), $7, NOW())',
+      [
+        crypto.randomUUID(),
+        organizationId,
+        "SEC-1",
+        "Private employee",
+        "Private role",
+        987654,
+        identity.rows[0]!.id,
+      ],
+    );
+    projectId = crypto.randomUUID();
+    await queryE2E(
+      'INSERT INTO "Project" (id, name, slug, "createdById", "updatedAt") VALUES ($1, $2, $3, $4, NOW())',
+      [
+        projectId,
+        "Private security project",
+        `security-${projectId}`,
+        identity.rows[0]!.id,
+      ],
+    );
+    await queryE2E('UPDATE "Project" SET "organizationId" = $1 WHERE id = $2', [
+      organizationId,
+      projectId,
+    ]);
+  });
+
+  test.afterAll(async () => {
+    if (fileId) await owner.delete(`/api/files/${fileId}`);
+    await Promise.all([
+      owner?.dispose(),
+      other?.dispose(),
+      anonymous?.dispose(),
+    ]);
+    await cleanE2EIdentities();
+  });
+
+  test("rejects missing origins and unauthenticated exports without caching error responses", async () => {
+    for (const route of [
+      "/api/auth/login",
+      "/api/auth/register",
+      "/api/auth/forgot",
+      "/api/auth/logout",
+    ]) {
+      const response = await anonymous.post(route, { data: {} });
+      expect(response.status(), route).toBe(403);
+      expect(response.headers()["cache-control"], route).toContain("no-store");
+    }
+    for (const route of [
+      "/api/account/overview",
+      "/api/files",
+      `/api/files/${projectId}`,
+      `/api/projects/${projectId}/report`,
+      "/api/talent/report",
+      "/api/software/operations",
+    ]) {
+      const response = await anonymous.get(route);
+      expect(response.status(), route).toBe(401);
+      expect(response.headers()["cache-control"], route).toContain("no-store");
+    }
+    const onboarding = await owner.post("/api/account/onboarding", {
+      headers: { origin: "https://attacker.test" },
+      data: {},
+    });
+    expect(onboarding.status()).toBe(403);
+  });
+
+  test("keeps encoded external next destinations inside the application", async ({
+    page,
+  }) => {
+    await page
+      .context()
+      .addCookies([{ name: "locale", value: "en", url: origin }]);
+    await page.goto("/auth?next=/%5Cattacker.example/login");
+    await page.getByLabel("Email address").fill(e2eIdentity.user.email);
+    await page
+      .getByLabel("Password", { exact: true })
+      .fill(e2eIdentity.user.password);
+    await Promise.all([
+      page.waitForURL(`${origin}/dashboard`),
+      page.getByRole("button", { name: "Sign in", exact: true }).click(),
+    ]);
+    expect(new URL(page.url()).origin).toBe(origin);
+    const cookie = (await page.context().cookies()).find(
+      ({ name }) => name === "jenan_session",
+    );
+    expect(cookie).toMatchObject({
+      httpOnly: true,
+      sameSite: "Lax",
+      path: "/",
+    });
+  });
+
+  test("prevents cross-account project downloads and file mutations", async () => {
+    const upload = await owner.post("/api/files", {
+      multipart: {
+        file: {
+          name: "private.txt",
+          mimeType: "text/plain",
+          buffer: Buffer.from("Private security file"),
+        },
+      },
+    });
+    expect(upload.status()).toBe(201);
+    fileId = (await upload.json()).file.id;
+    const ownFile = await owner.get(`/api/files/${fileId}`);
+    expect(ownFile.status()).toBe(200);
+    expect(ownFile.headers()["cache-control"]).toContain("no-store");
+    expect(ownFile.headers()["x-content-type-options"]).toBe("nosniff");
+    expect(await ownFile.text()).toBe("Private security file");
+    for (const route of [
+      `/api/files/${fileId}`,
+      `/api/projects/${projectId}`,
+      `/api/projects/${projectId}/report`,
+    ]) {
+      const response = await other.get(route);
+      expect(response.status(), route).toBe(404);
+      expect(response.headers()["cache-control"], route).toContain("no-store");
+    }
+    expect((await other.delete(`/api/files/${fileId}`)).status()).toBe(404);
+    expect(
+      (
+        await owner.delete(`/api/files/${fileId}`, {
+          headers: { origin: "https://attacker.test" },
+        })
+      ).status(),
+    ).toBe(403);
+    expect((await owner.get(`/api/files/${fileId}`)).status()).toBe(200);
+    const foreignUpload = await other.post("/api/files", {
+      multipart: {
+        projectId,
+        file: {
+          name: "foreign.txt",
+          mimeType: "text/plain",
+          buffer: Buffer.from("Forbidden"),
+        },
+      },
+    });
+    expect(foreignUpload.status()).toBe(422);
+    const files = await other.get("/api/files");
+    expect(
+      (await files.json()).files.some(
+        (file: { id: string }) => file.id === fileId,
+      ),
+    ).toBe(false);
+    const overview = await other.get("/api/account/overview");
+    expect(JSON.stringify(await overview.json())).not.toContain(projectId);
+    const ownProject = await owner.get(`/api/projects/${projectId}`);
+    expect(ownProject.status()).toBe(200);
+    expect(JSON.stringify(await ownProject.json())).not.toContain(
+      '"passwordHash":',
+    );
+    expect(
+      (await owner.get("/api/talent/report")).headers()["cache-control"],
+    ).toContain("no-store");
+    const workspace = await other.get(
+      `/api/software/operations?organizationId=${organizationId}`,
+    );
+    expect(workspace.status()).toBe(200);
+    const data = await workspace.json();
+    expect(data.workspace.hr.employees).toEqual([]);
+    expect(data.workspace.hr.payrollRuns).toEqual([]);
+    expect(data.workspace.operations.projects).toEqual([]);
+    expect(JSON.stringify(data)).not.toContain('"passwordHash":');
+    const ownWorkspace = await owner.get(
+      `/api/software/operations?organizationId=${organizationId}`,
+    );
+    expect(
+      (await ownWorkspace.json()).workspace.hr.employees[0].salaryMinor,
+    ).toBe(987654);
+  });
+
+  test("rejects MIME/size violations and invalidates the actual session on logout", async () => {
+    for (const file of [
+      {
+        name: "unsafe.html",
+        mimeType: "text/html",
+        buffer: Buffer.from("<script>alert(1)</script>"),
+      },
+      {
+        name: "spoofed.pdf",
+        mimeType: "application/pdf",
+        buffer: Buffer.from("<html>not a PDF</html>"),
+      },
+      {
+        name: "spoofed.png",
+        mimeType: "image/png",
+        buffer: Buffer.from("not an image"),
+      },
+      { name: "empty.txt", mimeType: "text/plain", buffer: Buffer.alloc(0) },
+      {
+        name: "large.txt",
+        mimeType: "text/plain",
+        buffer: Buffer.alloc(10 * 1024 * 1024 + 1),
+      },
+    ]) {
+      expect(
+        (await owner.post("/api/files", { multipart: { file } })).status(),
+      ).toBe(422);
+    }
+    if (fileId) {
+      expect((await owner.delete(`/api/files/${fileId}`)).status()).toBe(204);
+      fileId = "";
+    }
+    expect((await owner.post("/api/auth/logout")).status()).toBe(200);
+    const revoked = await owner.get("/api/account/overview");
+    expect(revoked.status()).toBe(401);
+    expect(revoked.headers()["cache-control"]).toContain("no-store");
+  });
+});
 
 test.describe.serial("real authentication and server-side RBAC", () => {
   test.setTimeout(90_000);

@@ -85,7 +85,7 @@ export async function requestPasswordReset(
           metadata: { provider: provider.name, traceId },
         },
       });
-      return { accepted: true, delivery: "email" as const, expiresAt };
+      return { accepted: true, delivery: "email" as const };
     } catch {
       await db.$transaction([
         db.passwordResetToken.update({
@@ -139,11 +139,7 @@ export async function confirmPasswordReset(
     !token ||
     token.attempts >= maxAttempts
   ) {
-    throw new PasswordRecoveryError(
-      user && user.status !== UserStatus.ACTIVE
-        ? "ACCOUNT_DISABLED"
-        : "INVALID_OR_EXPIRED_CODE",
-    );
+    throw new PasswordRecoveryError("INVALID_OR_EXPIRED_CODE");
   }
 
   const valid = await verifyPassword(token.tokenHash, input.code);

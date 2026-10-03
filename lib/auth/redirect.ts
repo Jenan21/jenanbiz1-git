@@ -1,5 +1,9 @@
 export function safeAuthRedirect(value: string | null, origin: string) {
-  if (!value?.startsWith("/") || value.startsWith("//") || /[\\\u0000-\u001f\u007f]/.test(value)) {
+  if (
+    !value?.startsWith("/") ||
+    value.startsWith("//") ||
+    /[\\\u0000-\u001f\u007f]/.test(value)
+  ) {
     return "/dashboard";
   }
   try {

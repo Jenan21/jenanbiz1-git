@@ -1,6 +1,7 @@
 import { createHash, randomUUID } from "node:crypto";
 import { db } from "@/lib/db";
 import { localDocumentStorage } from "@/lib/storage/local-document-storage";
+import { validateFileContent, validateFileName } from "./file-validation";
 
 const maxFileBytes = 10 * 1024 * 1024;
 const allowedMimeTypes = new Set([
@@ -46,6 +47,14 @@ export async function uploadUserFile(userId: string, file: File, projectId?: str
     throw new FileAssetError("The file must be between 1 byte and 10 MB");
 
   const bytes = new Uint8Array(await file.arrayBuffer());
+  if (bytes.byteLength <= 0 || bytes.byteLength > maxFileBytes)
+    throw new FileAssetError("The file must be between 1 byte and 10 MB");
+  try {
+    validateFileName(file.name);
+    await validateFileContent(bytes, file.type);
+  } catch {
+    throw new FileAssetError("The file name or content does not match a supported format");
+  }
   if (projectId) {
     const project = await db.project.findFirst({
       where: {

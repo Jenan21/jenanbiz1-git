@@ -3,7 +3,13 @@ export function ownedOrganizationRecordWhere(userId: string) {
     createdById: userId,
     OR: [
       { organizationId: null },
-      { organization: { members: { some: { userId, status: "ACTIVE" as const, isOwner: true } } } },
+      {
+        organization: {
+          members: {
+            some: { userId, status: "ACTIVE" as const, isOwner: true },
+          },
+        },
+      },
     ],
   };
 }

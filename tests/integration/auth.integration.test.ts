@@ -189,6 +189,7 @@ describe.sequential("real PostgreSQL authentication integration", () => {
       },
     );
     expect(requested.delivery).toBe("email");
+    expect(requested).toEqual({ accepted: true, delivery: "email" });
     expect("developmentCode" in requested).toBe(false);
     const code = deliveredText.match(/\b\d{6}\b/)?.[0];
     expect(code).toMatch(/^\d{6}$/);
@@ -282,6 +283,14 @@ describe.sequential("real PostgreSQL authentication integration", () => {
     );
     expect(requested).toEqual({ accepted: true, delivery: "email" });
     expect(deliveries).toBe(0);
+  });
+
+  it("does not disclose disabled accounts during recovery", async () => {
+    const registered = await registerUser(baseRegistration);
+    await db.user.update({ where: { id: registered.user.id }, data: { status: "SUSPENDED" } });
+    await expect(confirmPasswordReset({
+      email: baseRegistration.email, code: "123456", password: "Replacement-Password-2026!",
+    })).rejects.toMatchObject({ code: "INVALID_OR_EXPIRED_CODE" });
   });
 
   it("rejects invalid registration input before database access", () => {

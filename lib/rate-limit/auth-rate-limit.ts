@@ -71,7 +71,7 @@ function requestIdentity(request: NextRequest, email?: unknown) {
     "local";
   const normalizedEmail =
     typeof email === "string" ? email.trim().toLowerCase() : "unknown";
-  return createHash("sha256").update(`${ip}:${normalizedEmail}`).digest("hex");
+  return { ip, email: normalizedEmail };
 }
 
 export async function checkAuthRateLimit(
@@ -79,8 +79,21 @@ export async function checkAuthRateLimit(
   request: NextRequest,
   email?: unknown,
 ): Promise<RateLimitDecision> {
-  return getRateLimitProvider().consume({
-    key: `auth:${route}:${requestIdentity(request, email)}`,
-    ...policies[route],
-  });
+  const identity = requestIdentity(request, email);
+  const fingerprint = (value: string) => createHash("sha256").update(value).digest("hex");
+  const policy = policies[route];
+  const provider = getRateLimitProvider();
+  const decisions = await Promise.all([
+    provider.consume({
+      key: `auth:${route}:ip:${fingerprint(identity.ip)}`,
+      ...policy,
+      limit: policy.limit * 5,
+    }),
+    provider.consume({
+      key: `auth:${route}:account:${fingerprint(identity.email)}`,
+      ...policy,
+    }),
+  ]);
+  return decisions.find((decision) => !decision.allowed) ??
+    decisions.reduce((left, right) => left.remaining < right.remaining ? left : right);
 }
