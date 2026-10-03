@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { calculateFeasibility, calculateRiskScore, calculateScenarios, calculateSensitivity, MAX_FEASIBILITY_MONTHS } from "@/services/projects/project-calculations";
+import { calculateFeasibility, calculateRiskScore, calculateScenarios, calculateSensitivity, MAX_FEASIBILITY_MONTHS, MAX_FINANCIAL_AMOUNT } from "@/services/projects/project-calculations";
 
 describe("project calculations", () => {
   const inputs = {
@@ -88,5 +88,15 @@ describe("project calculations", () => {
     expect(scenarios[0]?.breakEvenUnits).toBeNull();
     expect(scenarios[0]?.inputs.pricePerUnit).toBeCloseTo(10.45);
     expect(scenarios[0]?.monthlyProfit).toBeLessThan(0);
+  });
+
+  it("supports bounded base amounts and their full scenario/sensitivity perturbations", () => {
+    const bounded = { ...inputs, pricePerUnit: MAX_FINANCIAL_AMOUNT, monthlyFixedCosts: MAX_FINANCIAL_AMOUNT, variableCostPerUnit: MAX_FINANCIAL_AMOUNT };
+    expect(calculateScenarios(bounded)).toHaveLength(3);
+    const sensitivity = calculateSensitivity(bounded);
+    expect(sensitivity).toHaveLength(8);
+    expect(sensitivity.find((item) => item.driver === "pricePerUnit" && item.changePercent === 10)?.actualValue).toBe(MAX_FINANCIAL_AMOUNT * 1.1);
+    expect(() => calculateScenarios({ ...bounded, pricePerUnit: MAX_FINANCIAL_AMOUNT + 1 })).toThrow("range");
+    expect(() => calculateSensitivity({ ...bounded, monthlyFixedCosts: MAX_FINANCIAL_AMOUNT + 1 })).toThrow("range");
   });
 });

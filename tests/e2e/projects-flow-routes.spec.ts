@@ -117,6 +117,14 @@ test.describe.serial("Projects full route flow", () => {
     test.setTimeout(480_000);
     const sessionToken = await createE2ESession(e2eIdentity.user.email);
     await context.addCookies([{ name: "jenan_session", value: sessionToken, url: origin, httpOnly: true, sameSite: "Lax" }]);
+    const existing = await page.request.get("/api/projects?limit=1");
+    expect(existing.status()).toBe(200);
+    if (!(await existing.json()).projects.length) {
+      const created = await page.request.post("/api/projects", {
+        headers: { origin }, data: { action: "create", countryCode: "SA", name: "Acceptance viewport review project", sector: "Operations" },
+      });
+      expect(created.status()).toBe(201);
+    }
     const errors: string[] = [];
     page.on("pageerror", (error) => errors.push(error.message));
     const viewports = [
@@ -142,7 +150,11 @@ test.describe.serial("Projects full route flow", () => {
           }));
           expect(layout.scroll, `${route} ${locale} ${width}`).toBeLessThanOrEqual(layout.width + 1);
           expect(layout.clippedControls, `${route} ${locale} ${width}`).toBe(0);
-          if (width === 1920 || width === 390) await page.screenshot({ path: testInfo.outputPath(`${locale}-${width}-${route.replaceAll("/", "_")}.png`), fullPage: true });
+          if (width === 1920 || width === 390) {
+            await page.evaluate(() => window.scrollTo(0, 0));
+            await expect.poll(() => page.evaluate(() => window.scrollY)).toBe(0);
+            await page.screenshot({ path: testInfo.outputPath(`${locale}-${width}-${route.replaceAll("/", "_")}.png`), fullPage: true });
+          }
         }
       }
     }

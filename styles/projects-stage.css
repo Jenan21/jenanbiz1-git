@@ -447,6 +447,33 @@
   margin-block: 1rem;
 }
 
+.projects-workspace .grid-2 > :only-child,
+.projects-workspace .grid-2 > :not([hidden]):has(~ [hidden]),
+.projects-workspace .grid-2 > [hidden] + :not([hidden]) {
+  grid-column: 1 / -1;
+}
+
+.project-review-panel .project-quality {
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 190px), 1fr));
+  gap: 12px;
+  margin-block: 18px;
+  font-size: 0.85rem;
+}
+
+.project-review-panel .project-quality > div {
+  display: grid;
+  align-content: start;
+  padding: 16px;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: color-mix(in srgb, var(--deep) 48%, transparent);
+}
+
+.project-review-panel .project-quality strong {
+  font-size: 1.5rem;
+  font-variant-numeric: tabular-nums;
+}
+
 .project-table-scroll {
   max-width: 100%;
   overflow: auto;

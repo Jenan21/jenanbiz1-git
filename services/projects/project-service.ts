@@ -79,6 +79,15 @@ export function projectAccessWhere(userId: string, roles?: ProjectMemberRole[]) 
   };
 }
 
+async function lockProjectMutation(transaction: Prisma.TransactionClient, projectId: string, userId: string, roles: ProjectMemberRole[]) {
+  const project = await transaction.project.findFirst({
+    where: { id: projectId, ...projectAccessWhere(userId, roles) },
+    select: { id: true },
+  });
+  if (!project) throw new Error("Project not found");
+  await transaction.$queryRaw`SELECT "id" FROM "Project" WHERE "id" = ${projectId} FOR UPDATE`;
+}
+
 export async function listUserProjects(userId: string) {
   const projects = await db.project.findMany({
     where: projectAccessWhere(userId),
@@ -226,6 +235,7 @@ export async function updateProjectPhase(
   const phase = phasePlan.find((item) => item.type === phaseType);
   if (!phase) throw new Error("Unknown project phase");
   return db.$transaction(async (transaction) => {
+    await lockProjectMutation(transaction, projectId, userId, [ProjectMemberRole.OWNER, ProjectMemberRole.EDITOR]);
     const project = await transaction.project.findFirst({
       where: { id: projectId, ...projectAccessWhere(userId, [ProjectMemberRole.OWNER, ProjectMemberRole.EDITOR]) },
       include: { phases: { orderBy: { sequence: "asc" } }, assessments: true, financialPlans: { orderBy: { version: "desc" }, take: 1 } },
@@ -313,6 +323,7 @@ export async function recordProjectAssessment(
   for (let attempt = 0; attempt < 3; attempt += 1) {
     try {
       return await db.$transaction(async (transaction) => {
+    await lockProjectMutation(transaction, projectId, userId, [ProjectMemberRole.OWNER, ProjectMemberRole.EDITOR]);
     const project = await transaction.project.findFirst({ where: { id: projectId, ...projectAccessWhere(userId, [ProjectMemberRole.OWNER, ProjectMemberRole.EDITOR]) } });
     if (!project) throw new Error("Project not found");
     const assessment = await transaction.projectAssessment.upsert({
@@ -359,7 +370,15 @@ export async function recordProjectAssessment(
       }, { isolationLevel: Prisma.TransactionIsolationLevel.Serializable });
     } catch (error) {
       const code = typeof error === "object" && error && "code" in error ? String(error.code) : "";
-      if (!(["P2002", "P2034"].includes(code) && attempt < 2)) throw error;
+      const meta = error instanceof Prisma.PrismaClientKnownRequestError ? error.meta as {
+        code?: string; driverAdapterError?: { cause?: { originalCode?: string; kind?: string } };
+      } | undefined : undefined;
+      const rawConflict = code === "P2010" && (
+        ["40001", "40P01"].includes(meta?.code ?? "") ||
+        ["40001", "40P01"].includes(meta?.driverAdapterError?.cause?.originalCode ?? "") ||
+        meta?.driverAdapterError?.cause?.kind === "TransactionWriteConflict"
+      );
+      if (!((["P2002", "P2034"].includes(code) || rawConflict) && attempt < 2)) throw error;
     }
   }
   throw new Error("Assessment revision could not be recorded after retry");
@@ -371,9 +390,9 @@ export async function saveProjectFinancialPlan(
   userId: string,
 ) {
   return db.$transaction(async (transaction) => {
+    await lockProjectMutation(transaction, projectId, userId, [ProjectMemberRole.OWNER, ProjectMemberRole.EDITOR]);
     const project = await transaction.project.findFirst({ where: { id: projectId, ...projectAccessWhere(userId, [ProjectMemberRole.OWNER, ProjectMemberRole.EDITOR]) }, select: { id: true } });
     if (!project) throw new Error("Project not found");
-    await transaction.$queryRaw`SELECT "id" FROM "Project" WHERE "id" = ${projectId} FOR UPDATE`;
     const previous = await transaction.projectFinancialPlan.aggregate({ where: { projectId }, _max: { version: true } });
     const version = (previous._max.version ?? 0) + 1;
     const plan = await transaction.projectFinancialPlan.create({
@@ -395,6 +414,7 @@ export async function createProjectRisk(
     throw new Error("Risk likelihood and impact must be integers from 1 to 5");
   }
   return db.$transaction(async (transaction) => {
+    await lockProjectMutation(transaction, projectId, userId, [ProjectMemberRole.OWNER, ProjectMemberRole.EDITOR]);
     const project = await transaction.project.findFirst({ where: { id: projectId, ...projectAccessWhere(userId, [ProjectMemberRole.OWNER, ProjectMemberRole.EDITOR]) }, select: { id: true } });
     if (!project) throw new Error("Project not found");
     const risk = await transaction.projectRisk.create({
@@ -424,6 +444,7 @@ export async function updateProjectRiskStatus(
   userId: string,
 ) {
   return db.$transaction(async (transaction) => {
+    await lockProjectMutation(transaction, projectId, userId, [ProjectMemberRole.OWNER, ProjectMemberRole.EDITOR]);
     const risk = await transaction.projectRisk.findFirst({ where: { id: riskId, projectId, project: projectAccessWhere(userId, [ProjectMemberRole.OWNER, ProjectMemberRole.EDITOR]) } });
     if (!risk) throw new Error("Project risk not found");
     const updated = await transaction.projectRisk.update({ where: { id: riskId }, data: { status } });
@@ -507,6 +528,7 @@ export async function recordProjectDecision(
   userId: string,
 ) {
   return db.$transaction(async (transaction) => {
+    await lockProjectMutation(transaction, projectId, userId, [ProjectMemberRole.OWNER, ProjectMemberRole.REVIEWER]);
     const project = await transaction.project.findFirst({
       where: { id: projectId, ...projectAccessWhere(userId, [ProjectMemberRole.OWNER, ProjectMemberRole.REVIEWER]) },
       include: {
@@ -549,6 +571,7 @@ export async function recordProjectDecision(
 
 export async function startProject(projectId: string, userId: string) {
   return db.$transaction(async (transaction) => {
+    await lockProjectMutation(transaction, projectId, userId, [ProjectMemberRole.OWNER]);
     const project = await transaction.project.findFirst({
       where: { id: projectId, ...projectAccessWhere(userId, [ProjectMemberRole.OWNER]) },
       include: { phases: { orderBy: { sequence: "asc" } }, assessments: true, decisions: { orderBy: { createdAt: "desc" }, take: 1 }, financialPlans: { orderBy: { version: "desc" }, take: 1 }, risks: true },

@@ -122,6 +122,45 @@ describe("projects domain", () => {
     await expect(startProject(project.id, user.id)).rejects.toThrow("changed after approval");
     await recordProjectDecision(project.id, { verdict: "APPROVE", rationale: "Re-reviewed source changes without reactivating a completed evaluation." }, reviewer.id);
 
+    let releaseSave!: () => void;
+    let signalLocked!: () => void;
+    const release = new Promise<void>((resolve) => { releaseSave = resolve; });
+    const locked = new Promise<void>((resolve) => { signalLocked = resolve; });
+    const pendingSave = db.$transaction(async (transaction) => {
+      await transaction.$queryRaw`SELECT "id" FROM "Project" WHERE "id" = ${project.id} FOR UPDATE`;
+      signalLocked();
+      await release;
+      const previous = await transaction.projectFinancialPlan.aggregate({ where: { projectId: project.id }, _max: { version: true } });
+      await transaction.projectFinancialPlan.create({ data: {
+        projectId: project.id, createdById: user.id, version: previous._max.version! + 1,
+        inputs: { price: 70 }, baseCase: { roiPercent: 95 }, scenarios: [{ scenario: "EXPECTED" }],
+      } });
+      await transaction.project.update({ where: { id: project.id }, data: { name: project.name } });
+    });
+    await locked;
+    const pendingLaunch = startProject(project.id, user.id).then(() => null, (error: Error) => error);
+    const pendingAssessment = recordProjectAssessment(project.id, {
+      type: "TECHNICAL", score: 80, summary: "Technical review during concurrent plan save", source: "Concurrent technical evidence",
+    }, editor.id).then((assessment) => assessment, (error: Error) => error);
+    try {
+      await expect.poll(async () => {
+        const rows = await db.$queryRaw<Array<{ waiting: boolean }>>`
+          SELECT (
+            SELECT COUNT(*) >= 2 FROM pg_stat_activity
+            WHERE datname = current_database() AND pid <> pg_backend_pid()
+              AND wait_event_type = 'Lock' AND query LIKE '%FOR UPDATE%'
+          ) AS waiting`;
+        return rows[0]?.waiting;
+      }, { timeout: 2000 }).toBe(true);
+    } finally {
+      releaseSave();
+      await pendingSave;
+    }
+    expect((await pendingLaunch)?.message).toContain("changed after approval");
+    expect(await pendingAssessment).toMatchObject({ type: "TECHNICAL", score: 80 });
+    expect((await db.project.findUniqueOrThrow({ where: { id: project.id } })).status).not.toBe("IN_PROGRESS");
+    await recordProjectDecision(project.id, { verdict: "APPROVE", rationale: "Reviewed the concurrently saved model before launch." }, reviewer.id);
+
     await expect(startProject(project.id, editor.id)).rejects.toThrow("Project not found");
     const started = await startProject(project.id, user.id);
     expect(started.status).toBe("IN_PROGRESS");

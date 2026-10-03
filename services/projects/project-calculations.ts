@@ -68,10 +68,14 @@ function calculateIrr(cashFlows: number[]) {
 }
 
 export function calculateFeasibility(input: FeasibilityInputs): FeasibilityResult {
+  return calculateFeasibilityModel(input, MAX_FINANCIAL_AMOUNT);
+}
+
+function calculateFeasibilityModel(input: FeasibilityInputs, maximumAmount: number): FeasibilityResult {
   for (const field of ["initialInvestment", "monthlyFixedCosts", "variableCostPerUnit", "pricePerUnit", "monthlyUnits", "months"] as const) assertFiniteNonNegative(input[field], field);
   if (input.months < 1 || !Number.isInteger(input.months) || input.months > MAX_FEASIBILITY_MONTHS) throw new Error(`months must be an integer from 1 to ${MAX_FEASIBILITY_MONTHS}`);
   if (input.monthlyUnits < 1 || !Number.isInteger(input.monthlyUnits) || input.monthlyUnits > MAX_MONTHLY_UNITS) throw new Error(`monthlyUnits must be an integer from 1 to ${MAX_MONTHLY_UNITS}`);
-  if ([input.initialInvestment, input.monthlyFixedCosts, input.variableCostPerUnit, input.pricePerUnit].some((value) => value > MAX_FINANCIAL_AMOUNT)) throw new Error("Financial amounts exceed the supported model range");
+  if ([input.initialInvestment, input.monthlyFixedCosts, input.variableCostPerUnit, input.pricePerUnit].some((value) => value > maximumAmount)) throw new Error("Financial amounts exceed the supported model range");
 
   const annualDiscountRate = input.annualDiscountRate ?? 0;
   const annualInflationRate = input.annualInflationRate ?? 0;
@@ -136,6 +140,7 @@ export function calculateFeasibility(input: FeasibilityInputs): FeasibilityResul
 }
 
 export function calculateScenarios(input: FeasibilityInputs) {
+  calculateFeasibility(input);
   return (Object.keys(scenarioMultipliers) as Scenario[]).map((scenario) => {
     const multiplier = scenarioMultipliers[scenario];
     const scenarioInputs = {
@@ -145,7 +150,7 @@ export function calculateScenarios(input: FeasibilityInputs) {
       variableCostPerUnit: input.variableCostPerUnit * multiplier.variableCost,
       monthlyFixedCosts: input.monthlyFixedCosts * multiplier.fixedCost,
     };
-    const result = calculateFeasibility(scenarioInputs);
+    const result = calculateFeasibilityModel(scenarioInputs, MAX_FINANCIAL_AMOUNT * 1.1);
     return { scenario, inputs: scenarioInputs, ...result };
   });
 }
@@ -155,7 +160,7 @@ export function calculateSensitivity(input: FeasibilityInputs) {
   return (["monthlyUnits", "pricePerUnit", "variableCostPerUnit", "monthlyFixedCosts"] as const).flatMap((driver) =>
     [-10, 10].map((changePercent) => {
       const adjusted = input[driver] * (1 + changePercent / 100);
-      const result = calculateFeasibility({ ...input, [driver]: driver === "monthlyUnits" ? Math.min(MAX_MONTHLY_UNITS, Math.max(1, Math.round(adjusted))) : adjusted });
+      const result = calculateFeasibilityModel({ ...input, [driver]: driver === "monthlyUnits" ? Math.min(MAX_MONTHLY_UNITS, Math.max(1, Math.round(adjusted))) : adjusted }, MAX_FINANCIAL_AMOUNT * 1.1);
       return { driver, changePercent, actualValue: driver === "monthlyUnits" ? Math.min(MAX_MONTHLY_UNITS, Math.max(1, Math.round(adjusted))) : adjusted, netPresentValue: result.netPresentValue, npvDelta: result.netPresentValue - base.netPresentValue, monthlyProfit: result.monthlyProfit };
     }),
   );
