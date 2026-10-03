@@ -34,7 +34,7 @@ export async function POST(request: NextRequest) {
   } catch (error) {
     if (error instanceof ZodError) return NextResponse.json({ error: "VALIDATION_ERROR", fields: error.flatten().fieldErrors }, { status: 400 });
     if (error instanceof PasswordRecoveryError) {
-      return NextResponse.json({ error: error.code }, { status: error.code === "ACCOUNT_DISABLED" ? 403 : 400 });
+      return NextResponse.json({ error: error.code }, { status: 400 });
     }
     console.error("Password recovery failed without exposing request data");
     return NextResponse.json({ error: "RECOVERY_FAILED" }, { status: 500 });
