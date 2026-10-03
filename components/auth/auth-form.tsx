@@ -114,7 +114,9 @@ function CountrySelector({
           <span className="auth-country__selected" aria-hidden="true">
             <strong>{selectedCountry?.[locale]}</strong>
             <small>
-              {locale === "ar" ? "يمكنك تغيير الدولة" : "You can change country"}
+              {locale === "ar"
+                ? "يمكنك تغيير الدولة"
+                : "You can change country"}
             </small>
           </span>
           <span className="auth-country__flag" aria-hidden="true">
@@ -163,8 +165,26 @@ export function AuthForm({ mode, locale, labels }: AuthFormProps) {
   const searchParams = useSearchParams();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const ar = locale === "ar";
   const resetSucceeded =
     mode === "login" && searchParams.get("reset") === "success";
+  const methodCopy = ar
+    ? {
+        title: "طريقة تسجيل الدخول",
+        email: "البريد الإلكتروني",
+        phone: "الهاتف (قريبًا)",
+        apple: "Apple (قريبًا)",
+        note: "تم اعتماد البريد الإلكتروني كطريقة الدخول الأساسية لضمان وصول عالمي مستقر.",
+        forgotHint: "استعادة كلمة المرور متاحة من رابط نسيت كلمة المرور.",
+      }
+    : {
+        title: "Sign-in method",
+        email: "Email",
+        phone: "Phone OTP (soon)",
+        apple: "Apple (soon)",
+        note: "Email is the primary sign-in method for stable global access.",
+        forgotHint: "Use the forgot password link to recover access.",
+      };
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -342,6 +362,30 @@ export function AuthForm({ mode, locale, labels }: AuthFormProps) {
         </div>
       ) : (
         <>
+          <div
+            className="auth-methods"
+            role="group"
+            aria-label={methodCopy.title}
+          >
+            <span className="auth-method auth-method--active">
+              <Icon name="mail" />
+              {methodCopy.email}
+            </span>
+            <span
+              className="auth-method auth-method--disabled"
+              aria-disabled="true"
+            >
+              <Icon name="shield" />
+              {methodCopy.phone}
+            </span>
+            <span
+              className="auth-method auth-method--disabled"
+              aria-disabled="true"
+            >
+              <Icon name="sparkles" />
+              {methodCopy.apple}
+            </span>
+          </div>
           {resetSucceeded ? (
             <p className="auth-success" role="status">
               <Icon name="check" />
@@ -355,6 +399,7 @@ export function AuthForm({ mode, locale, labels }: AuthFormProps) {
             name="email"
             type="email"
             autoComplete="email"
+            autoFocus
             required
             disabled={loading}
             icon={<Icon name="mail" />}
@@ -385,6 +430,7 @@ export function AuthForm({ mode, locale, labels }: AuthFormProps) {
       )}
       {mode === "login" && error && (
         <p className="auth-error" role="alert">
+          <Icon name="x" />
           {error}
         </p>
       )}
@@ -400,8 +446,9 @@ export function AuthForm({ mode, locale, labels }: AuthFormProps) {
           </Button>
           <p className="form-note">
             <Icon name="shield" />
-            {labels.note}
+            {methodCopy.note}
           </p>
+          <p className="auth-helper-note">{methodCopy.forgotHint}</p>
         </>
       )}
     </form>

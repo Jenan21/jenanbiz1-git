@@ -1,9 +1,14 @@
-import { describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import { NextRequest } from "next/server";
 import { hasValidOrigin } from "@/lib/auth/request";
 
 describe("hasValidOrigin", () => {
-  it("accepts the public forwarded origin", () => {
+  afterEach(() => {
+    vi.unstubAllEnvs();
+  });
+
+  it("accepts the configured public origin behind a proxy", () => {
+    vi.stubEnv("NEXT_PUBLIC_APP_URL", "https://app.example.com");
     const request = new NextRequest("http://internal:3000/api/auth/login", {
       headers: {
         origin: "https://app.example.com",
@@ -15,7 +20,21 @@ describe("hasValidOrigin", () => {
     expect(hasValidOrigin(request)).toBe(true);
   });
 
+  it("rejects an unconfigured forwarded origin", () => {
+    vi.stubEnv("NEXT_PUBLIC_APP_URL", "");
+    const request = new NextRequest("http://internal:3000/api/auth/login", {
+      headers: {
+        origin: "https://app.example.com",
+        host: "internal:3000",
+        "x-forwarded-host": "app.example.com",
+        "x-forwarded-proto": "https",
+      },
+    });
+    expect(hasValidOrigin(request)).toBe(false);
+  });
+
   it("rejects a cross-origin request", () => {
+    vi.stubEnv("NEXT_PUBLIC_APP_URL", "https://app.example.com");
     const request = new NextRequest("https://app.example.com/api/auth/login", {
       headers: {
         origin: "https://attacker.example",

@@ -3,28 +3,8 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useState, type ReactNode } from "react";
-
-const navItems = [
-  { href: "/admin", label: { ar: "نظرة عامة", en: "Overview" }, icon: "▣" },
-  { href: "/admin/operations", label: { ar: "العمليات", en: "Operations" }, icon: "▤" },
-  { href: "/admin/dashboard", label: { ar: "لوحة التحكم", en: "Control" }, icon: "◫" },
-  { href: "/admin/academy", label: { ar: "الأكاديمية", en: "Academy" }, icon: "◈" },
-  { href: "/admin/branches", label: { ar: "الفروع", en: "Branches" }, icon: "▣" },
-  { href: "/admin/users", label: { ar: "المستخدمون", en: "Users" }, icon: "◉" },
-  { href: "/admin/robots", label: { ar: "صائدو الجوائز", en: "Bounty Scouts" }, icon: "◎" },
-  { href: "/admin/robot-coverage", label: { ar: "تغطية الروبوتات", en: "Robot Coverage" }, icon: "◉" },
-  { href: "/admin/committee", label: { ar: "اللجنة", en: "Committee" }, icon: "◌" },
-  { href: "/admin/decisions", label: { ar: "القرارات", en: "Decisions" }, icon: "✓" },
-  { href: "/admin/reports", label: { ar: "التقارير", en: "Reports" }, icon: "◔" },
-  { href: "/admin/finance", label: { ar: "المالية والتكاليف", en: "Finance & costs" }, icon: "₿" },
-  { href: "/admin/robot-knowledge", label: { ar: "المعرفة", en: "Knowledge" }, icon: "◍" },
-  { href: "/admin/intel", label: { ar: "الذكاء", en: "Intelligence" }, icon: "◐" },
-  { href: "/admin/data-center", label: { ar: "مركز البيانات", en: "Data Center" }, icon: "◭" },
-  { href: "/admin/global-health", label: { ar: "الصحة العامة", en: "Global Health" }, icon: "◎" },
-  { href: "/admin/map-provider", label: { ar: "تكاملات الخرائط", en: "Map integrations" }, icon: "◉" },
-  { href: "/admin/bounty-hunters", label: { ar: "لوحة الجوائز", en: "Reward Board" }, icon: "★" },
-  { href: "/admin/social-growth", label: { ar: "النمو الاجتماعي", en: "Social Growth" }, icon: "◉" },
-];
+import { Icon } from "@/components/ui/icons";
+import { adminNavItems } from "@/lib/admin/navigation";
 
 const texts = {
   ar: {
@@ -60,7 +40,12 @@ export function AdminShell({ children }: { children: ReactNode }) {
           .find((item) => item.startsWith("locale="))
           ?.split("=")[1];
         const saved = localStorage.getItem("jenan-admin-lang");
-        const nextLocale = locale === "ar" || locale === "en" ? locale : saved === "ar" || saved === "en" ? saved : "ar";
+        const nextLocale =
+          locale === "ar" || locale === "en"
+            ? locale
+            : saved === "ar" || saved === "en"
+              ? saved
+              : "ar";
         setLang(nextLocale);
       } catch {
         setLang("ar");
@@ -92,7 +77,7 @@ export function AdminShell({ children }: { children: ReactNode }) {
         </div>
 
         <nav className="admin-nav" aria-label="Admin navigation">
-          {navItems.map((item) => {
+          {adminNavItems.map((item) => {
             const isActive =
               pathname === item.href ||
               (item.href !== "/admin" && pathname.startsWith(`${item.href}/`));
@@ -104,7 +89,9 @@ export function AdminShell({ children }: { children: ReactNode }) {
                 aria-current={isActive ? "page" : undefined}
                 aria-label={item.label[lang]}
               >
-                <span aria-hidden="true">{item.icon}</span>
+                <span aria-hidden="true">
+                  <Icon name={item.icon} />
+                </span>
                 {item.label[lang]}
               </Link>
             );
@@ -119,12 +106,16 @@ export function AdminShell({ children }: { children: ReactNode }) {
             <h2>{t.heading}</h2>
           </div>
           <div className="admin-topbar__actions">
-            <span className="pill"><span className="live-dot" /> {t.live}</span>
+            <span className="pill">
+              <span className="live-dot" /> {t.live}
+            </span>
             <button
               type="button"
               className="btn small secondary"
               onClick={() => setLang((prev) => (prev === "ar" ? "en" : "ar"))}
-              aria-label={lang === "ar" ? "Switch to English" : "التبديل إلى العربية"}
+              aria-label={
+                lang === "ar" ? "Switch to English" : "التبديل إلى العربية"
+              }
             >
               {t.toggle}
             </button>

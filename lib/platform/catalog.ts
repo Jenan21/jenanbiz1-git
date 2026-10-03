@@ -54,22 +54,20 @@ const service = (
   icon: IconName,
   title: CatalogCopy,
   description: CatalogCopy,
-  hrefOrOptions:
-    | string
-    | { href?: string; template?: ServiceTemplateKey } = {},
+  hrefOrOptions: string | { href?: string; template?: ServiceTemplateKey } = {},
 ): PlatformServiceDefinition => ({
   description,
   href:
     typeof hrefOrOptions === "string"
       ? hrefOrOptions
-      : hrefOrOptions.href ?? `/${moduleId}/${slug}`,
+      : (hrefOrOptions.href ?? `/${moduleId}/${slug}`),
   icon,
   id: `${moduleId}.${slug}`,
   slug,
   template:
     typeof hrefOrOptions === "string"
       ? "catalog-service"
-      : hrefOrOptions.template ?? "catalog-service",
+      : (hrefOrOptions.template ?? "catalog-service"),
   title,
 });
 
@@ -131,7 +129,7 @@ const modules: readonly PlatformModuleDefinition[] = [
         "dashboard",
         "talent",
         "people",
-        ["وظيفتي", "My Career"],
+        ["المواهب والتوظيف", "Talent & Hiring"],
         [
           "مساحتان للباحث عن وظيفة والمنشأة الباحثة عن موظفين.",
           "Two spaces for job seekers and hiring organizations.",
@@ -164,7 +162,7 @@ const modules: readonly PlatformModuleDefinition[] = [
         "dashboard",
         "programs",
         "grid",
-        ["برامج جنان", "Jenan Programs"],
+        ["منظومة التشغيل المؤسسي", "Operations Suite"],
         [
           "برامج مساندة للموارد والمحاسبة والميدان والأسطول.",
           "Support programs for people, finance, field teams, and fleets.",
@@ -372,7 +370,7 @@ const modules: readonly PlatformModuleDefinition[] = [
     code: "CAREER / 04",
     icon: "people",
     scene: "talent",
-    title: ["وظيفتي", "My Career"],
+    title: ["المواهب والتوظيف", "Talent & Hiring"],
     eyebrow: [
       "الفرصة والكفاءة في مكان واحد",
       "Opportunity and capability in one place",
@@ -424,7 +422,10 @@ const modules: readonly PlatformModuleDefinition[] = [
       "نظام تشغيل أعمال متكامل",
       "Integrated business operating system",
     ],
-    signature: ["تشغيل موحّد، قرارات أوضح", "Unified operations, clearer decisions"],
+    signature: [
+      "تشغيل موحّد، قرارات أوضح",
+      "Unified operations, clearer decisions",
+    ],
     description: [
       "المبيعات والمحاسبة والموارد البشرية والمخزون والعملاء في مساحة تشغيل مترابطة.",
       "Sales, accounting, HR, inventory, and customers in one connected operating workspace.",
@@ -463,7 +464,10 @@ const modules: readonly PlatformModuleDefinition[] = [
         "hr",
         "people",
         ["الموارد البشرية", "Human resources"],
-        ["الموظفون والحضور والإجازات والرواتب والأداء.", "Employees, attendance, leave, payroll, and performance."],
+        [
+          "الموظفون والحضور والإجازات والرواتب والأداء.",
+          "Employees, attendance, leave, payroll, and performance.",
+        ],
         "/software/hr",
       ),
       service(
@@ -471,7 +475,10 @@ const modules: readonly PlatformModuleDefinition[] = [
         "inventory",
         "grid",
         ["المخزون", "Inventory"],
-        ["الأصناف والكميات والحركات وحدود إعادة الطلب.", "Products, quantities, movements, and reorder levels."],
+        [
+          "الأصناف والكميات والحركات وحدود إعادة الطلب.",
+          "Products, quantities, movements, and reorder levels.",
+        ],
         "/software/inventory",
       ),
       service(
@@ -479,7 +486,10 @@ const modules: readonly PlatformModuleDefinition[] = [
         "crm",
         "user",
         ["إدارة علاقات العملاء", "CRM"],
-        ["العملاء المحتملون والقيمة والخطوة التالية.", "Leads, value, and next actions."],
+        [
+          "العملاء المحتملون والقيمة والخطوة التالية.",
+          "Leads, value, and next actions.",
+        ],
         "/software/crm",
       ),
     ],
@@ -490,7 +500,7 @@ const modules: readonly PlatformModuleDefinition[] = [
     code: "OPERATE / 06",
     icon: "grid",
     scene: "programs",
-    title: ["برامج جنان", "Jenan Programs"],
+    title: ["منظومة التشغيل المؤسسي", "Operations Suite"],
     eyebrow: [
       "برامج مساندة لإدارة المنشأة",
       "Support programs for organization operations",
