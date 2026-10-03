@@ -5,7 +5,7 @@ export async function getUserPayments(userId: string) {
     where: {
       OR: [
         { payerUserId: userId },
-        { organization: { members: { some: { userId } } } },
+        { organization: { members: { some: { userId, status: "ACTIVE", isOwner: true } } } },
       ],
     },
     select: {

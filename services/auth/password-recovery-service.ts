@@ -46,6 +46,7 @@ export async function requestPasswordReset(
   const expiresAt = new Date(Date.now() + resetLifetimeMs);
 
   const token = await db.$transaction(async (transaction) => {
+    await transaction.$queryRaw`SELECT "id" FROM "User" WHERE "id" = ${user.id} FOR UPDATE`;
     await transaction.passwordResetToken.updateMany({
       where: { userId: user.id, usedAt: null },
       data: { usedAt: new Date() },
@@ -159,8 +160,14 @@ export async function confirmPasswordReset(
 
   const passwordHash = await hashPassword(input.password);
   await db.$transaction(async (transaction) => {
+    await transaction.$queryRaw`SELECT "id" FROM "User" WHERE "id" = ${user.id} FOR UPDATE`;
+    const activeUser = await transaction.user.findFirst({
+      where: { id: user.id, status: UserStatus.ACTIVE },
+      select: { id: true },
+    });
+    if (!activeUser) throw new PasswordRecoveryError("INVALID_OR_EXPIRED_CODE");
     const claimed = await transaction.passwordResetToken.updateMany({
-      where: { id: token.id, usedAt: null, expiresAt: { gt: new Date() } },
+      where: { id: token.id, usedAt: null, expiresAt: { gt: new Date() }, attempts: { lt: maxAttempts } },
       data: { usedAt: new Date() },
     });
     if (claimed.count !== 1)
@@ -170,6 +177,10 @@ export async function confirmPasswordReset(
       data: { passwordHash },
     });
     await transaction.session.deleteMany({ where: { userId: user.id } });
+    await transaction.passwordResetToken.updateMany({
+      where: { userId: user.id, usedAt: null },
+      data: { usedAt: new Date() },
+    });
     await transaction.auditLog.create({
       data: {
         actorId: user.id,

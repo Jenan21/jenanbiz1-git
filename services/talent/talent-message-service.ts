@@ -1,5 +1,6 @@
 import { JobApplicationStatus } from "@/generated/prisma/client";
 import { db } from "@/lib/db";
+import { ownedOrganizationRecordWhere } from "@/lib/auth/organization-scope";
 
 const activeMessageStatuses: JobApplicationStatus[] = [JobApplicationStatus.SUBMITTED, JobApplicationStatus.UNDER_REVIEW, JobApplicationStatus.ACCEPTED];
 
@@ -8,6 +9,10 @@ export async function sendTalentMessage(input: { applicationId: string; body: st
   if (!application) throw new Error("Job application not found");
   const employerId = application.jobPosting.createdById;
   if (userId !== application.applicantId && userId !== employerId) throw new Error("Talent conversation access required");
+  if (userId !== application.applicantId) {
+    const posting = await db.jobPosting.findFirst({ where: { id: application.jobPosting.id, ...ownedOrganizationRecordWhere(userId) }, select: { id: true } });
+    if (!posting) throw new Error("Talent conversation access required");
+  }
   if (!activeMessageStatuses.includes(application.status)) throw new Error("Talent conversation is closed");
   const recipientId = userId === application.applicantId ? employerId : application.applicantId;
   return db.$transaction(async (transaction) => {

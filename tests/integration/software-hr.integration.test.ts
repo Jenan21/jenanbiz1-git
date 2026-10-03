@@ -39,5 +39,6 @@ describe("Jenan Software HR cycle", () => {
     expect((await listSoftwareHr(organization.id, owner.id))).toMatchObject({ employees: [{ id: employee.id }], payrollRuns: [{ id: payroll.id, status: "POSTED" }] });
     expect(await db.financialEntry.count({ where: { organizationId: organization.id, type: "EXPENSE", amountMinor: 11_500_00 } })).toBe(1);
     await expect(createSoftwareEmployee({ organizationId: organization.id, employeeNumber: "BLOCKED", name: "Blocked", roleTitle: "Member", salaryMinor: 1, hiredAt: new Date(), userId: member.id })).rejects.toThrow("owner access required");
+    await expect(listSoftwareHr(organization.id, member.id)).rejects.toThrow("owner access required");
   });
 });

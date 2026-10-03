@@ -13,6 +13,7 @@ import {
   Prisma,
 } from "@/generated/prisma/client";
 import { db } from "@/lib/db";
+import { collaboratorUserSelect } from "@/lib/auth/user-select";
 import { assessProjectQuality } from "@/services/projects/project-quality";
 
 const phasePlan: Array<{ type: ProjectPhaseType; title: string; sequence: number }> = [
@@ -55,14 +56,14 @@ function projectInclude() {
     complianceItems: { orderBy: [{ kind: "asc" as const }, { createdAt: "desc" as const }] },
     vendors: { orderBy: [{ kind: "asc" as const }, { createdAt: "desc" as const }] },
     evidenceFiles: { select: { id: true, fileName: true, mimeType: true, sizeBytes: true, checksum: true, createdAt: true }, orderBy: { createdAt: "desc" as const } },
-    members: { include: { user: { include: { profile: true } } }, orderBy: { createdAt: "asc" as const } },
+    members: { include: { user: { select: collaboratorUserSelect } }, orderBy: { createdAt: "asc" as const } },
     organization: true,
-    createdBy: { include: { profile: true } },
+    createdBy: { select: collaboratorUserSelect },
     intelligenceSnapshots: { orderBy: { fetchedAt: "desc" as const }, take: 1 },
   } satisfies Prisma.ProjectInclude;
 }
 
-function projectAccessWhere(userId: string, roles?: ProjectMemberRole[]) {
+export function projectAccessWhere(userId: string, roles?: ProjectMemberRole[]) {
   return {
     OR: [
       { createdById: userId },
@@ -197,7 +198,7 @@ export async function addProjectMember(
       where: { projectId_userId: { projectId, userId: memberUser.id } },
       create: { projectId, userId: memberUser.id, addedById: userId, role: input.role },
       update: { role: input.role, addedById: userId },
-      include: { user: { include: { profile: true } } },
+      include: { user: { select: collaboratorUserSelect } },
     });
     await transaction.auditLog.create({
       data: { actorId: userId, action: "project.member.upserted", entityType: "ProjectMember", entityId: member.id, metadata: { projectId, memberUserId: member.userId, role: member.role } },

@@ -26,4 +26,12 @@ describe("authentication request origin", () => {
     });
     expect(hasValidOrigin(request)).toBe(false);
   });
+
+  it.each([undefined, "null", "not-a-url", "https://attacker.test"])("rejects missing or invalid origin %j", (origin) => {
+    const request = new NextRequest("https://app.example.test/api/auth/login", {
+      method: "POST",
+      headers: origin ? { origin } : {},
+    });
+    expect(hasValidOrigin(request)).toBe(false);
+  });
 });

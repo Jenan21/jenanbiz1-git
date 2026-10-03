@@ -51,11 +51,13 @@ export async function GET(request: NextRequest) {
   const selectedId = requestedId ?? organizations[0]?.organization.id;
   if (!selectedId) return NextResponse.json({ success: true, organizations, workspace: null });
   try {
-    const [company, sales, operations, hr] = await Promise.all([
-      getSoftwareCompany(selectedId, user.id),
+    const company = await getSoftwareCompany(selectedId, user.id);
+    const [sales, operations, hr] = await Promise.all([
       listSalesWorkspace(selectedId, user.id),
       listSoftwareOperations(selectedId, user.id),
-      listSoftwareHr(selectedId, user.id),
+      company.currentUserIsOwner
+        ? listSoftwareHr(selectedId, user.id)
+        : { employees: [], attendance: [], leaveRequests: [], payrollRuns: [], reviews: [] },
     ]);
     return NextResponse.json({ success: true, organizations, workspace: { company, sales, operations, hr, salesSummary: summarizeSalesWorkspace(sales), operationsSummary: summarizeSoftwareOperations(operations) } });
   } catch (error) {

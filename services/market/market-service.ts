@@ -1,8 +1,9 @@
 import { MarketInquiryStatus, MarketListingStatus, MarketOfferStatus, MarketViewingStatus, Prisma } from "@/generated/prisma/client";
 import { db } from "@/lib/db";
+import { publicUserSelect } from "@/lib/auth/user-select";
 
 const listingInclude = {
-  createdBy: { include: { profile: true } },
+  createdBy: { select: publicUserSelect },
   project: { select: { id: true, name: true } },
   organization: { select: { id: true, name: true } },
 } satisfies Prisma.MarketListingInclude;

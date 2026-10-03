@@ -1,4 +1,5 @@
-import { afterAll, beforeEach, describe, expect, it } from "vitest";
+import { afterAll, beforeEach, describe, expect, it, vi } from "vitest";
+import * as passwords from "@/lib/auth/password";
 import { SystemRole, UserStatus } from "@/generated/prisma/client";
 import { db } from "@/lib/db";
 import { hashSessionToken } from "@/lib/auth/token";
@@ -196,6 +197,7 @@ describe.sequential("real PostgreSQL authentication integration", () => {
       code: code!,
       password: "Delivered-Password-2026!",
     });
+
     expect(
       await db.auditLog.count({
         where: {
@@ -206,6 +208,37 @@ describe.sequential("real PostgreSQL authentication integration", () => {
     ).toBe(1);
   });
 
+  it("rejects a stale old-password login that finishes after password reset", async () => {
+      const registered = await registerUser(baseRegistration);
+      const requested = await requestPasswordReset(baseRegistration.email);
+      const originalVerify = passwords.verifyPassword;
+      let resume!: () => void;
+      let started!: () => void;
+      const barrier = new Promise<void>((resolve) => { resume = resolve; });
+      const verifying = new Promise<void>((resolve) => { started = resolve; });
+      const spy = vi.spyOn(passwords, "verifyPassword").mockImplementation(async (hash, value) => {
+        const valid = await originalVerify(hash, value);
+        if (value === baseRegistration.password) {
+          started();
+          await barrier;
+        }
+        return valid;
+      });
+      const pending = loginUser({ email: baseRegistration.email, password: baseRegistration.password, remember: true })
+        .then(() => null, (error: unknown) => error);
+      try {
+        await verifying;
+        await confirmPasswordReset({ email: baseRegistration.email, code: requested.developmentCode!, password: "Concurrent-Reset-2026!" });
+        resume();
+        expect(await pending).toMatchObject({ code: "INVALID_CREDENTIALS" });
+        expect(await db.session.count({ where: { userId: registered.user.id } })).toBe(0);
+        expect(await getSessionUser(registered.token)).toBeNull();
+      } finally {
+        resume();
+        await pending;
+        spy.mockRestore();
+      }
+    });
   it("keeps provider failures neutral and invalidates the undelivered code", async () => {
     const registered = await registerUser(baseRegistration);
     const requested = await requestPasswordReset(
