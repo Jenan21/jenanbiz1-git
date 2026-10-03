@@ -16,6 +16,8 @@ import { db } from "@/lib/db";
 import { collaboratorUserSelect } from "@/lib/auth/user-select";
 import { assessProjectQuality } from "@/services/projects/project-quality";
 
+export class ProjectAccessError extends Error {}
+
 const phasePlan: Array<{ type: ProjectPhaseType; title: string; sequence: number }> = [
   { type: "ANALYSIS", title: "Project analysis", sequence: 1 },
   { type: "FEASIBILITY", title: "Feasibility study", sequence: 2 },
@@ -67,7 +69,11 @@ export function projectAccessWhere(userId: string, roles?: ProjectMemberRole[]) 
   return {
     OR: [
       { createdById: userId },
-      { members: { some: roles ? { userId, role: { in: roles } } : { userId } } },
+      { members: { some: {
+        userId,
+        ...(roles ? { role: { in: roles } } : {}),
+        user: { status: "ACTIVE" as const, emailVerifiedAt: { not: null } },
+      } } },
     ],
   };
 }
@@ -190,10 +196,12 @@ export async function addProjectMember(
 ) {
   return db.$transaction(async (transaction) => {
     const project = await transaction.project.findFirst({ where: { id: projectId, ...projectAccessWhere(userId, [ProjectMemberRole.OWNER]) }, select: { id: true } });
-    if (!project) throw new Error("Project owner access required");
-    const memberUser = await transaction.user.findUnique({ where: { email: input.email.trim().toLowerCase() }, select: { id: true } });
+    if (!project) throw new ProjectAccessError("Project owner access required");
+    const memberUser = await transaction.user.findUnique({ where: { email: input.email.trim().toLowerCase() }, select: { id: true, emailVerifiedAt: true, status: true } });
     if (!memberUser) throw new Error("Project member user not found");
     if (memberUser.id === userId) throw new Error("Project owner is already a member");
+    if (!memberUser.emailVerifiedAt || memberUser.status !== "ACTIVE")
+      throw new ProjectAccessError("Project membership requires an active account with a verified email");
     const member = await transaction.projectMember.upsert({
       where: { projectId_userId: { projectId, userId: memberUser.id } },
       create: { projectId, userId: memberUser.id, addedById: userId, role: input.role },

@@ -1,4 +1,5 @@
 import { db } from "@/lib/db";
+import { uploadedFileAccessWhere } from "@/services/files/file-asset-service";
 import { getAccountOverview } from "@/services/account/account-overview-service";
 
 export async function getUserDashboard(userId: string) {
@@ -22,7 +23,7 @@ export async function getUserDashboard(userId: string) {
     db.marketListing.count({ where: { createdById: userId } }),
     db.marketingCampaign.count({ where: { createdById: userId } }),
     db.jobPosting.count({ where: { createdById: userId } }),
-    db.fileAsset.count({ where: { uploadedById: userId } }),
+    db.fileAsset.count({ where: uploadedFileAccessWhere(userId) }),
   ]);
   const openRequests = openMarketInquiries + openJobApplications;
   const servicesCount = marketListings + marketingCampaigns + jobPostings + fileCount;

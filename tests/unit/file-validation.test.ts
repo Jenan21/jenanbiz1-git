@@ -178,4 +178,9 @@ describe("uploaded file validation", () => {
     expect(localDocumentStorage.upload).not.toHaveBeenCalled();
     expect(db.fileAsset.create).not.toHaveBeenCalled();
   });
+  it("rejects dual-resource uploads before storage or database writes", async () => {
+    await expect(uploadUserFile("owner", new File(["safe"], "safe.txt", { type: "text/plain" }), "project", "listing")).rejects.toThrow("only one resource");
+    expect(localDocumentStorage.upload).not.toHaveBeenCalled();
+    expect(db.fileAsset.create).not.toHaveBeenCalled();
+  });
 });

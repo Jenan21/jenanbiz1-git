@@ -1,12 +1,13 @@
 import ExcelJS from "exceljs";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { db } from "@/lib/db";
-import { getUserPayments } from "@/services/account/user-center-service";
+import { getUserPayments, getUserReportIndex } from "@/services/account/user-center-service";
 import { getAccountOverview } from "@/services/account/account-overview-service";
 import { listSoftwareHr } from "@/services/software/hr-service";
 import { listSoftwareOperations } from "@/services/software/operations-service";
 import { getSoftwareCompany } from "@/services/software/software-access";
-import { getUserProject, addProjectMember } from "@/services/projects/project-service";
+import { getUserProject, addProjectMember, listUserProjects } from "@/services/projects/project-service";
+import { getReportView } from "@/services/reports/report-view-service";
 import { listMarketListings, listMarketInquiries, listMarketDeals, updateMarketListingStatus, updateMarketInquiryStatus, updateMarketOfferStatus, updateMarketViewingStatus } from "@/services/market/market-service";
 import { listUserFiles, downloadUserFile, deleteUserFile, uploadUserFile } from "@/services/files/file-asset-service";
 import {
@@ -55,6 +56,7 @@ beforeAll(async () => {
     const user = await db.user.create({
       data: {
         email: `security-${kind}-${suffix}@example.test`, status: "ACTIVE",
+        emailVerifiedAt: new Date(),
         passwordHash: "private-hash-marker",
         profile: { create: { displayName: kind, phone: "private-profile-marker", city: "private-profile-marker" } },
       },
@@ -160,6 +162,86 @@ describe.sequential("security ownership and DTO boundaries", () => {
     } finally {
       await deleteUserFile(ownerId, file.id);
       await db.projectMember.updateMany({ where: { projectId, userId: memberId }, data: { role: "VIEWER" } });
+    }
+  });
+
+  it("revokes a departed uploader's project file access while retaining personal files", async () => {
+    await db.projectMember.updateMany({ where: { projectId, userId: memberId }, data: { role: "EDITOR" } });
+    const file = await uploadUserFile(memberId, new File(["Private project evidence"], "evidence.txt", { type: "text/plain" }), projectId);
+    const personal = await uploadUserFile(memberId, new File(["Personal file"], "personal.txt", { type: "text/plain" }));
+    try {
+      await db.projectMember.deleteMany({ where: { projectId, userId: memberId } });
+      expect((await listUserFiles(memberId)).map(({ id }) => id)).toEqual([personal.id]);
+      expect(await downloadUserFile(memberId, file.id)).toBeNull();
+      expect(await deleteUserFile(memberId, file.id)).toBe(false);
+      expect((await downloadUserFile(memberId, personal.id))?.bytes).toEqual(new TextEncoder().encode("Personal file"));
+      expect(await deleteUserFile(memberId, personal.id)).toBe(true);
+      expect(await deleteUserFile(ownerId, file.id)).toBe(true);
+    } finally {
+      await deleteUserFile(ownerId, file.id);
+      await deleteUserFile(memberId, personal.id);
+    }
+  });
+
+  it("does not grant project access to an unverified or disabled email claim", async () => {
+    for (const data of [
+      { emailVerifiedAt: null, status: "ACTIVE" as const },
+      { emailVerifiedAt: new Date(), status: "SUSPENDED" as const },
+    ]) {
+      await db.user.update({ where: { id: outsiderId }, data });
+      await expect(addProjectMember(projectId, { email: `security-outsider-${suffix}@example.test`, role: "EDITOR" }, ownerId)).rejects.toThrow("active account with a verified email");
+      expect(await getUserProject(projectId, outsiderId)).toBeNull();
+      expect(await downloadUserFile(outsiderId, fileId)).toBeNull();
+      expect(await db.projectMember.count({ where: { projectId, userId: outsiderId } })).toBe(0);
+    }
+    await db.user.update({ where: { id: outsiderId }, data: { emailVerifiedAt: new Date(), status: "ACTIVE" } });
+    await addProjectMember(projectId, { email: `security-outsider-${suffix}@example.test`, role: "VIEWER" }, ownerId);
+    expect((await getUserProject(projectId, outsiderId))?.id).toBe(projectId);
+    await db.projectMember.deleteMany({ where: { projectId, userId: outsiderId } });
+  });
+
+  it("rejects legacy unverified collaborators across account reports, ERP, and files", async () => {
+    await addProjectMember(projectId, { email: `security-member-${suffix}@example.test`, role: "EDITOR" }, ownerId);
+    const file = await uploadUserFile(memberId, new File(["Legacy project evidence"], "legacy.txt", { type: "text/plain" }), projectId);
+    try {
+      for (const data of [
+        { emailVerifiedAt: null, status: "ACTIVE" as const },
+        { emailVerifiedAt: new Date(), status: "SUSPENDED" as const },
+      ]) {
+        await db.user.update({ where: { id: memberId }, data });
+        expect(await getUserProject(projectId, memberId)).toBeNull();
+        expect(await listUserProjects(memberId)).toEqual([]);
+        expect((await getUserReportIndex(memberId)).projects).toEqual([]);
+        expect((await listSoftwareOperations(organizationId, memberId)).projects).toEqual([]);
+        expect((await getReportView({ path: "/reports/view/general", projectId, userId: memberId })).sourceState).toBe("EMPTY");
+        expect((await getReportView({ path: "/reports/view/general", userId: memberId })).sourceState).toBe("EMPTY");
+        expect(await listUserFiles(memberId)).toEqual([]);
+        expect((await getAccountOverview(memberId)).services.fileCount).toBe(0);
+        expect(await downloadUserFile(memberId, file.id)).toBeNull();
+        expect(await deleteUserFile(memberId, file.id)).toBe(false);
+        await expect(uploadUserFile(memberId, new File(["Denied"], "denied.txt", { type: "text/plain" }), projectId)).rejects.toThrow("Project not found");
+      }
+      await db.user.update({ where: { id: ownerId }, data: { emailVerifiedAt: null } });
+      expect((await getUserProject(projectId, ownerId))?.id).toBe(projectId);
+    } finally {
+      await db.user.updateMany({ where: { id: { in: [memberId, ownerId] } }, data: { emailVerifiedAt: new Date(), status: "ACTIVE" } });
+      await deleteUserFile(ownerId, file.id);
+      await db.projectMember.updateMany({ where: { projectId, userId: memberId }, data: { role: "VIEWER" } });
+    }
+  });
+
+  it("fails closed for ambiguous project and public market file associations", async () => {
+    const file = await uploadUserFile(ownerId, new File(["Private project"], "ambiguous.txt", { type: "text/plain" }), projectId);
+    try {
+      await db.fileAsset.update({ where: { id: file.id }, data: { marketListingId: listingId, marketVisibility: "PUBLIC" } });
+      for (const userId of [ownerId, memberId, outsiderId]) {
+        expect((await listUserFiles(userId)).some(({ id }) => id === file.id)).toBe(false);
+        expect(await downloadUserFile(userId, file.id)).toBeNull();
+        expect(await deleteUserFile(userId, file.id)).toBe(false);
+      }
+    } finally {
+      await db.fileAsset.update({ where: { id: file.id }, data: { marketListingId: null, marketVisibility: null } });
+      await deleteUserFile(ownerId, file.id);
     }
   });
 

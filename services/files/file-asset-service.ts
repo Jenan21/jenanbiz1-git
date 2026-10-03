@@ -3,6 +3,7 @@ import { db } from "@/lib/db";
 import { localDocumentStorage } from "@/lib/storage/local-document-storage";
 import { validateFileContent, validateFileName } from "./file-validation";
 import { ownedOrganizationRecordWhere } from "@/lib/auth/organization-scope";
+import { projectAccessWhere } from "@/services/projects/project-service";
 
 const maxFileBytes = 10 * 1024 * 1024;
 const allowedMimeTypes = new Set([
@@ -41,14 +42,20 @@ function serializeFileAsset(asset: {
   };
 }
 
-function uploadedFileAccessWhere(userId: string) {
+export function uploadedFileAccessWhere(userId: string) {
   return {
     uploadedById: userId,
-    OR: [{ marketListingId: null }, { marketListing: ownedOrganizationRecordWhere(userId) }],
+    OR: [
+      { projectId: null, marketListingId: null },
+      { marketListingId: null, project: projectAccessWhere(userId) },
+      { projectId: null, marketListing: ownedOrganizationRecordWhere(userId) },
+    ],
   };
 }
 
 export async function uploadUserFile(userId: string, file: File, projectId?: string, marketListingId?: string, marketVisibility: "PUBLIC" | "NDA_REQUIRED" = "NDA_REQUIRED") {
+  if (projectId && marketListingId)
+    throw new FileAssetError("A file can belong to only one resource");
   if (!allowedMimeTypes.has(file.type))
     throw new FileAssetError("This file type is not supported");
   if (file.size <= 0 || file.size > maxFileBytes)
@@ -67,10 +74,7 @@ export async function uploadUserFile(userId: string, file: File, projectId?: str
     const project = await db.project.findFirst({
       where: {
         id: projectId,
-        OR: [
-          { createdById: userId },
-          { members: { some: { userId, role: { in: ["OWNER", "EDITOR"] } } } },
-        ],
+        ...projectAccessWhere(userId, ["OWNER", "EDITOR"]),
       },
       select: { id: true },
     });
@@ -127,14 +131,11 @@ async function findUserDownloadFile(userId: string, fileId: string) {
       OR: [
         uploadedFileAccessWhere(userId),
         {
-          project: {
-            OR: [
-              { createdById: userId },
-              { members: { some: { userId } } },
-            ],
-          },
+          marketListingId: null,
+          project: projectAccessWhere(userId),
         },
         {
+          projectId: null,
           marketListing: {
             OR: [
               ownedOrganizationRecordWhere(userId),
@@ -155,8 +156,8 @@ async function findUserManagedFile(userId: string, fileId: string) {
       id: fileId,
       OR: [
         { uploadedById: userId, projectId: null, marketListingId: null },
-        { project: { OR: [{ createdById: userId }, { members: { some: { userId, role: { in: ["OWNER", "EDITOR"] } } } }] } },
-        { marketListing: ownedOrganizationRecordWhere(userId) },
+        { marketListingId: null, project: projectAccessWhere(userId, ["OWNER", "EDITOR"]) },
+        { projectId: null, marketListing: ownedOrganizationRecordWhere(userId) },
       ],
     },
   });

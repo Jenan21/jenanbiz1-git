@@ -4,6 +4,8 @@ import { getCurrentUser } from "@/lib/auth/session";
 import { hasValidOrigin } from "@/lib/auth/request";
 import {
   createProject,
+  ProjectAccessError,
+  projectAccessWhere,
   addProjectMember,
   createProjectComplianceItem,
   createProjectRisk,
@@ -206,13 +208,7 @@ export async function POST(request: NextRequest) {
                       const result = await searchProjectIntelligence(input);
                       if (input.projectId) {
                         const project = await db.project.findFirst({
-                          where: {
-                            id: input.projectId,
-                            OR: [
-                              { createdById: user.id },
-                              { members: { some: { userId: user.id, role: { in: ["OWNER", "EDITOR"] } } } },
-                            ],
-                          },
+                          where: { id: input.projectId, ...projectAccessWhere(user.id, ["OWNER", "EDITOR"]) },
                           select: { id: true },
                         });
                         if (!project) throw new Error("Project not found");
@@ -224,7 +220,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ success: true, result }, { status: input.action === "create" || input.action === "createCompliance" || input.action === "createVendor" ? 201 : 200 });
   } catch (error) {
     const message = error instanceof Error ? error.message : "Project command failed";
-    const status = message === "Project not found" ? 404 : 409;
+    const status = error instanceof ProjectAccessError ? 403 : message === "Project not found" ? 404 : 409;
     return NextResponse.json({ success: false, message }, { status });
   }
 }

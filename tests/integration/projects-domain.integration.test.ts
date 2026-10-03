@@ -47,8 +47,8 @@ describe("projects domain", () => {
     });
     userId = user.id;
     const [editor, reviewer] = await Promise.all([
-      db.user.create({ data: { email: `projects-editor-${suffix}@example.test`, status: "ACTIVE" } }),
-      db.user.create({ data: { email: `projects-reviewer-${suffix}@example.test`, status: "ACTIVE" } }),
+      db.user.create({ data: { email: `projects-editor-${suffix}@example.test`, status: "ACTIVE", emailVerifiedAt: new Date() } }),
+      db.user.create({ data: { email: `projects-reviewer-${suffix}@example.test`, status: "ACTIVE", emailVerifiedAt: new Date() } }),
     ]);
     editorId = editor.id;
     reviewerId = reviewer.id;

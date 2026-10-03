@@ -6,7 +6,7 @@ import { deleteUserFile, downloadUserFile, FileAssetError } from "@/services/fil
 export const runtime = "nodejs";
 
 function attachmentName(fileName: string) {
-  return fileName.replace(/[\\/\r\n"]/g, "_");
+  return fileName.replace(/[^\x20-\x7e]|[\\"]/g, "_");
 }
 
 export async function GET(_request: NextRequest, { params }: { params: Promise<{ fileId: string }> }) {
@@ -19,7 +19,7 @@ export async function GET(_request: NextRequest, { params }: { params: Promise<{
     return new NextResponse(result.bytes, {
       headers: {
         "cache-control": "private, no-store",
-        "content-disposition": `attachment; filename="${attachmentName(result.asset.fileName)}"`,
+        "content-disposition": `attachment; filename="${attachmentName(result.asset.fileName)}"; filename*=UTF-8''${encodeURIComponent(result.asset.fileName).replace(/['()*]/g, (character) => `%${character.charCodeAt(0).toString(16).toUpperCase()}`)}`,
         "content-type": result.asset.mimeType,
         "x-content-type-options": "nosniff",
       },

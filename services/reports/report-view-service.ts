@@ -1,7 +1,7 @@
 import { db } from "@/lib/db";
 import type { ReportRoute } from "@/lib/reports/report-routes";
 import { assessProjectQuality } from "@/services/projects/project-quality";
-import { getUserProject } from "@/services/projects/project-service";
+import { getUserProject, projectAccessWhere } from "@/services/projects/project-service";
 
 export type ReportRow = { label: string; value: string };
 export type ReportSection = { title: string; note?: string; rows: ReportRow[] };
@@ -9,7 +9,7 @@ export type ReportSection = { title: string; note?: string; rows: ReportRow[] };
 async function resolveProject(userId: string, projectId?: string) {
   if (projectId) return getUserProject(projectId, userId);
   const first = await db.project.findFirst({
-    where: { OR: [{ createdById: userId }, { members: { some: { userId } } }] },
+    where: projectAccessWhere(userId),
     select: { id: true },
     orderBy: { updatedAt: "desc" },
   });

@@ -1,6 +1,7 @@
 import { db } from "@/lib/db";
 import { ownedOrganizationRecordWhere } from "@/lib/auth/organization-scope";
 import { getCommunityAccess } from "@/services/community/community-access-service";
+import { uploadedFileAccessWhere } from "@/services/files/file-asset-service";
 
 export async function getAccountOverview(userId: string) {
   const [projects, memberships, listings, inquiries, jobApplications, jobPostings, campaigns, enrollments, completedLessons, fileCount, communityAccess] = await Promise.all([
@@ -13,7 +14,7 @@ export async function getAccountOverview(userId: string) {
     db.marketingCampaign.findMany({ where: ownedOrganizationRecordWhere(userId), select: { id: true, name: true, status: true, channel: true, updatedAt: true }, orderBy: { updatedAt: "desc" }, take: 20 }),
     db.learnerEnrollment.findMany({ where: { userId }, include: { course: { select: { id: true, title: true, lessons: { select: { id: true } } } } }, orderBy: { updatedAt: "desc" }, take: 20 }),
     db.learnerLessonCompletion.findMany({ where: { userId }, select: { lessonId: true } }),
-    db.fileAsset.count({ where: { uploadedById: userId, OR: [{ marketListingId: null }, { marketListing: ownedOrganizationRecordWhere(userId) }] } }),
+    db.fileAsset.count({ where: uploadedFileAccessWhere(userId) }),
     getCommunityAccess(userId),
   ]);
   const completedLessonIds = new Set(completedLessons.map((lesson) => lesson.lessonId));

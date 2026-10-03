@@ -113,6 +113,14 @@ Development returns a local single-use recovery code for testing. Production sen
 
 Session cookies are HttpOnly, SameSite=Lax, scoped to `/`, and Secure in production. Opaque session values are never stored directly in PostgreSQL, sessions have explicit expiry and are deleted on logout or expiry, passwords use Argon2id, validation is server-side, duplicate emails return a conflict, invalid login paths perform password verification against a dummy Argon2id hash, RBAC is enforced in server components, and security-relevant auth actions are audited without passwords or tokens.
 
+Apply `npm run db:migrate` before deploying the security hardening: the user-status trigger revokes every existing session whenever account status changes, including operator-driven suspension/reactivation. It serializes with login's user-row lock; password reset continues to revoke all sessions transactionally.
+
+Email-addressed project sharing requires an active account with verified mailbox ownership. Existing unverified collaborator memberships fail closed across project pages, reports, ERP project reads, and files; creators retain access to their own projects. Registration and password recovery do not mark an email verified. Keep public registration closed until an approved mailbox-verification workflow is operational; do not set `emailVerifiedAt` merely to bypass this gate.
+
+Project-file reads require current project access, and uploads/deletion require OWNER or EDITOR access. Uploading a file does not preserve access after membership removal or allow a demoted viewer to delete evidence. Standalone personal files retain uploader access; market files retain listing ownership/publication/NDA controls. Dual project/listing associations are rejected and existing ambiguous records are denied until reviewed and repaired. Private API responses, including authorization errors and downloads, use `private, no-store`.
+
+Deployment still requires HTTPS with `NODE_ENV=production`, the correct canonical `NEXT_PUBLIC_APP_URL`, a trusted ingress that rejects unexpected hosts and overwrites forwarded client headers, shared Redis, and a configured recovery email provider. Local document storage also requires durable private storage, restricted filesystem access, malware scanning, and a retention policy; content/MIME checks are not malware scanning. These infrastructure/provider requirements are not satisfied by code changes alone.
+
 ## Production Operations
 
 `compose.yaml` provides PostgreSQL, Redis, migration, application, and scheduled PostgreSQL backup services. Set non-empty `POSTGRES_PASSWORD`, `REDIS_PASSWORD`, `AUTH_SECRET`, and `METRICS_TOKEN` values in the deployment environment. Set `ALLOW_PUBLIC_REGISTRATION=true` only when public account creation is intended, and configure the password-recovery email variables before production launch. Then run:

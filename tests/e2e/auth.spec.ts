@@ -236,6 +236,59 @@ test.describe.serial("account security HTTP boundaries", () => {
     ).toBe(987654);
   });
 
+  test("requires verified collaborators and revokes project file privileges with membership", async () => {
+    const created = await owner.post("/api/projects", { data: { action: "create", name: "Verified project sharing" } });
+    expect(created.status()).toBe(201);
+    const sharedProjectId = (await created.json()).result.id;
+    let evidenceId: string | undefined;
+    const share = (role: "EDITOR" | "VIEWER") => owner.post("/api/projects", {
+      data: { action: "addMember", projectId: sharedProjectId, email: otherEmail, role },
+    });
+    try {
+      const unverified = await share("EDITOR");
+      expect(unverified.status()).toBe(403);
+      expect(unverified.headers()["cache-control"]).toContain("no-store");
+      expect((await other.get(`/api/projects/${sharedProjectId}`)).status()).toBe(404);
+      expect((await other.get(`/api/projects/${sharedProjectId}/report`)).status()).toBe(404);
+      await queryE2E('UPDATE "User" SET "emailVerifiedAt" = NOW() WHERE email = $1', [otherEmail]);
+      expect((await share("EDITOR")).status()).toBe(200);
+      const uploaded = await other.post("/api/files", {
+        multipart: {
+          projectId: sharedProjectId,
+          file: { name: "تقرير الأدلة.txt", mimeType: "text/plain", buffer: Buffer.from("Private shared evidence") },
+        },
+      });
+      expect(uploaded.status()).toBe(201);
+      evidenceId = (await uploaded.json()).file.id;
+      expect((await share("VIEWER")).status()).toBe(200);
+      const readable = await other.get(`/api/files/${evidenceId}`);
+      expect(readable.status()).toBe(200);
+      expect(readable.headers()["content-disposition"]).toContain("filename*=UTF-8''");
+      expect(readable.headers()["cache-control"]).toContain("no-store");
+      const deniedDelete = await other.delete(`/api/files/${evidenceId}`);
+      expect(deniedDelete.status()).toBe(404);
+      expect(deniedDelete.headers()["cache-control"]).toContain("no-store");
+      expect(await (await owner.get(`/api/files/${evidenceId}`)).text()).toBe("Private shared evidence");
+      await queryE2E('DELETE FROM "ProjectMember" WHERE "projectId" = $1 AND "userId" = (SELECT id FROM "User" WHERE email = $2)', [sharedProjectId, otherEmail]);
+      expect((await other.get(`/api/files/${evidenceId}`)).status()).toBe(404);
+      expect((await (await other.get("/api/files")).json()).files.some((file: { id: string }) => file.id === evidenceId)).toBe(false);
+      expect((await share("EDITOR")).status()).toBe(200);
+      await queryE2E('UPDATE "User" SET "emailVerifiedAt" = NULL WHERE email = $1', [otherEmail]);
+      for (const route of [`/api/projects/${sharedProjectId}`, `/api/projects/${sharedProjectId}/report`, `/api/files/${evidenceId}`]) {
+        const response = await other.get(route);
+        expect(response.status(), route).toBe(404);
+        expect(response.headers()["cache-control"], route).toContain("no-store");
+      }
+      expect((await other.post("/api/projects", { data: { action: "searchIntelligence", projectId: sharedProjectId, query: "Private project intelligence" } })).status()).toBe(404);
+      expect((await other.delete(`/api/files/${evidenceId}`)).status()).toBe(404);
+      expect((await owner.delete(`/api/files/${evidenceId}`)).status()).toBe(204);
+      evidenceId = undefined;
+    } finally {
+      if (evidenceId) await owner.delete(`/api/files/${evidenceId}`);
+      await queryE2E('DELETE FROM "Project" WHERE id = $1', [sharedProjectId]);
+    }
+  });
+
   test("rejects MIME/size violations and invalidates the actual session on logout", async () => {
     for (const file of [
       {
