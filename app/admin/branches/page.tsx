@@ -113,7 +113,12 @@ export default function BranchesPage() {
   }
 
   useEffect(() => {
-    const saved = localStorage.getItem("jenan-admin-lang");
+    let saved: string | null = null;
+    try {
+      saved = localStorage.getItem("jenan-admin-lang");
+    } catch {
+      // Continue loading branch data when browser storage is unavailable.
+    }
     const locale = document.cookie.match(
       /(?:^|;\s*)locale=(ar|en)(?:;|$)/,
     )?.[1];
