@@ -250,6 +250,13 @@ test.describe.serial("projects section acceptance", () => {
         await expect(
           page.locator(".project-start-dashboard__form"),
         ).toBeVisible();
+      } else if (route === "/projects/evaluation") {
+        await expect(
+          page.locator(".project-evaluation-dashboard"),
+        ).toHaveAttribute("data-project-evaluation-source", "USER_INPUT_REQUIRED");
+        await expect(
+          page.locator(".project-evaluation-dashboard__form"),
+        ).toBeVisible();
       } else {
         await expect(page.locator(".projects-live-service")).toBeVisible();
         await expect(page.locator(".projects-workspace")).toBeVisible();

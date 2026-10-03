@@ -1,13 +1,17 @@
-import { ProjectsLiveServicePage } from "@/components/projects/projects-live-service-page";
+import { ProjectEvaluationDashboard } from "@/components/projects/project-evaluation-dashboard";
+import { requireUser } from "@/lib/auth/session";
+import { getRequestDictionary } from "@/lib/i18n/server";
 
-export default function ProjectEvaluationPage() {
+export default async function ProjectEvaluationPage() {
+  const [{ locale }, user] = await Promise.all([
+    getRequestDictionary(),
+    requireUser("/projects/evaluation"),
+  ]);
+
   return (
-    <ProjectsLiveServicePage
-      title={["تقييم المشروع", "Project evaluation"]}
-      description={["قرار تقييم موزون لا يعتمد إلا على الأدلة المكتملة ومصادرها.", "A weighted evaluation decision based only on complete evidence and its sources."]}
-      focus="assessment"
-      flowGroup="evaluation"
-      route="/projects/evaluation"
+    <ProjectEvaluationDashboard
+      locale={locale}
+      userLabel={user.profile?.displayName ?? user.email}
     />
   );
 }
