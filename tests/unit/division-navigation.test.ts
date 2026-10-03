@@ -16,7 +16,7 @@ const expectedServiceCounts = {
   academy: 4,
   market: 2,
   talent: 2,
-  software: 2,
+  software: 5,
   programs: 4,
   marketing: 3,
 } as const;
