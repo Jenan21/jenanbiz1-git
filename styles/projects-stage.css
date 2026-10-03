@@ -184,6 +184,42 @@
   background: color-mix(in srgb, var(--brand) 7%, transparent);
 }
 
+.project-assessment-evidence-picker {
+  display: grid;
+  gap: 10px;
+  min-width: 0;
+  padding: 12px;
+  border: 1px solid color-mix(in srgb, var(--border) 72%, transparent);
+  border-radius: 12px;
+}
+
+.project-assessment-evidence-picker legend {
+  padding-inline: 6px;
+  color: var(--muted);
+}
+
+.project-assessment-evidence-picker__list {
+  display: grid;
+  gap: 8px;
+  max-height: 220px;
+  overflow: auto;
+}
+
+.project-assessment-evidence-picker__item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+
+.project-assessment-evidence-picker__item span {
+  overflow-wrap: anywhere;
+}
+
+.project-assessment-evidence-picker__item input {
+  flex: 0 0 auto;
+}
+
 .project-launch-records {
   display: grid;
   gap: 16px;

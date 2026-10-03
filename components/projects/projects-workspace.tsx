@@ -59,6 +59,11 @@ type ProjectAssessment = {
   summary: string | null;
   source: string | null;
   assessedAt: string | null;
+  evidenceFiles: Array<{
+    fileAssetId: string;
+    createdAt: string;
+    fileAsset: Pick<EvidenceFile, "id" | "fileName" | "mimeType" | "checksum" | "createdAt">;
+  }>;
 };
 type ProjectDecision = {
   id: string;
@@ -105,7 +110,7 @@ type Intelligence = {
     latitude: number;
     longitude: number;
   }>;
-  sources: Array<{ source: string; url: string; confidence: string }>;
+  sources: Array<{ source: string; url: string; fetchedAt: string; confidence: string }>;
   limitations: string[];
 };
 type Project = {
@@ -241,6 +246,7 @@ export function ProjectsWorkspace({
   const [assessmentScore, setAssessmentScore] = useState("");
   const [assessmentSummary, setAssessmentSummary] = useState("");
   const [assessmentSource, setAssessmentSource] = useState("");
+  const [assessmentEvidenceFileIds, setAssessmentEvidenceFileIds] = useState<string[]>([]);
   const [phaseNotes, setPhaseNotes] = useState("");
   const [locationQuery, setLocationQuery] = useState("");
   const [intelligenceByProject, setIntelligenceByProject] = useState<
@@ -396,6 +402,10 @@ export function ProjectsWorkspace({
   }, [focus, loading, selectedId]);
 
   const selected = projects.find((project) => project.id === selectedId);
+  useEffect(() => {
+    const assessment = selected?.assessments.find((item) => item.type === assessmentType);
+    setAssessmentEvidenceFileIds(assessment?.evidenceFiles.map((item) => item.fileAssetId) ?? []);
+  }, [assessmentType, selectedId, projects]);
   const intelligence = selected
     ? (intelligenceByProject[selected.id] ?? null)
     : null;
@@ -497,6 +507,7 @@ export function ProjectsWorkspace({
         score: Number(assessmentScore),
         summary: assessmentSummary,
         source: assessmentSource,
+        evidenceFileIds: assessmentEvidenceFileIds,
       },
       ar ? "تم حفظ دليل التقييم." : "Assessment evidence saved.",
     );
@@ -1231,6 +1242,29 @@ export function ProjectsWorkspace({
                     }
                   />
                 </label>
+                <fieldset className="project-assessment-evidence-picker">
+                  <legend>{ar ? "ملفات داعمة من مكتبة المشروع" : "Supporting files from project library"}</legend>
+                  {selected.evidenceFiles.length ? (
+                    <div className="project-assessment-evidence-picker__list">
+                      {selected.evidenceFiles.map((file) => (
+                        <label className="project-assessment-evidence-picker__item" key={file.id}>
+                          <input
+                            checked={assessmentEvidenceFileIds.includes(file.id)}
+                            onChange={(event) => setAssessmentEvidenceFileIds((current) =>
+                              event.target.checked
+                                ? [...new Set([...current, file.id])]
+                                : current.filter((id) => id !== file.id),
+                            )}
+                            type="checkbox"
+                          />
+                          <span>{file.fileName}</span>
+                        </label>
+                      ))}
+                    </div>
+                  ) : (
+                    <p>{ar ? "ارفع ملفات المشروع أولاً من مكتبة الأدلة لربطها بهذا التقييم." : "Upload project files in the evidence library before linking them to this assessment."}</p>
+                  )}
+                </fieldset>
                 <button
                   className="button button--primary"
                   type="submit"
@@ -1255,6 +1289,12 @@ export function ProjectsWorkspace({
                           ? "بانتظار دليل موثق"
                           : "Awaiting documented evidence"}
                     </small>
+                    {assessment.evidenceFiles.length ? (
+                          <small>
+                            {ar ? "الملفات الداعمة" : "Supporting files"}:{" "}
+                            {assessment.evidenceFiles.map((item) => item.fileAsset.fileName).join("، ")}
+                          </small>
+                    ) : null}
                   </li>
                 ))}
               </ul>
@@ -1364,7 +1404,9 @@ export function ProjectsWorkspace({
                         <a href={source.url} rel="noreferrer" target="_blank">
                           {source.source}
                         </a>
-                        <small>{source.confidence}</small>
+                        <small>
+                          {source.confidence} · {new Date(source.fetchedAt).toLocaleString(ar ? "ar-SA" : "en-US")}
+                        </small>
                       </li>
                     ))}
                   </ul>
@@ -1697,7 +1739,7 @@ export function ProjectsWorkspace({
                   <a href={`/api/files/${file.id}`}>{file.fileName}</a>
                   <span>
                     {file.mimeType} · {Number(file.sizeBytes).toLocaleString()}{" "}
-                    B
+                    B · {ar ? "رفع" : "Uploaded"} {new Date(file.createdAt).toLocaleString(ar ? "ar-SA" : "en-US")}
                   </span>
                   <small>
                     {file.checksum

@@ -26,6 +26,12 @@ function value(input: unknown): string {
 export async function createProjectReport(projectId: string, userId: string, intelligence?: ProjectIntelligenceResult) {
   const project = await getUserProject(projectId, userId);
   if (!project) throw new Error("Project not found");
+  return renderProjectReport(buildProjectReportRows(project, intelligence), project.name);
+}
+
+type ProjectReportRecord = NonNullable<Awaited<ReturnType<typeof getUserProject>>>;
+
+export function buildProjectReportRows(project: ProjectReportRecord, intelligence?: ProjectIntelligenceResult) {
   const readiness = assessProjectReadiness(project);
   const savedIntelligence = project.intelligenceSnapshots[0] as unknown as ProjectIntelligenceResult | undefined;
   const reportIntelligence = intelligence ?? savedIntelligence;
@@ -37,6 +43,7 @@ export async function createProjectReport(projectId: string, userId: string, int
   add(`Generated: ${new Date().toISOString()} | Project ID: ${project.id}`);
   add("Source: user-recorded platform data. Not independently verified, not an investment guarantee or certified valuation.");
   add(`Project: ${project.name}`, true);
+  add(`Record created: ${project.createdAt.toISOString()} | Last updated: ${project.updatedAt.toISOString()}`);
   for (const [label, item] of [
     ["Organization", project.organization?.name], ["Sector", project.sector], ["Country", project.countryCode],
     ["Currency", project.currency], ["Status", project.status], ["Phase", project.currentPhase], ["Description", project.description],
@@ -49,6 +56,14 @@ export async function createProjectReport(projectId: string, userId: string, int
   for (const assessment of project.assessments) {
     add(`${assessment.type}: ${value(assessment.score)}/100 | Recorded: ${assessment.assessedAt?.toISOString() ?? "Unavailable"}`);
     add(`Evidence: ${value(assessment.summary)} | Source claim: ${value(assessment.source)}`);
+    if (assessment.evidenceFiles.length) {
+      for (const evidence of assessment.evidenceFiles) {
+        const file = evidence.fileAsset;
+        add(`Linked evidence: ${file.fileName} | Type: ${file.mimeType} | Uploaded: ${file.createdAt.toISOString()} | Linked: ${evidence.createdAt.toISOString()} | SHA-256: ${value(file.checksum)}`);
+      }
+    } else {
+      add("Linked evidence files: None. The recorded source claim has not been independently verified.");
+    }
   }
   add("Deterministic financial study", true);
   add(`Saved plan: ${plan ? `v${plan.version} | ${plan.createdAt.toISOString()}` : "Unavailable"} | Model: ${value(financial?.modelVersion)}`);
@@ -80,16 +95,16 @@ export async function createProjectReport(projectId: string, userId: string, int
     add(`Risk ${risk.title}: ${risk.status} | ${risk.score}/25 | Owner: ${risk.ownerLabel} | Review: ${risk.reviewAt?.toISOString() ?? "Unavailable"}`);
     add(`Mitigation: ${risk.mitigation}`);
   }
-  for (const file of project.evidenceFiles) add(`Evidence file: ${file.fileName} | SHA-256: ${value(file.checksum)}`);
+  for (const file of project.evidenceFiles) add(`Project evidence file: ${file.fileName} | Type: ${file.mimeType} | Uploaded: ${file.createdAt.toISOString()} | SHA-256: ${value(file.checksum)}`);
   add("External intelligence and limitations", true);
   if (reportIntelligence) {
     add(`Location: ${value(reportIntelligence.location?.label)} | Population: ${value(reportIntelligence.population.value)} (${value(reportIntelligence.population.year)}) | Purchasing power: ${value(reportIntelligence.purchasingPower.value)} (${value(reportIntelligence.purchasingPower.year)})`);
-    for (const source of reportIntelligence.sources) add(`Source: ${source.source} | URL: ${source.url} | Confidence: ${source.confidence}`);
+    for (const source of reportIntelligence.sources) add(`Source: ${source.source} | Retrieved: ${value(source.fetchedAt)} | URL: ${source.url} | Confidence: ${source.confidence}`);
     for (const limitation of reportIntelligence.limitations) add(`Limitation: ${limitation}`);
   } else add("No external intelligence snapshot is available. No population, demand, competitors or market valuation are invented.");
   add("Review recommendation: validate source claims, costs, demand, licenses, taxes and assumptions with qualified domain reviewers before acting.");
   add("PDF uses shaped Unicode image pages to preserve Arabic and mixed-language text; text selection/search is not supported.");
-  return renderProjectReport(rows, project.name);
+  return rows;
 }
 
 export async function renderProjectReport(rows: Array<{ text: string; heading?: boolean }>, title: string) {

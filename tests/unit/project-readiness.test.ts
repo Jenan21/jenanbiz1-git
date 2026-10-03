@@ -3,7 +3,7 @@ import { assessProjectReadiness, isProjectDecisionCurrent } from "@/services/pro
 import type { AssessmentInput } from "@/services/projects/project-quality";
 
 const assessments = (["MARKET", "FINANCIAL", "OPERATIONAL", "RISK", "TECHNICAL", "COMPLIANCE"] as const).map((type) => ({
-  type, score: 80, summary: "Reviewed input", source: "User source", assessedAt: "2026-01-01T00:00:00Z",
+  type, score: 80, summary: "Reviewed input", source: "User source", assessedAt: "2026-01-01T00:00:00Z", evidenceFiles: [] as Array<{ fileAssetId: string; checksum?: string | null; fileAsset?: { checksum?: string | null } }>,
 }));
 function project() {
   return {
@@ -49,5 +49,13 @@ describe("project review readiness", () => {
     input.assessments[0]!.assessedAt = "2026-01-04T00:00:00Z";
     expect(isProjectDecisionCurrent(input)).toBe(false);
     expect(assessProjectReadiness({ ...input, assessments: [] as AssessmentInput[] }).quality.verdict).toBe("INCOMPLETE");
+  });
+  it("invalidates approval when linked source files are removed or changed", () => {
+    const input = project();
+    input.assessments[0]!.evidenceFiles = [{ fileAssetId: "file-1", fileAsset: { checksum: "sha-1" } }];
+    input.decisions[0]!.evidenceSnapshot.assessments[0]!.evidenceFiles = [{ fileAssetId: "file-1", checksum: "sha-1" }];
+    expect(isProjectDecisionCurrent(input)).toBe(true);
+    input.assessments[0]!.evidenceFiles = [];
+    expect(isProjectDecisionCurrent(input)).toBe(false);
   });
 });
