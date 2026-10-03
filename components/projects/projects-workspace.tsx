@@ -246,7 +246,7 @@ export function ProjectsWorkspace({
   const [assessmentScore, setAssessmentScore] = useState("");
   const [assessmentSummary, setAssessmentSummary] = useState("");
   const [assessmentSource, setAssessmentSource] = useState("");
-  const [assessmentEvidenceFileIds, setAssessmentEvidenceFileIds] = useState<string[]>([]);
+  const [assessmentEvidenceSelections, setAssessmentEvidenceSelections] = useState<Record<string, string[]>>({});
   const [phaseNotes, setPhaseNotes] = useState("");
   const [locationQuery, setLocationQuery] = useState("");
   const [intelligenceByProject, setIntelligenceByProject] = useState<
@@ -402,10 +402,12 @@ export function ProjectsWorkspace({
   }, [focus, loading, selectedId]);
 
   const selected = projects.find((project) => project.id === selectedId);
-  useEffect(() => {
-    const assessment = selected?.assessments.find((item) => item.type === assessmentType);
-    setAssessmentEvidenceFileIds(assessment?.evidenceFiles.map((item) => item.fileAssetId) ?? []);
-  }, [assessmentType, selectedId, projects]);
+  const assessmentEvidenceSelectionKey = `${selectedId}:${assessmentType}`;
+  const assessmentEvidenceFileIds = (
+    assessmentEvidenceSelections[assessmentEvidenceSelectionKey] ??
+    selected?.assessments.find((item) => item.type === assessmentType)?.evidenceFiles.map((item) => item.fileAssetId) ??
+    []
+  ).filter((id) => selected?.evidenceFiles.some((file) => file.id === id));
   const intelligence = selected
     ? (intelligenceByProject[selected.id] ?? null)
     : null;
@@ -1250,11 +1252,17 @@ export function ProjectsWorkspace({
                         <label className="project-assessment-evidence-picker__item" key={file.id}>
                           <input
                             checked={assessmentEvidenceFileIds.includes(file.id)}
-                            onChange={(event) => setAssessmentEvidenceFileIds((current) =>
-                              event.target.checked
-                                ? [...new Set([...current, file.id])]
-                                : current.filter((id) => id !== file.id),
-                            )}
+                            onChange={(event) => setAssessmentEvidenceSelections((current) => {
+                              const existingIds = current[assessmentEvidenceSelectionKey] ??
+                                selected.assessments.find((item) => item.type === assessmentType)?.evidenceFiles.map((item) => item.fileAssetId) ??
+                                [];
+                              return {
+                                ...current,
+                                [assessmentEvidenceSelectionKey]: event.target.checked
+                                  ? [...new Set([...existingIds, file.id])]
+                                  : existingIds.filter((id) => id !== file.id),
+                              };
+                            })}
                             type="checkbox"
                           />
                           <span>{file.fileName}</span>

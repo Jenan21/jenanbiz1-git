@@ -818,7 +818,6 @@ model User {
   addedProjectMembers        ProjectMember[]             @relation("ProjectMemberAdder")
   mapProviderReviews         MapProviderReview[]         @relation("MapProviderReviewActor")
   projectAssessmentRevisions ProjectAssessmentRevision[] @relation("ProjectAssessmentRevisionAuthor")
-  assessmentEvidenceLinks    ProjectAssessmentEvidence[]
   projectDecisions           ProjectDecision[]           @relation("ProjectDecisionMaker")
   projectFinancialPlans      ProjectFinancialPlan[]      @relation("ProjectFinancialPlanAuthor")
   marketListings             MarketListing[]             @relation("MarketListingCreator")
@@ -3056,7 +3055,6 @@ model Project {
   phases                ProjectPhase[]
   assessments           ProjectAssessment[]
   assessmentRevisions   ProjectAssessmentRevision[]
-  assessmentEvidence    ProjectAssessmentEvidence[]
   decisions             ProjectDecision[]
   financialPlans        ProjectFinancialPlan[]
   risks                 ProjectRisk[]
