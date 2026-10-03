@@ -1,13 +1,17 @@
-import { ProjectsLiveServicePage } from "@/components/projects/projects-live-service-page";
+import { ProjectStartDashboard } from "@/components/projects/project-start-dashboard";
+import { requireUser } from "@/lib/auth/session";
+import { getRequestDictionary } from "@/lib/i18n/server";
 
-export default function ProjectStartPage() {
+export default async function ProjectStartPage() {
+  const [{ locale }, user] = await Promise.all([
+    getRequestDictionary(),
+    requireUser("/projects/start"),
+  ]);
+
   return (
-    <ProjectsLiveServicePage
-      title={["بدء المشروع", "Start project"]}
-      description={["لا يبدأ المشروع إلا بعد اكتمال الأدلة واعتماد قرار التقييم.", "A project starts only after evidence is complete and the evaluation decision is approved."]}
-      focus="workflow"
-      flowGroup="start"
-      route="/projects/start"
+    <ProjectStartDashboard
+      locale={locale}
+      userLabel={user.profile?.displayName ?? user.email}
     />
   );
 }

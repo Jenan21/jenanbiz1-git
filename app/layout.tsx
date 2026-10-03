@@ -12,6 +12,7 @@ import "@/styles/projects-stage.css";
 import "@/styles/projects-dashboard.css";
 import "@/styles/project-analysis-dashboard.css";
 import "@/styles/project-feasibility-dashboard.css";
+import "@/styles/project-start-dashboard.css";
 import "@/styles/programs-stage.css";
 import "@/styles/talent-stage.css";
 import "@/styles/software-stage.css";

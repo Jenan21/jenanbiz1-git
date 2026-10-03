@@ -242,6 +242,14 @@ test.describe.serial("projects section acceptance", () => {
         await expect(
           page.locator(".project-feasibility-dashboard__choices > article"),
         ).toHaveCount(2);
+      } else if (route === "/projects/start") {
+        await expect(page.locator(".project-start-dashboard")).toHaveAttribute(
+          "data-project-start-source",
+          "USER_INPUT_REQUIRED",
+        );
+        await expect(
+          page.locator(".project-start-dashboard__form"),
+        ).toBeVisible();
       } else {
         await expect(page.locator(".projects-live-service")).toBeVisible();
         await expect(page.locator(".projects-workspace")).toBeVisible();
@@ -279,7 +287,7 @@ test.describe.serial("projects section acceptance", () => {
     expect(intelligence.status()).toBe(200);
     expect((await intelligence.json()).result.location).toMatchObject({ latitude: 24.7136, longitude: 46.6753 });
 
-    await page.goto("/projects/start", { waitUntil: "networkidle" });
+    await page.goto("/projects/start/roadmap", { waitUntil: "networkidle" });
     const projectCard = page.locator(".project-list-item").filter({ hasText: "E2E Project" });
     const openProject = projectCard.getByRole("button", { name: "Open" });
     if (await openProject.count()) await openProject.click();
@@ -287,7 +295,7 @@ test.describe.serial("projects section acceptance", () => {
     await expect(page.locator(".project-evidence-library")).toContainText("market-evidence.txt");
 
     await page.setViewportSize({ width: 390, height: 844 });
-    await page.goto("/projects/start", { waitUntil: "networkidle" });
+    await page.goto("/projects/start/roadmap", { waitUntil: "networkidle" });
     await expect(page.locator(".projects-workspace")).toBeVisible();
     const mobileLayout = await page.evaluate(() => {
       const viewportWidth = document.documentElement.clientWidth;
