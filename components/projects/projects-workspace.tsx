@@ -185,7 +185,7 @@ const riskLabels: Record<string, [string, string]> = {
   compliance: ["مخاطر امتثال", "Compliance risk"],
 };
 const focusSelectors: Record<ProjectFocus, string> = {
-  assessment: ".project-evidence-list",
+  assessment: "article[data-project-focus='assessment']",
   compliance: ".project-compliance",
   create: ".project-create-form",
   evidence: ".project-evidence-library",
@@ -386,9 +386,11 @@ export function ProjectsWorkspace({
   useEffect(() => {
     if (loading) return;
     const timeout = window.setTimeout(() => {
-      document
-        .querySelector<HTMLElement>(focusSelectors[focus])
-        ?.scrollIntoView({ behavior: "smooth", block: "start" });
+      const target = document.querySelector<HTMLElement>(focusSelectors[focus]);
+      if (!target) return;
+      const header = document.querySelector<HTMLElement>(".platform-header");
+      target.style.scrollMarginTop = `${Math.ceil(header?.getBoundingClientRect().height ?? 0) + 26}px`;
+      target.scrollIntoView({ behavior: "smooth", block: "start" });
     }, 120);
     return () => window.clearTimeout(timeout);
   }, [focus, loading, selectedId]);

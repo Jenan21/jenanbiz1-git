@@ -150,9 +150,18 @@ test.describe.serial("Projects full route flow", () => {
           }));
           expect(layout.scroll, `${route} ${locale} ${width}`).toBeLessThanOrEqual(layout.width + 1);
           expect(layout.clippedControls, `${route} ${locale} ${width}`).toBe(0);
+          if (route === "/projects/feasibility/pro/financial") {
+            await expect.poll(() => page.evaluate(() => {
+              const target = document.querySelector(".project-calculator")!;
+              const headerHeight = document.querySelector(".platform-header")!.getBoundingClientRect().height;
+              return parseFloat(getComputedStyle(target).scrollMarginTop) - headerHeight;
+            })).toBeGreaterThanOrEqual(26);
+          }
           if (width === 1920 || width === 390) {
-            await page.evaluate(() => window.scrollTo(0, 0));
-            await expect.poll(() => page.evaluate(() => window.scrollY)).toBe(0);
+            await expect.poll(() => page.evaluate(() => {
+              window.scrollTo({ top: 0, behavior: "instant" });
+              return window.scrollY;
+            })).toBe(0);
             await page.screenshot({ path: testInfo.outputPath(`${locale}-${width}-${route.replaceAll("/", "_")}.png`), fullPage: true });
           }
         }
