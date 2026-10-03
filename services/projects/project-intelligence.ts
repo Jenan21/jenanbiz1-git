@@ -21,8 +21,12 @@ export type ProjectIntelligenceResult = {
 type IndicatorObservation = { value: number; year: number };
 
 function coordinates(latitude: unknown, longitude: unknown) {
-  const lat = Number(latitude);
-  const lon = Number(longitude);
+  const parse = (value: unknown) => {
+    if (typeof value === "number") return value;
+    return typeof value === "string" && value.trim() ? Number(value) : NaN;
+  };
+  const lat = parse(latitude);
+  const lon = parse(longitude);
   return Number.isFinite(lat) && Number.isFinite(lon) && lat >= -90 && lat <= 90 && lon >= -180 && lon <= 180
     ? { latitude: lat, longitude: lon }
     : null;
@@ -105,7 +109,7 @@ export async function searchProjectIntelligence(input: LocationInput): Promise<P
         const payload = await provider.getJson<unknown>(url);
         const observation = latestValidIndicator(payload, indicator.allowNegative);
         const ageYears = observation ? new Date().getUTCFullYear() - observation.year : null;
-        const confidence = !observation ? "LOW" : ageYears! > indicator.maxAgeYears ? "LOW" : "HIGH";
+        const confidence: SourceRecord["confidence"] = !observation ? "LOW" : ageYears! > indicator.maxAgeYears ? "LOW" : "HIGH";
         return {
           observation,
           source: { source: `World Bank Open Data — ${indicator.label}`, url, fetchedAt: new Date().toISOString(), confidence },
@@ -142,7 +146,8 @@ export async function searchProjectIntelligence(input: LocationInput): Promise<P
       const payload = await provider.getJson<{ elements?: Array<{ tags?: { name?: string; amenity?: string; shop?: string; office?: string }; lat?: number; lon?: number; center?: { lat: number; lon: number } }> }>(overpassUrl);
       result.competitors = (Array.isArray(payload.elements) ? payload.elements : [])
         .flatMap((item) => {
-          const name = item.tags?.name?.trim();
+          if (!item || typeof item !== "object") return [];
+          const name = typeof item.tags?.name === "string" ? item.tags.name.trim() : "";
           const point = coordinates(item.lat ?? item.center?.lat, item.lon ?? item.center?.lon);
           return name && point
             ? [{ name, category: item.tags?.amenity ?? item.tags?.shop ?? item.tags?.office ?? "mapped business", ...point }]
@@ -151,6 +156,7 @@ export async function searchProjectIntelligence(input: LocationInput): Promise<P
         .slice(0, 50);
       sources.push({ source: "OpenStreetMap Overpass", url: overpassUrl, fetchedAt: new Date().toISOString(), confidence: "MEDIUM" });
       limitations.push("Nearby mapped businesses are geographic listings, not independently verified competitors or a complete market census.");
+      if (!result.competitors.length) limitations.push("No named nearby businesses were returned; this does not establish that no competitors exist.");
     } catch {
       result.limitations.push("Competitor discovery could not be loaded from the map provider.");
     }

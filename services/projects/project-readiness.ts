@@ -12,6 +12,7 @@ type ReadinessProject = {
   complianceItems: Array<{ status: string }>;
   phases: Array<{ type: string; status: string }>;
   evidenceFiles: Array<{ checksum: string | null }>;
+  intelligenceSnapshots?: Array<{ fetchedAt?: Date | string }>;
 };
 
 export function isProjectDecisionCurrent(project: Pick<ReadinessProject, "assessments" | "decisions" | "financialPlans">) {
@@ -34,6 +35,18 @@ export function isProjectDecisionCurrent(project: Pick<ReadinessProject, "assess
 export function assessProjectReadiness(project: ReadinessProject, now = new Date()) {
   const quality = assessProjectQuality(project.assessments);
   const decisionCurrent = isProjectDecisionCurrent(project);
+  const fetchedAt = project.intelligenceSnapshots?.[0]?.fetchedAt;
+  const fetchedAtTime = fetchedAt ? new Date(fetchedAt).getTime() : NaN;
+  const marketResearchAgeDays = Number.isFinite(fetchedAtTime) && fetchedAtTime <= now.getTime()
+    ? Math.floor((now.getTime() - fetchedAtTime) / 86_400_000)
+    : null;
+  const marketResearchFreshness = !fetchedAt
+    ? "UNAVAILABLE"
+    : marketResearchAgeDays === null
+      ? "UNKNOWN"
+      : marketResearchAgeDays > 90
+        ? "STALE"
+        : "FRESH";
   const highOpenRisks = project.risks.filter((risk) => risk.score >= 15 && risk.status === "OPEN").length;
   const overdueRiskReviews = project.risks.filter((risk) => risk.status !== "CLOSED" && risk.reviewAt && new Date(risk.reviewAt).getTime() < now.getTime()).length;
   const pendingCompliance = project.complianceItems.filter((item) => !["APPROVED", "NOT_APPLICABLE"].includes(item.status)).length;
@@ -48,6 +61,7 @@ export function assessProjectReadiness(project: ReadinessProject, now = new Date
   ];
   return {
     quality, decisionCurrent, highOpenRisks, overdueRiskReviews, pendingCompliance, incompletePhases,
+    marketResearch: { freshness: marketResearchFreshness, ageDays: marketResearchAgeDays, fetchedAt: fetchedAt ?? null },
     checksummedFiles: project.evidenceFiles.filter((file) => Boolean(file.checksum)).length,
     evidenceFiles: project.evidenceFiles.length,
     blockers, readyToLaunch: blockers.length === 0,

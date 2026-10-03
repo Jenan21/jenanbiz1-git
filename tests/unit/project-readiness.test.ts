@@ -14,6 +14,7 @@ function project() {
     risks: [{ score: 16, status: "MITIGATING", reviewAt: "2026-01-04T00:00:00Z" }],
     complianceItems: [{ status: "SUBMITTED" }],
     evidenceFiles: [{ checksum: "checksum" }, { checksum: null }],
+    intelligenceSnapshots: [] as Array<{ fetchedAt: string }>,
   };
 }
 
@@ -57,5 +58,16 @@ describe("project review readiness", () => {
     expect(isProjectDecisionCurrent(input)).toBe(true);
     input.assessments[0]!.evidenceFiles = [];
     expect(isProjectDecisionCurrent(input)).toBe(false);
+  });
+  it("reports saved research age as an advisory without blocking launch", () => {
+    const input = project();
+    const now = new Date("2026-04-02T00:00:00Z");
+    expect(assessProjectReadiness(input, now).marketResearch.freshness).toBe("UNAVAILABLE");
+    input.intelligenceSnapshots = [{ fetchedAt: "2026-01-01T00:00:00Z" }];
+    const stale = assessProjectReadiness(input, now);
+    expect(stale.marketResearch).toMatchObject({ freshness: "STALE", ageDays: 91 });
+    expect(stale.readyToLaunch).toBe(true);
+    input.intelligenceSnapshots = [{ fetchedAt: "2026-04-03T00:00:00Z" }];
+    expect(assessProjectReadiness(input, now).marketResearch.freshness).toBe("UNKNOWN");
   });
 });

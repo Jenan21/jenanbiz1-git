@@ -52,6 +52,7 @@ export function buildProjectReportRows(project: ProjectReportRecord, intelligenc
   add(`Weighted score: ${readiness.quality.score}/100 | Completeness: ${readiness.quality.completeness}% | Rule-based verdict: ${readiness.quality.verdict}`);
   add(`Missing evidence: ${readiness.quality.missing.join(", ") || "None"} | Launch blockers: ${readiness.blockers.join(", ") || "None"}`);
   add(`Pending compliance: ${readiness.pendingCompliance} | Overdue risk reviews: ${readiness.overdueRiskReviews}`);
+  add(`Market research snapshot: ${readiness.marketResearch.freshness} | Age: ${value(readiness.marketResearch.ageDays)} days | Retrieved: ${value(readiness.marketResearch.fetchedAt)}. Snapshot age is advisory and does not guarantee that underlying source data is current.`);
   add(`Checksummed evidence files: ${readiness.checksummedFiles}/${readiness.evidenceFiles}. Checksums prove file integrity, not truthfulness.`);
   for (const assessment of project.assessments) {
     add(`${assessment.type}: ${value(assessment.score)}/100 | Recorded: ${assessment.assessedAt?.toISOString() ?? "Unavailable"}`);

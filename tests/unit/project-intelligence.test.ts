@@ -87,9 +87,9 @@ describe("project intelligence data quality", () => {
   it("rejects malformed country codes before requesting external sources", async () => {
     let requested = false;
     setProjectIntelligenceProvider({
-      getJson: async () => {
+      getJson: async <T>() => {
         requested = true;
-        return [];
+        return [] as T;
       },
     });
 

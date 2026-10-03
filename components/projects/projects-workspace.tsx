@@ -100,6 +100,7 @@ type ProjectMember = {
   user: { email: string; profile: { displayName: string | null } | null };
 };
 type Intelligence = {
+  fetchedAt?: string;
   location: { latitude: number; longitude: number; label: string } | null;
   population: { value: number | null; year: number | null };
   purchasingPower: { value: number | null; year: number | null };
@@ -696,6 +697,11 @@ export function ProjectsWorkspace({
         ...current,
         [selected.id]: result,
       }));
+      setProjects((current) => current.map((project) =>
+        project.id === selected.id
+          ? { ...project, intelligenceSnapshots: [{ ...result, fetchedAt: result.sources[0]?.fetchedAt }] }
+          : project,
+      ));
     } catch (error) {
       setMessage(
         error instanceof Error
@@ -914,6 +920,16 @@ export function ProjectsWorkspace({
               <div><span>{ar ? "امتثال يحتاج متابعة" : "Pending compliance"}</span><strong>{readiness?.pendingCompliance}</strong></div>
             </div>
             <p>{ar ? "مراجعات مخاطر متأخرة" : "Overdue risk reviews"}: {readiness?.overdueRiskReviews} · {ar ? "مطابقة الاعتماد للأدلة الحالية" : "Approval matches current evidence"}: {readiness?.decisionCurrent ? (ar ? "نعم" : "Yes") : (ar ? "تحتاج مراجعة" : "Review required")}</p>
+            <p role={readiness?.marketResearch.freshness === "STALE" || readiness?.marketResearch.freshness === "UNKNOWN" ? "alert" : "status"}>
+              {ar ? "حداثة دراسة السوق" : "Market research freshness"}:{" "}
+              {readiness?.marketResearch.freshness === "FRESH"
+                ? ar ? `محدثة منذ ${readiness.marketResearch.ageDays} يوم` : `Updated ${readiness.marketResearch.ageDays} days ago`
+                : readiness?.marketResearch.freshness === "STALE"
+                  ? ar ? `قديمة منذ ${readiness.marketResearch.ageDays} يوم؛ أعد البحث قبل الاعتماد عليها.` : `Older than 90 days (${readiness.marketResearch.ageDays} days); refresh before relying on it.`
+                  : readiness?.marketResearch.freshness === "UNKNOWN"
+                    ? ar ? "تاريخ اللقطة غير صالح؛ تحقق من المصدر." : "Snapshot date is invalid; verify the source."
+                    : ar ? "لا توجد لقطة بحث سوق محفوظة." : "No saved market research snapshot."}
+            </p>
             <details>
               <summary>{ar ? "قائمة المراجعة قبل اتخاذ القرار" : "Review checklist before a decision"}</summary>
               <ul>
@@ -1394,7 +1410,7 @@ export function ProjectsWorkspace({
                     ) : null}
                   </div>
                   <div>
-                    <span>{ar ? "منشآت قريبة على الخريطة" : "Nearby mapped businesses"}</span>
+                    <span>{ar ? "منشآت قريبة مدرجة على الخريطة" : "Nearby mapped businesses"}</span>
                     <strong>{intelligence.competitors.length}</strong>
                   </div>
                 </div>
