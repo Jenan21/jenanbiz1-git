@@ -47,6 +47,9 @@ describe("project report Unicode output", () => {
     expect(content).toContain("Linked evidence: market-study.pdf");
     expect(content).toContain("sha256-value");
     expect(content).toContain("Retrieved: 2026-02-02T00:00:00.000Z");
+    expect(content).toContain("Market research snapshot: UNAVAILABLE");
+    expect(content).toContain("Nearby mapped businesses: 0");
+    expect(content).toContain("not independently verified competitors");
   });
 
   it("renders Arabic, mixed-language evidence and long source URLs without truncation errors", async () => {
