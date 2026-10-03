@@ -98,7 +98,8 @@ export function buildProjectReportRows(project: ProjectReportRecord, intelligenc
   for (const file of project.evidenceFiles) add(`Project evidence file: ${file.fileName} | Type: ${file.mimeType} | Uploaded: ${file.createdAt.toISOString()} | SHA-256: ${value(file.checksum)}`);
   add("External intelligence and limitations", true);
   if (reportIntelligence) {
-    add(`Location: ${value(reportIntelligence.location?.label)} | Population: ${value(reportIntelligence.population.value)} (${value(reportIntelligence.population.year)}) | Purchasing power: ${value(reportIntelligence.purchasingPower.value)} (${value(reportIntelligence.purchasingPower.year)})`);
+    add(`Location: ${value(reportIntelligence.location?.label)} | Population: ${value(reportIntelligence.population.value)} (${value(reportIntelligence.population.year)}) | Purchasing power: ${value(reportIntelligence.purchasingPower.value)} (${value(reportIntelligence.purchasingPower.year)}) | Cost inflation: ${value(reportIntelligence.costInflation.value)} (${value(reportIntelligence.costInflation.year)})`);
+    add(`Nearby mapped businesses: ${reportIntelligence.competitors.length}. These listings are not independently verified competitors or a complete market census.`);
     for (const source of reportIntelligence.sources) add(`Source: ${source.source} | Retrieved: ${value(source.fetchedAt)} | URL: ${source.url} | Confidence: ${source.confidence}`);
     for (const limitation of reportIntelligence.limitations) add(`Limitation: ${limitation}`);
   } else add("No external intelligence snapshot is available. No population, demand, competitors or market valuation are invented.");

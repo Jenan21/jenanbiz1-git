@@ -1394,7 +1394,7 @@ export function ProjectsWorkspace({
                     ) : null}
                   </div>
                   <div>
-                    <span>{ar ? "منافسون" : "Competitors"}</span>
+                    <span>{ar ? "منشآت قريبة على الخريطة" : "Nearby mapped businesses"}</span>
                     <strong>{intelligence.competitors.length}</strong>
                   </div>
                 </div>
