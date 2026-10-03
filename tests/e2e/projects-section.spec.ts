@@ -117,6 +117,7 @@ test.describe.serial("projects section acceptance", () => {
     expect(evidenceUpload.status()).toBe(201);
     const evidencePayload = await evidenceUpload.json();
     expect(evidencePayload.file.projectId).toBe(projectId);
+    const evidenceFileId = evidencePayload.file.id as string;
 
     const feasibility = await page.request.post("/api/projects", {
       headers: { origin, "Content-Type": "application/json" },
@@ -175,6 +176,39 @@ test.describe.serial("projects section acceptance", () => {
       });
       expect(assessment.status(), `${type} assessment`).toBe(200);
     }
+
+    const linkedAssessment = await page.request.post("/api/projects", {
+      headers: { origin, "Content-Type": "application/json" },
+      data: {
+        action: "recordAssessment",
+        projectId,
+        type: "MARKET",
+        score: 86,
+        summary: "Market evidence uploaded and linked",
+        source: "E2E acceptance",
+        evidenceFileIds: [evidenceFileId],
+      },
+    });
+    expect(linkedAssessment.status()).toBe(200);
+    const crossProjectEvidence = await page.request.post("/api/projects", {
+      headers: { origin, "Content-Type": "application/json" },
+      data: {
+        action: "recordAssessment",
+        projectId: companionProjectId,
+        type: "MARKET",
+        score: 86,
+        summary: "Cross-project evidence must be denied",
+        source: "E2E acceptance",
+        evidenceFileIds: [evidenceFileId],
+      },
+    });
+    expect(crossProjectEvidence.status()).toBe(409);
+    const linkedDetail = await page.request.get(`/api/projects/${projectId}`);
+    expect(linkedDetail.status()).toBe(200);
+    const marketAssessment = (await linkedDetail.json()).project.assessments.find(
+      (item: { type: string }) => item.type === "MARKET",
+    );
+    expect(marketAssessment.evidenceFiles.map((item: { fileAssetId: string }) => item.fileAssetId)).toEqual([evidenceFileId]);
 
     const prematureStart = await page.request.post("/api/projects", {
       headers: { origin, "Content-Type": "application/json" },

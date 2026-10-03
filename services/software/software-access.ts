@@ -1,5 +1,6 @@
 import { OrganizationMemberStatus } from "@/generated/prisma/client";
 import { db } from "@/lib/db";
+import { collaboratorUserSelect } from "@/lib/auth/user-select";
 
 export async function requireSoftwareMembership(organizationId: string, userId: string, ownerOnly = false) {
   const membership = await db.organizationMember.findFirst({
@@ -27,7 +28,7 @@ export async function getSoftwareCompany(organizationId: string, userId: string)
       softwareBranches: { orderBy: [{ status: "asc" }, { name: "asc" }] },
       softwareSettings: true,
       members: {
-        include: { role: { select: { key: true, name: true } }, user: { include: { profile: true } } },
+        include: { role: { select: { key: true, name: true } }, user: { select: collaboratorUserSelect } },
         orderBy: { createdAt: "asc" },
       },
     },

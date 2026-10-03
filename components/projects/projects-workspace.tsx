@@ -18,6 +18,9 @@ import {
 } from "@/components/projects/project-launch-records";
 import type { Locale } from "@/types/i18n";
 import type { ProjectFocus } from "@/lib/projects/project-flow-routes";
+import { assessProjectQuality } from "@/services/projects/project-quality";
+import { assessProjectReadiness } from "@/services/projects/project-readiness";
+import type { FeasibilityResult } from "@/services/projects/project-calculations";
 
 const ProjectIntelligenceMap = dynamic(
   () =>
@@ -56,6 +59,12 @@ type ProjectAssessment = {
   status: PhaseStatus;
   summary: string | null;
   source: string | null;
+  assessedAt: string | null;
+  evidenceFiles: Array<{
+    fileAssetId: string;
+    createdAt: string;
+    fileAsset: Pick<EvidenceFile, "id" | "fileName" | "mimeType" | "checksum" | "createdAt">;
+  }>;
 };
 type ProjectDecision = {
   id: string;
@@ -63,8 +72,9 @@ type ProjectDecision = {
   weightedScore: number;
   rationale: string;
   createdAt: string;
+  evidenceSnapshot: unknown;
 };
-type ProjectFinancialPlan = { id: string; version: number; createdAt: string };
+type ProjectFinancialPlan = { id: string; version: number; createdAt: string; inputs: Record<string, number>; baseCase: FeasibilityResult & { sensitivity?: SensitivityResult[] }; scenarios: ScenarioResult[] };
 type ProjectRisk = {
   id: string;
   category: string;
@@ -91,6 +101,7 @@ type ProjectMember = {
   user: { email: string; profile: { displayName: string | null } | null };
 };
 type Intelligence = {
+  fetchedAt?: string;
   location: { latitude: number; longitude: number; label: string } | null;
   population: { value: number | null; year: number | null };
   purchasingPower: { value: number | null; year: number | null };
@@ -101,7 +112,7 @@ type Intelligence = {
     latitude: number;
     longitude: number;
   }>;
-  sources: Array<{ source: string; url: string; confidence: string }>;
+  sources: Array<{ source: string; url: string; fetchedAt: string; confidence: string }>;
   limitations: string[];
 };
 type Project = {
@@ -130,15 +141,8 @@ type Quality = {
   readyForDecision: boolean;
   verdict: "APPROVE" | "REVIEW" | "REJECT" | "INCOMPLETE";
 };
-type Feasibility = {
-  breakEvenUnits: number;
-  monthlyRevenue: number;
-  monthlyProfit: number;
-  roiPercent: number;
-  paybackMonths: number | null;
-  netPresentValue: number;
-  internalRateReturn: number | null;
-};
+type Feasibility = FeasibilityResult;
+type SensitivityResult = { driver: string; changePercent: number; netPresentValue: number; npvDelta: number };
 type ScenarioResult = Feasibility & {
   scenario: "PESSIMISTIC" | "EXPECTED" | "OPTIMISTIC";
 };
@@ -188,7 +192,7 @@ const riskLabels: Record<string, [string, string]> = {
   compliance: ["مخاطر امتثال", "Compliance risk"],
 };
 const focusSelectors: Record<ProjectFocus, string> = {
-  assessment: ".project-evidence-list",
+  assessment: "article[data-project-focus='assessment']",
   compliance: ".project-compliance",
   create: ".project-create-form",
   evidence: ".project-evidence-library",
@@ -204,55 +208,7 @@ const focusSelectors: Record<ProjectFocus, string> = {
 };
 
 function qualityFor(project: Project | undefined): Quality {
-  if (!project)
-    return {
-      score: 0,
-      completeness: 0,
-      readyForDecision: false,
-      verdict: "INCOMPLETE",
-    };
-  const weights: Record<AssessmentType, number> = {
-    MARKET: 25,
-    FINANCIAL: 25,
-    OPERATIONAL: 15,
-    RISK: 15,
-    TECHNICAL: 10,
-    COMPLIANCE: 10,
-  };
-  const complete = project.assessments.filter(
-    (assessment) =>
-      assessment.score !== null &&
-      Boolean(assessment.summary?.trim()) &&
-      Boolean(assessment.source?.trim()),
-  );
-  const score = Math.round(
-    assessmentTypes.reduce(
-      (total, type) =>
-        total +
-        ((project.assessments.find((assessment) => assessment.type === type)
-          ?.score ?? 0) *
-          weights[type]) /
-          100,
-      0,
-    ),
-  );
-  const completeness = Math.round(
-    (complete.length / assessmentTypes.length) * 100,
-  );
-  const verdict =
-    complete.length !== assessmentTypes.length
-      ? "INCOMPLETE"
-      : score >= 75
-        ? "APPROVE"
-        : score >= 55
-          ? "REVIEW"
-          : "REJECT";
-  return {
-    score,
-    completeness,
-    readyForDecision: complete.length === assessmentTypes.length,
-    verdict,
-  };
+  return assessProjectQuality(project?.assessments ?? []);
 }
 
 function statusClass(status: PhaseStatus) {
@@ -290,34 +246,33 @@ export function ProjectsWorkspace({
   const [description, setDescription] = useState("");
   const [assessmentType, setAssessmentType] =
     useState<AssessmentType>("MARKET");
-  const [assessmentScore, setAssessmentScore] = useState("80");
+  const [assessmentScore, setAssessmentScore] = useState("");
   const [assessmentSummary, setAssessmentSummary] = useState("");
   const [assessmentSource, setAssessmentSource] = useState("");
+  const [assessmentEvidenceSelections, setAssessmentEvidenceSelections] = useState<Record<string, string[]>>({});
   const [phaseNotes, setPhaseNotes] = useState("");
   const [locationQuery, setLocationQuery] = useState("");
   const [intelligenceByProject, setIntelligenceByProject] = useState<
     Record<string, Intelligence>
   >({});
-  const [feasibility, setFeasibility] = useState<Feasibility | null>(null);
-  const [scenarios, setScenarios] = useState<ScenarioResult[]>([]);
   const [risk, setRisk] = useState<Risk | null>(null);
   const [financials, setFinancials] = useState({
-    initialInvestment: "100000",
-    monthlyFixedCosts: "10000",
-    variableCostPerUnit: "20",
-    pricePerUnit: "50",
-    monthlyUnits: "1000",
-    months: "12",
-    annualDiscountRate: "10",
-    annualInflationRate: "2",
-    taxRate: "15",
+    initialInvestment: "",
+    monthlyFixedCosts: "",
+    variableCostPerUnit: "",
+    pricePerUnit: "",
+    monthlyUnits: "",
+    months: "",
+    annualDiscountRate: "",
+    annualInflationRate: "",
+    taxRate: "",
   });
   const [riskFactors, setRiskFactors] = useState({
-    market: "30",
-    financial: "30",
-    operational: "30",
-    technical: "30",
-    compliance: "30",
+    market: "",
+    financial: "",
+    operational: "",
+    technical: "",
+    compliance: "",
   });
   const [decisionRationale, setDecisionRationale] = useState("");
   const [riskRecord, setRiskRecord] = useState({
@@ -442,14 +397,22 @@ export function ProjectsWorkspace({
   useEffect(() => {
     if (loading) return;
     const timeout = window.setTimeout(() => {
-      document
-        .querySelector<HTMLElement>(focusSelectors[focus])
-        ?.scrollIntoView({ behavior: "smooth", block: "start" });
+      const target = document.querySelector<HTMLElement>(focusSelectors[focus]);
+      if (!target) return;
+      const header = document.querySelector<HTMLElement>(".platform-header");
+      target.style.scrollMarginTop = `${Math.ceil(header?.getBoundingClientRect().height ?? 0) + 26}px`;
+      target.scrollIntoView({ behavior: "smooth", block: "start" });
     }, 120);
     return () => window.clearTimeout(timeout);
   }, [focus, loading, selectedId]);
 
   const selected = projects.find((project) => project.id === selectedId);
+  const assessmentEvidenceSelectionKey = `${selectedId}:${assessmentType}`;
+  const assessmentEvidenceFileIds = (
+    assessmentEvidenceSelections[assessmentEvidenceSelectionKey] ??
+    selected?.assessments.find((item) => item.type === assessmentType)?.evidenceFiles.map((item) => item.fileAssetId) ??
+    []
+  ).filter((id) => selected?.evidenceFiles.some((file) => file.id === id));
   const intelligence = selected
     ? (intelligenceByProject[selected.id] ?? null)
     : null;
@@ -462,6 +425,20 @@ export function ProjectsWorkspace({
   );
   const latestDecision = selected?.decisions[0];
   const latestFinancialPlan = selected?.financialPlans[0];
+  const feasibility = latestFinancialPlan?.baseCase?.modelVersion === "JENAN_FINANCE_V2" ? latestFinancialPlan.baseCase : null;
+  const scenarios = feasibility ? latestFinancialPlan?.scenarios ?? [] : [];
+  const readiness = selected ? assessProjectReadiness(selected) : null;
+  const financialProjectId = selected?.id;
+  const financialVersion = latestFinancialPlan?.version;
+  const hydrateFinancialInputs = useEffectEvent(() => {
+    const inputs = latestFinancialPlan?.inputs;
+    setFinancials((current) => Object.fromEntries(Object.keys(current).map((key) => [key, typeof inputs?.[key] === "number" ? String(inputs[key]) : ""])) as typeof current);
+    setRisk(null);
+  });
+  useEffect(() => {
+    const timeout = window.setTimeout(hydrateFinancialInputs, 0);
+    return () => window.clearTimeout(timeout);
+  }, [financialProjectId, financialVersion]);
   const prerequisitesComplete = selected
     ? ["ANALYSIS", "FEASIBILITY", "EVALUATION", "PLANNING"].every((type) =>
         selected.phases.some(
@@ -537,6 +514,7 @@ export function ProjectsWorkspace({
         score: Number(assessmentScore),
         summary: assessmentSummary,
         source: assessmentSource,
+        evidenceFileIds: assessmentEvidenceFileIds,
       },
       ar ? "تم حفظ دليل التقييم." : "Assessment evidence saved.",
     );
@@ -550,7 +528,7 @@ export function ProjectsWorkspace({
     setMessage("");
     try {
       if (!selected) return;
-      const result = await request<{
+      await request<{
         base: Feasibility;
         scenarios: ScenarioResult[];
       }>({
@@ -564,8 +542,6 @@ export function ProjectsWorkspace({
           ]),
         ),
       });
-      setFeasibility(result.base);
-      setScenarios(result.scenarios);
       await load();
     } catch (error) {
       setMessage(
@@ -725,6 +701,11 @@ export function ProjectsWorkspace({
         ...current,
         [selected.id]: result,
       }));
+      setProjects((current) => current.map((project) =>
+        project.id === selected.id
+          ? { ...project, intelligenceSnapshots: [{ ...result, fetchedAt: result.sources[0]?.fetchedAt }] }
+          : project,
+      ));
     } catch (error) {
       setMessage(
         error instanceof Error
@@ -931,6 +912,45 @@ export function ProjectsWorkspace({
       </div>
       {selected && focus !== "create" ? (
         <div className="project-flow">
+          <article className="card project-review-panel" aria-label={ar ? "فحص جودة المشروع" : "Project review checks"}>
+            <header className="section-heading">
+              <h3>{ar ? "فحص جودة الأدلة وجاهزية التنفيذ" : "Evidence review and delivery readiness"}</h3>
+              <p>{ar ? "سجلات المستخدم وليست تحققاً مستقلاً. اكتمال البيانات أو بصمة الملف لا يثبت صحة المصدر ولا يضمن الاستثمار." : "User-recorded data, not independent verification. Completeness and file checksums do not prove source validity or guarantee an investment."}</p>
+            </header>
+            <div className="project-quality">
+              <div><span>{ar ? "اكتمال الأدلة" : "Evidence completeness"}</span><strong>{readiness?.quality.completeness}%</strong></div>
+              <div><span>{ar ? "أدلة ببصمة رقمية" : "Checksummed files"}</span><strong>{readiness?.checksummedFiles}/{readiness?.evidenceFiles}</strong></div>
+              <div><span>{ar ? "مخاطر عالية مفتوحة" : "Open high risks"}</span><strong>{readiness?.highOpenRisks}</strong></div>
+              <div><span>{ar ? "امتثال يحتاج متابعة" : "Pending compliance"}</span><strong>{readiness?.pendingCompliance}</strong></div>
+            </div>
+            <p>{ar ? "مراجعات مخاطر متأخرة" : "Overdue risk reviews"}: {readiness?.overdueRiskReviews} · {ar ? "مطابقة الاعتماد للأدلة الحالية" : "Approval matches current evidence"}: {readiness?.decisionCurrent ? (ar ? "نعم" : "Yes") : (ar ? "تحتاج مراجعة" : "Review required")}</p>
+            <p role={readiness?.marketResearch.freshness === "STALE" || readiness?.marketResearch.freshness === "UNKNOWN" ? "alert" : "status"}>
+              {ar ? "حداثة دراسة السوق" : "Market research freshness"}:{" "}
+              {readiness?.marketResearch.freshness === "FRESH"
+                ? ar ? `محدثة منذ ${readiness.marketResearch.ageDays} يوم` : `Updated ${readiness.marketResearch.ageDays} days ago`
+                : readiness?.marketResearch.freshness === "STALE"
+                  ? ar ? `قديمة منذ ${readiness.marketResearch.ageDays} يوم؛ أعد البحث قبل الاعتماد عليها.` : `Older than 90 days (${readiness.marketResearch.ageDays} days); refresh before relying on it.`
+                  : readiness?.marketResearch.freshness === "UNKNOWN"
+                    ? ar ? "تاريخ اللقطة غير صالح؛ تحقق من المصدر." : "Snapshot date is invalid; verify the source."
+                    : ar ? "لا توجد لقطة بحث سوق محفوظة." : "No saved market research snapshot."}
+            </p>
+            <details>
+              <summary>{ar ? "قائمة المراجعة قبل اتخاذ القرار" : "Review checklist before a decision"}</summary>
+              <ul>
+                <li>{ar ? "تحقق من المصدر وتاريخ جمع البيانات وافتراضات الطلب والتكاليف مع مختص." : "Validate sources, collection dates, demand and cost assumptions with a qualified reviewer."}</li>
+                <li>{ar ? "راجع الضرائب والتراخيص والمخاطر والسيناريوهات؛ النتيجة ليست تصديقاً مهنياً مستقلاً." : "Review taxes, permits, risks and scenarios; the result is not independent professional certification."}</li>
+                {readiness?.quality.missing.map((type) => <li key={type}>{ar ? `دليل ناقص أو غير صالح: ${assessmentNames[type][0]}` : `Missing or invalid evidence: ${assessmentNames[type][1]}`}</li>)}
+                {readiness?.blockers.map((blocker) => <li key={blocker}>{({
+                  INCOMPLETE_OR_UNAPPROVED_ASSESSMENTS: ar ? "أكمل أدلة التقييم ومراجعتها." : "Complete and review assessment evidence.",
+                  NO_SAVED_FINANCIAL_PLAN: ar ? "احفظ دراسة مالية بمدخلات صريحة." : "Save a financial study with explicit inputs.",
+                  NO_APPROVAL_DECISION: ar ? "سجل قرار اعتماد بشري موثق." : "Record a documented human approval.",
+                  APPROVAL_REQUIRES_REVIEW: ar ? "تغيرت الأدلة أو النسخة المالية؛ أعد مراجعة الاعتماد." : "Evidence or financial version changed; review the approval.",
+                  OPEN_HIGH_RISKS: ar ? "عالج المخاطر العالية المفتوحة." : "Address open high risks.",
+                  INCOMPLETE_PREREQUISITE_PHASES: ar ? "أكمل مراحل التحليل والجدوى والتقييم والتخطيط." : "Complete analysis, feasibility, evaluation and planning.",
+                } as Record<string, string>)[blocker]}</li>)}
+              </ul>
+            </details>
+          </article>
           <article
             className="card project-workflow"
             data-project-focus={
@@ -1038,6 +1058,7 @@ export function ProjectsWorkspace({
                     ? "حسابات قابلة للتكرار من مدخلات مالية صريحة، تشمل الضريبة والتضخم والخصم النقدي."
                     : "Repeatable calculations from explicit financial inputs, including tax, inflation, and discounting."}
                 </p>
+                <p>{ar ? "أدخل قيمك الفعلية؛ لا توجد قيم تجريبية. تظهر النتائج للنسخة المحفوظة فقط بعد الحساب." : "Enter your actual inputs; no demo values are prefilled. Results belong to the saved version, not unsaved edits."}</p>
               </header>
               <form
                 className="project-calculator-form"
@@ -1050,8 +1071,9 @@ export function ProjectsWorkspace({
                       : financialLabels[field]![1]}
                     <input
                       required
-                      min="0"
-                      step="any"
+                      min={field === "months" || field === "monthlyUnits" ? "1" : "0"}
+                      max={field === "months" ? "600" : field === "monthlyUnits" ? "1000000000" : field.endsWith("Rate") ? "100" : "1000000000000"}
+                      step={field === "months" || field === "monthlyUnits" ? "1" : "any"}
                       type="number"
                       value={value}
                       onChange={(event) =>
@@ -1091,11 +1113,11 @@ export function ProjectsWorkspace({
                   </div>
                   <div className="card">
                     <span>ROI</span>
-                    <strong>{feasibility.roiPercent.toFixed(1)}%</strong>
+                    <strong>{feasibility.roiPercent === null ? (ar ? "غير معرّف" : "Undefined") : `${feasibility.roiPercent.toFixed(1)}%`}</strong>
                   </div>
                   <div className="card">
                     <span>{ar ? "نقطة التعادل" : "Break-even"}</span>
-                    <strong>{feasibility.breakEvenUnits}</strong>
+                    <strong>{feasibility.breakEvenUnits ?? (ar ? "لا هامش مساهمة موجب" : "No positive contribution")}</strong>
                   </div>
                   <div className="card">
                     <span>NPV</span>
@@ -1111,7 +1133,33 @@ export function ProjectsWorkspace({
                         : `${feasibility.internalRateReturn.toFixed(1)}%`}
                     </strong>
                   </div>
+                  <div className="card"><span>{ar ? "الاسترداد خلال أفق الدراسة (شهر)" : "Payback within study horizon (months)"}</span><strong>{feasibility.paybackMonths?.toFixed(2) ?? (ar ? "لم يتحقق" : "Not reached")}</strong></div>
+                  <div className="card"><span>{ar ? "الاسترداد المخصوم (شهر)" : "Discounted payback (months)"}</span><strong>{feasibility.discountedPaybackMonths?.toFixed(2) ?? (ar ? "لم يتحقق" : "Not reached")}</strong></div>
+                  <div className="card"><span>{ar ? "هامش الأمان %" : "Margin of safety %"}</span><strong>{feasibility.marginOfSafetyPercent?.toFixed(2) ?? "—"}</strong></div>
                 </div>
+              ) : null}
+              {latestFinancialPlan && !feasibility ? <p role="status">{ar ? "نسخة مالية سابقة؛ أعد الحساب من مدخلات مراجعة لتفعيل النموذج الحالي." : "Legacy financial version; recalculate reviewed inputs to use the current model."}</p> : null}
+              {feasibility ? (
+                <section className="project-financial-audit">
+                  <h3>{ar ? "منهجية النموذج وحدوده" : "Model methodology and limitations"}</h3>
+                  <p>{ar ? `النسخة المحفوظة ${latestFinancialPlan?.version} · ${feasibility.modelVersion} · ${latestFinancialPlan?.createdAt}` : `Saved version ${latestFinancialPlan?.version} · ${feasibility.modelVersion} · ${latestFinancialPlan?.createdAt}`}</p>
+                  <p>{ar ? "معدلات سنوية فعالة وتدفقات نهاية الشهر. يفترض ثبات الطلب وتضخماً موحداً للإيراد والتكلفة؛ لا يشمل التمويل أو الإهلاك أو رأس المال العامل أو قيمة نهائية. المدخلات غير متحقق منها مستقلاً." : "Effective annual rates and month-end cash flows. Constant demand and equal revenue/cost escalation are assumed; financing, depreciation, working capital and terminal value are excluded. Inputs are not independently verified."}</p>
+                  <details>
+                    <summary>{ar ? "سجل التدفقات النقدية الشهري" : "Monthly cash-flow schedule"}</summary>
+                    <div className="project-table-scroll" role="region" aria-label={ar ? "جدول التدفقات النقدية" : "Cash-flow table"} tabIndex={0}>
+                      <table>
+                        <caption>{ar ? "الشهر صفر هو الاستثمار الأولي؛ القيم بعملة المشروع." : "Month zero is the initial investment; amounts use project currency."}</caption>
+                        <thead><tr>{(ar ? ["شهر", "إيراد", "تكلفة", "ضريبة", "صافي", "مخصوم", "تراكمي"] : ["Month", "Revenue", "Costs", "Tax", "Net", "Discounted", "Cumulative"]).map((label) => <th scope="col" key={label}>{label}</th>)}</tr></thead>
+                        <tbody>{feasibility.cashFlows.map((row) => <tr key={row.month}>{[row.month, row.revenue, row.costs, row.tax, row.netCashFlow, row.discountedCashFlow, row.cumulativeCashFlow].map((item, index) => <td key={index}>{item.toLocaleString(ar ? "ar-SA" : "en-US", { maximumFractionDigits: 2 })}</td>)}</tr>)}</tbody>
+                      </table>
+                    </div>
+                  </details>
+                  <details>
+                    <summary>{ar ? "حساسية عامل واحد ±١٠٪" : "One-factor sensitivity ±10%"}</summary>
+                    <p>{ar ? "يتغير عامل واحد فقط مع تثبيت بقية المدخلات؛ هذه افتراضات وليست احتمالات أو توقعات سوقية." : "Only one factor changes while other inputs remain fixed; these are assumptions, not probabilities or market forecasts."}</p>
+                    <ul>{feasibility.sensitivity?.map((item) => <li key={`${item.driver}-${item.changePercent}`}>{financialLabels[item.driver]?.[ar ? 0 : 1]} {item.changePercent}% · NPV {item.netPresentValue.toLocaleString()} · Δ {item.npvDelta.toLocaleString()}</li>)}</ul>
+                  </details>
+                </section>
               ) : null}
               {scenarios.length ? (
                 <div className="project-scenarios">
@@ -1129,7 +1177,7 @@ export function ProjectsWorkspace({
                       </strong>
                       <small>
                         NPV {scenario.netPresentValue.toLocaleString()} · ROI{" "}
-                        {scenario.roiPercent.toFixed(1)}%
+                        {scenario.roiPercent === null ? "—" : `${scenario.roiPercent.toFixed(1)}%`}
                       </small>
                     </div>
                   ))}
@@ -1146,7 +1194,7 @@ export function ProjectsWorkspace({
                 <p>
                   {ar
                     ? "القرار محسوب من الدرجة والدليل والمصدر لكل محور."
-                    : "The decision is derived from score, evidence, and source for every area."}
+                    : "The rule-based recommendation uses user-recorded scores and source claims; it is not independent verification."}
                 </p>
               </header>
               <div className="project-quality">
@@ -1216,6 +1264,35 @@ export function ProjectsWorkspace({
                     }
                   />
                 </label>
+                <fieldset className="project-assessment-evidence-picker">
+                  <legend>{ar ? "ملفات داعمة من مكتبة المشروع" : "Supporting files from project library"}</legend>
+                  {selected.evidenceFiles.length ? (
+                    <div className="project-assessment-evidence-picker__list">
+                      {selected.evidenceFiles.map((file) => (
+                        <label className="project-assessment-evidence-picker__item" key={file.id}>
+                          <input
+                            checked={assessmentEvidenceFileIds.includes(file.id)}
+                            onChange={(event) => setAssessmentEvidenceSelections((current) => {
+                              const existingIds = current[assessmentEvidenceSelectionKey] ??
+                                selected.assessments.find((item) => item.type === assessmentType)?.evidenceFiles.map((item) => item.fileAssetId) ??
+                                [];
+                              return {
+                                ...current,
+                                [assessmentEvidenceSelectionKey]: event.target.checked
+                                  ? [...new Set([...existingIds, file.id])]
+                                  : existingIds.filter((id) => id !== file.id),
+                              };
+                            })}
+                            type="checkbox"
+                          />
+                          <span>{file.fileName}</span>
+                        </label>
+                      ))}
+                    </div>
+                  ) : (
+                    <p>{ar ? "ارفع ملفات المشروع أولاً من مكتبة الأدلة لربطها بهذا التقييم." : "Upload project files in the evidence library before linking them to this assessment."}</p>
+                  )}
+                </fieldset>
                 <button
                   className="button button--primary"
                   type="submit"
@@ -1240,6 +1317,12 @@ export function ProjectsWorkspace({
                           ? "بانتظار دليل موثق"
                           : "Awaiting documented evidence"}
                     </small>
+                    {assessment.evidenceFiles.length ? (
+                          <small>
+                            {ar ? "الملفات الداعمة" : "Supporting files"}:{" "}
+                            {assessment.evidenceFiles.map((item) => item.fileAsset.fileName).join("، ")}
+                          </small>
+                    ) : null}
                   </li>
                 ))}
               </ul>
@@ -1331,7 +1414,7 @@ export function ProjectsWorkspace({
                     ) : null}
                   </div>
                   <div>
-                    <span>{ar ? "منافسون" : "Competitors"}</span>
+                    <span>{ar ? "منشآت قريبة مدرجة على الخريطة" : "Nearby mapped businesses"}</span>
                     <strong>{intelligence.competitors.length}</strong>
                   </div>
                 </div>
@@ -1349,7 +1432,9 @@ export function ProjectsWorkspace({
                         <a href={source.url} rel="noreferrer" target="_blank">
                           {source.source}
                         </a>
-                        <small>{source.confidence}</small>
+                        <small>
+                          {source.confidence} · {new Date(source.fetchedAt).toLocaleString(ar ? "ar-SA" : "en-US")}
+                        </small>
                       </li>
                     ))}
                   </ul>
@@ -1682,7 +1767,7 @@ export function ProjectsWorkspace({
                   <a href={`/api/files/${file.id}`}>{file.fileName}</a>
                   <span>
                     {file.mimeType} · {Number(file.sizeBytes).toLocaleString()}{" "}
-                    B
+                    B · {ar ? "رفع" : "Uploaded"} {new Date(file.createdAt).toLocaleString(ar ? "ar-SA" : "en-US")}
                   </span>
                   <small>
                     {file.checksum
@@ -1784,7 +1869,8 @@ export function ProjectsWorkspace({
                 busy ||
                 latestDecision?.verdict !== "APPROVE" ||
                 !latestFinancialPlan ||
-                !prerequisitesComplete
+                !prerequisitesComplete ||
+                !readiness?.readyToLaunch
               }
               onClick={() =>
                 void run(

@@ -24,4 +24,10 @@ describe("project rate limits", () => {
     await checkProjectRateLimit("start", request, "user-operations");
     await expect(checkProjectRateLimit("assessment", request, "user-operations")).resolves.toMatchObject({ allowed: true });
   });
+  it("limits report rendering separately from financial and intelligence operations", async () => {
+    const request = new NextRequest("http://localhost/api/projects/project/report", { headers: { "x-real-ip": "192.0.2.12" } });
+    for (let index = 0; index < 8; index++) expect((await checkProjectRateLimit("report", request, "report-user")).allowed).toBe(true);
+    expect((await checkProjectRateLimit("report", request, "report-user")).allowed).toBe(false);
+    expect((await checkProjectRateLimit("financial", request, "report-user")).allowed).toBe(true);
+  });
 });

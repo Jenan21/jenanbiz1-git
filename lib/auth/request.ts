@@ -14,7 +14,7 @@ export function getRequestContext(request: NextRequest): RequestContext {
 
 export function hasValidOrigin(request: NextRequest) {
   const origin = request.headers.get("origin");
-  if (!origin) return process.env.NODE_ENV !== "production";
+  if (!origin) return false;
   try {
     const originUrl = new URL(origin);
     const requestUrl = new URL(request.url);

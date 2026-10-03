@@ -1601,6 +1601,7 @@ model FileAsset {
   marketListing    MarketListing?        @relation(fields: [marketListingId], references: [id], onDelete: Cascade)
   uploadedById     String?
   uploadedBy       User?                 @relation("FileUploader", fields: [uploadedById], references: [id], onDelete: SetNull)
+  assessmentEvidence ProjectAssessmentEvidence[]
   storageKey       String                @unique
   fileName         String
   mimeType         String
@@ -3168,6 +3169,7 @@ model ProjectAssessment {
   assessedAt DateTime?
   project    Project                     @relation(fields: [projectId], references: [id], onDelete: Cascade)
   revisions  ProjectAssessmentRevision[]
+  evidenceFiles ProjectAssessmentEvidence[]
   createdAt  DateTime                    @default(now())
   updatedAt  DateTime                    @updatedAt
 
@@ -3192,6 +3194,17 @@ model ProjectAssessmentRevision {
   @@unique([assessmentId, version])
   @@index([projectId, createdAt])
   @@index([recordedById, createdAt])
+}
+
+model ProjectAssessmentEvidence {
+  assessmentId String
+  fileAssetId  String
+  assessment   ProjectAssessment @relation(fields: [assessmentId], references: [id], onDelete: Cascade)
+  fileAsset    FileAsset         @relation(fields: [fileAssetId], references: [id], onDelete: Cascade)
+  createdAt    DateTime          @default(now())
+
+  @@id([assessmentId, fileAssetId])
+  @@index([fileAssetId])
 }
 
 model ProjectDecision {

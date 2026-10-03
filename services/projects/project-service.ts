@@ -13,7 +13,11 @@ import {
   Prisma,
 } from "@/generated/prisma/client";
 import { db } from "@/lib/db";
+import { collaboratorUserSelect } from "@/lib/auth/user-select";
 import { assessProjectQuality } from "@/services/projects/project-quality";
+import { isProjectDecisionCurrent } from "@/services/projects/project-readiness";
+
+export class ProjectAccessError extends Error {}
 
 const phasePlan: Array<{ type: ProjectPhaseType; title: string; sequence: number }> = [
   { type: "ANALYSIS", title: "Project analysis", sequence: 1 },
@@ -48,27 +52,50 @@ function slugify(value: string) {
 function projectInclude() {
   return {
     phases: { orderBy: { sequence: "asc" as const } },
-    assessments: { orderBy: { type: "asc" as const } },
+    assessments: {
+      orderBy: { type: "asc" as const },
+      include: {
+        evidenceFiles: {
+          orderBy: { createdAt: "asc" as const },
+          include: {
+            fileAsset: { select: { id: true, fileName: true, mimeType: true, checksum: true, createdAt: true } },
+          },
+        },
+      },
+    },
     decisions: { orderBy: { createdAt: "desc" as const }, take: 1 },
     financialPlans: { orderBy: { version: "desc" as const }, take: 1 },
     risks: { orderBy: [{ score: "desc" as const }, { createdAt: "desc" as const }] },
     complianceItems: { orderBy: [{ kind: "asc" as const }, { createdAt: "desc" as const }] },
     vendors: { orderBy: [{ kind: "asc" as const }, { createdAt: "desc" as const }] },
     evidenceFiles: { select: { id: true, fileName: true, mimeType: true, sizeBytes: true, checksum: true, createdAt: true }, orderBy: { createdAt: "desc" as const } },
-    members: { include: { user: { include: { profile: true } } }, orderBy: { createdAt: "asc" as const } },
+    members: { include: { user: { select: collaboratorUserSelect } }, orderBy: { createdAt: "asc" as const } },
     organization: true,
-    createdBy: { include: { profile: true } },
+    createdBy: { select: collaboratorUserSelect },
     intelligenceSnapshots: { orderBy: { fetchedAt: "desc" as const }, take: 1 },
   } satisfies Prisma.ProjectInclude;
 }
 
-function projectAccessWhere(userId: string, roles?: ProjectMemberRole[]) {
+export function projectAccessWhere(userId: string, roles?: ProjectMemberRole[]) {
   return {
     OR: [
       { createdById: userId },
-      { members: { some: roles ? { userId, role: { in: roles } } : { userId } } },
+      { members: { some: {
+        userId,
+        ...(roles ? { role: { in: roles } } : {}),
+        user: { status: "ACTIVE" as const, emailVerifiedAt: { not: null } },
+      } } },
     ],
   };
+}
+
+async function lockProjectMutation(transaction: Prisma.TransactionClient, projectId: string, userId: string, roles: ProjectMemberRole[]) {
+  const project = await transaction.project.findFirst({
+    where: { id: projectId, ...projectAccessWhere(userId, roles) },
+    select: { id: true },
+  });
+  if (!project) throw new Error("Project not found");
+  await transaction.$queryRaw`SELECT "id" FROM "Project" WHERE "id" = ${projectId} FOR UPDATE`;
 }
 
 export async function listUserProjects(userId: string) {
@@ -189,15 +216,17 @@ export async function addProjectMember(
 ) {
   return db.$transaction(async (transaction) => {
     const project = await transaction.project.findFirst({ where: { id: projectId, ...projectAccessWhere(userId, [ProjectMemberRole.OWNER]) }, select: { id: true } });
-    if (!project) throw new Error("Project owner access required");
-    const memberUser = await transaction.user.findUnique({ where: { email: input.email.trim().toLowerCase() }, select: { id: true } });
+    if (!project) throw new ProjectAccessError("Project owner access required");
+    const memberUser = await transaction.user.findUnique({ where: { email: input.email.trim().toLowerCase() }, select: { id: true, emailVerifiedAt: true, status: true } });
     if (!memberUser) throw new Error("Project member user not found");
     if (memberUser.id === userId) throw new Error("Project owner is already a member");
+    if (!memberUser.emailVerifiedAt || memberUser.status !== "ACTIVE")
+      throw new ProjectAccessError("Project membership requires an active account with a verified email");
     const member = await transaction.projectMember.upsert({
       where: { projectId_userId: { projectId, userId: memberUser.id } },
       create: { projectId, userId: memberUser.id, addedById: userId, role: input.role },
       update: { role: input.role, addedById: userId },
-      include: { user: { include: { profile: true } } },
+      include: { user: { select: collaboratorUserSelect } },
     });
     await transaction.auditLog.create({
       data: { actorId: userId, action: "project.member.upserted", entityType: "ProjectMember", entityId: member.id, metadata: { projectId, memberUserId: member.userId, role: member.role } },
@@ -216,9 +245,14 @@ export async function updateProjectPhase(
   const phase = phasePlan.find((item) => item.type === phaseType);
   if (!phase) throw new Error("Unknown project phase");
   return db.$transaction(async (transaction) => {
+    await lockProjectMutation(transaction, projectId, userId, [ProjectMemberRole.OWNER, ProjectMemberRole.EDITOR]);
     const project = await transaction.project.findFirst({
       where: { id: projectId, ...projectAccessWhere(userId, [ProjectMemberRole.OWNER, ProjectMemberRole.EDITOR]) },
-      include: { phases: { orderBy: { sequence: "asc" } }, assessments: true },
+      include: {
+        phases: { orderBy: { sequence: "asc" } },
+        assessments: { include: { evidenceFiles: { select: { fileAssetId: true, fileAsset: { select: { checksum: true } } } } } },
+        financialPlans: { orderBy: { version: "desc" }, take: 1 },
+      },
     });
     if (!project) throw new Error("Project not found");
     const currentPhase = project.phases.find((item) => item.type === phaseType);
@@ -245,6 +279,7 @@ export async function updateProjectPhase(
         if (!decision || decision.verdict !== ProjectDecisionVerdict.APPROVE) {
           throw new Error("A recorded approval decision is required before completing the evaluation phase");
         }
+        if (!isProjectDecisionCurrent({ ...project, decisions: [decision] })) throw new Error("Project evidence or financial plan changed after approval; review and record a new decision");
       }
     }
 
@@ -289,7 +324,7 @@ export async function updateProjectPhase(
 
 export async function recordProjectAssessment(
   projectId: string,
-  input: { type: ProjectAssessmentType; score?: number; summary?: string; source?: string },
+  input: { type: ProjectAssessmentType; score?: number; summary?: string; source?: string; evidenceFileIds?: string[] },
   userId: string,
 ) {
   const score = input.score;
@@ -302,8 +337,19 @@ export async function recordProjectAssessment(
   for (let attempt = 0; attempt < 3; attempt += 1) {
     try {
       return await db.$transaction(async (transaction) => {
+    await lockProjectMutation(transaction, projectId, userId, [ProjectMemberRole.OWNER, ProjectMemberRole.EDITOR]);
     const project = await transaction.project.findFirst({ where: { id: projectId, ...projectAccessWhere(userId, [ProjectMemberRole.OWNER, ProjectMemberRole.EDITOR]) } });
     if (!project) throw new Error("Project not found");
+    const evidenceFileIds = input.evidenceFileIds;
+    if (evidenceFileIds !== undefined) {
+      const projectFiles = await transaction.fileAsset.findMany({
+        where: { id: { in: evidenceFileIds }, projectId },
+        select: { id: true },
+      });
+      if (projectFiles.length !== evidenceFileIds.length) {
+        throw new Error("Assessment evidence files must belong to the same project");
+      }
+    }
     const assessment = await transaction.projectAssessment.upsert({
       where: { projectId_type: { projectId, type: input.type } },
       update: {
@@ -323,6 +369,14 @@ export async function recordProjectAssessment(
         assessedAt: new Date(),
       },
     });
+    if (evidenceFileIds !== undefined) {
+      await transaction.projectAssessmentEvidence.deleteMany({ where: { assessmentId: assessment.id } });
+      if (evidenceFileIds.length) {
+        await transaction.projectAssessmentEvidence.createMany({
+          data: evidenceFileIds.map((fileAssetId) => ({ assessmentId: assessment.id, fileAssetId })),
+        });
+      }
+    }
     const revisionCount = await transaction.projectAssessmentRevision.count({ where: { assessmentId: assessment.id } });
     await transaction.projectAssessmentRevision.create({
       data: {
@@ -341,14 +395,22 @@ export async function recordProjectAssessment(
         action: "project.assessment.recorded",
         entityType: "ProjectAssessment",
         entityId: assessment.id,
-        metadata: { projectId, type: input.type, score: input.score ?? null },
+        metadata: { projectId, type: input.type, score: input.score ?? null, evidenceFileIds: evidenceFileIds ?? null },
       },
     });
         return assessment;
       }, { isolationLevel: Prisma.TransactionIsolationLevel.Serializable });
     } catch (error) {
       const code = typeof error === "object" && error && "code" in error ? String(error.code) : "";
-      if (!(["P2002", "P2034"].includes(code) && attempt < 2)) throw error;
+      const meta = error instanceof Prisma.PrismaClientKnownRequestError ? error.meta as {
+        code?: string; driverAdapterError?: { cause?: { originalCode?: string; kind?: string } };
+      } | undefined : undefined;
+      const rawConflict = code === "P2010" && (
+        ["40001", "40P01"].includes(meta?.code ?? "") ||
+        ["40001", "40P01"].includes(meta?.driverAdapterError?.cause?.originalCode ?? "") ||
+        meta?.driverAdapterError?.cause?.kind === "TransactionWriteConflict"
+      );
+      if (!((["P2002", "P2034"].includes(code) || rawConflict) && attempt < 2)) throw error;
     }
   }
   throw new Error("Assessment revision could not be recorded after retry");
@@ -360,9 +422,11 @@ export async function saveProjectFinancialPlan(
   userId: string,
 ) {
   return db.$transaction(async (transaction) => {
+    await lockProjectMutation(transaction, projectId, userId, [ProjectMemberRole.OWNER, ProjectMemberRole.EDITOR]);
     const project = await transaction.project.findFirst({ where: { id: projectId, ...projectAccessWhere(userId, [ProjectMemberRole.OWNER, ProjectMemberRole.EDITOR]) }, select: { id: true } });
     if (!project) throw new Error("Project not found");
-    const version = (await transaction.projectFinancialPlan.count({ where: { projectId } })) + 1;
+    const previous = await transaction.projectFinancialPlan.aggregate({ where: { projectId }, _max: { version: true } });
+    const version = (previous._max.version ?? 0) + 1;
     const plan = await transaction.projectFinancialPlan.create({
       data: { projectId, createdById: userId, version, ...input },
     });
@@ -382,6 +446,7 @@ export async function createProjectRisk(
     throw new Error("Risk likelihood and impact must be integers from 1 to 5");
   }
   return db.$transaction(async (transaction) => {
+    await lockProjectMutation(transaction, projectId, userId, [ProjectMemberRole.OWNER, ProjectMemberRole.EDITOR]);
     const project = await transaction.project.findFirst({ where: { id: projectId, ...projectAccessWhere(userId, [ProjectMemberRole.OWNER, ProjectMemberRole.EDITOR]) }, select: { id: true } });
     if (!project) throw new Error("Project not found");
     const risk = await transaction.projectRisk.create({
@@ -411,6 +476,7 @@ export async function updateProjectRiskStatus(
   userId: string,
 ) {
   return db.$transaction(async (transaction) => {
+    await lockProjectMutation(transaction, projectId, userId, [ProjectMemberRole.OWNER, ProjectMemberRole.EDITOR]);
     const risk = await transaction.projectRisk.findFirst({ where: { id: riskId, projectId, project: projectAccessWhere(userId, [ProjectMemberRole.OWNER, ProjectMemberRole.EDITOR]) } });
     if (!risk) throw new Error("Project risk not found");
     const updated = await transaction.projectRisk.update({ where: { id: riskId }, data: { status } });
@@ -494,16 +560,20 @@ export async function recordProjectDecision(
   userId: string,
 ) {
   return db.$transaction(async (transaction) => {
+    await lockProjectMutation(transaction, projectId, userId, [ProjectMemberRole.OWNER, ProjectMemberRole.REVIEWER]);
     const project = await transaction.project.findFirst({
       where: { id: projectId, ...projectAccessWhere(userId, [ProjectMemberRole.OWNER, ProjectMemberRole.REVIEWER]) },
       include: {
-        assessments: { orderBy: { type: "asc" } },
+        assessments: {
+          orderBy: { type: "asc" },
+          include: { evidenceFiles: { select: { fileAssetId: true, fileAsset: { select: { checksum: true } } } } },
+        },
         phases: { where: { type: ProjectPhaseType.EVALUATION } },
         financialPlans: { orderBy: { version: "desc" }, take: 1 },
       },
     });
     if (!project) throw new Error("Project not found");
-    if (project.phases[0]?.status !== ProjectPhaseStatus.ACTIVE) {
+    if (![ProjectPhaseStatus.ACTIVE, ProjectPhaseStatus.COMPLETED].includes(project.phases[0]?.status as "ACTIVE" | "COMPLETED")) {
       throw new Error("Activate the evaluation phase before recording a decision");
     }
     if (!project.financialPlans[0]) {
@@ -520,7 +590,18 @@ export async function recordProjectDecision(
         verdict: input.verdict,
         weightedScore: quality.score,
         rationale: input.rationale.trim(),
-        evidenceSnapshot: project.assessments.map((assessment) => ({ type: assessment.type, score: assessment.score, summary: assessment.summary, source: assessment.source, assessedAt: assessment.assessedAt?.toISOString() ?? null })),
+        evidenceSnapshot: {
+          financialPlanId: project.financialPlans[0].id,
+          financialPlanVersion: project.financialPlans[0].version,
+          assessments: project.assessments.map((assessment) => ({
+            type: assessment.type,
+            score: assessment.score,
+            summary: assessment.summary,
+            source: assessment.source,
+            assessedAt: assessment.assessedAt?.toISOString() ?? null,
+            evidenceFiles: assessment.evidenceFiles.map((evidence) => ({ fileAssetId: evidence.fileAssetId, checksum: evidence.fileAsset.checksum })),
+          })),
+        },
       },
     });
     await transaction.auditLog.create({
@@ -532,9 +613,16 @@ export async function recordProjectDecision(
 
 export async function startProject(projectId: string, userId: string) {
   return db.$transaction(async (transaction) => {
+    await lockProjectMutation(transaction, projectId, userId, [ProjectMemberRole.OWNER]);
     const project = await transaction.project.findFirst({
       where: { id: projectId, ...projectAccessWhere(userId, [ProjectMemberRole.OWNER]) },
-      include: { phases: { orderBy: { sequence: "asc" } }, assessments: true, decisions: { orderBy: { createdAt: "desc" }, take: 1 }, financialPlans: { orderBy: { version: "desc" }, take: 1 }, risks: true },
+      include: {
+        phases: { orderBy: { sequence: "asc" } },
+        assessments: { include: { evidenceFiles: { select: { fileAssetId: true, fileAsset: { select: { checksum: true } } } } } },
+        decisions: { orderBy: { createdAt: "desc" }, take: 1 },
+        financialPlans: { orderBy: { version: "desc" }, take: 1 },
+        risks: true,
+      },
     });
     if (!project) throw new Error("Project not found");
     if (project.status === ProjectStatus.IN_PROGRESS) return project;
@@ -547,6 +635,9 @@ export async function startProject(projectId: string, userId: string) {
     }
     if (!project.financialPlans[0]) {
       throw new Error("A saved financial plan is required before starting");
+    }
+    if (!isProjectDecisionCurrent(project)) {
+      throw new Error("Project evidence or financial plan changed after approval; review and record a new decision");
     }
     const openHighRisk = project.risks.find((risk) => risk.score >= 15 && risk.status === ProjectRiskStatus.OPEN);
     if (openHighRisk) {

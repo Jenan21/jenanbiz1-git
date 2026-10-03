@@ -1,5 +1,6 @@
 import { CrmLeadStatus, PosShiftStatus, PurchaseOrderStatus } from "@/generated/prisma/client";
 import { db } from "@/lib/db";
+import { projectAccessWhere } from "@/services/projects/project-service";
 import { requireSoftwareMembership } from "./software-access";
 
 function cleanOptional(value?: string) {
@@ -16,7 +17,7 @@ export async function listSoftwareOperations(organizationId: string, userId: str
     db.softwareSupplier.findMany({ where: { organizationId }, orderBy: { updatedAt: "desc" }, take: 200 }),
     db.purchaseOrder.findMany({ where: { organizationId }, include: { supplier: true, lines: { include: { product: true } } }, orderBy: { createdAt: "desc" }, take: 200 }),
     db.posShift.findMany({ where: { organizationId }, include: { branch: { select: { id: true, code: true, name: true } }, sales: { include: { receipts: true } } }, orderBy: { openedAt: "desc" }, take: 50 }),
-    db.project.findMany({ where: { organizationId }, select: { id: true, name: true, status: true, currentPhase: true, currency: true, updatedAt: true, phases: { select: { id: true, title: true, type: true, status: true, sequence: true, startedAt: true, completedAt: true }, orderBy: { sequence: "asc" } }, members: { select: { id: true, role: true, user: { select: { profile: { select: { displayName: true } } } } }, orderBy: { createdAt: "asc" } }, financialPlans: { select: { version: true, inputs: true, baseCase: true, createdAt: true }, orderBy: { version: "desc" }, take: 1 } }, orderBy: { updatedAt: "desc" }, take: 100 }),
+    db.project.findMany({ where: { organizationId, ...projectAccessWhere(userId) }, select: { id: true, name: true, status: true, currentPhase: true, currency: true, updatedAt: true, phases: { select: { id: true, title: true, type: true, status: true, sequence: true, startedAt: true, completedAt: true }, orderBy: { sequence: "asc" } }, members: { select: { id: true, role: true, user: { select: { profile: { select: { displayName: true } } } } }, orderBy: { createdAt: "asc" } }, financialPlans: { select: { version: true, inputs: true, baseCase: true, createdAt: true }, orderBy: { version: "desc" }, take: 1 } }, orderBy: { updatedAt: "desc" }, take: 100 }),
     db.financialEntry.findMany({ where: { organizationId }, orderBy: { occurredAt: "desc" }, take: 200 }),
   ]);
   return { leads, crmActivities, products, movements, suppliers, purchaseOrders, posShifts, projects: projects.map(({ financialPlans, ...project }) => ({ ...project, financialPlan: financialPlans[0] ?? null })), entries };

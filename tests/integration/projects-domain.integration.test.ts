@@ -47,8 +47,8 @@ describe("projects domain", () => {
     });
     userId = user.id;
     const [editor, reviewer] = await Promise.all([
-      db.user.create({ data: { email: `projects-editor-${suffix}@example.test`, status: "ACTIVE" } }),
-      db.user.create({ data: { email: `projects-reviewer-${suffix}@example.test`, status: "ACTIVE" } }),
+      db.user.create({ data: { email: `projects-editor-${suffix}@example.test`, status: "ACTIVE", emailVerifiedAt: new Date() } }),
+      db.user.create({ data: { email: `projects-reviewer-${suffix}@example.test`, status: "ACTIVE", emailVerifiedAt: new Date() } }),
     ]);
     editorId = editor.id;
     reviewerId = reviewer.id;
@@ -89,6 +89,8 @@ describe("projects domain", () => {
 
     const financialPlan = await saveProjectFinancialPlan(project.id, { inputs: { price: 50 }, baseCase: { roiPercent: 80 }, scenarios: [{ scenario: "EXPECTED" }] }, user.id);
     expect(financialPlan.version).toBe(1);
+    const parallelPlans = await Promise.all([1, 2].map(() => saveProjectFinancialPlan(project.id, { inputs: { price: 50 }, baseCase: { roiPercent: 80 }, scenarios: [{ scenario: "EXPECTED" }] }, user.id)));
+    expect(parallelPlans.map((plan) => plan.version).sort()).toEqual([2, 3]);
     const risk = await createProjectRisk(project.id, { category: "MARKET", title: "Demand variance", likelihood: 3, impact: 4, mitigation: "Review demand weekly and adjust capacity.", ownerLabel: "Project owner" }, user.id);
     expect(risk.score).toBe(12);
     expect((await updateProjectRiskStatus(project.id, risk.id, "MITIGATING", user.id)).status).toBe("MITIGATING");
@@ -106,9 +108,58 @@ describe("projects domain", () => {
     await updateProjectPhase(project.id, "EVALUATION", "ACTIVE", user.id);
     const decision = await recordProjectDecision(project.id, { verdict: "APPROVE", rationale: "All documented assessment evidence supports a controlled launch." }, reviewer.id);
     expect(decision.verdict).toBe("APPROVE");
+    await recordProjectAssessment(project.id, { type: "TECHNICAL", score: 80, summary: "Technical evidence revised after approval", source: "Reviewed revised source" }, editor.id);
+    await expect(startProject(project.id, user.id)).rejects.toThrow("changed after approval");
+    await recordProjectDecision(project.id, { verdict: "APPROVE", rationale: "Re-reviewed the updated technical evidence before launch." }, reviewer.id);
+    await saveProjectFinancialPlan(project.id, { inputs: { price: 60 }, baseCase: { roiPercent: 90 }, scenarios: [{ scenario: "EXPECTED" }] }, user.id);
+    await expect(startProject(project.id, user.id)).rejects.toThrow("changed after approval");
+    await expect(updateProjectPhase(project.id, "EVALUATION", "COMPLETED", user.id)).rejects.toThrow("changed after approval");
+    await recordProjectDecision(project.id, { verdict: "APPROVE", rationale: "Re-reviewed the updated financial version before launch." }, reviewer.id);
     await updateProjectPhase(project.id, "EVALUATION", "COMPLETED", user.id, "Approved by documented evidence");
     await updateProjectPhase(project.id, "PLANNING", "ACTIVE", user.id);
     await updateProjectPhase(project.id, "PLANNING", "COMPLETED", user.id, "Delivery plan approved");
+    await recordProjectAssessment(project.id, { type: "TECHNICAL", score: 80, summary: "Reviewed technical source after planning", source: "Final technical evidence" }, editor.id);
+    await expect(startProject(project.id, user.id)).rejects.toThrow("changed after approval");
+    await recordProjectDecision(project.id, { verdict: "APPROVE", rationale: "Re-reviewed source changes without reactivating a completed evaluation." }, reviewer.id);
+
+    let releaseSave!: () => void;
+    let signalLocked!: () => void;
+    const release = new Promise<void>((resolve) => { releaseSave = resolve; });
+    const locked = new Promise<void>((resolve) => { signalLocked = resolve; });
+    const pendingSave = db.$transaction(async (transaction) => {
+      await transaction.$queryRaw`SELECT "id" FROM "Project" WHERE "id" = ${project.id} FOR UPDATE`;
+      signalLocked();
+      await release;
+      const previous = await transaction.projectFinancialPlan.aggregate({ where: { projectId: project.id }, _max: { version: true } });
+      await transaction.projectFinancialPlan.create({ data: {
+        projectId: project.id, createdById: user.id, version: previous._max.version! + 1,
+        inputs: { price: 70 }, baseCase: { roiPercent: 95 }, scenarios: [{ scenario: "EXPECTED" }],
+      } });
+      await transaction.project.update({ where: { id: project.id }, data: { name: project.name } });
+    });
+    await locked;
+    const pendingLaunch = startProject(project.id, user.id).then(() => null, (error: Error) => error);
+    const pendingAssessment = recordProjectAssessment(project.id, {
+      type: "TECHNICAL", score: 80, summary: "Technical review during concurrent plan save", source: "Concurrent technical evidence",
+    }, editor.id).then((assessment) => assessment, (error: Error) => error);
+    try {
+      await expect.poll(async () => {
+        const rows = await db.$queryRaw<Array<{ waiting: boolean }>>`
+          SELECT (
+            SELECT COUNT(*) >= 2 FROM pg_stat_activity
+            WHERE datname = current_database() AND pid <> pg_backend_pid()
+              AND wait_event_type = 'Lock' AND query LIKE '%FOR UPDATE%'
+          ) AS waiting`;
+        return rows[0]?.waiting;
+      }, { timeout: 2000 }).toBe(true);
+    } finally {
+      releaseSave();
+      await pendingSave;
+    }
+    expect((await pendingLaunch)?.message).toContain("changed after approval");
+    expect(await pendingAssessment).toMatchObject({ type: "TECHNICAL", score: 80 });
+    expect((await db.project.findUniqueOrThrow({ where: { id: project.id } })).status).not.toBe("IN_PROGRESS");
+    await recordProjectDecision(project.id, { verdict: "APPROVE", rationale: "Reviewed the concurrently saved model before launch." }, reviewer.id);
 
     await expect(startProject(project.id, editor.id)).rejects.toThrow("Project not found");
     const started = await startProject(project.id, user.id);

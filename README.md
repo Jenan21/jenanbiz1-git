@@ -57,6 +57,18 @@ Academy, software, and talent can use a free community-access entitlement in the
 
 The access grant is based on a clear user acknowledgement after opening a configured link. It does not claim to automatically verify a follow or subscription, because the social networks do not expose that verification consistently. The UI should state this plainly and keep ordinary account access available when no approved channel is configured.
 
+## Project study and review tools
+
+The four project flows (analysis, simplified/professional feasibility, evaluation, and launch) share one evidence-quality and readiness model. Scores and source descriptions are user-recorded claims, not independently verified facts; checksums prove file integrity only. Missing evidence, overdue risk reviews, pending compliance, stale approvals and launch prerequisites are shown explicitly. Source validation, licensed valuation and jurisdiction-specific advice still require qualified reviewers and approved data providers.
+
+`JENAN_FINANCE_V2` calculates month-end cash flows with effective annual discount/inflation rates, tax on positive operating profit, break-even, margin of safety, horizon-bounded payback, discounted payback, NPV, annualized IRR, controlled scenarios and one-factor ±10% sensitivity. Negative-margin scenarios are reported as losses rather than rejected. Undefined ROI/IRR or unattained payback use `null`, never invented values or infinite JSON numbers. The model is limited to 600 months and bounded inputs; no financing, depreciation, working capital, terminal valuation, seasonality or independently forecast demand is implied. Currency amounts use floating-point calculations; displayed rounding is not a statutory accounting certification.
+
+Financial versions are persisted with their inputs, model identifier, assumptions and monthly cash-flow schedule, and reload only for the selected project. Existing financial versions are preserved: recalculate reviewed inputs to use V2. Financial saves, evidence assessments, risk changes, phase transitions, decisions and launch checks share a per-project transaction lock so concurrent edits cannot bypass approval checks. New human decisions snapshot both evidence and the exact financial plan ID; changed evidence/plans and legacy decisions without that linkage require a fresh review before evaluation completion or launch. Authorized reviewers can record a new decision after evaluation completion without reopening completed phases.
+
+Project PDFs include evidence/source/date claims, financial inputs/results, annual reconciliation of the monthly schedule, scenarios/sensitivity, delivery/governance and limitations. Existing bundled Alexandria fonts and the canvas/PDF engines preserve Arabic and mixed-language text without silent truncation; pages are image-based and do not support text search/selection. HTML/print reports remain available. Report requests authorize access before external research, are rate limited and return safe errors. No new dependency, external-provider subscription or production credential is added.
+
+Run `npm run test:projects` and `npm run test:e2e:project-flows` against an isolated test database; project Playwright coverage includes child routes, financial save/reload, Arabic PDF downloads, and all four branches in both languages at the ten acceptance viewports.
+
 ## User Dashboard Data
 
 `GET /api/dashboard` returns the authenticated user's private dashboard data. Its metrics are computed from persisted records, not UI lists: projects, organization memberships, open market and job requests, learning progress, services, files, unread notifications, and community access. `recentActivity` contains only the authenticated user's audit events. The existing dashboard UI can consume this endpoint without exposing another user's records.
@@ -112,6 +124,14 @@ Development returns a local single-use recovery code for testing. Production sen
 ## Security posture
 
 Session cookies are HttpOnly, SameSite=Lax, scoped to `/`, and Secure in production. Opaque session values are never stored directly in PostgreSQL, sessions have explicit expiry and are deleted on logout or expiry, passwords use Argon2id, validation is server-side, duplicate emails return a conflict, invalid login paths perform password verification against a dummy Argon2id hash, RBAC is enforced in server components, and security-relevant auth actions are audited without passwords or tokens.
+
+Apply `npm run db:migrate` before deploying the security hardening: the user-status trigger revokes every existing session whenever account status changes, including operator-driven suspension/reactivation. It serializes with login's user-row lock; password reset continues to revoke all sessions transactionally.
+
+Email-addressed project sharing requires an active account with verified mailbox ownership. Existing unverified collaborator memberships fail closed across project pages, reports, ERP project reads, and files; creators retain access to their own projects. Registration and password recovery do not mark an email verified. Keep public registration closed until an approved mailbox-verification workflow is operational; do not set `emailVerifiedAt` merely to bypass this gate.
+
+Project-file reads require current project access, and uploads/deletion require OWNER or EDITOR access. Uploading a file does not preserve access after membership removal or allow a demoted viewer to delete evidence. Standalone personal files retain uploader access; market files retain listing ownership/publication/NDA controls. Dual project/listing associations are rejected and existing ambiguous records are denied until reviewed and repaired. Private API responses, including authorization errors and downloads, use `private, no-store`.
+
+Deployment still requires HTTPS with `NODE_ENV=production`, the correct canonical `NEXT_PUBLIC_APP_URL`, a trusted ingress that rejects unexpected hosts and overwrites forwarded client headers, shared Redis, and a configured recovery email provider. Local document storage also requires durable private storage, restricted filesystem access, malware scanning, and a retention policy; content/MIME checks are not malware scanning. These infrastructure/provider requirements are not satisfied by code changes alone.
 
 ## Production Operations
 

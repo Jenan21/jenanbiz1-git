@@ -4,6 +4,8 @@ import { getCurrentUser } from "@/lib/auth/session";
 import { hasValidOrigin } from "@/lib/auth/request";
 import {
   createProject,
+  ProjectAccessError,
+  projectAccessWhere,
   addProjectMember,
   createProjectComplianceItem,
   createProjectRisk,
@@ -18,7 +20,7 @@ import {
   updateProjectPhase,
   updateProjectVendorStatus,
 } from "@/services/projects/project-service";
-import { calculateFeasibility, calculateRiskScore, calculateScenarios } from "@/services/projects/project-calculations";
+import { calculateFeasibility, calculateRiskScore, calculateScenarios, calculateSensitivity, MAX_FEASIBILITY_MONTHS, MAX_FINANCIAL_AMOUNT, MAX_MONTHLY_UNITS } from "@/services/projects/project-calculations";
 import { assessProjectQuality } from "@/services/projects/project-quality";
 import { saveProjectIntelligenceSnapshot, searchProjectIntelligence } from "@/services/projects/project-intelligence";
 import { db } from "@/lib/db";
@@ -36,12 +38,12 @@ const complianceStatuses = ["REQUIRED", "IN_PROGRESS", "SUBMITTED", "APPROVED", 
 const vendorKinds = ["VENDOR", "PARTNER"] as const;
 const vendorStatuses = ["PROSPECT", "APPROVED", "ACTIVE", "SUSPENDED", "ARCHIVED"] as const;
 const financialInputs = z.object({
-  initialInvestment: z.number().finite().min(0),
-  monthlyFixedCosts: z.number().finite().min(0),
-  variableCostPerUnit: z.number().finite().min(0),
-  pricePerUnit: z.number().finite().min(0),
-  monthlyUnits: z.number().int().min(1),
-  months: z.number().int().min(1),
+  initialInvestment: z.number().finite().min(0).max(MAX_FINANCIAL_AMOUNT),
+  monthlyFixedCosts: z.number().finite().min(0).max(MAX_FINANCIAL_AMOUNT),
+  variableCostPerUnit: z.number().finite().min(0).max(MAX_FINANCIAL_AMOUNT),
+  pricePerUnit: z.number().finite().min(0).max(MAX_FINANCIAL_AMOUNT),
+  monthlyUnits: z.number().int().min(1).max(MAX_MONTHLY_UNITS),
+  months: z.number().int().min(1).max(MAX_FEASIBILITY_MONTHS),
   annualDiscountRate: z.number().finite().min(0).max(100).optional(),
   annualInflationRate: z.number().finite().min(0).max(100).optional(),
   taxRate: z.number().finite().min(0).max(100).optional(),
@@ -102,6 +104,7 @@ const commandSchema = z.discriminatedUnion("action", [
     score: z.number().int().min(0).max(100),
     summary: z.string().trim().min(3).max(4000),
     source: z.string().trim().min(3).max(500),
+    evidenceFileIds: z.array(z.string().cuid()).max(50).refine((ids) => new Set(ids).size === ids.length).optional(),
   }),
   z.object({ action: z.literal("start"), projectId: z.string().cuid() }),
   z.object({ action: z.literal("addMember"), projectId: z.string().cuid(), email: z.string().trim().email().max(320), role: z.enum(projectMemberRoles) }),
@@ -184,10 +187,10 @@ export async function POST(request: NextRequest) {
           ? await recordProjectAssessment(input.projectId, input, user.id)
           : input.action === "calculateFeasibility"
             ? await (async () => {
-                const result = { base: calculateFeasibility(input.inputs), scenarios: calculateScenarios(input.inputs) };
+                const result = { base: calculateFeasibility(input.inputs), scenarios: calculateScenarios(input.inputs), sensitivity: calculateSensitivity(input.inputs) };
                 if (input.persist) {
                   if (!input.projectId) throw new Error("Project id is required to save a financial plan");
-                  await saveProjectFinancialPlan(input.projectId, { inputs: input.inputs, baseCase: result.base, scenarios: result.scenarios }, user.id);
+                  await saveProjectFinancialPlan(input.projectId, { inputs: input.inputs, baseCase: { ...result.base, sensitivity: result.sensitivity }, scenarios: result.scenarios }, user.id);
                 }
                 return result;
               })()
@@ -203,20 +206,16 @@ export async function POST(request: NextRequest) {
                 ? assessProjectQuality(input.assessments)
                 : input.action === "searchIntelligence"
                   ? await (async () => {
-                      const result = await searchProjectIntelligence(input);
                       if (input.projectId) {
                         const project = await db.project.findFirst({
-                          where: {
-                            id: input.projectId,
-                            OR: [
-                              { createdById: user.id },
-                              { members: { some: { userId: user.id, role: { in: ["OWNER", "EDITOR"] } } } },
-                            ],
-                          },
+                          where: { id: input.projectId, ...projectAccessWhere(user.id, ["OWNER", "EDITOR"]) },
                           select: { id: true },
                         });
                         if (!project) throw new Error("Project not found");
-                        await saveProjectIntelligenceSnapshot(project.id, input.query, result);
+                      }
+                      const result = await searchProjectIntelligence(input);
+                      if (input.projectId) {
+                        await saveProjectIntelligenceSnapshot(input.projectId, input.query, result);
                       }
                       return result;
                     })()
@@ -224,7 +223,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ success: true, result }, { status: input.action === "create" || input.action === "createCompliance" || input.action === "createVendor" ? 201 : 200 });
   } catch (error) {
     const message = error instanceof Error ? error.message : "Project command failed";
-    const status = message === "Project not found" ? 404 : 409;
+    const status = error instanceof ProjectAccessError ? 403 : message === "Project not found" ? 404 : 409;
     return NextResponse.json({ success: false, message }, { status });
   }
 }

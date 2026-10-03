@@ -7,6 +7,7 @@ import countries from "world-countries";
 import { Button } from "@/components/ui/button";
 import { Icon } from "@/components/ui/icons";
 import { Input } from "@/components/ui/input";
+import { safeAuthRedirect } from "@/lib/auth/redirect";
 import type { Locale } from "@/types/i18n";
 
 interface AuthFormProps {
@@ -222,9 +223,7 @@ export function AuthForm({ mode, locale, labels }: AuthFormProps) {
       const destination =
         mode === "register"
           ? "/user/onboarding"
-          : requested?.startsWith("/") && !requested.startsWith("//")
-            ? requested
-            : "/dashboard";
+          : safeAuthRedirect(requested, window.location.origin);
       router.replace(destination);
       router.refresh();
     } catch {

@@ -1,11 +1,12 @@
 import { db } from "@/lib/db";
+import { projectAccessWhere } from "@/services/projects/project-service";
 
 export async function getUserPayments(userId: string) {
   return db.payment.findMany({
     where: {
       OR: [
         { payerUserId: userId },
-        { organization: { members: { some: { userId } } } },
+        { organization: { members: { some: { userId, status: "ACTIVE", isOwner: true } } } },
       ],
     },
     select: {
@@ -29,7 +30,7 @@ export async function getUserPayments(userId: string) {
 export async function getUserReportIndex(userId: string) {
   const [projects, activity] = await Promise.all([
     db.project.findMany({
-      where: { OR: [{ createdById: userId }, { members: { some: { userId } } }] },
+      where: projectAccessWhere(userId),
       select: { id: true, name: true, status: true, currentPhase: true, updatedAt: true },
       orderBy: { updatedAt: "desc" },
       take: 50,

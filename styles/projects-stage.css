@@ -184,6 +184,43 @@
   background: color-mix(in srgb, var(--brand) 7%, transparent);
 }
 
+.project-assessment-evidence-picker {
+  grid-column: 1 / -1;
+  display: grid;
+  gap: 10px;
+  min-width: 0;
+  padding: 12px;
+  border: 1px solid color-mix(in srgb, var(--border) 72%, transparent);
+  border-radius: 12px;
+}
+
+.project-assessment-evidence-picker legend {
+  padding-inline: 6px;
+  color: var(--muted);
+}
+
+.project-assessment-evidence-picker__list {
+  display: grid;
+  gap: 8px;
+  max-height: 220px;
+  overflow: auto;
+}
+
+.project-assessment-evidence-picker__item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+
+.project-assessment-evidence-picker__item span {
+  overflow-wrap: anywhere;
+}
+
+.project-assessment-evidence-picker__item input {
+  flex: 0 0 auto;
+}
+
 .project-launch-records {
   display: grid;
   gap: 16px;
@@ -435,4 +472,66 @@
 
 .projects-workspace [hidden] {
   display: none !important;
+}
+.project-review-panel,
+.project-financial-audit {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.project-review-panel details,
+.project-financial-audit details {
+  margin-block: 1rem;
+}
+
+.projects-workspace .grid-2 > :only-child,
+.projects-workspace .grid-2 > :not([hidden]):has(~ [hidden]),
+.projects-workspace .grid-2 > [hidden] + :not([hidden]) {
+  grid-column: 1 / -1;
+}
+
+.project-review-panel .project-quality {
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 190px), 1fr));
+  gap: 12px;
+  margin-block: 18px;
+  font-size: 0.85rem;
+}
+
+.project-review-panel .project-quality > div {
+  display: grid;
+  align-content: start;
+  padding: 16px;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: color-mix(in srgb, var(--deep) 48%, transparent);
+}
+
+.project-review-panel .project-quality strong {
+  font-size: 1.5rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.project-table-scroll {
+  max-width: 100%;
+  overflow: auto;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+}
+
+.project-table-scroll table {
+  width: 100%;
+  border-collapse: collapse;
+  font-variant-numeric: tabular-nums;
+}
+
+.project-table-scroll th,
+.project-table-scroll td {
+  padding: 0.65rem;
+  text-align: start;
+  white-space: nowrap;
+}
+
+.project-table-scroll caption {
+  padding: 0.75rem;
+  white-space: normal;
 }

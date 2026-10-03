@@ -33,7 +33,11 @@ describe("organization programs domain", () => {
     await activateOrganizationProgram({ organizationId: organization.id, key: "FLEET", userId: owner.id });
 
     const invitation = await inviteOrganizationMember({ organizationId: organization.id, email: member.email, userId: owner.id });
+    await expect(acceptOrganizationInvitation(invitation.id, member.id)).rejects.toThrow("invitation not found");
+    expect((await db.organizationMember.findUniqueOrThrow({ where: { id: invitation.id } })).status).toBe("INVITED");
+    await db.user.update({ where: { id: member.id }, data: { emailVerifiedAt: new Date() } });
     await acceptOrganizationInvitation(invitation.id, member.id);
+    await expect(acceptOrganizationInvitation(invitation.id, member.id)).rejects.toThrow("invitation not found");
     const assignee = await db.organizationMember.findFirstOrThrow({ where: { organizationId: organization.id, userId: member.id }, select: { id: true } });
     await createFinancialEntry({ amountMinor: 950_000, currency: "SAR", description: "Initial revenue", occurredAt: new Date(), organizationId: organization.id, type: "INCOME", userId: owner.id });
     await createFinancialEntry({ amountMinor: 150_000, currency: "SAR", description: "Launch expense", occurredAt: new Date(), organizationId: organization.id, type: "EXPENSE", userId: owner.id });

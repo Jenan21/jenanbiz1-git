@@ -68,13 +68,13 @@ export async function inviteOrganizationMember(input: {
 
 export async function acceptOrganizationInvitation(membershipId: string, userId: string) {
   const membership = await db.organizationMember.findFirst({
-    where: { id: membershipId, userId, status: OrganizationMemberStatus.INVITED },
+    where: { id: membershipId, userId, status: OrganizationMemberStatus.INVITED, user: { status: "ACTIVE", emailVerifiedAt: { not: null } } },
     select: { id: true, organizationId: true },
   });
   if (!membership) throw new Error("Organization invitation not found");
   return db.$transaction(async (transaction) => {
     const accepted = await transaction.organizationMember.update({
-      where: { id: membership.id },
+      where: { id: membership.id, userId, status: OrganizationMemberStatus.INVITED, user: { status: "ACTIVE", emailVerifiedAt: { not: null } } },
       data: { status: OrganizationMemberStatus.ACTIVE, joinedAt: new Date() },
     });
     await transaction.auditLog.create({

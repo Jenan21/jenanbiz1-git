@@ -130,6 +130,12 @@ export async function loginUser(
   if (userWithHash.status !== UserStatus.ACTIVE)
     throw new AuthenticationError("ACCOUNT_DISABLED");
   return db.$transaction(async (tx) => {
+    await tx.$queryRaw`SELECT "id" FROM "User" WHERE "id" = ${userWithHash.id} FOR UPDATE`;
+    const currentUser = await tx.user.findUnique({ where: { id: userWithHash.id } });
+    if (!currentUser || currentUser.passwordHash !== candidateHash)
+      throw new AuthenticationError("INVALID_CREDENTIALS");
+    if (currentUser.status !== UserStatus.ACTIVE)
+      throw new AuthenticationError("ACCOUNT_DISABLED");
     const session = await createSession(
       userWithHash.id,
       input.remember,
@@ -145,7 +151,7 @@ export async function loginUser(
         ipAddress: context.ipAddress,
       },
     });
-    return { user: userWithHash, ...session };
+    return { user: currentUser, ...session };
   });
 }
 

@@ -11,7 +11,7 @@ function cleanOptional(value?: string) {
 }
 
 export async function listSoftwareHr(organizationId: string, userId: string) {
-  await requireSoftwareMembership(organizationId, userId);
+  await requireSoftwareMembership(organizationId, userId, true);
   const [employees, attendance, leaveRequests, payrollRuns, reviews] = await Promise.all([
     db.softwareEmployee.findMany({ where: { organizationId }, orderBy: { updatedAt: "desc" }, take: 200 }),
     db.attendanceRecord.findMany({ where: { employee: { organizationId } }, include: { employee: { select: { name: true, employeeNumber: true } } }, orderBy: { date: "desc" }, take: 200 }),

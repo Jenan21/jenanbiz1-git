@@ -1,4 +1,5 @@
-import { afterAll, beforeEach, describe, expect, it } from "vitest";
+import { afterAll, beforeEach, describe, expect, it, vi } from "vitest";
+import * as passwords from "@/lib/auth/password";
 import { SystemRole, UserStatus } from "@/generated/prisma/client";
 import { db } from "@/lib/db";
 import { hashSessionToken } from "@/lib/auth/token";
@@ -173,6 +174,47 @@ describe.sequential("real PostgreSQL authentication integration", () => {
     ).toBe(1);
   });
 
+  it("allows only one simultaneous confirmation to consume a recovery code", async () => {
+    const registered = await registerUser(baseRegistration);
+    const requested = await requestPasswordReset(baseRegistration.email);
+    if (!requested.developmentCode) throw new Error("Development reset code was not returned");
+    const replacements = ["Concurrent-Reset-A-2026!", "Concurrent-Reset-B-2026!"];
+    const hashPassword = passwords.hashPassword;
+    let arrivals = 0;
+    let entered!: () => void;
+    let release!: () => void;
+    const started = new Promise<void>((resolve) => { entered = resolve; });
+    const barrier = new Promise<void>((resolve) => { release = resolve; });
+    const hash = vi.spyOn(passwords, "hashPassword").mockImplementation(async (...args) => {
+      const result = await hashPassword(...args);
+      if (++arrivals === 2) entered();
+      await barrier;
+      return result;
+    });
+    const pending = Promise.allSettled(replacements.map((password) => confirmPasswordReset({
+      email: baseRegistration.email,
+      code: requested.developmentCode!,
+      password,
+    })));
+    try {
+      await started;
+      release();
+      const outcomes = await pending;
+      expect(outcomes.filter(({ status }) => status === "fulfilled")).toHaveLength(1);
+      const rejected = outcomes.find(({ status }) => status === "rejected");
+      expect(rejected?.status === "rejected" && rejected.reason).toMatchObject({ code: "INVALID_OR_EXPIRED_CODE" });
+      expect(await getSessionUser(registered.token)).toBeNull();
+      expect(await db.session.count({ where: { userId: registered.user.id } })).toBe(0);
+      hash.mockRestore();
+      const winner = outcomes.findIndex(({ status }) => status === "fulfilled");
+      await expect(loginUser({ email: baseRegistration.email, password: replacements[winner]!, remember: false })).resolves.toMatchObject({ user: { id: registered.user.id } });
+      await expect(loginUser({ email: baseRegistration.email, password: replacements[1 - winner]!, remember: false })).rejects.toMatchObject({ code: "INVALID_CREDENTIALS" });
+    } finally {
+      release();
+      hash.mockRestore();
+    }
+  });
+
   it("delivers a recovery code through a configured provider without returning it", async () => {
     const registered = await registerUser(baseRegistration);
     let deliveredText = "";
@@ -188,6 +230,7 @@ describe.sequential("real PostgreSQL authentication integration", () => {
       },
     );
     expect(requested.delivery).toBe("email");
+    expect(requested).toEqual({ accepted: true, delivery: "email" });
     expect("developmentCode" in requested).toBe(false);
     const code = deliveredText.match(/\b\d{6}\b/)?.[0];
     expect(code).toMatch(/^\d{6}$/);
@@ -196,6 +239,7 @@ describe.sequential("real PostgreSQL authentication integration", () => {
       code: code!,
       password: "Delivered-Password-2026!",
     });
+
     expect(
       await db.auditLog.count({
         where: {
@@ -206,6 +250,37 @@ describe.sequential("real PostgreSQL authentication integration", () => {
     ).toBe(1);
   });
 
+  it("rejects a stale old-password login that finishes after password reset", async () => {
+      const registered = await registerUser(baseRegistration);
+      const requested = await requestPasswordReset(baseRegistration.email);
+      const originalVerify = passwords.verifyPassword;
+      let resume!: () => void;
+      let started!: () => void;
+      const barrier = new Promise<void>((resolve) => { resume = resolve; });
+      const verifying = new Promise<void>((resolve) => { started = resolve; });
+      const spy = vi.spyOn(passwords, "verifyPassword").mockImplementation(async (hash, value) => {
+        const valid = await originalVerify(hash, value);
+        if (value === baseRegistration.password) {
+          started();
+          await barrier;
+        }
+        return valid;
+      });
+      const pending = loginUser({ email: baseRegistration.email, password: baseRegistration.password, remember: true })
+        .then(() => null, (error: unknown) => error);
+      try {
+        await verifying;
+        await confirmPasswordReset({ email: baseRegistration.email, code: requested.developmentCode!, password: "Concurrent-Reset-2026!" });
+        resume();
+        expect(await pending).toMatchObject({ code: "INVALID_CREDENTIALS" });
+        expect(await db.session.count({ where: { userId: registered.user.id } })).toBe(0);
+        expect(await getSessionUser(registered.token)).toBeNull();
+      } finally {
+        resume();
+        await pending;
+        spy.mockRestore();
+      }
+    });
   it("keeps provider failures neutral and invalidates the undelivered code", async () => {
     const registered = await registerUser(baseRegistration);
     const requested = await requestPasswordReset(
@@ -249,6 +324,14 @@ describe.sequential("real PostgreSQL authentication integration", () => {
     );
     expect(requested).toEqual({ accepted: true, delivery: "email" });
     expect(deliveries).toBe(0);
+  });
+
+  it("does not disclose disabled accounts during recovery", async () => {
+    const registered = await registerUser(baseRegistration);
+    await db.user.update({ where: { id: registered.user.id }, data: { status: "SUSPENDED" } });
+    await expect(confirmPasswordReset({
+      email: baseRegistration.email, code: "123456", password: "Replacement-Password-2026!",
+    })).rejects.toMatchObject({ code: "INVALID_OR_EXPIRED_CODE" });
   });
 
   it("rejects invalid registration input before database access", () => {
@@ -353,6 +436,54 @@ describe.sequential("real PostgreSQL authentication integration", () => {
         where: { action: "user.logout", actorId: registered.user.id },
       }),
     ).toBe(1);
+  });
+
+  it("permanently revokes all sessions when an account is suspended and reactivated", async () => {
+    const registered = await registerUser(baseRegistration);
+    const second = await loginUser({
+      email: baseRegistration.email,
+      password: baseRegistration.password,
+      remember: true,
+    });
+    await db.user.update({ where: { id: registered.user.id }, data: { status: UserStatus.SUSPENDED } });
+    expect(await db.session.count({ where: { userId: registered.user.id } })).toBe(0);
+    expect(await getSessionUser(registered.token)).toBeNull();
+    await db.user.update({ where: { id: registered.user.id }, data: { status: UserStatus.ACTIVE } });
+    expect(await getSessionUser(registered.token)).toBeNull();
+    expect(await getSessionUser(second.token)).toBeNull();
+    const fresh = await loginUser({
+      email: baseRegistration.email,
+      password: baseRegistration.password,
+      remember: false,
+    });
+    expect((await getSessionUser(fresh.token))?.id).toBe(registered.user.id);
+  });
+
+  it("serializes account suspension with an in-flight successful password check", async () => {
+    const registered = await registerUser(baseRegistration);
+    const verifyPassword = passwords.verifyPassword;
+    let entered!: () => void;
+    let release!: () => void;
+    const started = new Promise<void>((resolve) => { entered = resolve; });
+    const barrier = new Promise<void>((resolve) => { release = resolve; });
+    const verify = vi.spyOn(passwords, "verifyPassword").mockImplementation(async (...args) => {
+      const result = await verifyPassword(...args);
+      entered();
+      await barrier;
+      return result;
+    });
+    const pending = loginUser({ email: baseRegistration.email, password: baseRegistration.password, remember: false });
+    const rejected = expect(pending).rejects.toMatchObject({ code: "ACCOUNT_DISABLED" });
+    try {
+      await started;
+      await db.user.update({ where: { id: registered.user.id }, data: { status: UserStatus.SUSPENDED } });
+      release();
+      await rejected;
+      expect(await db.session.count({ where: { userId: registered.user.id } })).toBe(0);
+    } finally {
+      release();
+      verify.mockRestore();
+    }
   });
 
   it("rejects and removes an expired persisted session", async () => {

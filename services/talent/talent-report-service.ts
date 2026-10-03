@@ -1,6 +1,7 @@
 import ExcelJS from "exceljs";
 
 import { db } from "@/lib/db";
+import { ownedOrganizationRecordWhere } from "@/lib/auth/organization-scope";
 
 export type TalentReportInput = {
   applications: Array<{ candidateName: string; consentVersion: string | null; createdAt: Date; jobTitle: string; matchScore: number; status: string; updatedAt: Date }>;
@@ -44,8 +45,8 @@ export async function generateTalentReportWorkbook(input: TalentReportInput) {
 
 export async function exportTalentReport(userId: string) {
   const [postings, applications] = await Promise.all([
-    db.jobPosting.findMany({ where: { createdById: userId }, select: { title: true, status: true, qualityScore: true, workMode: true, city: true, countryCode: true, createdAt: true, updatedAt: true, _count: { select: { applications: true } } }, orderBy: { updatedAt: "desc" } }),
-    db.jobApplication.findMany({ where: { jobPosting: { createdById: userId } }, select: { status: true, matchScore: true, consentVersion: true, createdAt: true, updatedAt: true, jobPosting: { select: { title: true } }, applicant: { select: { profile: { select: { displayName: true } } } } }, orderBy: { updatedAt: "desc" } }),
+    db.jobPosting.findMany({ where: ownedOrganizationRecordWhere(userId), select: { title: true, status: true, qualityScore: true, workMode: true, city: true, countryCode: true, createdAt: true, updatedAt: true, _count: { select: { applications: true } } }, orderBy: { updatedAt: "desc" } }),
+    db.jobApplication.findMany({ where: { jobPosting: ownedOrganizationRecordWhere(userId) }, select: { status: true, matchScore: true, consentVersion: true, createdAt: true, updatedAt: true, jobPosting: { select: { title: true } }, applicant: { select: { profile: { select: { displayName: true } } } } }, orderBy: { updatedAt: "desc" } }),
   ]);
   const generatedAt = new Date();
   const bytes = await generateTalentReportWorkbook({ generatedAt, postings: postings.map(({ _count, ...posting }) => ({ ...posting, applicantCount: _count.applications })), applications: applications.map((application) => ({ candidateName: application.applicant.profile?.displayName ?? "Candidate", consentVersion: application.consentVersion, createdAt: application.createdAt, jobTitle: application.jobPosting.title, matchScore: application.matchScore, status: application.status, updatedAt: application.updatedAt })) });
