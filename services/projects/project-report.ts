@@ -1,126 +1,145 @@
 import { readFile } from "node:fs/promises";
 import path from "node:path";
-import { PDFDocument, StandardFonts, rgb } from "pdf-lib";
+import { createCanvas, GlobalFonts } from "@napi-rs/canvas";
+import { PDFDocument } from "pdf-lib";
 import { getUserProject } from "@/services/projects/project-service";
-import { assessProjectQuality } from "@/services/projects/project-quality";
+import { assessProjectReadiness } from "@/services/projects/project-readiness";
 import type { ProjectIntelligenceResult } from "@/services/projects/project-intelligence";
+import type { FeasibilityResult } from "@/services/projects/project-calculations";
 
-function formatValue(value: string | number | null | undefined) {
-  return value === null || value === undefined || value === "" ? "-" : String(value);
+let fontsReady = false;
+function registerReportFonts() {
+  if (fontsReady) return;
+  for (const subset of ["latin", "arabic"]) {
+    const file = path.join(process.cwd(), "node_modules", "@fontsource-variable", "alexandria", "files", `alexandria-${subset}-wght-normal.woff2`);
+    if (!GlobalFonts.registerFromPath(file, "JenanReport")) throw new Error("Report font unavailable");
+  }
+  fontsReady = true;
+}
+
+function value(input: unknown): string {
+  if (input === null || input === undefined || input === "") return "Unavailable";
+  if (typeof input === "number") return Number.isFinite(input) ? input.toLocaleString("en-US", { maximumFractionDigits: 4 }) : "Unavailable";
+  return String(input);
 }
 
 export async function createProjectReport(projectId: string, userId: string, intelligence?: ProjectIntelligenceResult) {
   const project = await getUserProject(projectId, userId);
   if (!project) throw new Error("Project not found");
-
-  const quality = assessProjectQuality(project.assessments);
-  const savedIntelligence = project.intelligenceSnapshots[0]
-    ? (project.intelligenceSnapshots[0] as unknown as ProjectIntelligenceResult)
-    : undefined;
+  const readiness = assessProjectReadiness(project);
+  const savedIntelligence = project.intelligenceSnapshots[0] as unknown as ProjectIntelligenceResult | undefined;
   const reportIntelligence = intelligence ?? savedIntelligence;
+  const plan = project.financialPlans[0];
+  const financial = plan?.baseCase as unknown as Partial<FeasibilityResult> | undefined;
+  const rows: Array<{ text: string; heading?: boolean }> = [];
+  const add = (text: string, heading = false) => rows.push({ text, heading });
+  add("JENAN PRO — PROJECT REVIEW REPORT", true);
+  add(`Generated: ${new Date().toISOString()} | Project ID: ${project.id}`);
+  add("Source: user-recorded platform data. Not independently verified, not an investment guarantee or certified valuation.");
+  add(`Project: ${project.name}`, true);
+  for (const [label, item] of [
+    ["Organization", project.organization?.name], ["Sector", project.sector], ["Country", project.countryCode],
+    ["Currency", project.currency], ["Status", project.status], ["Phase", project.currentPhase], ["Description", project.description],
+  ]) add(`${label}: ${value(item)}`);
+  add("Evidence quality and review checklist", true);
+  add(`Weighted score: ${readiness.quality.score}/100 | Completeness: ${readiness.quality.completeness}% | Rule-based verdict: ${readiness.quality.verdict}`);
+  add(`Missing evidence: ${readiness.quality.missing.join(", ") || "None"} | Launch blockers: ${readiness.blockers.join(", ") || "None"}`);
+  add(`Pending compliance: ${readiness.pendingCompliance} | Overdue risk reviews: ${readiness.overdueRiskReviews}`);
+  add(`Checksummed evidence files: ${readiness.checksummedFiles}/${readiness.evidenceFiles}. Checksums prove file integrity, not truthfulness.`);
+  for (const assessment of project.assessments) {
+    add(`${assessment.type}: ${value(assessment.score)}/100 | Recorded: ${assessment.assessedAt?.toISOString() ?? "Unavailable"}`);
+    add(`Evidence: ${value(assessment.summary)} | Source claim: ${value(assessment.source)}`);
+  }
+  add("Deterministic financial study", true);
+  add(`Saved plan: ${plan ? `v${plan.version} | ${plan.createdAt.toISOString()}` : "Unavailable"} | Model: ${value(financial?.modelVersion)}`);
+  if (plan && financial?.modelVersion === "JENAN_FINANCE_V2") {
+    for (const [field, input] of Object.entries(plan.inputs as Record<string, unknown>)) add(`Input ${field}: ${value(input)}`);
+    for (const field of ["monthlyRevenue", "monthlyProfit", "totalProfit", "breakEvenUnits", "roiPercent", "netPresentValue", "internalRateReturn", "paybackMonths", "discountedPaybackMonths", "marginOfSafetyPercent"] as const) add(`${field}: ${value(financial[field])}`);
+    add("Method: effective annual rates converted to monthly; month-end operating cash flows; initial investment at month zero.");
+    for (const assumption of financial.assumptions ?? []) add(`Limitation: ${assumption}`);
+    add("Cash-flow reconciliation (annual blocks of the saved monthly schedule)", true);
+    const flows = financial.cashFlows ?? [];
+    for (let start = 1; start < flows.length; start += 12) {
+      const block = flows.slice(start, start + 12);
+      add(`Months ${start}–${start + block.length - 1}: revenue ${value(block.reduce((sum, flow) => sum + flow.revenue, 0))}; costs ${value(block.reduce((sum, flow) => sum + flow.costs, 0))}; tax ${value(block.reduce((sum, flow) => sum + flow.tax, 0))}; net ${value(block.reduce((sum, flow) => sum + flow.netCashFlow, 0))}; cumulative ${value(block.at(-1)?.cumulativeCashFlow)}`);
+    }
+    add("Assumed scenarios — not probabilities or market forecasts", true);
+    for (const scenario of plan.scenarios as Array<Record<string, unknown>>) add(`${scenario.scenario}: monthly profit ${value(scenario.monthlyProfit)} | NPV ${value(scenario.netPresentValue)} | ROI ${value(scenario.roiPercent)}`);
+    const sensitivity = (plan.baseCase as Record<string, unknown>).sensitivity as Array<Record<string, unknown>> | undefined;
+    if (sensitivity?.length) {
+      add("One-factor sensitivity — other inputs held constant", true);
+      for (const item of sensitivity) add(`${item.driver} ${value(item.changePercent)}%: NPV ${value(item.netPresentValue)} | change ${value(item.npvDelta)}`);
+    }
+  } else if (plan) add("Legacy or unsupported financial model. Recalculate from reviewed inputs to produce the current reproducible study.");
+  add("Governance and delivery", true);
+  add(`Recorded decision: ${value(project.decisions[0]?.verdict)} | Matches current evidence: ${readiness.decisionCurrent ? "Yes" : "No — review required"}`);
+  add(`Decision rationale: ${value(project.decisions[0]?.rationale)}`);
+  for (const phase of project.phases) add(`${phase.sequence}. ${phase.title}: ${phase.status} | Notes: ${value(phase.notes)}`);
+  for (const item of project.complianceItems) add(`Compliance ${item.title}: ${item.status} | Authority: ${value(item.authority)}`);
+  for (const risk of project.risks) {
+    add(`Risk ${risk.title}: ${risk.status} | ${risk.score}/25 | Owner: ${risk.ownerLabel} | Review: ${risk.reviewAt?.toISOString() ?? "Unavailable"}`);
+    add(`Mitigation: ${risk.mitigation}`);
+  }
+  for (const file of project.evidenceFiles) add(`Evidence file: ${file.fileName} | SHA-256: ${value(file.checksum)}`);
+  add("External intelligence and limitations", true);
+  if (reportIntelligence) {
+    add(`Location: ${value(reportIntelligence.location?.label)} | Population: ${value(reportIntelligence.population.value)} (${value(reportIntelligence.population.year)}) | Purchasing power: ${value(reportIntelligence.purchasingPower.value)} (${value(reportIntelligence.purchasingPower.year)})`);
+    for (const source of reportIntelligence.sources) add(`Source: ${source.source} | URL: ${source.url} | Confidence: ${source.confidence}`);
+    for (const limitation of reportIntelligence.limitations) add(`Limitation: ${limitation}`);
+  } else add("No external intelligence snapshot is available. No population, demand, competitors or market valuation are invented.");
+  add("Review recommendation: validate source claims, costs, demand, licenses, taxes and assumptions with qualified domain reviewers before acting.");
+  add("PDF uses shaped Unicode image pages to preserve Arabic and mixed-language text; text selection/search is not supported.");
+  return renderProjectReport(rows, project.name);
+}
+
+export async function renderProjectReport(rows: Array<{ text: string; heading?: boolean }>, title: string) {
+  registerReportFonts();
   const pdf = await PDFDocument.create();
-  const font = await pdf.embedFont(StandardFonts.Helvetica);
-  const bold = await pdf.embedFont(StandardFonts.HelveticaBold);
-  const logoPath = path.join(process.cwd(), "public", "assets", "jenan-pro-logo.jpg");
-  const logo = await pdf.embedJpg(await readFile(logoPath));
-  let page = pdf.addPage([595, 842]);
-  let y = 790;
-  const margin = 42;
-  const contentWidth = 511;
-  const addText = (value: string, size = 11, isBold = false) => {
-    const activeFont = isBold ? bold : font;
-    const words = value.split(/\s+/).filter(Boolean);
+  pdf.setTitle(title);
+  pdf.setAuthor("Jenan PRO");
+  pdf.setSubject("User-recorded evidence and deterministic calculations; independent verification required");
+  const logoBytes = await readFile(path.join(process.cwd(), "public", "assets", "jenan-pro-logo.jpg"));
+  const logo = await pdf.embedJpg(logoBytes);
+  const canvas = createCanvas(1190, 1684);
+  const context = canvas.getContext("2d");
+  let y = 80;
+  const reset = () => {
+    context.fillStyle = "#fff";
+    context.fillRect(0, 0, canvas.width, canvas.height);
+    context.fillStyle = "#102a43";
+    y = 90;
+  };
+  const flush = async () => {
+    const page = pdf.addPage([595, 842]);
+    page.drawImage(await pdf.embedPng(canvas.toBuffer("image/png")), { x: 0, y: 0, width: 595, height: 842 });
+    page.drawImage(logo, { x: 42, y: 12, width: 26, height: 25 });
+  };
+  reset();
+  for (const row of rows) {
+    context.font = `${row.heading ? 28 : 22}px "JenanReport"`;
     const lines: string[] = [];
     let line = "";
-    for (const word of words) {
-      const next = line ? `${line} ${word}` : word;
-      if (line && activeFont.widthOfTextAtSize(next, size) > contentWidth) {
-        lines.push(line);
-        line = word;
-      } else {
-        line = next;
+    for (const word of row.text.split(/\s+/)) {
+      const candidate = line ? `${line} ${word}` : word;
+      if (context.measureText(candidate).width <= 1000) { line = candidate; continue; }
+      if (line) { lines.push(line); line = ""; }
+      for (const character of word) {
+        if (line && context.measureText(line + character).width > 1000) { lines.push(line); line = ""; }
+        line += character;
       }
     }
-    if (line || !lines.length) lines.push(line || "-");
+    if (line) lines.push(line);
     for (const text of lines) {
-      if (y < 55) {
-        page = pdf.addPage([595, 842]);
-        y = 790;
-      }
-      page.drawText(text, { x: margin, y, size, font: activeFont, color: rgb(0.05, 0.13, 0.25) });
-      y -= size + 9;
+      if (y > 1550) { await flush(); reset(); }
+      const rtl = /[\u0600-\u06ff]/.test(text);
+      context.direction = rtl ? "rtl" : "ltr";
+      context.textAlign = rtl ? "right" : "left";
+      context.fillStyle = row.heading ? "#006181" : "#102a43";
+      context.fillText(text, rtl ? 1090 : 84, y);
+      y += row.heading ? 44 : 34;
     }
-  };
-  const addKeyValueTable = (rows: Array<[string, string]>) => {
-    for (const [label, value] of rows) {
-      if (y < 55) {
-        page = pdf.addPage([595, 842]);
-        y = 790;
-      }
-      page.drawRectangle({ x: margin, y: y - 7, width: contentWidth, height: 25, color: rgb(0.96, 0.98, 1) });
-      page.drawText(label, { x: margin + 8, y, size: 10, font: bold, color: rgb(0.05, 0.13, 0.25) });
-      page.drawText(value.slice(0, 56), { x: margin + 175, y, size: 10, font, color: rgb(0.16, 0.24, 0.34) });
-      y -= 29;
-    }
-  };
-
-  page.drawImage(logo, { x: margin, y: 700, width: 86, height: 82 });
-  page.drawText("JENAN PRO PROJECT REPORT", { x: 150, y: 760, size: 18, font: bold, color: rgb(0, 0.38, 0.65) });
-  page.drawText("Generated from verified platform records", { x: 150, y: 738, size: 10, font, color: rgb(0.32, 0.4, 0.5) });
-  y = 675;
-  addText(`Project: ${formatValue(project.name)}`, 16, true);
-  addKeyValueTable([
-    ["Organization", formatValue(project.organization?.name)],
-    ["Project owner", formatValue(project.createdBy.profile?.displayName ?? project.createdBy.email)],
-    ["Sector", formatValue(project.sector)],
-    ["Country", formatValue(project.countryCode)],
-    ["Currency", formatValue(project.currency)],
-    ["Status", formatValue(project.status)],
-    ["Current phase", formatValue(project.currentPhase)],
-  ]);
-  addText(`Description: ${formatValue(project.description)}`);
-  y -= 10;
-  addText("Project lifecycle", 14, true);
-  for (const phase of project.phases) addText(`${phase.sequence}. ${phase.title} - ${phase.status}`);
-  y -= 10;
-  addText("Assessment quality", 14, true);
-  addText(`Weighted score: ${quality.score}/100`);
-  addText(`Evidence completeness: ${quality.completeness}%`);
-  addText(`Decision readiness: ${quality.readyForDecision ? "Ready" : "Incomplete evidence"}`);
-  for (const assessment of project.assessments) addText(`${assessment.type}: ${formatValue(assessment.score)}/100 | ${formatValue(assessment.source)}`);
-  y -= 10;
-  addText("Governance", 14, true);
-  const decision = project.decisions[0];
-  const financialPlan = project.financialPlans[0];
-  addText(`Recorded decision: ${formatValue(decision?.verdict)}`);
-  addText(`Decision score: ${formatValue(decision?.weightedScore)}/100`);
-  addText(`Decision rationale: ${formatValue(decision?.rationale)}`);
-  addText(`Financial plan version: ${financialPlan ? `v${financialPlan.version}` : "-"}`);
-  if (project.risks.length) {
-    addText("Risk register", 14, true);
-    for (const risk of project.risks) {
-      addText(`${risk.title} | ${risk.status} | score ${risk.score}/25 | owner: ${risk.ownerLabel}`);
-      addText(`Mitigation: ${risk.mitigation}`);
-    }
+    y += 12;
   }
-  if (project.evidenceFiles.length) {
-    addText("Evidence files", 14, true);
-    for (const file of project.evidenceFiles) {
-      addText(`${file.fileName} | ${file.mimeType} | checksum: ${formatValue(file.checksum)}`);
-    }
-  }
-  y -= 10;
-  addText("Data integrity note", 14, true);
-  if (reportIntelligence) {
-    addText(`Location intelligence: ${formatValue(reportIntelligence.location?.label)}`);
-    addText(`Population: ${formatValue(reportIntelligence.population.value)} (${formatValue(reportIntelligence.population.year)})`);
-    addText(`Purchasing power: ${formatValue(reportIntelligence.purchasingPower.value)} (${formatValue(reportIntelligence.purchasingPower.year)})`);
-    addText(`Discovered competitors: ${reportIntelligence.competitors.length}`);
-    for (const source of reportIntelligence.sources) addText(`Source: ${source.source} | confidence: ${source.confidence}`);
-    for (const limitation of reportIntelligence.limitations) addText(`Limitation: ${limitation}`);
-  } else {
-    addText("External population, purchasing power, competitor, and map intelligence were not requested for this report.");
-  }
-  addText("This report contains platform records and deterministic assessment outputs only.");
-  return await pdf.save();
+  await flush();
+  return pdf.save();
 }

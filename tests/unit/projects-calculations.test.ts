@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { calculateFeasibility, calculateRiskScore, calculateScenarios } from "@/services/projects/project-calculations";
+import { calculateFeasibility, calculateRiskScore, calculateScenarios, calculateSensitivity, MAX_FEASIBILITY_MONTHS } from "@/services/projects/project-calculations";
 
 describe("project calculations", () => {
   const inputs = {
@@ -29,8 +29,12 @@ describe("project calculations", () => {
     expect(results[2]?.monthlyProfit).toBeGreaterThan(results[1]?.monthlyProfit ?? 0);
   });
 
-  it("validates impossible financial inputs and computes risk transparently", () => {
-    expect(() => calculateFeasibility({ ...inputs, pricePerUnit: 10 })).toThrow("pricePerUnit");
+  it("reports unprofitable inputs honestly and computes risk transparently", () => {
+    const loss = calculateFeasibility({ ...inputs, pricePerUnit: 10 });
+    expect(loss.breakEvenUnits).toBeNull();
+    expect(loss.paybackMonths).toBeNull();
+    expect(loss.internalRateReturn).toBeNull();
+    expect(loss.monthlyProfit).toBe(-2000);
     expect(calculateRiskScore({ market: 20, financial: 40, operational: 30, technical: 10, compliance: 50 })).toEqual({ score: 30, level: "LOW" });
   });
 
@@ -39,5 +43,50 @@ describe("project calculations", () => {
     expect(result.monthlyProfit).toBe(2125);
     expect(result.netPresentValue).toBeLessThan(20000);
     expect(result.internalRateReturn).not.toBeNull();
+  });
+
+  it("converts effective annual rates and reconciles every monthly cash flow", () => {
+    const result = calculateFeasibility({ ...inputs, annualDiscountRate: 12, annualInflationRate: 12, taxRate: 20 });
+    expect(result.cashFlows).toHaveLength(13);
+    expect(result.cashFlows[0]?.netCashFlow).toBe(-inputs.initialInvestment);
+    expect(result.cashFlows[12]?.discountedCashFlow).toBeCloseTo(result.cashFlows[12]!.netCashFlow / 1.12, 8);
+    expect(result.cashFlows[12]?.revenue).toBeCloseTo(7500 * 1.12 ** (11 / 12), 8);
+    expect(result.cashFlows.reduce((sum, row) => sum + row.netCashFlow, 0)).toBeCloseTo(result.totalProfit, 8);
+    expect(result.cashFlows.reduce((sum, row) => sum + row.discountedCashFlow, 0)).toBeCloseTo(result.netPresentValue, 8);
+  });
+
+  it("returns undefined ROI as null rather than Infinity when investment is zero", () => {
+    const result = calculateFeasibility({ ...inputs, initialInvestment: 0 });
+    expect(result.roiPercent).toBeNull();
+    expect(result.internalRateReturn).toBeNull();
+    expect(result.paybackMonths).toBe(0);
+    expect(JSON.parse(JSON.stringify(result)).roiPercent).toBeNull();
+  });
+
+  it("bounds payback to the modeled horizon and interpolates inflated cash flows", () => {
+    expect(calculateFeasibility({ ...inputs, months: 3 }).paybackMonths).toBeNull();
+    const result = calculateFeasibility({ ...inputs, annualInflationRate: 12, annualDiscountRate: 12 });
+    expect(result.paybackMonths).toBeLessThan(4);
+    expect(result.discountedPaybackMonths).toBeGreaterThan(result.paybackMonths!);
+  });
+
+  it.each([0, -1, 1.5, MAX_FEASIBILITY_MONTHS + 1, 1e12, NaN, Infinity])("rejects an invalid or unbounded horizon %s", (months) => {
+    expect(() => calculateFeasibility({ ...inputs, months })).toThrow("months");
+  });
+
+  it("rejects missing required values and invalid rates at the service boundary", () => {
+    expect(() => calculateFeasibility({ ...inputs, pricePerUnit: undefined } as never)).toThrow("pricePerUnit");
+    expect(() => calculateFeasibility({ ...inputs, taxRate: NaN })).toThrow("rates");
+  });
+
+  it("calculates one-factor sensitivity and supports stress scenarios with negative margins", () => {
+    const sensitivity = calculateSensitivity(inputs);
+    expect(sensitivity).toHaveLength(8);
+    expect(sensitivity.find((item) => item.driver === "pricePerUnit" && item.changePercent === -10)!.npvDelta).toBeLessThan(0);
+    expect(sensitivity.find((item) => item.driver === "monthlyFixedCosts" && item.changePercent === 10)!.npvDelta).toBeLessThan(0);
+    const scenarios = calculateScenarios({ ...inputs, pricePerUnit: 11 });
+    expect(scenarios[0]?.breakEvenUnits).toBeNull();
+    expect(scenarios[0]?.inputs.pricePerUnit).toBeCloseTo(10.45);
+    expect(scenarios[0]?.monthlyProfit).toBeLessThan(0);
   });
 });

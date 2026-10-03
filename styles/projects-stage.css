@@ -436,3 +436,38 @@
 .projects-workspace [hidden] {
   display: none !important;
 }
+.project-review-panel,
+.project-financial-audit {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.project-review-panel details,
+.project-financial-audit details {
+  margin-block: 1rem;
+}
+
+.project-table-scroll {
+  max-width: 100%;
+  overflow: auto;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+}
+
+.project-table-scroll table {
+  width: 100%;
+  border-collapse: collapse;
+  font-variant-numeric: tabular-nums;
+}
+
+.project-table-scroll th,
+.project-table-scroll td {
+  padding: 0.65rem;
+  text-align: start;
+  white-space: nowrap;
+}
+
+.project-table-scroll caption {
+  padding: 0.75rem;
+  white-space: normal;
+}

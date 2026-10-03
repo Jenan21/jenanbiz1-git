@@ -15,6 +15,7 @@ import {
 import { db } from "@/lib/db";
 import { collaboratorUserSelect } from "@/lib/auth/user-select";
 import { assessProjectQuality } from "@/services/projects/project-quality";
+import { isProjectDecisionCurrent } from "@/services/projects/project-readiness";
 
 export class ProjectAccessError extends Error {}
 
@@ -227,7 +228,7 @@ export async function updateProjectPhase(
   return db.$transaction(async (transaction) => {
     const project = await transaction.project.findFirst({
       where: { id: projectId, ...projectAccessWhere(userId, [ProjectMemberRole.OWNER, ProjectMemberRole.EDITOR]) },
-      include: { phases: { orderBy: { sequence: "asc" } }, assessments: true },
+      include: { phases: { orderBy: { sequence: "asc" } }, assessments: true, financialPlans: { orderBy: { version: "desc" }, take: 1 } },
     });
     if (!project) throw new Error("Project not found");
     const currentPhase = project.phases.find((item) => item.type === phaseType);
@@ -254,6 +255,7 @@ export async function updateProjectPhase(
         if (!decision || decision.verdict !== ProjectDecisionVerdict.APPROVE) {
           throw new Error("A recorded approval decision is required before completing the evaluation phase");
         }
+        if (!isProjectDecisionCurrent({ ...project, decisions: [decision] })) throw new Error("Project evidence or financial plan changed after approval; review and record a new decision");
       }
     }
 
@@ -371,7 +373,9 @@ export async function saveProjectFinancialPlan(
   return db.$transaction(async (transaction) => {
     const project = await transaction.project.findFirst({ where: { id: projectId, ...projectAccessWhere(userId, [ProjectMemberRole.OWNER, ProjectMemberRole.EDITOR]) }, select: { id: true } });
     if (!project) throw new Error("Project not found");
-    const version = (await transaction.projectFinancialPlan.count({ where: { projectId } })) + 1;
+    await transaction.$queryRaw`SELECT "id" FROM "Project" WHERE "id" = ${projectId} FOR UPDATE`;
+    const previous = await transaction.projectFinancialPlan.aggregate({ where: { projectId }, _max: { version: true } });
+    const version = (previous._max.version ?? 0) + 1;
     const plan = await transaction.projectFinancialPlan.create({
       data: { projectId, createdById: userId, version, ...input },
     });
@@ -512,7 +516,7 @@ export async function recordProjectDecision(
       },
     });
     if (!project) throw new Error("Project not found");
-    if (project.phases[0]?.status !== ProjectPhaseStatus.ACTIVE) {
+    if (![ProjectPhaseStatus.ACTIVE, ProjectPhaseStatus.COMPLETED].includes(project.phases[0]?.status as "ACTIVE" | "COMPLETED")) {
       throw new Error("Activate the evaluation phase before recording a decision");
     }
     if (!project.financialPlans[0]) {
@@ -529,7 +533,11 @@ export async function recordProjectDecision(
         verdict: input.verdict,
         weightedScore: quality.score,
         rationale: input.rationale.trim(),
-        evidenceSnapshot: project.assessments.map((assessment) => ({ type: assessment.type, score: assessment.score, summary: assessment.summary, source: assessment.source, assessedAt: assessment.assessedAt?.toISOString() ?? null })),
+        evidenceSnapshot: {
+          financialPlanId: project.financialPlans[0].id,
+          financialPlanVersion: project.financialPlans[0].version,
+          assessments: project.assessments.map((assessment) => ({ type: assessment.type, score: assessment.score, summary: assessment.summary, source: assessment.source, assessedAt: assessment.assessedAt?.toISOString() ?? null })),
+        },
       },
     });
     await transaction.auditLog.create({
@@ -556,6 +564,9 @@ export async function startProject(projectId: string, userId: string) {
     }
     if (!project.financialPlans[0]) {
       throw new Error("A saved financial plan is required before starting");
+    }
+    if (!isProjectDecisionCurrent(project)) {
+      throw new Error("Project evidence or financial plan changed after approval; review and record a new decision");
     }
     const openHighRisk = project.risks.find((risk) => risk.score >= 15 && risk.status === ProjectRiskStatus.OPEN);
     if (openHighRisk) {

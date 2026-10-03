@@ -19,15 +19,16 @@ const weights: Record<ProjectAssessmentType, number> = {
 export function assessProjectQuality(assessments: AssessmentInput[]) {
   const requiredTypes = Object.keys(weights) as ProjectAssessmentType[];
   const byType = new Map(assessments.map((assessment) => [assessment.type, assessment]));
+  const duplicates = requiredTypes.filter((type) => assessments.filter((assessment) => assessment.type === type).length > 1);
   const missing = requiredTypes.filter((type) => {
     const assessment = byType.get(type);
-    return !assessment || assessment.score === null || !assessment.summary?.trim() || !assessment.source?.trim();
+    return !assessment || !Number.isInteger(assessment.score) || assessment.score === null || assessment.score < 0 || assessment.score > 100 || !assessment.summary?.trim() || !assessment.source?.trim() || duplicates.includes(type);
   });
   const completed = requiredTypes.length - missing.length;
   const completeness = Math.round((completed / requiredTypes.length) * 100);
   const weightedScore = requiredTypes.reduce((total, type) => {
     const score = byType.get(type)?.score;
-    return total + (score === null || score === undefined ? 0 : score * weights[type] / 100);
+    return total + (missing.includes(type) || score === null || score === undefined ? 0 : score * weights[type] / 100);
   }, 0);
   const score = Math.round(weightedScore);
 
@@ -38,5 +39,7 @@ export function assessProjectQuality(assessments: AssessmentInput[]) {
     readyForDecision: missing.length === 0,
     verdict: !missing.length ? (score >= 75 ? "APPROVE" : score >= 55 ? "REVIEW" : "REJECT") : "INCOMPLETE",
     weights,
+    duplicates,
+    evidenceStatus: "USER_RECORDED_NOT_INDEPENDENTLY_VERIFIED",
   } as const;
 }

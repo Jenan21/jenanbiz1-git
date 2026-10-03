@@ -6,6 +6,12 @@ const nextConfig: NextConfig = {
   distDir: process.env.NEXT_DIST_DIR ?? ".next",
   reactStrictMode: true,
   serverExternalPackages: ["@napi-rs/canvas", "pdfjs-dist"],
+  outputFileTracingIncludes: {
+    "/api/projects/*/report": [
+      "./node_modules/@fontsource-variable/alexandria/files/alexandria-{latin,arabic}-wght-normal.woff2",
+      "./public/assets/jenan-pro-logo.jpg",
+    ],
+  },
   agentRules: false,
   async headers() {
     return [{

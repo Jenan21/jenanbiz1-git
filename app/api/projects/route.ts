@@ -20,7 +20,7 @@ import {
   updateProjectPhase,
   updateProjectVendorStatus,
 } from "@/services/projects/project-service";
-import { calculateFeasibility, calculateRiskScore, calculateScenarios } from "@/services/projects/project-calculations";
+import { calculateFeasibility, calculateRiskScore, calculateScenarios, calculateSensitivity, MAX_FEASIBILITY_MONTHS, MAX_FINANCIAL_AMOUNT, MAX_MONTHLY_UNITS } from "@/services/projects/project-calculations";
 import { assessProjectQuality } from "@/services/projects/project-quality";
 import { saveProjectIntelligenceSnapshot, searchProjectIntelligence } from "@/services/projects/project-intelligence";
 import { db } from "@/lib/db";
@@ -38,12 +38,12 @@ const complianceStatuses = ["REQUIRED", "IN_PROGRESS", "SUBMITTED", "APPROVED", 
 const vendorKinds = ["VENDOR", "PARTNER"] as const;
 const vendorStatuses = ["PROSPECT", "APPROVED", "ACTIVE", "SUSPENDED", "ARCHIVED"] as const;
 const financialInputs = z.object({
-  initialInvestment: z.number().finite().min(0),
-  monthlyFixedCosts: z.number().finite().min(0),
-  variableCostPerUnit: z.number().finite().min(0),
-  pricePerUnit: z.number().finite().min(0),
-  monthlyUnits: z.number().int().min(1),
-  months: z.number().int().min(1),
+  initialInvestment: z.number().finite().min(0).max(MAX_FINANCIAL_AMOUNT),
+  monthlyFixedCosts: z.number().finite().min(0).max(MAX_FINANCIAL_AMOUNT),
+  variableCostPerUnit: z.number().finite().min(0).max(MAX_FINANCIAL_AMOUNT),
+  pricePerUnit: z.number().finite().min(0).max(MAX_FINANCIAL_AMOUNT),
+  monthlyUnits: z.number().int().min(1).max(MAX_MONTHLY_UNITS),
+  months: z.number().int().min(1).max(MAX_FEASIBILITY_MONTHS),
   annualDiscountRate: z.number().finite().min(0).max(100).optional(),
   annualInflationRate: z.number().finite().min(0).max(100).optional(),
   taxRate: z.number().finite().min(0).max(100).optional(),
@@ -186,10 +186,10 @@ export async function POST(request: NextRequest) {
           ? await recordProjectAssessment(input.projectId, input, user.id)
           : input.action === "calculateFeasibility"
             ? await (async () => {
-                const result = { base: calculateFeasibility(input.inputs), scenarios: calculateScenarios(input.inputs) };
+                const result = { base: calculateFeasibility(input.inputs), scenarios: calculateScenarios(input.inputs), sensitivity: calculateSensitivity(input.inputs) };
                 if (input.persist) {
                   if (!input.projectId) throw new Error("Project id is required to save a financial plan");
-                  await saveProjectFinancialPlan(input.projectId, { inputs: input.inputs, baseCase: result.base, scenarios: result.scenarios }, user.id);
+                  await saveProjectFinancialPlan(input.projectId, { inputs: input.inputs, baseCase: { ...result.base, sensitivity: result.sensitivity }, scenarios: result.scenarios }, user.id);
                 }
                 return result;
               })()
@@ -205,14 +205,16 @@ export async function POST(request: NextRequest) {
                 ? assessProjectQuality(input.assessments)
                 : input.action === "searchIntelligence"
                   ? await (async () => {
-                      const result = await searchProjectIntelligence(input);
                       if (input.projectId) {
                         const project = await db.project.findFirst({
                           where: { id: input.projectId, ...projectAccessWhere(user.id, ["OWNER", "EDITOR"]) },
                           select: { id: true },
                         });
                         if (!project) throw new Error("Project not found");
-                        await saveProjectIntelligenceSnapshot(project.id, input.query, result);
+                      }
+                      const result = await searchProjectIntelligence(input);
+                      if (input.projectId) {
+                        await saveProjectIntelligenceSnapshot(input.projectId, input.query, result);
                       }
                       return result;
                     })()

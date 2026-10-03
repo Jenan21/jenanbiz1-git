@@ -2,6 +2,7 @@ import { expect, test } from "@playwright/test";
 import { projectFlowDefinitions } from "@/lib/projects/project-flow-routes";
 import { cleanE2EIdentities, createE2ESession, seedE2EUser } from "./identity-fixture";
 import { e2eIdentity } from "./test-identities";
+import { PDFDocument } from "pdf-lib";
 
 const origin = "http://127.0.0.1:3101";
 
@@ -70,5 +71,81 @@ test.describe.serial("Projects full route flow", () => {
       const layout = await page.evaluate(() => ({ scrollWidth: document.documentElement.scrollWidth, viewportWidth: document.documentElement.clientWidth }));
       expect(layout.scrollWidth, route).toBeLessThanOrEqual(layout.viewportWidth + 1);
     }
+  });
+
+  test("saves reproducible studies, rejects unbounded inputs and downloads Arabic reports", async ({ context, page }) => {
+    const sessionToken = await createE2ESession(e2eIdentity.user.email);
+    await context.addCookies([
+      { name: "locale", value: "en", url: origin },
+      { name: "jenan_session", value: sessionToken, url: origin, httpOnly: true, sameSite: "Lax" },
+    ]);
+    const created = await page.request.post("/api/projects", { headers: { origin }, data: { action: "create", name: "دراسة جدوى مشروع جنان برو", countryCode: "SA", sector: "التصنيع" } });
+    expect(created.status()).toBe(201);
+    const projectId = (await created.json()).result.id;
+    await page.goto("/projects/feasibility/pro/financial");
+    await expect(page.locator(".projects-workspace")).toHaveAttribute("aria-busy", "false");
+    await expect(page.getByLabel("Initial investment", { exact: true })).toHaveValue("");
+    const inputs = { initialInvestment: 10000, monthlyFixedCosts: 2000, variableCostPerUnit: 10, pricePerUnit: 25, monthlyUnits: 300, months: 12, annualDiscountRate: 12, annualInflationRate: 2, taxRate: 15 };
+    const labels: Record<keyof typeof inputs, string> = {
+      initialInvestment: "Initial investment", monthlyFixedCosts: "Monthly fixed costs", variableCostPerUnit: "Variable cost per unit",
+      pricePerUnit: "Price per unit", monthlyUnits: "Monthly units", months: "Months",
+      annualDiscountRate: "Annual discount rate %", annualInflationRate: "Annual inflation rate %", taxRate: "Tax rate %",
+    };
+    for (const [field, input] of Object.entries(inputs)) await page.getByLabel(labels[field as keyof typeof inputs], { exact: true }).fill(String(input));
+    await page.getByRole("button", { name: "Calculate and save version", exact: true }).click();
+    await expect(page.locator(".project-financial-audit")).toBeVisible();
+    await expect(page.locator(".project-financial-audit")).toContainText("JENAN_FINANCE_V2");
+    await page.getByText("Monthly cash-flow schedule", { exact: true }).click();
+    await expect(page.locator(".project-table-scroll tbody tr")).toHaveCount(13);
+    await page.getByText("One-factor sensitivity ±10%", { exact: true }).click();
+    await expect(page.locator(".project-financial-audit details").last().locator("li")).toHaveCount(8);
+    await page.reload();
+    await expect(page.getByLabel("Initial investment", { exact: true })).toHaveValue("10000");
+    await expect(page.locator(".project-financial-audit")).toBeVisible();
+    const oversized = await page.request.post("/api/projects", { headers: { origin }, data: { action: "calculateFeasibility", projectId, persist: true, inputs: { ...inputs, months: 1e12 } } });
+    expect(oversized.status()).toBe(400);
+    const pdfResponse = await page.request.get(`/api/projects/${projectId}/report`);
+    expect(pdfResponse.status()).toBe(200);
+    expect(pdfResponse.headers()["content-type"]).toContain("application/pdf");
+    expect(pdfResponse.headers()["cache-control"]).toContain("no-store");
+    const pdf = await PDFDocument.load(await pdfResponse.body());
+    expect(pdf.getTitle()).toBe("دراسة جدوى مشروع جنان برو");
+    expect(pdf.getPageCount()).toBeGreaterThan(1);
+  });
+
+  test("checks all four branches in Arabic/English at the ten acceptance viewports", async ({ context, page }, testInfo) => {
+    test.setTimeout(480_000);
+    const sessionToken = await createE2ESession(e2eIdentity.user.email);
+    await context.addCookies([{ name: "jenan_session", value: sessionToken, url: origin, httpOnly: true, sameSite: "Lax" }]);
+    const errors: string[] = [];
+    page.on("pageerror", (error) => errors.push(error.message));
+    const viewports = [
+      [2560, 1440], [1920, 1080], [1440, 900], [1366, 768], [1280, 800],
+      [1024, 1366], [820, 1180], [430, 932], [390, 844], [360, 800],
+    ] as const;
+    const routes = ["/projects/analysis/result", "/projects/feasibility/pro/financial", "/projects/evaluation/result", "/projects/start/launch"];
+    for (const locale of ["ar", "en"]) {
+      await context.addCookies([{ name: "locale", value: locale, url: origin }]);
+      for (const [width, height] of viewports) {
+        await page.setViewportSize({ width, height });
+        for (const route of routes) {
+          expect((await page.goto(route, { waitUntil: "domcontentloaded" }))?.status()).toBe(200);
+          await expect(page.locator(".projects-workspace")).toHaveAttribute("aria-busy", "false", { timeout: 20_000 });
+          await expect(page.locator(".project-review-panel")).toBeVisible();
+          const layout = await page.evaluate(() => ({
+            width: document.documentElement.clientWidth,
+            scroll: document.documentElement.scrollWidth,
+            clippedControls: [...document.querySelectorAll("button, input, select")].filter((element) => {
+              const box = element.getBoundingClientRect();
+              return box.width > 0 && (box.left < -1 || box.right > document.documentElement.clientWidth + 1);
+            }).length,
+          }));
+          expect(layout.scroll, `${route} ${locale} ${width}`).toBeLessThanOrEqual(layout.width + 1);
+          expect(layout.clippedControls, `${route} ${locale} ${width}`).toBe(0);
+          if (width === 1920 || width === 390) await page.screenshot({ path: testInfo.outputPath(`${locale}-${width}-${route.replaceAll("/", "_")}.png`), fullPage: true });
+        }
+      }
+    }
+    expect(errors).toEqual([]);
   });
 });

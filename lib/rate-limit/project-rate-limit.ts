@@ -3,7 +3,7 @@ import type { NextRequest } from "next/server";
 import type { RateLimitDecision } from "@/lib/rate-limit/contracts";
 import { getRateLimitProvider } from "@/lib/rate-limit/auth-rate-limit";
 
-export type ProjectRateLimitAction = "create" | "assessment" | "financial" | "intelligence" | "risk" | "decision" | "membership" | "phase" | "start";
+export type ProjectRateLimitAction = "create" | "assessment" | "financial" | "intelligence" | "risk" | "decision" | "membership" | "phase" | "start" | "report";
 
 const policies: Record<ProjectRateLimitAction, { limit: number; windowMs: number }> = {
   create: { limit: 12, windowMs: 60_000 },
@@ -15,6 +15,7 @@ const policies: Record<ProjectRateLimitAction, { limit: number; windowMs: number
   membership: { limit: 15, windowMs: 60_000 },
   phase: { limit: 30, windowMs: 60_000 },
   start: { limit: 8, windowMs: 60_000 },
+  report: { limit: 8, windowMs: 60_000 },
 };
 
 function requestIdentity(request: NextRequest, userId: string) {

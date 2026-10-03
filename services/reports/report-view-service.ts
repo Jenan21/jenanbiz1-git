@@ -2,6 +2,7 @@ import { db } from "@/lib/db";
 import type { ReportRoute } from "@/lib/reports/report-routes";
 import { assessProjectQuality } from "@/services/projects/project-quality";
 import { getUserProject, projectAccessWhere } from "@/services/projects/project-service";
+import { assessProjectReadiness } from "@/services/projects/project-readiness";
 
 export type ReportRow = { label: string; value: string };
 export type ReportSection = { title: string; note?: string; rows: ReportRow[] };
@@ -18,6 +19,7 @@ async function resolveProject(userId: string, projectId?: string) {
 
 function projectSections(project: NonNullable<Awaited<ReturnType<typeof resolveProject>>>, mode: "analysis" | "evaluation") {
   const quality = assessProjectQuality(project.assessments);
+  const readiness = assessProjectReadiness(project);
   const sections: ReportSection[] = [
     {
       title: "بيانات المشروع",
@@ -32,13 +34,39 @@ function projectSections(project: NonNullable<Awaited<ReturnType<typeof resolveP
     },
     {
       title: "جودة السجل",
+      note: "أدلة يسجلها المستخدم؛ ليست تحققاً مستقلاً أو ضماناً للاستثمار.",
       rows: [
         { label: "الدرجة الموزونة", value: `${quality.score}/100` },
         { label: "اكتمال الأدلة", value: `${quality.completeness}%` },
         { label: "جاهزية القرار", value: quality.readyForDecision ? "جاهز" : "أدلة غير مكتملة" },
       ],
     },
+    {
+      title: "فحص الجاهزية والمراجعة",
+      rows: [
+        { label: "مطابقة الاعتماد للأدلة", value: readiness.decisionCurrent ? "مطابق" : "يتطلب مراجعة" },
+        { label: "مخاطر عالية مفتوحة", value: String(readiness.highOpenRisks) },
+        { label: "مراجعات مخاطر متأخرة", value: String(readiness.overdueRiskReviews) },
+        { label: "امتثال يحتاج متابعة", value: String(readiness.pendingCompliance) },
+        { label: "الأدلة الناقصة", value: quality.missing.join("، ") || "لا يوجد" },
+      ],
+    },
   ];
+  const financialPlan = project.financialPlans[0];
+  const base = financialPlan?.baseCase as Record<string, unknown> | undefined;
+  const format = (value: unknown) => typeof value === "number" && Number.isFinite(value) ? value.toLocaleString("ar-SA", { maximumFractionDigits: 2 }) : "غير متاح";
+  if (financialPlan) sections.push({
+    title: "الدراسة المالية المحفوظة",
+    note: `نسخة ${financialPlan.version} · ${financialPlan.createdAt.toISOString()} · ${base?.modelVersion ?? "نموذج سابق"} · حسابات من افتراضات المستخدم، وليست توقعات سوقية مستقلة.`,
+    rows: [
+      { label: "صافي القيمة الحالية NPV", value: format(base?.netPresentValue) },
+      { label: "العائد على الاستثمار %", value: format(base?.roiPercent) },
+      { label: "العائد الداخلي السنوي %", value: format(base?.internalRateReturn) },
+      { label: "استرداد الاستثمار (شهر)", value: format(base?.paybackMonths) },
+      { label: "الاسترداد المخصوم (شهر)", value: format(base?.discountedPaybackMonths) },
+      { label: "نقطة التعادل (وحدة)", value: format(base?.breakEvenUnits) },
+    ],
+  });
   if (mode === "analysis") {
     sections.push({
       title: "مصادر التحليل",

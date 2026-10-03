@@ -89,6 +89,8 @@ describe("projects domain", () => {
 
     const financialPlan = await saveProjectFinancialPlan(project.id, { inputs: { price: 50 }, baseCase: { roiPercent: 80 }, scenarios: [{ scenario: "EXPECTED" }] }, user.id);
     expect(financialPlan.version).toBe(1);
+    const parallelPlans = await Promise.all([1, 2].map(() => saveProjectFinancialPlan(project.id, { inputs: { price: 50 }, baseCase: { roiPercent: 80 }, scenarios: [{ scenario: "EXPECTED" }] }, user.id)));
+    expect(parallelPlans.map((plan) => plan.version).sort()).toEqual([2, 3]);
     const risk = await createProjectRisk(project.id, { category: "MARKET", title: "Demand variance", likelihood: 3, impact: 4, mitigation: "Review demand weekly and adjust capacity.", ownerLabel: "Project owner" }, user.id);
     expect(risk.score).toBe(12);
     expect((await updateProjectRiskStatus(project.id, risk.id, "MITIGATING", user.id)).status).toBe("MITIGATING");
@@ -106,9 +108,19 @@ describe("projects domain", () => {
     await updateProjectPhase(project.id, "EVALUATION", "ACTIVE", user.id);
     const decision = await recordProjectDecision(project.id, { verdict: "APPROVE", rationale: "All documented assessment evidence supports a controlled launch." }, reviewer.id);
     expect(decision.verdict).toBe("APPROVE");
+    await recordProjectAssessment(project.id, { type: "TECHNICAL", score: 80, summary: "Technical evidence revised after approval", source: "Reviewed revised source" }, editor.id);
+    await expect(startProject(project.id, user.id)).rejects.toThrow("changed after approval");
+    await recordProjectDecision(project.id, { verdict: "APPROVE", rationale: "Re-reviewed the updated technical evidence before launch." }, reviewer.id);
+    await saveProjectFinancialPlan(project.id, { inputs: { price: 60 }, baseCase: { roiPercent: 90 }, scenarios: [{ scenario: "EXPECTED" }] }, user.id);
+    await expect(startProject(project.id, user.id)).rejects.toThrow("changed after approval");
+    await expect(updateProjectPhase(project.id, "EVALUATION", "COMPLETED", user.id)).rejects.toThrow("changed after approval");
+    await recordProjectDecision(project.id, { verdict: "APPROVE", rationale: "Re-reviewed the updated financial version before launch." }, reviewer.id);
     await updateProjectPhase(project.id, "EVALUATION", "COMPLETED", user.id, "Approved by documented evidence");
     await updateProjectPhase(project.id, "PLANNING", "ACTIVE", user.id);
     await updateProjectPhase(project.id, "PLANNING", "COMPLETED", user.id, "Delivery plan approved");
+    await recordProjectAssessment(project.id, { type: "TECHNICAL", score: 80, summary: "Reviewed technical source after planning", source: "Final technical evidence" }, editor.id);
+    await expect(startProject(project.id, user.id)).rejects.toThrow("changed after approval");
+    await recordProjectDecision(project.id, { verdict: "APPROVE", rationale: "Re-reviewed source changes without reactivating a completed evaluation." }, reviewer.id);
 
     await expect(startProject(project.id, editor.id)).rejects.toThrow("Project not found");
     const started = await startProject(project.id, user.id);
