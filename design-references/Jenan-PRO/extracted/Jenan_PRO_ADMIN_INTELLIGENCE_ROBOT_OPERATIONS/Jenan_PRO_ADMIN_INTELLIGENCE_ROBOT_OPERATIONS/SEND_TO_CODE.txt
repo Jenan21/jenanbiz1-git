@@ -1,0 +1,35 @@
+Jenan PRO — الملف الثالث المكمل
+
+أرفق هذه الحزمة مع:
+1) Jenan_PRO_COMPLETE_PLATFORM_UI_BLUEPRINT.zip
+2) Jenan_PRO_PAGE_BY_PAGE_UI_REFERENCES.zip
+3) هذه الحزمة: Jenan_PRO_ADMIN_INTELLIGENCE_ROBOT_OPERATIONS.zip
+
+هذه الحزمة تحتوي 80 واجهة إضافية مستقلة تخص نظام التشغيل الداخلي:
+Admin + Robot Factory + Robot Academy + Robot Org + Mission Engine + Intelligence Center + Model/Tool Registry + Finance + Observability + Reports.
+
+احفظ الحزم الثلاث داخل المستودع ومجلد المشروع المحلي.
+لا تحذف أي مرجع.
+
+مهم:
+قسم أهلية التمويل Funding Eligibility ملغي نهائيًا ولا ينفذ حتى لو ظهر في ملف قديم.
+
+ابدأ من BROWSER_INDEX.html.
+كل واجهة لها reference.html وspec.txt.
+
+لكل قسم:
+Full child pages
+→ Functional Test
+→ Responsive Test
+→ Compare with reference
+→ Visual Match ≥70%
+→ lint/typecheck/tests/build
+→ Commit
+→ Save locally
+→ Move on.
+
+لا تعتبر القسم منتهيًا إذا كانت الصفحة الرئيسية فقط موجودة.
+نفّذ جميع التفاصيل، الملفات، الاختبارات، النتائج، المهام، الأدلة، التكاليف، التقارير، ومراحل الاعتماد الخاصة به.
+
+لا تستخدم Screenshot كواجهة Production.
+Jenan PRO فقط.

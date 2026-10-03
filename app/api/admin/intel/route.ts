@@ -1,11 +1,17 @@
 import { NextResponse } from "next/server";
 import { getPlatformAdminSummary } from "@/lib/admin/platform-summary";
-import { buildFallbackPlatformInsights } from "@/lib/ai/platform-intelligence";
+import { buildPlatformObservations } from "@/lib/ai/platform-intelligence";
+import { hasPlatformAdminAccess } from "@/lib/auth/authorization";
+import { getCurrentUser } from "@/lib/auth/session";
 
 export async function GET() {
+  const user = await getCurrentUser();
+  if (!user || !hasPlatformAdminAccess(user.systemRole)) {
+    return NextResponse.json({ success: false, message: "Admin access required" }, { status: 403 });
+  }
   try {
     const summary = await getPlatformAdminSummary();
-    const insights = buildFallbackPlatformInsights({
+    const insights = buildPlatformObservations({
       totalRobots: summary.totalRobots,
       visibleRobots: summary.visibleRobots,
       reviewRobots: summary.reviewRobots,

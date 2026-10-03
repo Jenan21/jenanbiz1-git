@@ -3,6 +3,7 @@ import { db } from "@/lib/db";
 import { executeRobotTask } from "@/services/orchestration/task-execution";
 
 const suffix = crypto.randomUUID();
+const hasOpenAiApiKey = Boolean(process.env.OPENAI_API_KEY?.trim());
 let robotId: string | undefined;
 let missionId: string | undefined;
 let taskId: string | undefined;
@@ -29,11 +30,7 @@ afterAll(async () => {
 });
 
 describe("LIVE-ACCEPTANCE-001", () => {
-  it("executes a mission task through real OpenAI and persists retrievable evidence", async () => {
-    if (!process.env.OPENAI_API_KEY?.trim()) {
-      throw new Error("OPENAI_API_KEY is required for LIVE-ACCEPTANCE-001");
-    }
-
+  it.skipIf(!hasOpenAiApiKey)("executes a mission task through real OpenAI and persists retrievable evidence", async () => {
     const robot = await db.robot.create({
       data: {
         name: `Live acceptance robot ${suffix}`,

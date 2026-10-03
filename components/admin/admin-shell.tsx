@@ -8,21 +8,21 @@ import { adminNavItems } from "@/lib/admin/navigation";
 
 const texts = {
   ar: {
-    brand: "إدارة جينان",
+    brand: "إدارة Jenan Pro",
     layer: "طبقة التحكم",
     eyebrow: "عمليات الذكاء",
     heading: "مركز التحكم",
     live: "مباشر",
-    deploy: "نشر",
+    operations: "العمليات",
     toggle: "EN",
   },
   en: {
-    brand: "Jenan Admin",
+    brand: "Jenan Pro Admin",
     layer: "Control Layer",
     eyebrow: "INTELLIGENCE OPS",
     heading: "Admin command center",
     live: "live",
-    deploy: "Deploy",
+    operations: "Operations",
     toggle: "AR",
   },
 } as const;
@@ -32,18 +32,30 @@ export function AdminShell({ children }: { children: ReactNode }) {
   const [lang, setLang] = useState<"ar" | "en">("ar");
 
   useEffect(() => {
-    const saved = localStorage.getItem("jenan-admin-lang");
-    const locale = document.cookie.match(
-      /(?:^|;\s*)locale=(ar|en)(?:;|$)/,
-    )?.[1];
-    const nextLanguage =
-      saved === "ar" || saved === "en" ? saved : locale === "en" ? "en" : "ar";
-    const frame = window.requestAnimationFrame(() => setLang(nextLanguage));
-    return () => window.cancelAnimationFrame(frame);
+    const frame = requestAnimationFrame(() => {
+      try {
+        const locale = document.cookie
+          .split(";")
+          .map((item) => item.trim())
+          .find((item) => item.startsWith("locale="))
+          ?.split("=")[1];
+        const saved = localStorage.getItem("jenan-admin-lang");
+        const nextLocale = locale === "ar" || locale === "en" ? locale : saved === "ar" || saved === "en" ? saved : "ar";
+        setLang(nextLocale);
+      } catch {
+        setLang("ar");
+      }
+    });
+
+    return () => cancelAnimationFrame(frame);
   }, []);
 
   useEffect(() => {
-    localStorage.setItem("jenan-admin-lang", lang);
+    try {
+      localStorage.setItem("jenan-admin-lang", lang);
+    } catch {
+      // Ignore storage restrictions in private browsing or locked environments.
+    }
   }, [lang]);
 
   const t = texts[lang];
@@ -52,7 +64,7 @@ export function AdminShell({ children }: { children: ReactNode }) {
     <div className="admin-shell" dir={lang === "ar" ? "rtl" : "ltr"}>
       <aside className="admin-sidebar glass">
         <div className="admin-brand">
-          <div className="admin-brand-mark">J</div>
+          <span aria-hidden="true">J</span>
           <div>
             <strong>{t.brand}</strong>
             <small>{t.layer}</small>
@@ -69,8 +81,10 @@ export function AdminShell({ children }: { children: ReactNode }) {
                 key={item.href}
                 href={item.href}
                 className={`admin-nav-item ${isActive ? "active" : ""}`}
+                aria-current={isActive ? "page" : undefined}
+                aria-label={item.label[lang]}
               >
-                <span>
+                <span aria-hidden="true">
                   <Icon name={item.icon} />
                 </span>
                 {item.label[lang]}
@@ -87,18 +101,18 @@ export function AdminShell({ children }: { children: ReactNode }) {
             <h2>{t.heading}</h2>
           </div>
           <div className="admin-topbar__actions">
-            <span className="pill">
-              <span className="live-dot" /> {t.live}
-            </span>
+            <span className="pill"><span className="live-dot" /> {t.live}</span>
             <button
               type="button"
               className="btn small secondary"
               onClick={() => setLang((prev) => (prev === "ar" ? "en" : "ar"))}
-              aria-label="Toggle language"
+              aria-label={lang === "ar" ? "Switch to English" : "التبديل إلى العربية"}
             >
               {t.toggle}
             </button>
-            <button className="btn small primary">{t.deploy}</button>
+            <Link href="/admin/operations" className="btn small primary">
+              {t.operations}
+            </Link>
           </div>
         </header>
 

@@ -1,0 +1,36 @@
+Jenan PRO — Admin Intelligence Robot Operations
+Page: 024
+Group: 02 — أكاديمية الروبوتات
+Route: /robot-academy/graduation
+Title: التخرج والتوزيع
+Kind: academy
+Purpose: اعتماد الخريجين ونقل مهاراتهم إلى مركز الذكاء ثم توزيعهم.
+
+Modules:
+- جاهز للتخرج
+- بانتظار المراجعة
+- الخريجون
+- مركز الذكاء
+- طلبات الأقسام
+- التوزيع
+
+Actions:
+- اعتماد التخرج
+- نقل الخبرات
+- توزيع
+
+Outputs:
+- —
+
+Next Routes:
+- —
+
+Implementation:
+- Jenan PRO only.
+- Real React/CSS/SVG/components.
+- Responsive Desktop/Laptop/Tablet/Mobile.
+- No screenshot as production background.
+- No fake production values.
+- Reach ≥70% visual match before moving to next section.
+- Functional QA + responsive QA required.
+- Commit + save locally after PASS.

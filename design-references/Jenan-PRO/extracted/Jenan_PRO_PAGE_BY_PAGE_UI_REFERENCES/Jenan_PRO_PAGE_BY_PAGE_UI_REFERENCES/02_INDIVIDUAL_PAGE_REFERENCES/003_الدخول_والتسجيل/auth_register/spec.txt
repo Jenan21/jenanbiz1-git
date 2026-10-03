@@ -1,0 +1,26 @@
+Jenan PRO — Page Reference
+Page: 003
+Category: الدخول والتسجيل
+Route: /auth/register
+Title: إنشاء حساب
+Kind: form
+Description: إنشاء حساب Jenan PRO.
+
+Sections:
+- الاسم
+- البريد
+- الجوال عند الحاجة
+- كلمة المرور
+- تأكيد كلمة المرور
+- الشروط
+
+Outputs:
+- —
+
+Actions:
+- إنشاء الحساب
+
+Next routes:
+- /user/onboarding
+
+Target: 60–70% baseline; responsive; Git checkpoint + local copy.

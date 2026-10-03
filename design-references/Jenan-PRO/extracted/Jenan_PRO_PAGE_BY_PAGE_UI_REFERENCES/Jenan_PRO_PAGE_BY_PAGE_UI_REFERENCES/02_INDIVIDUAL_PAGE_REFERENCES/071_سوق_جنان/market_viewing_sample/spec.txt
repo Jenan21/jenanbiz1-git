@@ -1,0 +1,24 @@
+Jenan PRO — Page Reference
+Page: 071
+Category: سوق جنان
+Route: /market/viewing/sample
+Title: حجز المعاينة
+Kind: form
+Description: رحلة سوق كاملة.
+
+Sections:
+- التاريخ
+- الوقت
+- الحضور
+- الملاحظات
+
+Outputs:
+- تأكيد موعد
+
+Actions:
+- حجز
+
+Next routes:
+- /market/deal/sample
+
+Target: 60–70% baseline; responsive; Git checkpoint + local copy.

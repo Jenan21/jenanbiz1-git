@@ -1,0 +1,35 @@
+Jenan PRO — Admin Intelligence Robot Operations
+Page: 051
+Group: 05 — مركز الذكاء
+Route: /intelligence/reviews
+Title: مراجعة واعتماد المعرفة
+Kind: committee
+Purpose: مراجعة التغييرات قبل دمجها في المعرفة المشتركة.
+
+Modules:
+- التغيير
+- الأدلة
+- المراجعون
+- التعارضات
+- القرار
+
+Actions:
+- اعتماد
+- رفض
+- طلب تعديل
+
+Outputs:
+- —
+
+Next Routes:
+- —
+
+Implementation:
+- Jenan PRO only.
+- Real React/CSS/SVG/components.
+- Responsive Desktop/Laptop/Tablet/Mobile.
+- No screenshot as production background.
+- No fake production values.
+- Reach ≥70% visual match before moving to next section.
+- Functional QA + responsive QA required.
+- Commit + save locally after PASS.

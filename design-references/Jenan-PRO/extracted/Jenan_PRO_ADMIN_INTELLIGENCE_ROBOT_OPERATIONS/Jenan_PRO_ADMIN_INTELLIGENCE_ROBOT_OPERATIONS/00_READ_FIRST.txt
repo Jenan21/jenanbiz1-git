@@ -1,0 +1,36 @@
+Jenan PRO — ADMIN / INTELLIGENCE / ROBOT OPERATIONS EXTENSION
+
+هذه الحزمة هي الملف الثالث المكمّل للملفين السابقين.
+لا تستبدل الملفين السابقين بها؛ أرفق الثلاثة معًا.
+
+تغطي الحزمة:
+- لوحة الأدمن العليا.
+- مصنع الروبوتات.
+- أكاديمية الروبوتات النظرية والعملية.
+- الاختبارات والتخرج والاستبعاد.
+- ملفات الروبوتات والمهارات والتخصصات الجغرافية.
+- الهيكل: موظفون → مشرفون → مديرون → اللجنة العليا (50 روبوت) → الأدمن.
+- Mission Engine ومركز المهام.
+- Retry / Fallback / Dependencies / Approvals / Evidence / Cost.
+- مركز الذكاء والمعرفة والخبرات وLearning Logs والأدلة والإصدارات وRollback.
+- Model Registry / Router / Executions.
+- Tool Registry / Permissions / Executions.
+- الإيرادات والتكاليف وربحية الخدمات وسجل التكلفة.
+- Workers / Queues / Health / Logs / Alerts / Backups.
+- التقارير العليا.
+
+تنبيه:
+قسم "أهلية التمويل" ملغي نهائيًا من المنصة ولا يتم تنفيذه.
+إذا ظهر داخل أي ملف قديم فهو Legacy Reference ملغي.
+
+الهوية الحالية:
+Jenan PRO / جنان برو فقط.
+
+كل صفحة في مجلد مستقل وبداخلها:
+reference.html
+spec.txt
+
+افتح BROWSER_INDEX.html للتصفح.
+
+المرحلة الحالية:
+Full section → full child pages → functional QA → responsive QA → compare against reference → ≥70% → commit → save locally → move on.

@@ -1,0 +1,29 @@
+Jenan PRO — Page Reference
+Page: 014
+Category: المشاريع
+Route: /projects
+Title: قسم المشاريع
+Kind: dashboard
+Description: تحليل، تقييم، بدء، ودراسات جدوى.
+
+Sections:
+- تحليل مشروع
+- تقييم مشروع
+- بدء مشروع
+- دراسات الجدوى
+- مشروعاتي
+- الإحصائيات
+
+Outputs:
+- تقارير المشاريع
+
+Actions:
+- بدء خدمة
+
+Next routes:
+- /projects/analysis/new
+- /projects/evaluation/new
+- /projects/start/new
+- /projects/feasibility
+
+Target: 60–70% baseline; responsive; Git checkpoint + local copy.

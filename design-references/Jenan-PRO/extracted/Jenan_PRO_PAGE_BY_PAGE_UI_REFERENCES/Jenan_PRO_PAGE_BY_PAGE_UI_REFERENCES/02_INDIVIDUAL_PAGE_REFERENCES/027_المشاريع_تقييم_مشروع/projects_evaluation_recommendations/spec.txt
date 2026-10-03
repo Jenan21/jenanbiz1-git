@@ -1,0 +1,25 @@
+Jenan PRO — Page Reference
+Page: 027
+Category: المشاريع/تقييم مشروع
+Route: /projects/evaluation/recommendations
+Title: التوصيات النهائية
+Kind: detail
+Description: رحلة تقييم مشروع كاملة.
+
+Sections:
+- نقاط القوة
+- نقاط التحسين
+- التوصية النهائية
+- الخطوات التالية
+
+Outputs:
+- ملخص توصيات
+
+Actions:
+- حفظ
+- تحويل إلى بدء مشروع
+
+Next routes:
+- /projects/start/new
+
+Target: 60–70% baseline; responsive; Git checkpoint + local copy.

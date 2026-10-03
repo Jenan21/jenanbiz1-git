@@ -1,24 +1,30 @@
 import { db } from "@/lib/db";
 import { RobotStatus } from "@/generated/prisma/client";
 
-export async function getRobotDashboardSnapshot() {
-  const robots = await db.robot.findMany({
-    orderBy: { intelligence: "desc" },
-    take: 10,
-  });
-
-  const totalRobots = await db.robot.count();
-  const visibleRobots = await db.robot.count({ where: { status: RobotStatus.ACTIVE } });
-  const hiddenRobots = await db.robot.count({ where: { status: RobotStatus.HIDDEN } });
-  const averageIntelligence = await db.robot.aggregate({
-    _avg: { intelligence: true },
-  });
+export async function getRobotDashboardSnapshot({ limit = 20, offset = 0 }: { limit?: number; offset?: number } = {}) {
+  const createdSince = new Date(Date.now() - 86_400_000);
+  const [robots, totalRobots, activeRobots, reviewRobots, hiddenRobots, dailyGeneration, averageIntelligence] = await Promise.all([
+    db.robot.findMany({
+      orderBy: { intelligence: "desc" },
+      skip: offset,
+      take: limit,
+    }),
+    db.robot.count(),
+    db.robot.count({ where: { status: RobotStatus.ACTIVE } }),
+    db.robot.count({ where: { status: RobotStatus.REVIEW } }),
+    db.robot.count({ where: { status: RobotStatus.HIDDEN } }),
+    db.robot.count({ where: { createdAt: { gte: createdSince } } }),
+    db.robot.aggregate({ _avg: { intelligence: true } }),
+  ]);
 
   return {
     totalRobots,
-    visibleRobots,
+    activeRobots,
+    reviewRobots,
     hiddenRobots,
+    dailyGeneration,
     averageIntelligence: Math.round(Number(averageIntelligence._avg.intelligence ?? 0)),
     robots,
+    pagination: { total: totalRobots, limit, offset, hasMore: offset + limit < totalRobots },
   };
 }

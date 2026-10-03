@@ -7,7 +7,7 @@ import {
 describe("summarizeRobotMetrics", () => {
   it("ranks visible robots and computes accurate dashboard values", () => {
     const robots: RobotRecord[] = [
-      { id: "r1", name: "Core Dev Prime", intelligence: 98, skill: 96, experience: 93, status: "ACTIVE" },
+      { id: "r1", name: "Core Dev Prime", intelligence: 98, skill: 96, experience: 93, status: "ACTIVE", createdAt: new Date() },
       { id: "r2", name: "Signal Forge", intelligence: 97, skill: 95, experience: 92, status: "ACTIVE" },
       { id: "r3", name: "Trust Pilot", intelligence: 95, skill: 94, experience: 90, status: "ACTIVE" },
       { id: "r4", name: "Weak Bot", intelligence: 61, skill: 58, experience: 52, status: "HIDDEN" },
@@ -20,7 +20,7 @@ describe("summarizeRobotMetrics", () => {
     expect(summary.visibleRobots).toHaveLength(3);
     expect(summary.visibleRobots[0].name).toBe("Core Dev Prime");
     expect(summary.averageIntelligence).toBeGreaterThan(85);
-    expect(summary.dailyGeneration).toBe(1000);
+    expect(summary.dailyGeneration).toBe(1);
     expect(summary.approvalRate).toBeGreaterThan(70);
     expect(summary.hiddenRobots).toBe(1);
   });

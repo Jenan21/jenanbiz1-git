@@ -1,0 +1,28 @@
+Jenan PRO — Page Reference
+Page: 007
+Category: صفحة المستخدم
+Route: /user
+Title: لوحة المستخدم
+Kind: dashboard
+Description: مركز المستخدم الشخصي.
+
+Sections:
+- الحساب
+- الاستثمارات
+- الخدمات المفتوحة
+- الإشعارات
+- النشاط
+
+Outputs:
+- ملخصات
+
+Actions:
+- إدارة
+
+Next routes:
+- /user/investments
+- /user/unlocks
+- /user/payments
+- /user/reports
+
+Target: 60–70% baseline; responsive; Git checkpoint + local copy.

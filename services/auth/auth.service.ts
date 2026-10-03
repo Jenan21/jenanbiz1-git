@@ -73,6 +73,7 @@ export async function registerUser(
               locale: input.locale,
               language: input.language,
               countryCode: input.countryCode,
+              phone: input.phone,
             },
           },
         },
@@ -191,11 +192,18 @@ export async function getSessionUser(token: string) {
   });
   if (
     !session ||
+    !session.user ||
     session.expiresAt <= new Date() ||
     session.user.status !== UserStatus.ACTIVE
   ) {
     if (session) await db.session.delete({ where: { id: session.id } });
     return null;
+  }
+  if (session.updatedAt < new Date(Date.now() - 5 * 60 * 1000)) {
+    await db.session.update({
+      where: { id: session.id },
+      data: { updatedAt: new Date() },
+    });
   }
   return session.user;
 }

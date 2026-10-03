@@ -1,5 +1,5 @@
 import { AdminShell } from "@/components/admin/admin-shell";
-import { RobotAdminDashboard } from "@/components/dashboard/robot-admin-dashboard";
+import { AdminOverviewDashboard } from "@/components/dashboard/admin-overview-dashboard";
 
 export const metadata = {
   title: "لوحة تحكم صائدي الجوائز",
@@ -8,7 +8,7 @@ export const metadata = {
 export default function AdminDashboard() {
   return (
     <AdminShell>
-      <RobotAdminDashboard />
+      <AdminOverviewDashboard />
     </AdminShell>
   );
 }

@@ -1,0 +1,25 @@
+Jenan PRO — Page Reference
+Page: 154
+Category: الأدمن
+Route: /admin/reports
+Title: تقارير الأدمن
+Kind: dashboard
+Description: إدارة تقارير الأدمن.
+
+Sections:
+- بحث
+- مؤشرات
+- جداول
+- حالات
+- إجراءات
+
+Outputs:
+- تقارير/تصدير
+
+Actions:
+- عرض
+
+Next routes:
+- —
+
+Target: 60–70% baseline; responsive; Git checkpoint + local copy.

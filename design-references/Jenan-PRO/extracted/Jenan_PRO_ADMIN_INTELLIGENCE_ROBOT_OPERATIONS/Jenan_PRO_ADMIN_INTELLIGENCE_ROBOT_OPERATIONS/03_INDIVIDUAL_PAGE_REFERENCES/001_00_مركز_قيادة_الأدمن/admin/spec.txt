@@ -1,0 +1,39 @@
+Jenan PRO — Admin Intelligence Robot Operations
+Page: 001
+Group: 00 — مركز قيادة الأدمن
+Route: /admin
+Title: مركز قيادة Jenan PRO
+Kind: command
+Purpose: لوحة القيادة العليا لإدارة المنصة والذكاء والروبوتات والعمليات والتكاليف.
+
+Modules:
+- المستخدمون النشطون
+- حالة الأنظمة
+- المهام الجارية
+- تكلفة الذكاء
+- الإيرادات
+- الأقسام الأكثر استخدامًا
+- التنبيهات
+- مؤشر الجودة
+
+Actions:
+- فتح مركز العمليات
+- التقارير
+- سجل التدقيق
+
+Outputs:
+- Executive Dashboard PDF
+
+Next Routes:
+- /admin/operations
+- /admin/reports
+
+Implementation:
+- Jenan PRO only.
+- Real React/CSS/SVG/components.
+- Responsive Desktop/Laptop/Tablet/Mobile.
+- No screenshot as production background.
+- No fake production values.
+- Reach ≥70% visual match before moving to next section.
+- Functional QA + responsive QA required.
+- Commit + save locally after PASS.

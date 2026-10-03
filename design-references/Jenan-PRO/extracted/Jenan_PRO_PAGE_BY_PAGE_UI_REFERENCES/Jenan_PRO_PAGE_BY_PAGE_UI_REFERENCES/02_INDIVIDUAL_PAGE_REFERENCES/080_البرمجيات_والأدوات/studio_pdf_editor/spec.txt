@@ -1,0 +1,26 @@
+Jenan PRO — Page Reference
+Page: 080
+Category: البرمجيات والأدوات
+Route: /studio/pdf/editor
+Title: محرر PDF
+Kind: editor
+Description: أدوات Jenan PRO الأصلية.
+
+Sections:
+- صفحات
+- معاينة
+- ترتيب
+- أدوات
+- تقدم العملية
+
+Outputs:
+- PDF
+
+Actions:
+- حفظ
+- تنزيل
+
+Next routes:
+- —
+
+Target: 60–70% baseline; responsive; Git checkpoint + local copy.

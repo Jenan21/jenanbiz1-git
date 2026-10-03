@@ -12,7 +12,7 @@ type OperationsPayload = {
 };
 
 export default function OperationsPage() {
-  const [lang] = useState<"ar" | "en">("ar");
+  const [lang, setLang] = useState<"ar" | "en">("ar");
   const [data, setData] = useState<OperationsPayload>({
     stages: [],
     missions: [],
@@ -21,20 +21,53 @@ export default function OperationsPage() {
   });
 
   useEffect(() => {
+    const frame = requestAnimationFrame(() => {
+      try {
+        const locale = document.cookie
+          .split(";")
+          .map((item) => item.trim())
+          .find((item) => item.startsWith("locale="))
+          ?.split("=")[1];
+        const saved = localStorage.getItem("jenan-admin-lang");
+        const nextLocale = locale === "ar" || locale === "en" ? locale : saved === "ar" || saved === "en" ? saved : "ar";
+        setLang(nextLocale);
+      } catch {
+        setLang("ar");
+      }
+    });
+
+    return () => cancelAnimationFrame(frame);
+  }, []);
+
+  useEffect(() => {
     fetch("/api/admin/operations")
-      .then((response) => response.json())
-      .then((payload) => {
-        if (payload?.success) {
-          setData({
-            stages: payload.operations?.stages ?? [],
-            missions: payload.operations?.missions ?? [],
-            approvedCount: payload.operations?.approvedCount ?? 0,
-            users: payload.operations?.users ?? 0,
-          });
+      .then((response) => {
+        if (!response.ok) {
+          throw new Error(`Request failed with status ${response.status}`);
         }
+        return response.json();
+      })
+      .then((payload) => {
+        const operations = payload?.operations ?? {};
+        setData({
+          stages: Array.isArray(operations.stages) ? operations.stages : [],
+          missions: Array.isArray(operations.missions) ? operations.missions : [],
+          approvedCount: Number(operations.approvedCount ?? 0),
+          users: Number(operations.users ?? 0),
+        });
       })
       .catch(() => undefined);
   }, []);
+
+  const qaScore = Math.min(
+    10,
+    Math.round(
+      (data.approvedCount > 0 ? 3 : 0) +
+      (data.stages.length >= 4 ? 3 : 0) +
+      (data.users > 0 ? 2 : 0) +
+      (data.missions.length >= 2 ? 2 : 0),
+    ),
+  );
 
   return (
     <AdminShell>
@@ -53,6 +86,16 @@ export default function OperationsPage() {
             <span className="pill"><span className="live-dot" /> {lang === "ar" ? "تدفق مباشر" : "live flow"}</span>
             <strong>{data.approvedCount}</strong>
             <small>{lang === "ar" ? "موافق للاستخدام" : "approved for operations"}</small>
+          </div>
+        </section>
+
+        <section className="panel qa-gate-panel" style={{ marginBottom: "20px" }}>
+          <div className="panel-header">
+            <div>
+              <p className="panel-kicker">{lang === "ar" ? "معيار الاعتماد" : "Approval standard"}</p>
+              <h2>{lang === "ar" ? "جودة التشغيل" : "Operations quality"}</h2>
+            </div>
+            <span className={`chip ${qaScore >= 10 ? "chip--success" : "chip--warning"}`}>{qaScore}/10</span>
           </div>
         </section>
 

@@ -1,0 +1,35 @@
+Jenan PRO — Admin Intelligence Robot Operations
+Page: 004
+Group: 00 — مركز قيادة الأدمن
+Route: /admin/subscriptions
+Title: الاشتراكات والخطط
+Kind: list
+Purpose: إدارة الخطط والاشتراكات والاستهلاك.
+
+Modules:
+- الخطة
+- الحالة
+- الاستهلاك
+- تاريخ البدء
+- التجديد
+- القيمة
+
+Actions:
+- عرض
+- تعديل الخطة
+
+Outputs:
+- —
+
+Next Routes:
+- —
+
+Implementation:
+- Jenan PRO only.
+- Real React/CSS/SVG/components.
+- Responsive Desktop/Laptop/Tablet/Mobile.
+- No screenshot as production background.
+- No fake production values.
+- Reach ≥70% visual match before moving to next section.
+- Functional QA + responsive QA required.
+- Commit + save locally after PASS.

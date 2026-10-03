@@ -1,4 +1,6 @@
-import { ProtectedModulePage } from "@/components/source/protected-module-page";
+import { StudioRoutePage } from "@/components/studio/studio-route-page";
+import { STUDIO_FLOW_ROUTES } from "@/lib/studio/studio-routes";
+
 export default function Page() {
-  return <ProtectedModulePage route="/studio" />;
+  return <StudioRoutePage route={STUDIO_FLOW_ROUTES[0]} />;
 }

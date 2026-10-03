@@ -8,6 +8,8 @@ import { getCurrentUser } from "@/lib/auth/session";
 const decisionSchema = z.object({ id: z.string().cuid(), action: z.enum(["approve", "defer"]) });
 
 export async function GET() {
+  const user = await getCurrentUser();
+  if (!user || !hasPlatformAdminAccess(user.systemRole)) return NextResponse.json({ success: false, message: "Admin access required" }, { status: 403 });
   try {
     const tasks = await db.robotTask.findMany({
       include: { robot: true },

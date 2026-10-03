@@ -1,0 +1,25 @@
+Jenan PRO — Page Reference
+Page: 025
+Category: المشاريع/تقييم مشروع
+Route: /projects/evaluation/details
+Title: تفاصيل نقاط التقييم
+Kind: detail
+Description: رحلة تقييم مشروع كاملة.
+
+Sections:
+- Radar
+- المحاور
+- الأدلة
+- الملاحظات
+- المقارنات
+
+Outputs:
+- جداول تقييم
+
+Actions:
+- عرض الأدلة
+
+Next routes:
+- —
+
+Target: 60–70% baseline; responsive; Git checkpoint + local copy.

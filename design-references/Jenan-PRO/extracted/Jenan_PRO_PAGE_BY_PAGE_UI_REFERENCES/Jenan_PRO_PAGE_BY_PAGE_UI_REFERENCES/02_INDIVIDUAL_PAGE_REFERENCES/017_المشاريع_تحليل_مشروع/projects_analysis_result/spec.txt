@@ -1,0 +1,32 @@
+Jenan PRO — Page Reference
+Page: 017
+Category: المشاريع/تحليل مشروع
+Route: /projects/analysis/result
+Title: نتيجة تحليل المشروع
+Kind: dashboard
+Description: رحلة تحليل مشروع كاملة.
+
+Sections:
+- مؤشر الفرصة
+- حجم الطلب
+- المنافسة
+- القوة الشرائية
+- المخاطر
+- اتجاه الطلب
+
+Outputs:
+- ملخص التحليل
+
+Actions:
+- تفاصيل
+- الخريطة
+- التوصيات
+- التقرير
+
+Next routes:
+- /projects/analysis/details
+- /projects/analysis/map
+- /projects/analysis/recommendations
+- /projects/analysis/report
+
+Target: 60–70% baseline; responsive; Git checkpoint + local copy.

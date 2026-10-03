@@ -1,4 +1,5 @@
-import { ProtectedRoboticsPage } from "@/components/source/protected-module-page";
+import { redirect } from "next/navigation";
+
 export default function Page() {
-  return <ProtectedRoboticsPage />;
+  redirect("/robotics");
 }

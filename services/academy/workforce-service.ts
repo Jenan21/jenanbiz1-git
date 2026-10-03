@@ -8,6 +8,49 @@ import {
 } from "@/generated/prisma/client";
 import { db } from "@/lib/db";
 
+export async function generateCandidatesForDemand(demandId: string) {
+  const demand = await db.workforceDemand.findUnique({
+    where: { id: demandId },
+    include: { specialization: { include: { field: { include: { academy: true } } } } },
+  });
+  if (!demand?.specialization) throw new Error("Workforce demand specialization not found");
+  const academy = demand.specialization.field.academy;
+  const [course, cohort, queue] = await Promise.all([
+    db.academyCourse.findFirst({ where: { academyId: academy.id, specializationId: demand.specializationId }, orderBy: { createdAt: "asc" } }),
+    db.academyCohort.findFirst({ where: { academyId: academy.id, status: { in: ["OPEN", "PLANNED"] } }, orderBy: { createdAt: "asc" } }),
+    db.academyWorkQueue.findFirst({ where: { academyId: academy.id, key: "admission" } }),
+  ]);
+  if (!course || !cohort || !queue) throw new Error("Academy course, cohort, and admission queue are required");
+
+  const gap = await db.workforceGap.findUnique({ where: { demandId }, select: { availableCount: true } });
+  const generated = Math.max(0, demand.requiredCount - (gap?.availableCount ?? 0));
+  if (!generated) return { generated: 0, batch: null };
+
+  return db.$transaction(async (transaction) => {
+    const batch = await transaction.candidateBatch.create({
+      data: { demandId, name: `Candidates for ${demand.title}`, requestedCount: generated, priority: demand.priority, status: "COMPLETED" },
+    });
+    const profileIds: string[] = [];
+    for (let index = 0; index < generated; index += 1) {
+      const robot = await transaction.robot.create({
+        data: { name: `Candidate ${demand.title} ${index + 1}`, slug: `candidate-${demandId}-${index + 1}-${crypto.randomUUID().slice(0, 6)}`, status: "PENDING" },
+      });
+      const profile = await transaction.robotAcademicProfile.create({
+        data: { robotId: robot.id, primarySpecializationId: demand.specializationId, status: "ENROLLED" },
+      });
+      profileIds.push(profile.id);
+      await transaction.candidateBatchMember.create({ data: { batchId: batch.id, profileId: profile.id } });
+      await transaction.courseCompletion.create({ data: { profileId: profile.id, courseId: course.id, status: "ASSIGNED" } });
+      await transaction.cohortEnrollment.create({ data: { cohortId: cohort.id, profileId: profile.id } });
+      await transaction.academyQueueItem.create({
+        data: { queueId: queue.id, profileId: profile.id, kind: "ENROLLMENT", idempotencyKey: `demand-${demandId}-profile-${profile.id}`, payload: { demandId, batchId: batch.id } },
+      });
+    }
+    await transaction.auditLog.create({ data: { action: "DEMAND_CANDIDATES_GENERATED", entityType: "WorkforceDemand", entityId: demandId, metadata: { generated, batchId: batch.id, profileIds } } });
+    return { generated, batch: batch.id };
+  });
+}
+
 const assignableStatuses: AcademyLifecycleStatus[] = ["CERTIFIED", "PROBATION", "OPERATIONAL"];
 const trainingStatuses: AcademyLifecycleStatus[] = [
   "ACCEPTED",
@@ -124,82 +167,6 @@ export async function createCandidateBatch(
   });
   await writeAcademyAudit({ actorId, action: "CANDIDATE_BATCH_CREATED", entityType: "CandidateBatch", entityId: batch.id, metadata: { requestedCount: batch.requestedCount, selectedProfiles: profileIds.length } });
   return batch;
-}
-
-export async function generateCandidatesForDemand(demandId: string, actorId?: string) {
-  const demand = await db.workforceDemand.findUnique({
-    where: { id: demandId },
-    include: { specialization: { include: { field: true } } },
-  });
-  if (!demand) throw new Error("Workforce demand not found");
-  const gap = await refreshWorkforceGap(demandId, actorId);
-  if (gap.gapCount === 0) return { generated: 0, batch: null, gap };
-  if (!demand.specializationId || !demand.specialization) throw new Error("Demand requires a specialization before candidate generation");
-  const specialization = demand.specialization;
-
-  const academyId = demand.specialization.field.academyId;
-  const [queue, course, cohort] = await Promise.all([
-    db.academyWorkQueue.findUnique({ where: { academyId_key: { academyId, key: "admission" } } }),
-    db.academyCourse.findFirst({ where: { specializationId: demand.specializationId }, orderBy: { createdAt: "asc" } }),
-    db.academyCohort.findFirst({ where: { academyId, status: { in: ["OPEN", "ACTIVE"] }, OR: [{ program: { specializationId: demand.specializationId } }, { programId: null }] }, orderBy: { startsAt: "asc" } }),
-  ]);
-  if (!queue) throw new Error("Academy admission queue is not configured");
-  if (!course) throw new Error("No academy course is configured for this specialization");
-
-  const generated = await db.$transaction(async (transaction) => {
-    const batch = await transaction.candidateBatch.create({
-      data: {
-        demandId,
-        name: `Demand intake: ${demand.title}`,
-        requestedCount: gap.gapCount,
-        priority: demand.priority,
-        status: "PROCESSING",
-      },
-    });
-    const profiles: Array<{ profileId: string; robotId: string; index: number }> = [];
-    for (let index = 0; index < gap.gapCount; index += 1) {
-      const robotId = crypto.randomUUID();
-      const profileId = crypto.randomUUID();
-      const slug = `candidate-${specialization.key}-${crypto.randomUUID().slice(0, 8)}`;
-      await transaction.robot.create({
-        data: {
-          id: robotId,
-          name: `${specialization.name} Candidate ${index + 1}`,
-          slug,
-          team: demand.title,
-          status: "REVIEW",
-          isVisible: false,
-          notes: `Generated from workforce demand ${demand.id}.`,
-        },
-      });
-      await transaction.robotAcademicProfile.create({
-        data: {
-          id: profileId,
-          robotId,
-          primarySpecializationId: demand.specializationId,
-          status: cohort ? "ENROLLED" : "ACCEPTED",
-        },
-      });
-      await transaction.candidateBatchMember.create({ data: { batchId: batch.id, profileId } });
-      await transaction.courseCompletion.create({ data: { profileId, courseId: course.id, status: "ASSIGNED" } });
-      if (cohort) await transaction.cohortEnrollment.create({ data: { cohortId: cohort.id, profileId } });
-      profiles.push({ profileId, robotId, index });
-    }
-    await transaction.academyQueueItem.createMany({
-      data: profiles.map(({ profileId, index }) => ({
-        queueId: queue.id,
-        profileId,
-        kind: "ENROLLMENT",
-        idempotencyKey: `demand:${demand.id}:candidate:${batch.id}:${index}`,
-        payload: { demandId, batchId: batch.id, courseId: course.id, cohortId: cohort?.id ?? null },
-        priority: demand.priority,
-      })),
-    });
-    await transaction.candidateBatch.update({ where: { id: batch.id }, data: { status: "QUEUED" } });
-    return { batchId: batch.id, profiles };
-  });
-  await writeAcademyAudit({ actorId, action: "DEMAND_CANDIDATES_GENERATED", entityType: "CandidateBatch", entityId: generated.batchId, metadata: { demandId, generated: generated.profiles.length, specializationId: demand.specializationId } });
-  return { generated: generated.profiles.length, batch: generated.batchId, gap: await refreshWorkforceGap(demandId, actorId) };
 }
 
 export async function listCandidateBatchMembers(input: { batchId: string; cursorProfileId?: string; limit?: number }) {

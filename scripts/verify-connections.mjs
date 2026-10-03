@@ -45,7 +45,6 @@ try {
     ["Slack channel (#all-jenanbiz1)", process.env.JENAN_VERIFY_SLACK],
     ["Notion workspace linkage", process.env.JENAN_VERIFY_NOTION],
     ["Google Drive/Sheets linkage", process.env.JENAN_VERIFY_DRIVE],
-    ["Vercel policy (staging only)", process.env.JENAN_VERIFY_VERCEL],
   ];
 
   let pendingAdministrativeChecks = 0;

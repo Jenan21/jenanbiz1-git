@@ -1,0 +1,29 @@
+Jenan PRO — Page Reference
+Page: 135
+Category: أهلية التمويل
+Route: /funding/result
+Title: نتيجة الجاهزية
+Kind: dashboard
+Description: قياس الجاهزية دون ضمان التمويل.
+
+Sections:
+- الدرجة
+- العوامل
+- القوة
+- التحسين
+- الجهات المحتملة
+
+Outputs:
+- Readiness Summary
+
+Actions:
+- التفاصيل
+- الفرص
+- التقرير
+
+Next routes:
+- /funding/company
+- /funding/opportunities
+- /funding/report
+
+Target: 60–70% baseline; responsive; Git checkpoint + local copy.

@@ -1,0 +1,27 @@
+Jenan PRO — Page Reference
+Page: 083
+Category: البرمجيات والأدوات
+Route: /studio/presentations
+Title: Jenan Presentations
+Kind: editor
+Description: أدوات Jenan PRO الأصلية.
+
+Sections:
+- Slides
+- Layouts
+- Themes
+- Charts
+- Images
+
+Outputs:
+- PPTX عند الدعم
+- PDF
+
+Actions:
+- حفظ
+- تصدير
+
+Next routes:
+- —
+
+Target: 60–70% baseline; responsive; Git checkpoint + local copy.

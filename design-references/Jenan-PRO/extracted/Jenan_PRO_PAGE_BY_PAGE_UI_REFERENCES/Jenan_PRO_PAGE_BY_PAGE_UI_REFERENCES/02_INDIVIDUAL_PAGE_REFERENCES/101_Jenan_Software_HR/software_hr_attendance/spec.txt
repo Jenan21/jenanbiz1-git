@@ -1,0 +1,26 @@
+Jenan PRO — Page Reference
+Page: 101
+Category: Jenan Software/HR
+Route: /software/hr/attendance
+Title: الحضور والانصراف
+Kind: list
+Description: إدارة الحضور والانصراف.
+
+Sections:
+- بحث
+- جدول
+- حالات
+- إجراءات
+
+Outputs:
+- تقرير
+
+Actions:
+- إضافة
+- عرض
+- تعديل
+
+Next routes:
+- —
+
+Target: 60–70% baseline; responsive; Git checkpoint + local copy.

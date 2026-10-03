@@ -1,0 +1,22 @@
+name: Production readiness monitor
+
+on:
+  schedule:
+    - cron: "*/5 * * * *"
+  workflow_dispatch:
+
+jobs:
+  readiness:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check public readiness
+        env:
+          PRODUCTION_READINESS_URL: ${{ vars.PRODUCTION_READINESS_URL }}
+        run: |
+          test -n "$PRODUCTION_READINESS_URL"
+          curl --fail --silent --show-error --location \
+            --connect-timeout 10 \
+            --max-time 30 \
+            --retry 2 \
+            --retry-all-errors \
+            "$PRODUCTION_READINESS_URL"

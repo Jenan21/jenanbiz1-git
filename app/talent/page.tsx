@@ -1,4 +1,6 @@
-import { ProtectedModulePage } from "@/components/source/protected-module-page";
+import { TalentRoutePage } from "@/components/talent/talent-route-page";
+import { TALENT_FLOW_ROUTES } from "@/lib/talent/talent-routes";
+
 export default function Page() {
-  return <ProtectedModulePage route="/talent" />;
+  return <TalentRoutePage route={TALENT_FLOW_ROUTES[0]} />;
 }

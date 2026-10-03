@@ -1,0 +1,34 @@
+Jenan PRO — Page Reference
+Page: 024
+Category: المشاريع/تقييم مشروع
+Route: /projects/evaluation/result
+Title: نتيجة تقييم المشروع
+Kind: dashboard
+Description: رحلة تقييم مشروع كاملة.
+
+Sections:
+- النتيجة الإجمالية
+- الجاهزية
+- جاذبية السوق
+- القدرة التنفيذية
+- الجدوى المالية
+- المخاطر
+- الفريق
+- قابلية التوسع
+
+Outputs:
+- ملخص التقييم
+
+Actions:
+- تفاصيل
+- مخاطر
+- توصيات
+- التقرير
+
+Next routes:
+- /projects/evaluation/details
+- /projects/evaluation/risks
+- /projects/evaluation/recommendations
+- /projects/evaluation/report
+
+Target: 60–70% baseline; responsive; Git checkpoint + local copy.

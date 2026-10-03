@@ -1,0 +1,930 @@
+"use client";
+
+import { FormEvent, useDeferredValue, useEffect, useEffectEvent, useState } from "react";
+import Link from "next/link";
+import type { MarketFlowDefinition } from "@/lib/market/market-flow-routes";
+import type { Locale } from "@/types/i18n";
+
+type MarketFile = {
+  id: string;
+  fileName: string;
+  mimeType: string;
+  sizeBytes: string;
+  marketVisibility: "PUBLIC" | "NDA_REQUIRED" | null;
+};
+type Listing = {
+  id: string;
+  title: string;
+  summary: string;
+  confidentialDetails: string | null;
+  kind: "PROJECT" | "BUSINESS";
+  status: "DRAFT" | "PUBLISHED" | "PAUSED" | "ARCHIVED";
+  sector: string | null;
+  countryCode: string | null;
+  currency: string;
+  createdBy: { email: string; profile: { displayName: string | null } | null };
+  askingPriceMinor: number | null;
+  valuationNote: string | null;
+  qualityScore: number;
+  requiresNda: boolean;
+  ndaAccepted: boolean;
+  isOwner: boolean;
+  files: MarketFile[];
+};
+type Viewing = {
+  id: string;
+  listingId: string;
+  preferredAt: string;
+  attendees: number;
+  notes: string | null;
+  status: string;
+  isListingOwner: boolean;
+  listing: { title: string };
+  requester: { email: string; profile: { displayName: string | null } | null };
+};
+type Offer = {
+  id: string;
+  listingId: string;
+  amountMinor: number;
+  currency: string;
+  terms: string;
+  message: string | null;
+  validUntil: string | null;
+  status: string;
+  isListingOwner: boolean;
+  isBuyer: boolean;
+  listing: { title: string };
+  buyer: { email: string; profile: { displayName: string | null } | null };
+};
+type Payload = { listings: Listing[]; viewings: Viewing[]; offers: Offer[] };
+
+const flowLinks = [
+  ["/market/listings", "العروض", "Listings"],
+  ["/market/listing/sample", "التفاصيل", "Details"],
+  ["/market/nda/sample", "NDA", "NDA"],
+  ["/market/listing/sample/secure", "المحمي", "Protected"],
+  ["/market/viewing/sample", "المعاينة", "Viewing"],
+  ["/market/offer/sample", "العرض", "Offer"],
+  ["/market/deal/sample", "الصفقة", "Deal"],
+  ["/market/deal/sample/report", "التقرير", "Report"],
+  ["/market/sell", "إضافة عرض", "Sell"],
+  ["/market/sell/media", "الملفات", "Media"],
+  ["/market/sell/review", "المراجعة", "Review"],
+] as const;
+
+export function MarketFlowWorkspace({
+  definition,
+  locale,
+}: {
+  definition: MarketFlowDefinition;
+  locale: Locale;
+}) {
+  const ar = locale === "ar";
+  const sellerFlow = definition.route.startsWith("/market/sell");
+  const [payload, setPayload] = useState<Payload>({
+    listings: [],
+    viewings: [],
+    offers: [],
+  });
+  const [selectedId, setSelectedId] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [message, setMessage] = useState("");
+  const [listingFilters, setListingFilters] = useState({ country: "", kind: "", query: "" });
+  const [ndaChecked, setNdaChecked] = useState(false);
+  const [viewing, setViewing] = useState({
+    preferredAt: "",
+    attendees: "1",
+    notes: "",
+  });
+  const [offer, setOffer] = useState({
+    amount: "",
+    terms: "",
+    message: "",
+    validUntil: "",
+  });
+  const [listingForm, setListingForm] = useState({
+    kind: "PROJECT" as Listing["kind"],
+    title: "",
+    sector: "",
+    countryCode: "SA",
+    askingPrice: "",
+    summary: "",
+    valuationNote: "",
+    confidentialDetails: "",
+    requiresNda: true,
+  });
+  const [file, setFile] = useState<File | null>(null);
+  const [visibility, setVisibility] = useState<"PUBLIC" | "NDA_REQUIRED">(
+    "NDA_REQUIRED",
+  );
+
+  async function load(preferredId?: string) {
+    const response = await fetch("/api/market", { cache: "no-store" });
+    const data = (await response.json().catch(() => null)) as
+      (Payload & { message?: string }) | null;
+    if (!response.ok || !data) {
+      setMessage(
+        data?.message ??
+          (ar ? "تعذر تحميل السوق." : "Market could not be loaded."),
+      );
+      return;
+    }
+    setPayload(data);
+    setSelectedId((current) => {
+      if (preferredId && data.listings.some((item) => item.id === preferredId))
+        return preferredId;
+      if (data.listings.some((item) => item.id === current)) return current;
+      const requestedId = new URLSearchParams(window.location.search).get("listing");
+      const preferred = requestedId ? data.listings.find((item) => item.id === requestedId) : sellerFlow
+        ? data.listings.find((item) => item.isOwner)
+        : data.listings.find(
+            (item) => !item.isOwner && item.status === "PUBLISHED",
+          );
+      return preferred?.id ?? data.listings[0]?.id ?? "";
+    });
+  }
+
+  const loadOnMount = useEffectEvent(() => {
+    void load();
+  });
+  useEffect(() => {
+    const timeout = window.setTimeout(loadOnMount, 0);
+    return () => window.clearTimeout(timeout);
+  }, []);
+
+  async function command(
+    body: Record<string, unknown>,
+    success: string,
+    preferredId?: string,
+  ) {
+    setBusy(true);
+    setMessage("");
+    const response = await fetch("/api/market", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify(body),
+    });
+    const data = (await response.json().catch(() => null)) as {
+      result?: { id?: string };
+      message?: string;
+    } | null;
+    if (response.ok) {
+      setMessage(success);
+      await load(preferredId ?? data?.result?.id);
+    } else
+      setMessage(
+        data?.message ??
+          (ar
+            ? "تعذر تنفيذ العملية."
+            : "The operation could not be completed."),
+      );
+    setBusy(false);
+    return response.ok;
+  }
+
+  const selected = payload.listings.find((item) => item.id === selectedId);
+  const selectedViewings = payload.viewings.filter(
+    (item) => item.listingId === selectedId,
+  );
+  const selectedOffers = payload.offers.filter(
+    (item) => item.listingId === selectedId,
+  );
+  const deferredQuery = useDeferredValue(listingFilters.query.trim().toLocaleLowerCase());
+  const filteredListings = payload.listings.filter((listing) => (!deferredQuery || [listing.title, listing.summary, listing.sector].filter(Boolean).some((value) => value!.toLocaleLowerCase().includes(deferredQuery))) && (!listingFilters.kind || listing.kind === listingFilters.kind) && (!listingFilters.country || listing.countryCode === listingFilters.country.toUpperCase()));
+  const acceptedOffer = selectedOffers.find((item) => item.status === "ACCEPTED" || item.status === "CLOSED");
+  const activeOffer = selectedOffers.find((item) => item.status === "NEGOTIATING" || item.status === "SUBMITTED");
+  const confirmedViewing = selectedViewings.find((item) => item.status === "CONFIRMED" || item.status === "COMPLETED");
+  const dealStages = [
+    { key: "CONTACT", complete: selectedOffers.length > 0 || selectedViewings.length > 0 || Boolean(selected?.ndaAccepted) },
+    { key: "NDA", complete: Boolean(selected?.ndaAccepted) },
+    { key: "REVIEW", complete: Boolean(selected?.ndaAccepted && selected?.files.length) },
+    { key: "VIEWING", complete: Boolean(confirmedViewing) },
+    { key: "OFFER", complete: Boolean(activeOffer || acceptedOffer) },
+    { key: "NEGOTIATION", complete: Boolean(acceptedOffer || selectedOffers.some((item) => item.status === "NEGOTIATING")) },
+    { key: "CLOSING", complete: Boolean(acceptedOffer) },
+  ];
+  const currentStage = Math.max(0, dealStages.findIndex((stage) => !stage.complete));
+  const money = (minor: number | null, currency = "SAR") =>
+    minor === null
+      ? ar
+        ? "غير معلن"
+        : "Not disclosed"
+      : new Intl.NumberFormat(ar ? "ar-SA" : "en-US", {
+          style: "currency",
+          currency,
+          maximumFractionDigits: 0,
+        }).format(minor / 100);
+
+  async function createListing(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    const ok = await command(
+      {
+        action: "create",
+        ...listingForm,
+        askingPriceMinor: listingForm.askingPrice
+          ? Math.round(Number(listingForm.askingPrice) * 100)
+          : undefined,
+      },
+      ar ? "تم حفظ المسودة." : "Draft listing saved.",
+    );
+    if (ok)
+      setListingForm((current) => ({
+        ...current,
+        title: "",
+        summary: "",
+        valuationNote: "",
+        confidentialDetails: "",
+        askingPrice: "",
+      }));
+  }
+
+  async function shareReport() {
+    const data = { title: selected?.title ?? "Jenan PRO Market", text: ar ? "تقرير صفقة Jenan PRO" : "Jenan PRO deal report", url: window.location.href };
+    if (navigator.share) await navigator.share(data).catch(() => undefined);
+    else { await navigator.clipboard.writeText(window.location.href); setMessage(ar ? "تم نسخ رابط التقرير." : "Report link copied."); }
+  }
+
+  async function upload(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (!file || !selected?.isOwner) return;
+    setBusy(true);
+    setMessage("");
+    const form = new FormData();
+    form.set("file", file);
+    form.set("marketListingId", selected.id);
+    form.set("marketVisibility", visibility);
+    const response = await fetch("/api/files", { method: "POST", body: form });
+    const data = (await response.json().catch(() => null)) as {
+      message?: string;
+    } | null;
+    if (response.ok) {
+      setFile(null);
+      setMessage(
+        ar
+          ? "تم حفظ الملف مع مستوى السرية."
+          : "File saved with its visibility level.",
+      );
+      await load(selected.id);
+    } else
+      setMessage(
+        data?.message ??
+          (ar ? "تعذر رفع الملف." : "File could not be uploaded."),
+      );
+    setBusy(false);
+  }
+
+  return (
+    <section
+      className="market-flow"
+      data-market-kind={definition.kind}
+      data-market-role={sellerFlow ? "SELLER" : "BUYER"}
+      data-market-route={definition.route}
+      data-market-source={selected ? "CONNECTED" : "EMPTY"}
+      data-market-outputs={definition.route === "/market/deal/sample/report" ? "PRINT_PDF,SHARE_LINK" : "NONE"}
+    >
+      <nav
+        className="market-flow__nav"
+        aria-label={ar ? "رحلة سوق جنان" : "Jenan Market flow"}
+      >
+        {flowLinks.map(([href, arabic, english], index) => (
+          <Link
+            className={definition.route === href ? "is-active" : ""}
+            href={href}
+            key={href}
+          >
+            <span>{String(index + 1).padStart(2, "0")}</span>
+            {ar ? arabic : english}
+          </Link>
+        ))}
+      </nav>
+      <header className="market-flow__header">
+        <div>
+          <span className="eyebrow eyebrow--small">
+            JENAN PRO / {definition.kind.toUpperCase()}
+          </span>
+          <h1>{ar ? definition.title[0] : definition.title[1]}</h1>
+          <p>
+            {ar
+              ? "رحلة سوق موثقة تحمي البيانات السرية وتربط الطلبات والعروض بمراحل قابلة للتتبع."
+              : "An auditable market flow that protects confidential data and tracks requests, offers, and deal stages."}
+          </p>
+        </div>
+        <span>{ar ? "بيانات فعلية" : "LIVE RECORDS"}</span>
+      </header>
+      <div className="market-flow__signals">
+        {definition.sections.map(([arabic, english], index) => (
+          <article key={arabic}>
+            <span>{String(index + 1).padStart(2, "0")}</span>
+            <strong>{ar ? arabic : english}</strong>
+            <small>
+              {selected
+                ? ar
+                  ? "مرتبط بالإعلان النشط"
+                  : "Linked to active listing"
+                : ar
+                  ? "لا توجد بيانات"
+                  : "No data yet"}
+            </small>
+          </article>
+        ))}
+      </div>
+      {sellerFlow && definition.route === "/market/sell" ? (
+        <form className="market-flow__form" onSubmit={createListing}>
+          <select
+            aria-label={ar ? "نوع الأصل" : "Asset type"}
+            value={listingForm.kind}
+            onChange={(event) =>
+              setListingForm({
+                ...listingForm,
+                kind: event.target.value as Listing["kind"],
+              })
+            }
+          >
+            <option value="PROJECT">{ar ? "مشروع" : "Project"}</option>
+            <option value="BUSINESS">{ar ? "نشاط" : "Business"}</option>
+          </select>
+          <input
+            required
+            minLength={2}
+            maxLength={160}
+            placeholder={ar ? "عنوان الإعلان" : "Listing title"}
+            value={listingForm.title}
+            onChange={(event) =>
+              setListingForm({ ...listingForm, title: event.target.value })
+            }
+          />
+          <input
+            placeholder={ar ? "القطاع" : "Sector"}
+            value={listingForm.sector}
+            onChange={(event) =>
+              setListingForm({ ...listingForm, sector: event.target.value })
+            }
+          />
+          <input
+            maxLength={2}
+            placeholder={ar ? "الدولة" : "Country"}
+            value={listingForm.countryCode}
+            onChange={(event) =>
+              setListingForm({
+                ...listingForm,
+                countryCode: event.target.value.toUpperCase(),
+              })
+            }
+          />
+          <input
+            min="1"
+            type="number"
+            placeholder={ar ? "السعر" : "Asking price"}
+            value={listingForm.askingPrice}
+            onChange={(event) =>
+              setListingForm({
+                ...listingForm,
+                askingPrice: event.target.value,
+              })
+            }
+          />
+          <textarea
+            required
+            minLength={20}
+            placeholder={ar ? "الوصف العام" : "Public summary"}
+            value={listingForm.summary}
+            onChange={(event) =>
+              setListingForm({ ...listingForm, summary: event.target.value })
+            }
+          />
+          <textarea
+            placeholder={ar ? "مبرر التقييم" : "Valuation rationale"}
+            value={listingForm.valuationNote}
+            onChange={(event) =>
+              setListingForm({
+                ...listingForm,
+                valuationNote: event.target.value,
+              })
+            }
+          />
+          <textarea
+            placeholder={ar ? "تفاصيل سرية" : "Confidential details"}
+            value={listingForm.confidentialDetails}
+            onChange={(event) =>
+              setListingForm({
+                ...listingForm,
+                confidentialDetails: event.target.value,
+              })
+            }
+          />
+          <label>
+            <input
+              type="checkbox"
+              checked={listingForm.requiresNda}
+              onChange={(event) =>
+                setListingForm({
+                  ...listingForm,
+                  requiresNda: event.target.checked,
+                })
+              }
+            />
+            {ar ? "يتطلب NDA" : "Require NDA"}
+          </label>
+          <button
+            className="button button--primary"
+            disabled={busy}
+            type="submit"
+          >
+            {ar ? "حفظ المسودة" : "Save draft"}
+          </button>
+        </form>
+      ) : (
+        <>
+          {payload.listings.length && definition.route !== "/market/listings" ? (
+            <label className="market-flow__selector">
+              {ar ? "الإعلان النشط" : "Active listing"}
+              <select
+                value={selectedId}
+                onChange={(event) => setSelectedId(event.target.value)}
+              >
+                {payload.listings
+                  .filter((item) =>
+                    sellerFlow
+                      ? item.isOwner
+                      : item.status === "PUBLISHED" || item.isOwner,
+                  )
+                  .map((item) => (
+                    <option key={item.id} value={item.id}>
+                      {item.title}
+                    </option>
+                  ))}
+              </select>
+            </label>
+          ) : null}
+          {definition.route === "/market/listings" ? (
+            <section className="market-listing-catalog" data-market-focus="listings">
+              <div className="market-listing-catalog__filters">
+                <input type="search" placeholder={ar ? "ابحث في العنوان أو القطاع" : "Search title or sector"} value={listingFilters.query} onChange={(event) => setListingFilters({ ...listingFilters, query: event.target.value })} />
+                <select aria-label={ar ? "نوع العرض" : "Listing kind"} value={listingFilters.kind} onChange={(event) => setListingFilters({ ...listingFilters, kind: event.target.value })}><option value="">{ar ? "كل الأنواع" : "All kinds"}</option><option value="PROJECT">{ar ? "مشاريع" : "Projects"}</option><option value="BUSINESS">{ar ? "أنشطة" : "Businesses"}</option></select>
+                <input maxLength={2} placeholder={ar ? "رمز الدولة" : "Country code"} value={listingFilters.country} onChange={(event) => setListingFilters({ ...listingFilters, country: event.target.value.toUpperCase() })} />
+              </div>
+              <div className="market-listing-catalog__grid">{filteredListings.map((listing) => <article key={listing.id}><header><span>{listing.kind}</span><strong>{listing.qualityScore}/100</strong></header><h2>{listing.title}</h2><p>{listing.summary}</p><dl><div><dt>{ar ? "السعر" : "Price"}</dt><dd>{money(listing.askingPriceMinor, listing.currency)}</dd></div><div><dt>{ar ? "الموقع" : "Location"}</dt><dd>{listing.countryCode ?? (ar ? "غير متاح" : "Unavailable")}</dd></div><div><dt>{ar ? "القطاع" : "Sector"}</dt><dd>{listing.sector ?? (ar ? "غير متاح" : "Unavailable")}</dd></div><div><dt>{ar ? "الحالة" : "Status"}</dt><dd>{listing.status}</dd></div></dl><Link className="button button--primary" href={`/market/listing/sample?listing=${listing.id}`}>{ar ? "عرض التفاصيل" : "View details"}</Link></article>)}{!filteredListings.length ? <p className="market-flow__message">{ar ? "لا توجد عروض مطابقة." : "No matching listings."}</p> : null}</div>
+            </section>
+          ) : null}
+          {selected && definition.route !== "/market/listings" ? (
+            <article className="market-flow__listing">
+              <header>
+                <div>
+                  <span>
+                    {selected.kind} · {selected.status}
+                  </span>
+                  <h2>{selected.title}</h2>
+                  <p>{selected.summary}</p>
+                </div>
+                <strong>
+                  {money(selected.askingPriceMinor, selected.currency)}
+                </strong>
+              </header>
+              <dl>
+                <div>
+                  <dt>{ar ? "الجودة" : "Quality"}</dt>
+                  <dd>{selected.qualityScore}/100</dd>
+                </div>
+                <div>
+                  <dt>{ar ? "القطاع" : "Sector"}</dt>
+                  <dd>
+                    {selected.sector ?? (ar ? "غير متوفر" : "Unavailable")}
+                  </dd>
+                </div>
+                <div>
+                  <dt>{ar ? "الموقع" : "Location"}</dt>
+                  <dd>
+                    {selected.countryCode ?? (ar ? "غير متوفر" : "Unavailable")}
+                  </dd>
+                </div>
+                <div>
+                  <dt>NDA</dt>
+                  <dd>
+                    {selected.requiresNda
+                      ? selected.ndaAccepted
+                        ? ar
+                          ? "مقبول"
+                          : "Accepted"
+                        : ar
+                          ? "مطلوب"
+                          : "Required"
+                      : ar
+                        ? "غير مطلوب"
+                        : "Not required"}
+                  </dd>
+                </div>
+              </dl>
+              {definition.route === "/market/nda/sample" &&
+              !selected.isOwner &&
+              !selected.ndaAccepted ? (
+                <section className="market-flow__action">
+                  <h3>
+                    {ar ? "اتفاقية السرية v1" : "Confidentiality agreement v1"}
+                  </h3>
+                  <p>
+                    {ar
+                      ? "أتعهد باستخدام المعلومات المحمية لتقييم الفرصة فقط، وعدم مشاركتها أو إعادة توزيعها دون إذن البائع."
+                      : "I will use protected information only to evaluate this opportunity and will not share or redistribute it without the seller's permission."}
+                  </p>
+                  <label>
+                    <input
+                      type="checkbox"
+                      checked={ndaChecked}
+                      onChange={(event) => setNdaChecked(event.target.checked)}
+                    />
+                    {ar
+                      ? "قرأت الاتفاقية وأوافق عليها"
+                      : "I have read and accept the agreement"}
+                  </label>
+                  <button
+                    className="button button--primary"
+                    disabled={!ndaChecked || busy}
+                    onClick={() =>
+                      void command(
+                        { action: "acceptNda", listingId: selected.id },
+                        ar ? "تم قبول NDA." : "NDA accepted.",
+                        selected.id,
+                      )
+                    }
+                    type="button"
+                  >
+                    {ar ? "توقيع/موافقة" : "Accept NDA"}
+                  </button>
+                </section>
+              ) : null}
+              {definition.route === "/market/listing/sample/secure" ? (
+                selected.ndaAccepted ? (
+                  <section className="market-flow__protected">
+                    <h3>{ar ? "تفاصيل محمية" : "Protected details"}</h3>
+                    <p>
+                      {selected.confidentialDetails ??
+                        (ar
+                          ? "لم يضف البائع تفاصيل سرية."
+                          : "The seller has not added protected details.")}
+                    </p>
+                    <div>
+                      {selected.files.map((item) => (
+                        <a href={`/api/files/${item.id}`} key={item.id}>
+                          {item.fileName} · {item.marketVisibility}
+                        </a>
+                      ))}
+                      {!selected.files.length ? (
+                        <span>{ar ? "لا توجد مستندات." : "No documents."}</span>
+                      ) : null}
+                    </div>
+                  </section>
+                ) : (
+                  <section className="market-flow__locked">
+                    <strong>
+                      {ar ? "التفاصيل مقفلة" : "Protected details are locked"}
+                    </strong>
+                    <Link
+                      className="button button--secondary"
+                      href="/market/nda/sample"
+                    >
+                      {ar ? "مراجعة NDA" : "Review NDA"}
+                    </Link>
+                  </section>
+                )
+              ) : null}
+              {definition.route === "/market/viewing/sample" &&
+              !selected.isOwner ? (
+                <form
+                  className="market-flow__action"
+                  onSubmit={(event) => {
+                    event.preventDefault();
+                    void command(
+                      {
+                        action: "createViewing",
+                        listingId: selected.id,
+                        preferredAt: new Date(
+                          viewing.preferredAt,
+                        ).toISOString(),
+                        attendees: Number(viewing.attendees),
+                        notes: viewing.notes || undefined,
+                      },
+                      ar
+                        ? "تم إرسال طلب المعاينة."
+                        : "Viewing request submitted.",
+                      selected.id,
+                    );
+                  }}
+                >
+                  <input
+                    required
+                    type="datetime-local"
+                    value={viewing.preferredAt}
+                    onChange={(event) =>
+                      setViewing({
+                        ...viewing,
+                        preferredAt: event.target.value,
+                      })
+                    }
+                  />
+                  <input
+                    required
+                    min="1"
+                    max="20"
+                    type="number"
+                    value={viewing.attendees}
+                    onChange={(event) =>
+                      setViewing({ ...viewing, attendees: event.target.value })
+                    }
+                  />
+                  <textarea
+                    placeholder={ar ? "ملاحظات المعاينة" : "Viewing notes"}
+                    value={viewing.notes}
+                    onChange={(event) =>
+                      setViewing({ ...viewing, notes: event.target.value })
+                    }
+                  />
+                  <button
+                    className="button button--primary"
+                    disabled={busy || !selected.ndaAccepted}
+                    type="submit"
+                  >
+                    {ar ? "حجز المعاينة" : "Request viewing"}
+                  </button>
+                </form>
+              ) : null}
+              {definition.route === "/market/offer/sample" &&
+              !selected.isOwner ? (
+                <form
+                  className="market-flow__action"
+                  onSubmit={(event) => {
+                    event.preventDefault();
+                    void command(
+                      {
+                        action: "createOffer",
+                        listingId: selected.id,
+                        amountMinor: Math.round(Number(offer.amount) * 100),
+                        terms: offer.terms,
+                        message: offer.message || undefined,
+                        validUntil: offer.validUntil
+                          ? new Date(offer.validUntil).toISOString()
+                          : undefined,
+                      },
+                      ar ? "تم إرسال العرض." : "Offer submitted.",
+                      selected.id,
+                    );
+                  }}
+                >
+                  <input
+                    required
+                    min="1"
+                    type="number"
+                    placeholder={ar ? "قيمة العرض" : "Offer amount"}
+                    value={offer.amount}
+                    onChange={(event) =>
+                      setOffer({ ...offer, amount: event.target.value })
+                    }
+                  />
+                  <textarea
+                    required
+                    minLength={10}
+                    placeholder={ar ? "الشروط" : "Terms"}
+                    value={offer.terms}
+                    onChange={(event) =>
+                      setOffer({ ...offer, terms: event.target.value })
+                    }
+                  />
+                  <input
+                    type="date"
+                    value={offer.validUntil}
+                    onChange={(event) =>
+                      setOffer({ ...offer, validUntil: event.target.value })
+                    }
+                  />
+                  <textarea
+                    placeholder={ar ? "ملاحظات" : "Notes"}
+                    value={offer.message}
+                    onChange={(event) =>
+                      setOffer({ ...offer, message: event.target.value })
+                    }
+                  />
+                  <button
+                    className="button button--primary"
+                    disabled={busy || !selected.ndaAccepted}
+                    type="submit"
+                  >
+                    {ar ? "إرسال العرض" : "Submit offer"}
+                  </button>
+                </form>
+              ) : null}
+              {definition.route === "/market/sell/media" && selected.isOwner ? (
+                <form className="market-flow__action" onSubmit={upload}>
+                  <input
+                    required
+                    type="file"
+                    accept=".pdf,.docx,.xlsx,.jpg,.jpeg,.png,.webp,.txt"
+                    onChange={(event) =>
+                      setFile(event.target.files?.[0] ?? null)
+                    }
+                  />
+                  <select
+                    value={visibility}
+                    onChange={(event) =>
+                      setVisibility(
+                        event.target.value as "PUBLIC" | "NDA_REQUIRED",
+                      )
+                    }
+                  >
+                    <option value="NDA_REQUIRED">NDA REQUIRED</option>
+                    <option value="PUBLIC">PUBLIC</option>
+                  </select>
+                  <button
+                    className="button button--primary"
+                    disabled={!file || busy}
+                    type="submit"
+                  >
+                    {ar ? "رفع الملف" : "Upload file"}
+                  </button>
+                </form>
+              ) : null}
+              {definition.route === "/market/sell/review" &&
+              selected.isOwner ? (
+                <section className="market-flow__action">
+                  <h3>{ar ? "معاينة الإعلان" : "Listing preview"}</h3>
+                  <p>
+                    {selected.valuationNote ??
+                      (ar
+                        ? "لا توجد ملاحظة تقييم."
+                        : "No valuation rationale.")}
+                  </p>
+                  <p>
+                    {ar
+                      ? `${selected.files.length} ملفات مرتبطة`
+                      : `${selected.files.length} attached files`}
+                  </p>
+                  {selected.status === "DRAFT" ? (
+                    <button
+                      className="button button--primary"
+                      disabled={busy}
+                      onClick={() =>
+                        void command(
+                          {
+                            action: "updateStatus",
+                            listingId: selected.id,
+                            status: "PUBLISHED",
+                          },
+                          ar ? "تم نشر الإعلان." : "Listing published.",
+                          selected.id,
+                        )
+                      }
+                      type="button"
+                    >
+                      {ar ? "نشر" : "Publish"}
+                    </button>
+                  ) : (
+                    <span>{selected.status}</span>
+                  )}
+                </section>
+              ) : null}
+              {definition.route === "/market/deal/sample" ? (
+                <section className="market-flow__deal">
+                  <div className="market-flow__timeline">
+                    {dealStages.map((step, index) => (
+                      <span className={step.complete ? "is-complete" : index === currentStage ? "is-active" : ""} key={step.key}>
+                        <i>{index + 1}</i>
+                        <b>{step.key}</b>
+                      </span>
+                    ))}
+                  </div>
+                  <h3>{ar ? "طلبات المعاينة" : "Viewing requests"}</h3>
+                  {selectedViewings.map((item) => (
+                    <article key={item.id}>
+                      <span>
+                        {item.status} ·{" "}
+                        {new Date(item.preferredAt).toLocaleString(locale)}
+                      </span>
+                      {item.isListingOwner && item.status === "REQUESTED" ? (
+                        <button
+                          onClick={() =>
+                            void command(
+                              {
+                                action: "updateViewingStatus",
+                                viewingId: item.id,
+                                status: "CONFIRMED",
+                              },
+                              ar ? "تم تأكيد المعاينة." : "Viewing confirmed.",
+                              selected.id,
+                            )
+                          }
+                          type="button"
+                        >
+                          {ar ? "تأكيد" : "Confirm"}
+                        </button>
+                      ) : null}
+                    </article>
+                  ))}
+                  <h3>{ar ? "العروض" : "Offers"}</h3>
+                  {selectedOffers.map((item) => (
+                    <article key={item.id}>
+                      <span>
+                        {money(item.amountMinor, item.currency)} · {item.status}
+                      </span>
+                      <div>
+                        {item.isListingOwner && item.status === "SUBMITTED" ? (
+                          <>
+                            <button
+                              onClick={() =>
+                                void command(
+                                  {
+                                    action: "updateOfferStatus",
+                                    offerId: item.id,
+                                    status: "NEGOTIATING",
+                                  },
+                                  ar ? "بدأ التفاوض." : "Negotiation started.",
+                                  selected.id,
+                                )
+                              }
+                              type="button"
+                            >
+                              {ar ? "تفاوض" : "Negotiate"}
+                            </button>
+                            <button
+                              onClick={() =>
+                                void command(
+                                  {
+                                    action: "updateOfferStatus",
+                                    offerId: item.id,
+                                    status: "ACCEPTED",
+                                  },
+                                  ar ? "تم قبول العرض." : "Offer accepted.",
+                                  selected.id,
+                                )
+                              }
+                              type="button"
+                            >
+                              {ar ? "قبول" : "Accept"}
+                            </button>
+                          </>
+                        ) : null}
+                        {item.isBuyer &&
+                        ["SUBMITTED", "NEGOTIATING"].includes(item.status) ? (
+                          <button
+                            onClick={() =>
+                              void command(
+                                {
+                                  action: "updateOfferStatus",
+                                  offerId: item.id,
+                                  status: "WITHDRAWN",
+                                },
+                                ar ? "تم سحب العرض." : "Offer withdrawn.",
+                                selected.id,
+                              )
+                            }
+                            type="button"
+                          >
+                            {ar ? "سحب" : "Withdraw"}
+                          </button>
+                        ) : null}
+                      </div>
+                    </article>
+                  ))}
+                </section>
+              ) : null}
+              {definition.route === "/market/deal/sample/report" ? (
+                <section className="market-deal-report" data-market-focus="deal-report">
+                  <header><div><span>JENAN PRO MARKET</span><h3>{ar ? "تقرير الصفقة" : "Deal report"}</h3><p>{selected.title}</p></div><strong>{acceptedOffer ? (ar ? "عرض مقبول" : "ACCEPTED OFFER") : activeOffer ? (ar ? "صفقة نشطة" : "ACTIVE DEAL") : (ar ? "بانتظار عرض" : "AWAITING OFFER")}</strong></header>
+                  <div className="market-deal-report__parties"><article><span>{ar ? "البائع" : "Seller"}</span><strong>{selected.createdBy.profile?.displayName ?? selected.createdBy.email}</strong></article><article><span>{ar ? "المشتري" : "Buyer"}</span><strong>{(acceptedOffer ?? activeOffer)?.buyer.profile?.displayName ?? (acceptedOffer ?? activeOffer)?.buyer.email ?? (ar ? "غير محدد" : "Not assigned")}</strong></article></div>
+                  <div className="market-flow__timeline">{dealStages.map((step, index) => <span className={step.complete ? "is-complete" : index === currentStage ? "is-active" : ""} key={step.key}><i>{index + 1}</i><b>{step.key}</b></span>)}</div>
+                  <dl><div><dt>{ar ? "المستندات المتاحة" : "Available documents"}</dt><dd>{selected.files.length}</dd></div><div><dt>{ar ? "طلبات المعاينة" : "Viewing requests"}</dt><dd>{selectedViewings.length}</dd></div><div><dt>{ar ? "العروض" : "Offers"}</dt><dd>{selectedOffers.length}</dd></div><div><dt>{ar ? "قيمة العرض الحالي" : "Current offer"}</dt><dd>{acceptedOffer || activeOffer ? money((acceptedOffer ?? activeOffer)!.amountMinor, (acceptedOffer ?? activeOffer)!.currency) : (ar ? "غير متاح" : "Unavailable")}</dd></div></dl>
+                  <section><h4>{ar ? "سجل العروض" : "Offer record"}</h4>{selectedOffers.map((item) => <article key={item.id}><span>{item.status}</span><strong>{money(item.amountMinor, item.currency)}</strong><small>{item.validUntil ? `${ar ? "صالح حتى" : "Valid until"}: ${new Intl.DateTimeFormat(ar ? "ar-SA" : "en-GB", { dateStyle: "medium" }).format(new Date(item.validUntil))}` : (ar ? "لا يوجد تاريخ صلاحية مسجل" : "No validity date recorded")}</small></article>)}{!selectedOffers.length ? <p>{ar ? "لا توجد عروض مسجلة." : "No recorded offers."}</p> : null}</section>
+                  <div className="market-deal-report__actions"><button className="button button--primary" onClick={() => window.print()} type="button">{ar ? "طباعة / PDF" : "Print / PDF"}</button><button className="button button--secondary" onClick={() => void shareReport()} type="button">{ar ? "مشاركة" : "Share"}</button></div>
+                </section>
+              ) : null}
+            </article>
+          ) : (
+            <section className="market-flow__empty">
+              <strong>
+                {sellerFlow
+                  ? ar
+                    ? "أنشئ إعلاناً أولاً"
+                    : "Create a listing first"
+                  : ar
+                    ? "لا توجد عروض منشورة"
+                    : "No published listings"}
+              </strong>
+              <p>
+                {ar
+                  ? "ستظهر البيانات الفعلية هنا عند توفرها."
+                  : "Live records will appear here when available."}
+              </p>
+              {sellerFlow ? (
+                <Link className="button button--primary" href="/market/sell">
+                  {ar ? "إنشاء إعلان" : "Create listing"}
+                </Link>
+              ) : null}
+            </section>
+          )}
+        </>
+      )}
+      {message ? (
+        <p className="market-flow__message" role="status">
+          {message}
+        </p>
+      ) : null}
+    </section>
+  );
+}

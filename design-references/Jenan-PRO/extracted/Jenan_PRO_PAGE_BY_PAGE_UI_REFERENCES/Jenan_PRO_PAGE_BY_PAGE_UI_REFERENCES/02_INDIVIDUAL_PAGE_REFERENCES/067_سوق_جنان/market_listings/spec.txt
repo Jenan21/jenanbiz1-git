@@ -1,0 +1,26 @@
+Jenan PRO — Page Reference
+Page: 067
+Category: سوق جنان
+Route: /market/listings
+Title: قائمة العروض
+Kind: list
+Description: رحلة سوق كاملة.
+
+Sections:
+- بحث
+- فلترة
+- السعر
+- الموقع
+- النوع
+- الحالة
+
+Outputs:
+- —
+
+Actions:
+- عرض التفاصيل
+
+Next routes:
+- /market/listing/sample
+
+Target: 60–70% baseline; responsive; Git checkpoint + local copy.

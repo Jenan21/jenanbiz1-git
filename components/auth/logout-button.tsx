@@ -11,7 +11,7 @@ export function LogoutButton({ label }: { label: string }) {
     setLoading(true);
     const response = await fetch("/api/auth/logout", { method: "POST" });
     if (response.ok) {
-      router.replace("/login");
+      router.replace("/auth");
       router.refresh();
       return;
     }

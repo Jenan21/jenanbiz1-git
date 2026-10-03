@@ -1,0 +1,24 @@
+Jenan PRO — Page Reference
+Page: 026
+Category: المشاريع/تقييم مشروع
+Route: /projects/evaluation/risks
+Title: تحليل المخاطر والعائد
+Kind: dashboard
+Description: رحلة تقييم مشروع كاملة.
+
+Sections:
+- مستوى المخاطر
+- العائد المتوقع
+- سيناريوهات
+- مصفوفة المخاطر
+
+Outputs:
+- تقرير مخاطر
+
+Actions:
+- عرض
+
+Next routes:
+- —
+
+Target: 60–70% baseline; responsive; Git checkpoint + local copy.

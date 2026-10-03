@@ -19,6 +19,11 @@ export const registerSchema = z.object({
     .trim()
     .toUpperCase()
     .regex(/^[A-Z]{2}$/),
+  phone: z
+    .string()
+    .trim()
+    .regex(/^\+[1-9]\d{6,14}$/)
+    .optional(),
 });
 
 export const loginSchema = z.object({

@@ -1,58 +1,49 @@
-import { AuthForm } from "@/components/auth/auth-form";
-import { AuthShell } from "@/components/auth/auth-shell";
+import { CanonicalAuthAccessPage } from "@/components/auth/canonical-auth-access-page";
 import { getRequestDictionary } from "@/lib/i18n/server";
+import { readPlatformCatalog } from "@/lib/platform/catalog";
 
 export default async function RegisterPage() {
-  const { locale } = await getRequestDictionary();
+  const [{ locale }, catalog] = await Promise.all([
+    getRequestDictionary(),
+    readPlatformCatalog(),
+  ]);
   const ar = locale === "ar";
   return (
-    <AuthShell
+    <CanonicalAuthAccessPage
       locale={locale}
-      languageLabel={ar ? "التبديل إلى الإنجليزية" : "Switch to Arabic"}
-      eyebrow={ar ? "ابدأ رحلتك" : "Start your journey"}
-      title={
-        ar
-          ? "أنشئ حساب أعمالك بثقة"
-          : "Create your business account with confidence"
-      }
-      subtitle={
-        ar
-          ? "تجربة تسجيل مهيأة للإطلاق العالمي مع هوية واضحة وأمان متدرج."
-          : "A launch-ready registration flow with clear identity and layered security."
-      }
-      alternateText={ar ? "لديك حساب بالفعل؟" : "Already have an account?"}
-      alternateLabel={ar ? "تسجيل الدخول" : "Sign in"}
-      alternateHref="/login"
-    >
-      <AuthForm
-        mode="register"
-        locale={locale}
-        labels={{
-          name: ar ? "الاسم الكامل" : "Full name",
-          email: ar ? "البريد الإلكتروني" : "Email address",
-          password: ar ? "كلمة المرور" : "Password",
-          countryCode: ar ? "رمز الدولة" : "Country code",
-          submit: ar ? "إنشاء الحساب" : "Create account",
-          loading: ar ? "جارٍ إنشاء الحساب..." : "Creating account...",
-          remember: "",
-          forgot: "",
-          note: ar
-            ? "كلمة المرور 12 حرفًا على الأقل"
-            : "Password must contain at least 12 characters",
-          errors: {
-            DUPLICATE_EMAIL: ar
-              ? "البريد الإلكتروني مستخدم بالفعل."
-              : "This email is already registered.",
-            VALIDATION_ERROR: ar
-              ? "تحقق من البيانات المدخلة."
-              : "Please check the entered information.",
-            NETWORK: ar
-              ? "تعذر الاتصال بالخادم."
-              : "Could not connect to the server.",
-            UNKNOWN: ar ? "تعذر إنشاء الحساب." : "Account creation failed.",
-          },
-        }}
-      />
-    </AuthShell>
+      mode="register"
+      modules={catalog.modules.filter((module) => module.id !== "dashboard")}
+      labels={{
+        name: ar ? "الاسم الكامل" : "Full name",
+        countryCode: ar ? "رمز الدولة" : "Country code",
+        email: ar ? "البريد الإلكتروني" : "Email address",
+        password: ar ? "كلمة المرور" : "Password",
+        submit: ar ? "إنشاء حساب" : "Create account",
+        remember: "",
+        forgot: "",
+        loading: ar ? "جارٍ إنشاء الحساب..." : "Creating account...",
+        note: ar
+          ? "كلمة المرور 12 حرفًا على الأقل"
+          : "Password must contain at least 12 characters",
+        errors: {
+          DUPLICATE_EMAIL: ar
+            ? "البريد الإلكتروني مستخدم بالفعل."
+            : "This email is already registered.",
+          REGISTRATION_CLOSED: ar
+            ? "إنشاء الحسابات الجديدة متوقف حالياً."
+            : "New account registration is currently closed.",
+          RATE_LIMITED: ar
+            ? "محاولات كثيرة. انتظر قليلاً ثم حاول مجدداً."
+            : "Too many attempts. Wait briefly and try again.",
+          VALIDATION_ERROR: ar
+            ? "تحقق من البيانات المدخلة."
+            : "Please check the entered information.",
+          NETWORK: ar
+            ? "تعذر الاتصال بالخادم."
+            : "Could not connect to the server.",
+          UNKNOWN: ar ? "تعذر إنشاء الحساب." : "Account creation failed.",
+        },
+      }}
+    />
   );
 }

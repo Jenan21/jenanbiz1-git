@@ -17,7 +17,6 @@ import {
   refreshGeographicKnowledgeFreshness,
   refreshCertificationExpiry,
   refreshWorkforceGap,
-  generateCandidatesForDemand,
 } from "@/services/academy/workforce-service";
 import {
   completeLocalSandboxLabRun,
@@ -30,7 +29,6 @@ import { requireAcademyScope } from "@/services/academy/academy-access";
 const requestSchema = z.discriminatedUnion("action", [
   z.object({ action: z.literal("createDemand"), title: z.string().trim().min(2).max(160), requiredCount: z.number().int().min(0), priority: z.number().int().min(0).max(100), specializationId: z.string().cuid().optional(), skillId: z.string().cuid().optional(), expectedGraduationAt: z.string().datetime().optional() }),
   z.object({ action: z.literal("refreshGap"), demandId: z.string().cuid() }),
-  z.object({ action: z.literal("generateCandidates"), demandId: z.string().cuid() }),
   z.object({ action: z.literal("createBatch"), demandId: z.string().cuid().optional(), name: z.string().trim().min(2).max(160), requestedCount: z.number().int().min(0), priority: z.number().int().min(0).max(100), profileIds: z.array(z.string().cuid()).max(10_000).optional() }),
   z.object({ action: z.literal("enrollCohort"), profileId: z.string().cuid(), cohortId: z.string().cuid() }),
   z.object({ action: z.literal("addPrerequisite"), skillId: z.string().cuid(), prerequisiteId: z.string().cuid() }),
@@ -79,7 +77,6 @@ export async function POST(request: NextRequest) {
     const result =
       input.action === "createDemand" ? await createWorkforceDemand({ ...input, expectedGraduationAt: input.expectedGraduationAt ? new Date(input.expectedGraduationAt) : undefined }, actorId) :
       input.action === "refreshGap" ? await refreshWorkforceGap(input.demandId, actorId) :
-      input.action === "generateCandidates" ? await generateCandidatesForDemand(input.demandId, actorId) :
       input.action === "createBatch" ? await createCandidateBatch(input, actorId) :
       input.action === "enrollCohort" ? await enrollProfileInCohort(input.profileId, input.cohortId, actorId) :
       input.action === "addPrerequisite" ? await addSkillPrerequisite(input.skillId, input.prerequisiteId, actorId) :

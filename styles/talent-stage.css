@@ -1,0 +1,108 @@
+.talent-workspace {
+  position: relative;
+  isolation: isolate;
+}
+
+.talent-workspace__header {
+  position: relative;
+  overflow: hidden;
+  background:
+    radial-gradient(circle at 86% 0, color-mix(in srgb, var(--brand) 18%, transparent), transparent 30%),
+    linear-gradient(135deg, color-mix(in srgb, var(--surface2) 78%, transparent), color-mix(in srgb, var(--surface) 92%, transparent));
+}
+
+.talent-workspace__header::after {
+  content: "";
+  width: 190px;
+  height: 190px;
+  position: absolute;
+  inset-inline-end: -82px;
+  inset-block-start: -96px;
+  border: 1px solid color-mix(in srgb, var(--brand) 32%, transparent);
+  border-radius: 50%;
+  box-shadow: 0 0 0 22px color-mix(in srgb, var(--brand) 5%, transparent), 0 0 60px color-mix(in srgb, var(--brand) 14%, transparent);
+  pointer-events: none;
+}
+
+.talent-workspace__header > div,
+.talent-workspace__header > button {
+  position: relative;
+  z-index: 1;
+}
+
+.talent-form,
+.talent-filters {
+  background: color-mix(in srgb, var(--surface) 78%, transparent);
+}
+
+.talent-form {
+  border-inline-start: 2px solid color-mix(in srgb, var(--brand) 52%, var(--border));
+}
+
+.talent-filters {
+  align-items: center;
+  border-color: color-mix(in srgb, var(--brand) 22%, var(--border));
+}
+
+.talent-form input,
+.talent-form select,
+.talent-form textarea,
+.talent-filters input,
+.talent-filters select,
+.talent-application textarea {
+  transition: border-color 160ms ease, box-shadow 160ms ease, background 160ms ease;
+}
+
+.talent-form input:focus,
+.talent-form select:focus,
+.talent-form textarea:focus,
+.talent-filters input:focus,
+.talent-filters select:focus,
+.talent-application textarea:focus {
+  outline: none;
+  border-color: var(--brand);
+  background: color-mix(in srgb, var(--surface2) 78%, var(--deep));
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--brand) 18%, transparent);
+}
+
+.talent-postings {
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 300px), 1fr));
+}
+
+.talent-posting {
+  min-width: 0;
+  transition: transform 180ms ease, border-color 180ms ease, box-shadow 180ms ease;
+}
+
+.talent-posting:hover {
+  transform: translateY(-3px);
+  border-color: color-mix(in srgb, var(--brand) 52%, var(--border));
+  box-shadow: 0 24px 60px color-mix(in srgb, var(--brand) 9%, transparent);
+}
+
+.talent-posting__skills span {
+  background: color-mix(in srgb, var(--brand) 8%, transparent);
+}
+
+.talent-posting__application {
+  border-color: color-mix(in srgb, var(--success) 48%, var(--border));
+  color: var(--success);
+  background: color-mix(in srgb, var(--success) 7%, transparent);
+}
+
+@media (max-width: 560px) {
+  .talent-workspace__header {
+    padding: 18px;
+  }
+
+  .talent-workspace__header h1 {
+    font-size: 1.45rem;
+  }
+
+  .talent-form,
+  .talent-filters,
+  .talent-posting,
+  .talent-applications article {
+    border-radius: 12px;
+  }
+}

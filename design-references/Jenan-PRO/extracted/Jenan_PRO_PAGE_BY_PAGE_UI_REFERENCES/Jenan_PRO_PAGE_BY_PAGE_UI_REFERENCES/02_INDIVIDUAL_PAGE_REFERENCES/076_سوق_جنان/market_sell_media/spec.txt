@@ -1,0 +1,24 @@
+Jenan PRO — Page Reference
+Page: 076
+Category: سوق جنان
+Route: /market/sell/media
+Title: صور ومستندات الإعلان
+Kind: form
+Description: رحلة سوق كاملة.
+
+Sections:
+- الصور
+- الملفات
+- المستندات
+- إعدادات السرية
+
+Outputs:
+- —
+
+Actions:
+- التالي
+
+Next routes:
+- /market/sell/review
+
+Target: 60–70% baseline; responsive; Git checkpoint + local copy.

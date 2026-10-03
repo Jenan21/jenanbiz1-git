@@ -1,7 +1,13 @@
 import { NextResponse } from "next/server";
 import { getPlatformAdminSummary } from "@/lib/admin/platform-summary";
+import { hasPlatformAdminAccess } from "@/lib/auth/authorization";
+import { getCurrentUser } from "@/lib/auth/session";
 
 export async function GET() {
+  const user = await getCurrentUser();
+  if (!user || !hasPlatformAdminAccess(user.systemRole)) {
+    return NextResponse.json({ success: false, message: "Admin access required" }, { status: 403 });
+  }
   try {
     const summary = await getPlatformAdminSummary();
 

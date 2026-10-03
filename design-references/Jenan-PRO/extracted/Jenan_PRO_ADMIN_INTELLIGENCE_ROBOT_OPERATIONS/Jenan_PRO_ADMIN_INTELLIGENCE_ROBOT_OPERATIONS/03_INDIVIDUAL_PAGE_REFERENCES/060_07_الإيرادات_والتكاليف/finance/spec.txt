@@ -1,0 +1,38 @@
+Jenan PRO — Admin Intelligence Robot Operations
+Page: 060
+Group: 07 — الإيرادات والتكاليف
+Route: /finance
+Title: المركز المالي التشغيلي
+Kind: finance
+Purpose: الإيرادات والتكاليف اليومية والشهرية وربحية الخدمات.
+
+Modules:
+- إيرادات اليوم
+- إيرادات الشهر
+- تكلفة الذكاء
+- تكلفة البنية
+- صافي تشغيلي
+- أكثر الخدمات دخلًا
+- أعلى الخدمات تكلفة
+- الاتجاه
+
+Actions:
+- فتح الإيرادات
+- فتح التكاليف
+- التقرير
+
+Outputs:
+- —
+
+Next Routes:
+- —
+
+Implementation:
+- Jenan PRO only.
+- Real React/CSS/SVG/components.
+- Responsive Desktop/Laptop/Tablet/Mobile.
+- No screenshot as production background.
+- No fake production values.
+- Reach ≥70% visual match before moving to next section.
+- Functional QA + responsive QA required.
+- Commit + save locally after PASS.

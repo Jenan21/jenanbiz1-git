@@ -1,0 +1,23 @@
+Jenan PRO — Page Reference
+Page: 055
+Category: الأكاديمية
+Route: /academy/course/sample/result
+Title: نتيجة الدورة
+Kind: dashboard
+Description: رحلة أكاديمية كاملة.
+
+Sections:
+- نسبة الإكمال
+- نتيجة الاختبار
+- المهارات المكتسبة
+
+Outputs:
+- شهادة
+
+Actions:
+- عرض الشهادة
+
+Next routes:
+- /academy/certificates/sample
+
+Target: 60–70% baseline; responsive; Git checkpoint + local copy.

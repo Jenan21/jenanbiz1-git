@@ -1,0 +1,26 @@
+Jenan PRO — Page Reference
+Page: 022
+Category: المشاريع/تقييم مشروع
+Route: /projects/evaluation/new
+Title: تقييم مشروع — إدخال البيانات
+Kind: form
+Description: رحلة تقييم مشروع كاملة.
+
+Sections:
+- اسم المشروع
+- القطاع
+- المرحلة
+- الموقع
+- السوق المستهدف
+- الميزانية
+
+Outputs:
+- —
+
+Actions:
+- ابدأ التقييم
+
+Next routes:
+- /projects/evaluation/progress
+
+Target: 60–70% baseline; responsive; Git checkpoint + local copy.

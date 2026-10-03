@@ -1,0 +1,25 @@
+Jenan PRO — Page Reference
+Page: 113
+Category: الوظائف والمواهب
+Route: /talent/jobs
+Title: البحث عن وظائف
+Kind: list
+Description: رحلة توظيف كاملة.
+
+Sections:
+- بحث
+- فلترة
+- الموقع
+- الخبرة
+- الدوام
+
+Outputs:
+- —
+
+Actions:
+- عرض الوظيفة
+
+Next routes:
+- /talent/job/sample
+
+Target: 60–70% baseline; responsive; Git checkpoint + local copy.

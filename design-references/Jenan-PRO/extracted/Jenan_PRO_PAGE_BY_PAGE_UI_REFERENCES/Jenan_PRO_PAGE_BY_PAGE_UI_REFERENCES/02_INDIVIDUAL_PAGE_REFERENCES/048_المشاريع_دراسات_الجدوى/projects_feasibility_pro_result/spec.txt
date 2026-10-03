@@ -1,0 +1,26 @@
+Jenan PRO — Page Reference
+Page: 048
+Category: المشاريع/دراسات الجدوى
+Route: /projects/feasibility/pro/result
+Title: النتيجة الاحترافية
+Kind: dashboard
+Description: دراسات جدوى متكاملة.
+
+Sections:
+- معدل الربحية
+- فترة الاسترداد
+- NPV
+- ROI
+- التدفقات
+- التوصية
+
+Outputs:
+- Executive Summary
+
+Actions:
+- عرض التقرير
+
+Next routes:
+- /projects/feasibility/pro/report
+
+Target: 60–70% baseline; responsive; Git checkpoint + local copy.

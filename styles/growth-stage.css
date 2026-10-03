@@ -1,0 +1,51 @@
+.growth-workspace {
+  position: relative;
+  isolation: isolate;
+}
+
+.growth-workspace__header {
+  position: relative;
+  overflow: hidden;
+  background:
+    radial-gradient(circle at 86% 0, color-mix(in srgb, var(--brand) 18%, transparent), transparent 30%),
+    linear-gradient(135deg, color-mix(in srgb, var(--surface2) 78%, transparent), color-mix(in srgb, var(--surface) 92%, transparent));
+}
+
+.growth-metrics article {
+  min-height: 104px;
+  align-content: center;
+  background: linear-gradient(145deg, color-mix(in srgb, var(--surface2) 72%, transparent), color-mix(in srgb, var(--surface) 86%, transparent));
+}
+
+.growth-metrics article strong {
+  text-shadow: 0 0 22px color-mix(in srgb, var(--brand) 26%, transparent);
+}
+
+.growth-form {
+  border-inline-start: 2px solid color-mix(in srgb, var(--brand) 48%, var(--border));
+}
+
+.growth-campaign {
+  min-width: 0;
+  transition: transform 180ms ease, border-color 180ms ease, box-shadow 180ms ease;
+}
+
+.growth-campaign:hover {
+  transform: translateY(-3px);
+  border-color: color-mix(in srgb, var(--brand) 52%, var(--border));
+  box-shadow: 0 24px 60px color-mix(in srgb, var(--brand) 9%, transparent);
+}
+
+.growth-campaign__meta span {
+  background: color-mix(in srgb, var(--brand) 7%, transparent);
+}
+
+@media (max-width: 680px) {
+  .growth-workspace__header {
+    padding: 18px;
+  }
+
+  .growth-workspace__header h1 {
+    font-size: 1.45rem;
+  }
+}

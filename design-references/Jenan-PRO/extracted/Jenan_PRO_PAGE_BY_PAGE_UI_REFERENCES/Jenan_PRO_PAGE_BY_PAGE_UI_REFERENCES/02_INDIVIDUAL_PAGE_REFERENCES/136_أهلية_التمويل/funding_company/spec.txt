@@ -1,0 +1,27 @@
+Jenan PRO — Page Reference
+Page: 136
+Category: أهلية التمويل
+Route: /funding/company
+Title: ملف المنشأة
+Kind: detail
+Description: قياس الجاهزية دون ضمان التمويل.
+
+Sections:
+- السجل
+- التأسيس
+- القطاع
+- المدينة
+- الإيرادات
+- المستندات
+
+Outputs:
+- Company File
+
+Actions:
+- تعديل
+- رفع مستند
+
+Next routes:
+- —
+
+Target: 60–70% baseline; responsive; Git checkpoint + local copy.

@@ -1,0 +1,24 @@
+Jenan PRO — Page Reference
+Page: 002
+Category: الدخول والتسجيل
+Route: /auth/login
+Title: تسجيل الدخول
+Kind: form
+Description: وصول آمن إلى الحساب.
+
+Sections:
+- البريد الإلكتروني
+- كلمة المرور
+- تذكرني
+- نسيت كلمة المرور
+
+Outputs:
+- —
+
+Actions:
+- دخول
+
+Next routes:
+- /home
+
+Target: 60–70% baseline; responsive; Git checkpoint + local copy.

@@ -1,0 +1,39 @@
+Jenan PRO — Admin Intelligence Robot Operations
+Page: 011
+Group: 01 — مصنع الروبوتات
+Route: /robots/factory/batches/sample
+Title: تفاصيل دفعة روبوتات
+Kind: detail
+Purpose: التفاصيل الكاملة للدفعة ومسارها الأكاديمي والتشغيلي.
+
+Modules:
+- الهوية
+- التخصصات
+- التقدم
+- الاختبارات
+- المتخرجون
+- المستبعدون
+- التكلفة
+- السجل
+
+Actions:
+- فتح الأكاديمية
+- عرض الأعضاء
+- تقرير الدفعة
+
+Outputs:
+- Batch Report
+
+Next Routes:
+- /robot-academy/batches/sample
+- /robots/registry
+
+Implementation:
+- Jenan PRO only.
+- Real React/CSS/SVG/components.
+- Responsive Desktop/Laptop/Tablet/Mobile.
+- No screenshot as production background.
+- No fake production values.
+- Reach ≥70% visual match before moving to next section.
+- Functional QA + responsive QA required.
+- Commit + save locally after PASS.

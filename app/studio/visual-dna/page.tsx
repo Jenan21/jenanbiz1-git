@@ -1,10 +1,12 @@
 import { Visualizer } from "@/components/visual-dna/visualizer";
+import { requireUser } from "@/lib/auth/session";
 
 export const metadata = {
   title: "Visual DNA — Studio",
 };
 
-export default function VisualDNAPage() {
+export default async function VisualDNAPage() {
+  await requireUser("/studio/visual-dna");
   return (
     <main className="shell">
       <div className="page-grid">

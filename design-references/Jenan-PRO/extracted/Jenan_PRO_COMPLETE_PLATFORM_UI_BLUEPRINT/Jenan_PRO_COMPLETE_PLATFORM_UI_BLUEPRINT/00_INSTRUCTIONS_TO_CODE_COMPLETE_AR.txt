@@ -1,0 +1,12 @@
+Jenan PRO — COMPLETE PLATFORM IMPLEMENTATION INSTRUCTIONS
+=========================================================
+This package defines 159 screens/routes.
+Do not stop at the main page of any section. Every service must include its internal flow: input -> progress -> result -> details -> report -> print/export where relevant.
+Every View / Details / Open / Start / Report / Print / Share / Email button must open a real matching screen or action.
+Current phase: each screen/branch/output to 60–70% stable implementation -> Verify -> Commit -> Save locally -> Move on.
+Save this entire package inside the desktop project folder and repository under a clear path such as /design-references/Jenan-PRO-COMPLETE/.
+Use Jenan PRO only. Legacy Jenan BIZ in old images is visual reference only.
+Do not use image dimensions as fixed canvas. Implement responsive Desktop/Laptop/Tablet/Mobile.
+Do not use screenshots as production backgrounds. Build real React/CSS/SVG/components.
+After the entire platform reaches 60–70%, return later for 70 -> 80 -> 90 -> 100% refinement.
+Read: 00_READ_FIRST_BRAND_OVERRIDE_JENAN_PRO.txt, 00_RESPONSIVE_IMPLEMENTATION_RULE.txt, 03_PAGE_SPECS/FULL_PAGE_FLOW_MAP_AR.md, PAGE_CATALOG.csv, and 04_INTERACTIVE_PROTOTYPE/index.html.

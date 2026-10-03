@@ -7,6 +7,11 @@ export const e2eIdentity = {
     password: `E2E-user-${runId}-Strong!`,
     displayName: "E2E User",
   },
+  visualUser: {
+    email: `e2e.visual.${runId}@example.test`,
+    password: `E2E-visual-${runId}-Strong!`,
+    displayName: "E2E Visual User",
+  },
   admin: {
     email: `e2e.admin.${runId}@example.test`,
     password: `E2E-admin-${runId}-Strong!`,

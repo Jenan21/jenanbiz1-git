@@ -1,0 +1,34 @@
+Jenan PRO — Page Reference
+Page: 006
+Category: الرئيسية
+Route: /home
+Title: الصفحة الرئيسية
+Kind: dashboard
+Description: مركز أعمال Jenan PRO العالمي.
+
+Sections:
+- Hero عالمي
+- الأقسام
+- الأخبار والفرص
+- الإحصائيات
+- توزيع المستخدمين
+- شريط الثقة
+- الفوتر
+
+Outputs:
+- روابط جميع الأقسام
+
+Actions:
+- فتح قسم
+
+Next routes:
+- /projects
+- /academy
+- /market
+- /studio
+- /software
+- /talent
+- /marketing
+- /funding
+
+Target: 60–70% baseline; responsive; Git checkpoint + local copy.

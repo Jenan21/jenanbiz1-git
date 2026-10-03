@@ -1,0 +1,26 @@
+Jenan PRO — Page Reference
+Page: 117
+Category: الوظائف والمواهب
+Route: /talent/employer
+Title: لوحة صاحب العمل
+Kind: dashboard
+Description: رحلة توظيف كاملة.
+
+Sections:
+- الوظائف المنشورة
+- المتقدمون
+- المطابقة
+- الإحصائيات
+
+Outputs:
+- Hiring Report
+
+Actions:
+- نشر وظيفة
+- عرض المتقدمين
+
+Next routes:
+- /talent/employer/post
+- /talent/employer/applicants
+
+Target: 60–70% baseline; responsive; Git checkpoint + local copy.

@@ -1,0 +1,55 @@
+تعليمات إلزامية لـ Code
+
+1. احفظ هذه الحزمة مع الملفين السابقين داخل:
+   design-references/Jenan-PRO/
+   وداخل مجلد المشروع المحلي على سطح المكتب.
+
+2. لا تحذف أو تستبدل المراجع القديمة؛ هذه الحزمة امتداد جديد.
+
+3. قسم أهلية التمويل Funding Eligibility ملغي نهائيًا:
+   لا Route، لا Menu، لا Card، لا Search entry، لا Dashboard widget، لا Report.
+   نظّف أي بقايا UI بأمان.
+   لا تحذف بيانات أو Schema بشكل خطير دون فحص dependencies.
+
+4. نفّذ كل مجموعة صفحات كـFlow كامل.
+   لا تعتبر لوحة الأدمن مكتملة إذا كانت Dashboard فقط.
+
+5. بعد إنهاء كل قسم:
+   - افتح جميع صفحاته.
+   - اختبر المسارات والأزرار.
+   - اختبر Loading / Empty / Error.
+   - اختبر Responsive.
+   - قارن التنفيذ مع المرجع.
+   - يجب أن يصل Visual Match تقريبي إلى 70% على الأقل.
+   - إذا أقل من 70% أصلح أهم الفروقات قبل الانتقال.
+
+6. لا تعتمد على أبعاد reference.html كـCanvas ثابت.
+   المرجع = الهوية والتكوين والعلاقات.
+   الجهاز = كيفية إعادة ترتيبها.
+
+7. ممنوع وضع Screenshot/PNG كواجهة Production.
+   ابنِ React/CSS/SVG/Components حقيقية.
+
+8. لا تعرض أرقام Demo كأنها Production.
+   استخدم غير متوفر / غير محسوب / بانتظار المصدر عندما لا توجد بيانات.
+
+9. لا تكسر Auth / Sessions / RBAC / DB / Audit / Security / Core.
+   أي تعديل Backend حساس يحتاج فحص dependencies.
+
+10. Gate:
+    Design full section
+    → Complete all child pages
+    → Functional Test
+    → Responsive Test
+    → Visual Compare
+    → Reach ≥70%
+    → lint/typecheck/tests/build
+    → Commit
+    → Save locally
+    → Move on
+
+11. أمثلة Commit:
+    [70% BASELINE][PASS] Robot Academy Full Flow
+    [70% BASELINE][PASS] Mission Control Full Flow
+    [70% BASELINE][PASS] Intelligence Center Full Flow
+    [70% BASELINE][PASS] Admin Finance Full Flow

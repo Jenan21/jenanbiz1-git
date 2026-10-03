@@ -5,15 +5,18 @@ import type {
   RateLimitProvider,
 } from "@/lib/rate-limit/contracts";
 import { MemoryRateLimitProvider } from "@/lib/rate-limit/memory-provider";
+import { RedisRateLimitProvider } from "@/lib/rate-limit/redis-provider";
 
-export type AuthRateLimitRoute = "login" | "register";
+export type AuthRateLimitRoute = "forgot" | "login" | "register" | "reset";
 
 const policies: Record<
   AuthRateLimitRoute,
   { limit: number; windowMs: number }
 > = {
+  forgot: { limit: 4, windowMs: 60_000 },
   login: { limit: 8, windowMs: 60_000 },
   register: { limit: 4, windowMs: 60_000 },
+  reset: { limit: 8, windowMs: 60_000 },
 };
 
 const globalForRateLimit = globalThis as typeof globalThis & {
@@ -24,6 +27,22 @@ export function createLocalRateLimitProvider() {
   return new MemoryRateLimitProvider();
 }
 
+class UnavailableRateLimitProvider implements RateLimitProvider {
+  async consume(input: { limit: number; windowMs: number }) {
+    return {
+      allowed: false,
+      limit: input.limit,
+      remaining: 0,
+      resetAt: new Date(Date.now() + input.windowMs),
+      retryAfterSeconds: Math.max(1, Math.ceil(input.windowMs / 1_000)),
+    };
+  }
+
+  async isReady() {
+    return false;
+  }
+}
+
 export function setRateLimitProvider(provider: RateLimitProvider) {
   globalForRateLimit.jenanRateLimitProvider = provider;
 }
@@ -31,14 +50,18 @@ export function setRateLimitProvider(provider: RateLimitProvider) {
 export function getRateLimitProvider() {
   if (globalForRateLimit.jenanRateLimitProvider)
     return globalForRateLimit.jenanRateLimitProvider;
-  if (process.env.NODE_ENV === "production") {
-    throw new Error(
-      "A distributed RateLimitProvider must be configured in production",
-    );
-  }
-  const provider = createLocalRateLimitProvider();
+  const redisUrl = process.env.REDIS_URL?.trim();
+  const provider = redisUrl
+    ? new RedisRateLimitProvider(redisUrl)
+    : process.env.NODE_ENV === "production"
+      ? new UnavailableRateLimitProvider()
+      : createLocalRateLimitProvider();
   globalForRateLimit.jenanRateLimitProvider = provider;
   return provider;
+}
+
+export async function isRateLimitProviderReady() {
+  return getRateLimitProvider().isReady();
 }
 
 function requestIdentity(request: NextRequest, email?: unknown) {

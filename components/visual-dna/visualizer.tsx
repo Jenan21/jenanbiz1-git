@@ -109,7 +109,7 @@ export function Visualizer() {
           </div>
           <div style={{ marginTop: 12 }}>
             <div style={{ padding: 18, borderRadius: 12 }} className="glass">
-              <h3 style={{ margin: 0 }}>Jenan BIZ — Preview</h3>
+              <h3 style={{ margin: 0 }}>Jenan Pro — Preview</h3>
               <p className="muted">This preview uses current CSS variables.</p>
               <div style={{ marginTop: 12 }}>
                 <div className="pill">Primary: <span style={{ marginLeft: 8 }}>{palette[0] ?? "-"}</span></div>

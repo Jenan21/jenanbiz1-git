@@ -1,0 +1,35 @@
+Jenan PRO — Admin Intelligence Robot Operations
+Page: 029
+Group: 03 — الهيكل الإداري للروبوتات
+Route: /robot-org
+Title: الهيكل الإداري للروبوتات
+Kind: org
+Purpose: موظفون → مشرفون → مديرون → اللجنة العليا → الأدمن.
+
+Modules:
+- موظفون روبوتيون
+- مشرفون
+- مديرون
+- لجنة عليا
+- تصعيدات
+- طلبات مراجعة
+
+Actions:
+- فتح المستوى
+- تعديل التوزيع
+
+Outputs:
+- —
+
+Next Routes:
+- —
+
+Implementation:
+- Jenan PRO only.
+- Real React/CSS/SVG/components.
+- Responsive Desktop/Laptop/Tablet/Mobile.
+- No screenshot as production background.
+- No fake production values.
+- Reach ≥70% visual match before moving to next section.
+- Functional QA + responsive QA required.
+- Commit + save locally after PASS.

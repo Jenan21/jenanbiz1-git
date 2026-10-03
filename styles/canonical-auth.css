@@ -1,0 +1,1023 @@
+.access-page {
+  --auth-cyan: #1fe7ff;
+  --auth-cyan-soft: #59f3ff;
+  --auth-mint: #4df6a2;
+  --auth-gold: #f0c85b;
+  position: relative;
+  min-height: 100dvh;
+  overflow: hidden;
+  color: #f4fbff;
+  background: #020b14;
+  font-family: "Alexandria Variable", "Segoe UI", sans-serif;
+  -webkit-font-smoothing: antialiased;
+  text-rendering: geometricPrecision;
+  isolation: isolate;
+}
+
+.access-page[data-mode="register"] {
+  --auth-cyan: #26e3cf;
+  --auth-cyan-soft: #62ead5;
+  --auth-mint: #72efb8;
+  --auth-gold: #f0ca71;
+}
+
+.access-page[data-mode="login"] .access-page__form-panel {
+  border-color: rgba(91, 237, 242, 0.82);
+  background:
+    radial-gradient(circle at 52% 6%, rgba(16, 118, 157, 0.14), transparent 29%),
+    linear-gradient(180deg, rgba(1, 14, 28, 0.52), rgba(1, 11, 22, 0.8)),
+    url("/assets/global-city-night.jpg") center bottom / 100% 40% no-repeat,
+    linear-gradient(145deg, rgba(3, 37, 56, 0.96), rgba(1, 11, 23, 0.99));
+  box-shadow:
+    0 34px 120px rgba(0, 0, 0, 0.76),
+    -3px 0 20px rgba(240, 200, 91, 0.35),
+    3px 0 28px rgba(31, 231, 255, 0.42),
+    inset 0 0 0 1px rgba(255, 255, 255, 0.075),
+    inset 0 0 54px rgba(18, 198, 222, 0.035),
+    0 0 92px rgba(31, 231, 255, 0.22);
+}
+
+.access-page[data-mode="login"] .access-page__panel-world {
+  opacity: 0.54;
+  filter: saturate(1.25) brightness(1.12);
+}
+
+.access-page[data-mode="login"] .access-page__panel-city {
+  opacity: 0.82;
+  filter: saturate(1.16) contrast(1.04);
+}
+
+.access-page[data-mode="login"] .access-page__code {
+  color: #e8fdff;
+  text-shadow: 0 0 16px rgba(89, 243, 255, 0.25);
+}
+
+.access-page[data-mode="login"] .access-page__form-panel h1 {
+  text-shadow: 0 2px 18px rgba(0, 0, 0, 0.52), 0 0 28px rgba(89, 243, 255, 0.09);
+}
+
+.access-page[data-mode="login"] .field__control {
+  border-color: rgba(89, 243, 255, 0.72);
+  background:
+    linear-gradient(180deg, rgba(3, 29, 42, 0.64), rgba(0, 14, 25, 0.78));
+  box-shadow:
+    inset 0 1px rgba(255, 255, 255, 0.035),
+    inset 0 0 28px rgba(31, 231, 255, 0.035),
+    0 0 19px rgba(31, 231, 255, 0.055);
+}
+
+.access-page[data-mode="login"] .auth-form__submit {
+  border-color: rgba(255, 255, 255, 0.42);
+  background:
+    linear-gradient(105deg, #12d8f3 0%, #20dfd3 54%, #f2dc79 100%);
+  box-shadow:
+    0 0 28px rgba(31, 231, 255, 0.34),
+    0 0 24px rgba(240, 200, 91, 0.2),
+    inset 0 1px rgba(255, 255, 255, 0.68),
+    inset 0 -1px rgba(0, 72, 83, 0.16);
+}
+
+.access-page[data-mode="login"] .access-page__alternate a {
+  border-color: rgba(31, 231, 255, 0.76);
+  background:
+    linear-gradient(180deg, rgba(3, 39, 55, 0.72), rgba(0, 17, 30, 0.78));
+  box-shadow:
+    inset 0 0 24px rgba(31, 231, 255, 0.055),
+    0 0 18px rgba(31, 231, 255, 0.07);
+}
+
+.access-page *,
+.access-page *::before,
+.access-page *::after {
+  box-sizing: border-box;
+}
+
+body:has(.access-page) nextjs-portal {
+  display: none !important;
+}
+
+.canonical-auth__background {
+  position: fixed;
+  inset: -8px;
+  z-index: -2;
+  overflow: hidden;
+  pointer-events: none;
+  filter: blur(2.4px) brightness(0.31) saturate(1.23);
+  transform: scale(1.012);
+  transform-origin: center;
+}
+
+.canonical-auth__background .global-home {
+  min-height: calc(100dvh + 16px);
+}
+
+.access-page__panel-scrim {
+  position: fixed;
+  inset: 0;
+  z-index: 20;
+  border: 0;
+  background:
+    radial-gradient(circle at 50% 48%, rgba(0, 151, 194, 0.05), transparent 35%),
+    rgba(0, 6, 13, 0.34);
+  cursor: default;
+  animation: canonical-auth-scrim-in 220ms ease-out both;
+}
+
+.access-page__form-panel {
+  position: fixed;
+  z-index: 21;
+  top: 53.2%;
+  left: 50%;
+  width: min(620px, calc(100vw - 32px));
+  height: min(628px, calc(100dvh - 32px));
+  padding: 26px 36px 20px;
+  overflow-x: hidden;
+  overflow-y: auto;
+  border: 1px solid rgba(89, 243, 255, 0.72);
+  border-radius: 18px;
+  background:
+    linear-gradient(180deg, rgba(1, 13, 25, 0.52), rgba(1, 10, 20, 0.74)),
+    url("/assets/global-city-night.jpg") center bottom / 100% 40% no-repeat,
+    linear-gradient(145deg, rgba(3, 36, 54, 0.92), rgba(1, 12, 24, 0.97));
+  -webkit-backdrop-filter: blur(30px) saturate(1.28);
+  backdrop-filter: blur(30px) saturate(1.28);
+  box-shadow:
+    0 32px 120px rgba(0, 0, 0, 0.72),
+    -3px 0 18px rgba(240, 200, 91, 0.34),
+    3px 0 24px rgba(31, 231, 255, 0.36),
+    0 0 0 1px rgba(255, 255, 255, 0.08) inset,
+    0 0 82px rgba(31, 231, 255, 0.2);
+  scrollbar-color: rgba(89, 243, 255, 0.42) transparent;
+  transform: translate(-50%, -50%);
+  animation: canonical-auth-panel-in 420ms cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+.access-page__panel-world {
+  position: absolute;
+  top: -24%;
+  right: -17%;
+  z-index: 0;
+  width: 74%;
+  aspect-ratio: 1;
+  border-radius: 50%;
+  background:
+    radial-gradient(circle at 42% 44%, rgba(10, 144, 190, 0.06), rgba(0, 7, 17, 0.68) 70%),
+    url("/assets/earth-night-texture.jpg") center / auto 78% no-repeat;
+  opacity: 0.46;
+  mask-image: radial-gradient(circle, #000 56%, transparent 72%);
+}
+
+.access-page__panel-city {
+  position: absolute;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  z-index: 0;
+  height: 39%;
+  pointer-events: none;
+  background:
+    linear-gradient(180deg, #03121b 0%, rgba(1, 13, 22, 0.56) 28%, rgba(1, 13, 22, 0.2) 100%),
+    url("/assets/global-city-night.jpg") center 64% / cover no-repeat;
+  opacity: 0.77;
+  mask-image: linear-gradient(180deg, transparent, #000 25%);
+}
+
+.access-page__form-panel::before {
+  content: "";
+  position: absolute;
+  inset: 0 0 auto;
+  height: 2px;
+  pointer-events: none;
+  background: linear-gradient(90deg, var(--auth-gold), var(--auth-cyan-soft) 30% 70%, var(--auth-gold));
+  box-shadow: 0 0 24px rgba(89, 243, 255, 0.55);
+}
+
+.access-page__form-panel::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  opacity: 0.14;
+  background-image:
+    linear-gradient(rgba(89, 243, 255, 0.08) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(89, 243, 255, 0.08) 1px, transparent 1px);
+  background-size: 28px 28px;
+  -webkit-mask-image: radial-gradient(circle at center, black, transparent 74%);
+  mask-image: radial-gradient(circle at center, black, transparent 74%);
+}
+
+.access-page__panel-close {
+  position: absolute;
+  top: 18px;
+  right: 18px;
+  z-index: 4;
+  display: grid;
+  place-items: center;
+  width: 42px;
+  height: 42px;
+  padding: 0;
+  border: 1px solid rgba(89, 243, 255, 0.64);
+  border-radius: 50%;
+  color: #effdff;
+  background: rgba(2, 22, 35, 0.76);
+  box-shadow: 0 0 24px rgba(31, 231, 255, 0.15), inset 0 1px rgba(255, 255, 255, 0.14);
+  cursor: pointer;
+  transition: color 160ms ease, border-color 160ms ease, box-shadow 160ms ease, transform 160ms ease;
+}
+
+[dir="rtl"] .access-page__panel-close {
+  right: auto;
+  left: 18px;
+}
+
+.access-page__panel-close .icon {
+  width: 21px;
+  height: 21px;
+}
+
+.access-page__panel-close:hover,
+.access-page__panel-close:focus-visible {
+  border-color: var(--auth-gold);
+  color: #fff6d6;
+  box-shadow: 0 0 28px rgba(240, 200, 91, 0.24);
+  transform: rotate(5deg);
+}
+
+.access-page__panel-brand,
+.access-page__code,
+.access-page__form-panel h1,
+.access-page__form-panel > p,
+.access-page__form-panel .auth-form,
+.access-page__form-panel .auth-workflow__form-stack,
+.access-page__alternate {
+  position: relative;
+  z-index: 2;
+}
+
+.access-page[data-mode="login"] .access-page__form-panel .auth-form,
+.access-page[data-mode="login"] .access-page__alternate {
+  width: min(100%, 420px);
+  margin-inline: auto;
+}
+
+.access-page__panel-brand {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 13px;
+  margin: 0 auto 17px;
+  direction: ltr;
+}
+
+.access-page__panel-brand > span:last-child {
+  display: grid;
+  gap: 5px;
+}
+
+.access-page__panel-brand strong {
+  color: #f5fcff;
+  font-size: 1.35rem;
+  line-height: 1;
+}
+
+.access-page__panel-brand strong b {
+  color: var(--auth-cyan);
+}
+
+.access-page__panel-brand small {
+  color: #a8c6d0;
+  font-size: 0.62rem;
+  text-align: center;
+}
+
+.access-page__panel-mark {
+  position: relative;
+  display: block;
+  width: 42px;
+  height: 54px;
+  transform: rotate(5deg);
+}
+
+.access-page__panel-mark i {
+  position: absolute;
+  display: block;
+  width: 19px;
+  height: 42px;
+  border: 3px solid #17e7ff;
+  border-radius: 100% 0 100% 0;
+  background: linear-gradient(180deg, rgba(31, 231, 255, 0.3), rgba(3, 35, 55, 0.16));
+  box-shadow: 0 0 18px rgba(31, 231, 255, 0.38);
+}
+
+.access-page__panel-mark i:first-child {
+  top: 0;
+  right: 2px;
+}
+
+.access-page__panel-mark i:last-child {
+  bottom: 0;
+  left: 2px;
+  border-color: #36c1ff;
+  transform: rotate(180deg);
+}
+
+.access-page__code {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  color: #d9f9fc;
+  font-size: 0.72rem;
+  font-weight: 650;
+  text-align: center;
+}
+
+.access-page__code::before,
+.access-page__code::after {
+  content: "";
+  width: 46px;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, var(--auth-cyan-soft));
+  box-shadow: 0 0 10px rgba(89, 243, 255, 0.55);
+}
+
+.access-page__code::after {
+  background: linear-gradient(90deg, var(--auth-cyan-soft), transparent);
+}
+
+.access-page__form-panel h1 {
+  margin: 13px 0 5px;
+  color: #f5fcff;
+  font-size: clamp(1.8rem, 2.5vw, 2.3rem);
+  line-height: 1.22;
+  letter-spacing: 0;
+  text-align: center;
+}
+
+.access-page__form-panel h1::first-letter {
+  text-shadow: 0 0 18px rgba(89, 243, 255, 0.22);
+}
+
+.access-page__form-panel > p {
+  margin: 0 0 24px;
+  color: #b6ccd2;
+  font-size: 0.8rem;
+  line-height: 1.7;
+  text-align: center;
+}
+
+.access-page__form-panel .auth-form,
+.access-page__form-panel .auth-form__step {
+  display: grid;
+  gap: 12px;
+}
+
+.access-page__form-panel .field {
+  display: grid;
+  gap: 7px;
+}
+
+.access-page__form-panel .field__label {
+  color: #d1e2e6;
+  font-size: 0.65rem;
+  font-weight: 650;
+}
+
+.access-page__form-panel .field__control {
+  height: 50px;
+  border: 1px solid rgba(89, 243, 255, 0.66);
+  border-radius: 11px;
+  background: rgba(0, 12, 22, 0.68);
+  box-shadow: inset 0 0 24px rgba(31, 231, 255, 0.035), 0 0 18px rgba(31, 231, 255, 0.055);
+  transition: border-color 160ms ease, background 160ms ease, box-shadow 160ms ease;
+}
+
+.access-page__form-panel .field__control:focus-within {
+  border-color: var(--auth-cyan-soft);
+  background: rgba(1, 24, 35, 0.84);
+  box-shadow: 0 0 0 3px rgba(89, 243, 255, 0.08), 0 0 28px rgba(31, 231, 255, 0.12);
+}
+
+.access-page__form-panel .field__control input {
+  min-width: 0;
+  font: inherit;
+  font-size: 0.72rem;
+}
+
+.access-page__form-panel .field__control .icon {
+  width: 20px;
+  height: 20px;
+  color: var(--auth-cyan-soft);
+  filter: drop-shadow(0 0 6px rgba(31, 231, 255, 0.42));
+}
+
+.access-page__form-panel .field__action {
+  color: var(--auth-cyan-soft);
+}
+
+.access-page__form-panel input:-webkit-autofill,
+.access-page__form-panel input:-webkit-autofill:hover,
+.access-page__form-panel input:-webkit-autofill:focus {
+  -webkit-text-fill-color: #f4fdff !important;
+  caret-color: #f4fdff;
+  -webkit-box-shadow: 0 0 0 1000px #071d27 inset !important;
+  transition: background-color 9999s ease-out 0s;
+}
+
+.access-page__form-panel .auth-form__options {
+  margin: 1px 0 4px;
+  color: #c4d6da;
+  font-size: 0.67rem;
+}
+
+.access-page__form-panel .checkbox input {
+  width: 18px;
+  height: 18px;
+  margin: 0;
+  accent-color: var(--auth-cyan);
+}
+
+.access-page__form-panel .text-button,
+.access-page__form-panel .auth-workflow__return {
+  color: var(--auth-cyan);
+  font-size: 0.67rem;
+  font-weight: 700;
+}
+
+.access-page__form-panel .auth-form__submit,
+.access-page__form-panel .auth-workflow__form-stack .button--primary {
+  width: 100%;
+  min-height: 52px;
+  border: 1px solid rgba(255, 255, 255, 0.28);
+  border-radius: 12px;
+  color: #00121a;
+  font-size: 0.9rem;
+  font-weight: 850;
+  background: linear-gradient(105deg, #0edfff, #20e5d6 58%, #f0d883);
+  box-shadow: 0 0 25px rgba(31, 231, 255, 0.3), 0 0 20px rgba(240, 200, 91, 0.18), inset 0 1px rgba(255, 255, 255, 0.5);
+}
+
+.access-page__form-panel .auth-form__submit:hover:not(:disabled),
+.access-page__form-panel .auth-form__submit:focus-visible {
+  box-shadow: 0 0 34px rgba(31, 231, 255, 0.42), 0 0 28px rgba(240, 200, 91, 0.24), inset 0 1px rgba(255, 255, 255, 0.6);
+  transform: translateY(-1px);
+}
+
+.access-page__form-panel .form-note {
+  margin: 2px 0 0;
+  color: #a8bec5;
+  font-size: 0.56rem;
+}
+
+.access-page__form-panel .auth-success,
+.access-page__form-panel .auth-error,
+.access-page__form-panel .auth-workflow__message,
+.access-page__form-panel .auth-workflow__error,
+.access-page__form-panel .auth-workflow__dev-code {
+  margin: 0;
+  padding: 9px 10px;
+  border: 1px solid rgba(77, 246, 162, 0.34);
+  border-radius: 8px;
+  color: #9cebc3;
+  background: rgba(48, 142, 93, 0.12);
+  font-size: 0.6rem;
+  line-height: 1.6;
+}
+
+.access-page__form-panel .auth-error,
+.access-page__form-panel .auth-workflow__error {
+  border-color: rgba(255, 120, 120, 0.34);
+  color: #ffb6b6;
+  background: rgba(151, 47, 47, 0.14);
+}
+
+.access-page__alternate {
+  display: grid;
+  gap: 8px;
+  margin-top: 12px;
+  color: #91aeb3;
+  font-size: 0.65rem;
+}
+
+.access-page__alternate > span {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  white-space: nowrap;
+}
+
+.access-page__alternate > span::before,
+.access-page__alternate > span::after {
+  content: "";
+  width: 100%;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, rgba(89, 243, 255, 0.48), transparent);
+}
+
+.access-page__alternate a {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 9px;
+  min-height: 48px;
+  border: 1px solid rgba(31, 231, 255, 0.7);
+  border-radius: 12px;
+  color: #27e8f4;
+  background: rgba(1, 20, 32, 0.68);
+  box-shadow: inset 0 0 22px rgba(31, 231, 255, 0.05);
+  font-weight: 750;
+}
+
+.access-page__alternate .icon {
+  width: 20px;
+  height: 20px;
+}
+
+[dir="rtl"] .access-page__alternate a[href="/auth"] .icon {
+  transform: rotate(180deg);
+}
+
+[dir="rtl"] .access-page__alternate a[href="/register"] .icon {
+  transform: rotate(180deg);
+}
+
+.access-page .auth-country__control {
+  position: relative;
+  display: block;
+  min-height: 54px;
+  overflow: hidden;
+  border: 1px solid rgba(89, 243, 255, 0.66);
+  border-radius: 10px;
+  background: rgba(0, 12, 22, 0.68);
+  box-shadow: inset 0 0 22px rgba(31, 231, 255, 0.035);
+}
+
+.access-page .auth-country > .field__label {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+.access-page .auth-country__selector {
+  position: relative;
+  display: grid;
+  grid-template-columns: 22px minmax(0, 1fr) 42px;
+  align-items: center;
+  height: 52px;
+  gap: 8px;
+  padding: 5px 8px;
+  color: var(--auth-cyan-soft);
+  direction: ltr;
+}
+
+.access-page .auth-country__selector .icon {
+  width: 14px;
+  height: 14px;
+  transform: rotate(90deg);
+}
+
+.access-page .auth-country__flag {
+  display: grid;
+  place-items: center;
+  width: 38px;
+  height: 38px;
+  border: 1px solid rgba(89, 243, 255, 0.16);
+  border-radius: 8px;
+  color: #effdff;
+  background: rgba(3, 27, 43, 0.8);
+  font-size: 1.1rem;
+}
+
+.access-page .auth-country__selected {
+  display: grid;
+  justify-items: end;
+  min-width: 0;
+  direction: rtl;
+  line-height: 1.35;
+}
+
+.access-page .auth-country__selected strong {
+  overflow: hidden;
+  max-width: 100%;
+  color: #effdff;
+  font-size: 0.68rem;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.access-page .auth-country__selected small {
+  color: #a9c0ca;
+  font-size: 0.48rem;
+}
+
+.access-page .auth-country__selector select {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  width: 100%;
+  height: 100%;
+  opacity: 0;
+  border: 0;
+  outline: 0;
+  cursor: pointer;
+}
+
+.access-page .auth-country__control select option {
+  color: #e9fbff;
+  background: #062031;
+}
+
+.access-page .auth-country__source {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+.access-page .auth-country__source i {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: #75919b;
+}
+
+.access-page .auth-country__source i[data-source="network"] {
+  background: var(--auth-mint);
+  box-shadow: 0 0 10px rgba(77, 246, 162, 0.72);
+}
+
+.access-page .auth-country__source i[data-source="manual"] {
+  background: var(--auth-cyan-soft);
+  box-shadow: 0 0 10px rgba(89, 243, 255, 0.6);
+}
+
+.access-page[data-mode="register"] .access-page__form-panel {
+  top: 51.2%;
+  width: min(532px, calc(100vw - 32px));
+  height: min(665px, calc(100dvh - 32px));
+  padding: 19px 28px 17px;
+  background:
+    linear-gradient(180deg, rgba(8, 16, 24, 0.5), rgba(8, 10, 18, 0.76)),
+    url("/assets/global-city-night.jpg") center bottom / 100% 44% no-repeat,
+    linear-gradient(145deg, rgba(10, 32, 42, 0.92), rgba(7, 11, 19, 0.98));
+  animation-name: canonical-auth-register-in;
+}
+
+.access-page[data-mode="register"] .access-page__form-panel::after {
+  opacity: 0.17;
+  background-image:
+    radial-gradient(circle at 0 100%, rgba(240, 202, 113, 0.38), transparent 42%),
+    linear-gradient(rgba(98, 234, 213, 0.07) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(98, 234, 213, 0.07) 1px, transparent 1px);
+  background-size: 100% 100%, 28px 28px, 28px 28px;
+}
+
+.access-page[data-mode="register"] .access-page__panel-brand {
+  margin-bottom: 8px;
+}
+
+.access-page[data-mode="register"] .access-page__panel-world {
+  top: -12%;
+  right: -16%;
+  width: 74%;
+}
+
+.access-page[data-mode="register"] .access-page__form-panel .auth-form,
+.access-page[data-mode="register"] .access-page__alternate {
+  width: min(100%, 384px);
+  margin-inline: auto;
+}
+
+.access-page[data-mode="register"] .access-page__form-panel h1 {
+  margin-top: 8px;
+  margin-bottom: 2px;
+  font-size: 2.15rem;
+}
+
+.access-page[data-mode="register"] .access-page__form-panel > p {
+  margin-bottom: 13px;
+}
+
+.access-page[data-mode="register"] .auth-form__step--all {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 6px;
+}
+
+.access-page[data-mode="register"] .auth-form__step--all > .field > .field__label {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+.access-page[data-mode="register"] .field__control {
+  height: 44px;
+}
+
+.access-page[data-mode="register"] .auth-form__terms-field {
+  order: 6;
+  margin-top: 2px;
+}
+
+.access-page[data-mode="register"] .form-note {
+  order: 7;
+  margin-top: 17px;
+}
+
+.access-page[data-mode="register"] .auth-error {
+  order: 8;
+}
+
+.access-page[data-mode="register"] .auth-form__submit {
+  order: 9;
+  min-height: 48px;
+  margin-top: -1px;
+  background: linear-gradient(105deg, #2b9e91, #63d5a5 58%, #f0d883);
+  box-shadow: 0 0 25px rgba(56, 208, 173, 0.25), 0 0 20px rgba(240, 200, 91, 0.18), inset 0 1px rgba(255, 255, 255, 0.5);
+}
+
+.access-page__form-panel .auth-form__terms {
+  color: #c5d7db;
+  font-size: 0.62rem;
+}
+
+.access-page__form-panel .auth-form__terms-field {
+  position: relative;
+  display: grid;
+  grid-template-columns: 1fr;
+  justify-items: start;
+  gap: 6px;
+  margin-top: 12px;
+  direction: rtl;
+}
+
+.access-page__form-panel .auth-form__terms {
+  direction: rtl;
+}
+
+.access-page__form-panel .auth-form__terms > span {
+  direction: rtl;
+}
+
+.access-page__form-panel .auth-form__terms-details {
+  position: relative;
+  color: var(--auth-cyan);
+  font-size: 0.56rem;
+  direction: rtl;
+}
+
+.access-page__form-panel .auth-form__terms-details summary {
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.access-page__form-panel .auth-form__terms-details p {
+  position: absolute;
+  z-index: 5;
+  right: 0;
+  bottom: calc(100% + 8px);
+  width: min(310px, calc(100vw - 70px));
+  margin: 0;
+  padding: 10px 12px;
+  border: 1px solid rgba(89, 243, 255, 0.3);
+  border-radius: 9px;
+  color: #c1d6db;
+  background: rgba(2, 22, 34, 0.97);
+  box-shadow: 0 16px 36px rgba(0, 0, 0, 0.42);
+  line-height: 1.65;
+}
+
+.access-page[data-mode="register"] .access-page__alternate {
+  gap: 5px;
+  margin-top: 8px;
+}
+
+.access-page[data-mode="register"] .access-page__alternate a {
+  min-height: 44px;
+}
+
+.access-page .auth-workflow__form-stack,
+.access-page .auth-workflow__form-stack form {
+  display: grid;
+  gap: 12px;
+}
+
+.access-page .auth-workflow__form-stack label {
+  color: #d1e2e6;
+  font-size: 0.65rem;
+}
+
+.access-page .auth-workflow__form-stack input {
+  display: block;
+  width: 100%;
+  height: 48px;
+  margin-top: 7px;
+  padding: 0 12px;
+  border: 1px solid rgba(89, 243, 255, 0.66);
+  border-radius: 10px;
+  outline: 0;
+  color: #f3fbfc;
+  background: rgba(0, 12, 22, 0.68);
+  font: inherit;
+}
+
+.access-page .auth-workflow__actions {
+  display: grid;
+  grid-template-columns: 90px minmax(0, 1fr);
+  gap: 10px;
+}
+
+.access-page .auth-workflow__return {
+  justify-self: center;
+  margin-top: 4px;
+}
+
+@keyframes canonical-auth-scrim-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes canonical-auth-panel-in {
+  from {
+    opacity: 0;
+    filter: blur(8px);
+    transform: translate(-50%, calc(-50% + 22px)) scale(0.96);
+  }
+  to {
+    opacity: 1;
+    filter: blur(0);
+    transform: translate(-50%, -50%) scale(1);
+  }
+}
+
+@media (max-width: 700px) {
+  .access-page__form-panel {
+    top: 50%;
+    width: min(620px, 100vw);
+    height: 100dvh;
+    padding: 24px 28px 20px;
+    border-radius: 15px;
+    background:
+      linear-gradient(180deg, rgba(1, 13, 25, 0.58), rgba(1, 10, 20, 0.8)),
+      url("/assets/global-city-night.jpg") center bottom / 100% 40% no-repeat,
+      linear-gradient(145deg, rgba(3, 36, 54, 0.95), rgba(1, 12, 24, 0.99));
+  }
+
+  .access-page[data-mode="login"] .access-page__form-panel .auth-form,
+  .access-page[data-mode="login"] .access-page__alternate {
+    width: min(100%, 404px);
+  }
+
+  .access-page__panel-brand {
+    margin-bottom: 20px;
+  }
+
+  .access-page[data-mode="login"] .access-page__panel-close {
+    top: 17px;
+    left: 16px;
+    width: 36px;
+    height: 36px;
+    border-color: rgba(240, 220, 180, 0.92);
+    border-radius: 11px;
+    transform: rotate(6deg);
+  }
+
+  .access-page[data-mode="login"] .access-page__panel-brand {
+    transform: translate(-2px, 2px);
+  }
+
+  .access-page[data-mode="login"] .access-page__panel-brand strong {
+    font-size: 1.3rem;
+  }
+
+  .access-page[data-mode="login"] .access-page__form-panel h1 {
+    margin-top: 11px;
+    margin-bottom: 8px;
+    font-size: 2.62rem;
+  }
+
+  .access-page[data-mode="login"] .access-page__form-panel > p {
+    margin-bottom: 26px;
+  }
+
+  .access-page[data-mode="login"] .access-page__form-panel .field {
+    gap: 3px;
+  }
+
+  .access-page[data-mode="login"] .access-page__form-panel .field__label {
+    font-weight: 500;
+  }
+
+  .access-page[data-mode="login"] .access-page__form-panel .field__control {
+    height: 48px;
+  }
+
+  .access-page[data-mode="login"] .auth-form__options {
+    margin-bottom: 8px;
+    transform: translateY(4px);
+  }
+
+  .access-page[data-mode="login"] .auth-form__options .text-button {
+    font-weight: 600;
+  }
+
+  .access-page[data-mode="login"] .auth-form__submit {
+    transform: translateY(-1px);
+  }
+
+  .access-page[data-mode="login"] .access-page__alternate {
+    margin-top: 10px;
+  }
+
+  .access-page[data-mode="register"] .access-page__form-panel {
+    top: 50%;
+    width: min(532px, 100vw);
+    height: 100dvh;
+    padding: 23px 18px 14px;
+  }
+
+  .access-page[data-mode="register"] .access-page__form-panel .auth-form,
+  .access-page[data-mode="register"] .access-page__alternate {
+    width: min(100%, 404px);
+  }
+
+  .access-page[data-mode="register"] .access-page__panel-brand {
+    margin-bottom: 10px;
+  }
+
+  .access-page[data-mode="register"] .access-page__form-panel h1 {
+    margin-top: 5px;
+    font-size: 2rem;
+  }
+
+  .access-page[data-mode="register"] .access-page__form-panel > p {
+    margin-bottom: 16px;
+    font-size: 0.68rem;
+  }
+
+  .access-page[data-mode="register"] .auth-form__step--all {
+    gap: 7px;
+  }
+
+  .access-page[data-mode="register"] .field__control {
+    height: 44px;
+  }
+
+  .access-page[data-mode="register"] .auth-country__control {
+    min-height: 54px;
+  }
+
+  .access-page[data-mode="register"] .access-page__alternate {
+    margin-top: 0;
+  }
+
+}
+
+@media (max-width: 430px) {
+  .access-page__panel-close {
+    top: 12px;
+    left: 12px;
+    width: 38px;
+    height: 38px;
+  }
+
+  .access-page__code {
+    font-size: 0.64rem;
+  }
+
+  .access-page__code::before,
+  .access-page__code::after {
+    width: 34px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .access-page *,
+  .access-page *::before,
+  .access-page *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+@keyframes canonical-auth-register-in {
+  from {
+    opacity: 0;
+    filter: blur(8px) brightness(0.95);
+    transform: translate(-50%, calc(-50% + 22px)) scale(0.96);
+  }
+  to {
+    opacity: 1;
+    filter: blur(0) brightness(0.95);
+    transform: translate(-50%, -50%) scale(1);
+  }
+}

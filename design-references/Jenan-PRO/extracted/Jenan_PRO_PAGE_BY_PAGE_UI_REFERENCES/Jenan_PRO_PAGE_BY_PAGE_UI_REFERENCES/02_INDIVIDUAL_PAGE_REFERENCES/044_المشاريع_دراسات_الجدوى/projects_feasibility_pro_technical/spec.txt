@@ -1,0 +1,26 @@
+Jenan PRO — Page Reference
+Page: 044
+Category: المشاريع/دراسات الجدوى
+Route: /projects/feasibility/pro/technical
+Title: الدراسة الفنية والتقنية
+Kind: detail
+Description: دراسات جدوى متكاملة.
+
+Sections:
+- الموقع
+- المساحة
+- المعدات
+- التقنية
+- المواد
+- الطاقة
+
+Outputs:
+- قائمة متطلبات
+
+Actions:
+- التالي
+
+Next routes:
+- /projects/feasibility/pro/operational
+
+Target: 60–70% baseline; responsive; Git checkpoint + local copy.

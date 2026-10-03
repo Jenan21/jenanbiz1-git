@@ -1,7 +1,13 @@
 import { describe, expect, it } from "vitest";
 
-import { divisionDestinations } from "@/components/source/division-destinations";
 import { builtInPlatformCatalog } from "@/lib/platform/catalog";
+
+const divisionDestinations = Object.fromEntries(
+  builtInPlatformCatalog.modules.map((module) => [
+    module.route,
+    module.services.map((service) => service.href),
+  ]),
+);
 import { resolveModuleHref, resolveServiceHref } from "@/lib/platform/navigation";
 import { resolveServiceTemplate } from "@/lib/platform/service-templates";
 
@@ -72,35 +78,12 @@ describe("platform catalog navigation contract", () => {
     ]);
   });
 
-  it("keeps preview navigation catalog-driven and safely falls back to live routes", () => {
-    const specialized = builtInPlatformCatalog.modules
-      .flatMap((module) => module.services)
-      .filter((service) => service.template !== "catalog-service");
-
-    expect(specialized).toHaveLength(8);
-    for (const service of specialized) {
-      expect(service.previewHref).toMatch(/^\//);
-      expect(resolveServiceHref(service, "preview")).toBe(service.previewHref);
-      expect(resolveServiceHref(service, "live")).toBe(service.href);
-    }
-
-    const generic = builtInPlatformCatalog.modules
-      .flatMap((module) => module.services)
-      .find((service) => service.template === "catalog-service");
-    expect(generic).toBeDefined();
-    expect(resolveServiceHref(generic!, "preview")).toBe(generic!.href);
-  });
-
-  it("keeps module return routes catalog-driven in live and preview modes", () => {
-    for (const moduleId of ["projects", "academy"] as const) {
-      const catalogModule = builtInPlatformCatalog.modules.find(
-        (item) => item.id === moduleId,
-      );
-      expect(catalogModule).toBeDefined();
-      expect(resolveModuleHref(catalogModule!, "live")).toBe(`/${moduleId}`);
-      expect(resolveModuleHref(catalogModule!, "preview")).toBe(
-        catalogModule!.previewHref,
-      );
+  it("keeps navigation catalog-driven", () => {
+    for (const catalogModule of builtInPlatformCatalog.modules) {
+      expect(resolveModuleHref(catalogModule)).toBe(catalogModule.route);
+      for (const service of catalogModule.services) {
+        expect(resolveServiceHref(service)).toBe(service.href);
+      }
     }
   });
 

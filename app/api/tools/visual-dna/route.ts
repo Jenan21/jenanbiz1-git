@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { extractPaletteFromBase64 } from '../../../../services/visual-dna/visual-dna.service';
 
-// Simple in-memory rate limiter per IP (suitable for dev / small deploys). Replace with redis for prod.
+// Simple in-memory rate limiter per IP for the lightweight visual analysis endpoint.
 const RATE_LIMIT_WINDOW_MS = 60 * 1000; // 1 minute
 const RATE_LIMIT_MAX = 60; // requests per window
 const rateMap: Map<string, { count: number; windowStart: number }> = new Map();

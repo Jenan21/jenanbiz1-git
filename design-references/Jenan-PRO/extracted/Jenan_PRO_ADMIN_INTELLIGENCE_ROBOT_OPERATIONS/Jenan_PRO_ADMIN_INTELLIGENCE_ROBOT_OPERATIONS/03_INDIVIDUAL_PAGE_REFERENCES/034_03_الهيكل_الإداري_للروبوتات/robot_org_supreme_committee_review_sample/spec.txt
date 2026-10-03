@@ -1,0 +1,36 @@
+Jenan PRO — Admin Intelligence Robot Operations
+Page: 034
+Group: 03 — الهيكل الإداري للروبوتات
+Route: /robot-org/supreme-committee/review/sample
+Title: ملف مراجعة اللجنة
+Kind: committee
+Purpose: حزمة القرار والأدلة والآراء قبل رفعها للأدمن.
+
+Modules:
+- الموضوع
+- المخاطر
+- الأدلة
+- آراء الأعضاء
+- الخلاصة
+- التوصيات
+
+Actions:
+- اعتماد
+- إعادة للمراجعة
+- رفع للأدمن
+
+Outputs:
+- Committee Review Report
+
+Next Routes:
+- —
+
+Implementation:
+- Jenan PRO only.
+- Real React/CSS/SVG/components.
+- Responsive Desktop/Laptop/Tablet/Mobile.
+- No screenshot as production background.
+- No fake production values.
+- Reach ≥70% visual match before moving to next section.
+- Functional QA + responsive QA required.
+- Commit + save locally after PASS.

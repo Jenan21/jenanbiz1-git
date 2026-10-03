@@ -1,0 +1,32 @@
+Jenan PRO — Page Reference
+Page: 078
+Category: البرمجيات والأدوات
+Route: /studio
+Title: برمجيات وأدوات Jenan PRO
+Kind: dashboard
+Description: أدوات Jenan PRO الأصلية.
+
+Sections:
+- Jenan PDF
+- Jenan Docs
+- Jenan Sheets
+- Presentations
+- الشعار
+- الورق الرسمي
+- السيرة الذاتية
+
+Outputs:
+- ملفات ومخرجات
+
+Actions:
+- فتح الأداة
+
+Next routes:
+- /studio/pdf
+- /studio/docs
+- /studio/sheets
+- /studio/presentations
+- /studio/logo
+- /studio/cv
+
+Target: 60–70% baseline; responsive; Git checkpoint + local copy.

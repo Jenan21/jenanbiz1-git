@@ -1,0 +1,34 @@
+import { NextRequest, NextResponse } from "next/server";
+import { getCurrentUser } from "@/lib/auth/session";
+import { hasValidOrigin } from "@/lib/auth/request";
+import { FileAssetError, listUserFiles, uploadUserFile } from "@/services/files/file-asset-service";
+
+export const runtime = "nodejs";
+
+export async function GET() {
+  const user = await getCurrentUser();
+  if (!user) return NextResponse.json({ message: "Authentication required" }, { status: 401 });
+  return NextResponse.json({ files: await listUserFiles(user.id) }, { headers: { "cache-control": "no-store" } });
+}
+
+export async function POST(request: NextRequest) {
+  const user = await getCurrentUser();
+  if (!user) return NextResponse.json({ message: "Authentication required" }, { status: 401 });
+  if (!hasValidOrigin(request)) return NextResponse.json({ message: "Invalid request origin" }, { status: 403 });
+  const form = await request.formData().catch(() => null);
+  const file = form?.get("file");
+  const projectId = form?.get("projectId");
+  const marketListingId = form?.get("marketListingId");
+  const marketVisibility = form?.get("marketVisibility");
+  if (!(file instanceof File)) return NextResponse.json({ message: "Provide one file" }, { status: 400 });
+  if (projectId !== null && typeof projectId !== "string") return NextResponse.json({ message: "Invalid project" }, { status: 400 });
+  if (marketListingId !== null && typeof marketListingId !== "string") return NextResponse.json({ message: "Invalid market listing" }, { status: 400 });
+  if (marketVisibility !== null && marketVisibility !== "PUBLIC" && marketVisibility !== "NDA_REQUIRED") return NextResponse.json({ message: "Invalid market visibility" }, { status: 400 });
+  if (projectId && marketListingId) return NextResponse.json({ message: "Choose one file owner" }, { status: 400 });
+  try {
+    return NextResponse.json({ file: await uploadUserFile(user.id, file, projectId || undefined, marketListingId || undefined, marketVisibility === "PUBLIC" ? "PUBLIC" : "NDA_REQUIRED") }, { status: 201 });
+  } catch (error) {
+    const message = error instanceof FileAssetError ? error.message : "The file could not be stored";
+    return NextResponse.json({ message }, { status: 422 });
+  }
+}

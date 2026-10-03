@@ -1,0 +1,27 @@
+Jenan PRO — Page Reference
+Page: 034
+Category: المشاريع/بدء مشروع
+Route: /projects/start/vendors
+Title: الموردون والشركاء
+Kind: list
+Description: رحلة بدء مشروع كاملة.
+
+Sections:
+- المورد
+- التصنيف
+- العرض
+- الحالة
+- المستندات
+
+Outputs:
+- قائمة موردين
+
+Actions:
+- إضافة
+- مقارنة
+- اعتماد
+
+Next routes:
+- —
+
+Target: 60–70% baseline; responsive; Git checkpoint + local copy.

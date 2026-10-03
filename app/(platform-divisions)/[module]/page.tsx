@@ -1,6 +1,6 @@
 import { notFound } from "next/navigation";
 
-import { ProtectedModulePage } from "@/components/source/protected-module-page";
+import { ModulePage } from "@/components/custom/module-page";
 import { findPlatformModule } from "@/lib/platform/catalog";
 
 export default async function GeneratedModulePage({
@@ -13,5 +13,5 @@ export default async function GeneratedModulePage({
 
   if (!catalogModule || catalogModule.id === "dashboard") notFound();
 
-  return <ProtectedModulePage route={catalogModule.route} />;
+  return <ModulePage route={catalogModule.route} />;
 }

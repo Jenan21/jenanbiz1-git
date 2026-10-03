@@ -1,0 +1,25 @@
+Jenan PRO — Page Reference
+Page: 150
+Category: الأدمن
+Route: /admin/ai
+Title: تكاليف الذكاء والنماذج
+Kind: dashboard
+Description: إدارة تكاليف الذكاء والنماذج.
+
+Sections:
+- بحث
+- مؤشرات
+- جداول
+- حالات
+- إجراءات
+
+Outputs:
+- تقارير/تصدير
+
+Actions:
+- عرض
+
+Next routes:
+- —
+
+Target: 60–70% baseline; responsive; Git checkpoint + local copy.

@@ -1,0 +1,421 @@
+.workspace-overview,
+.account-overview {
+  position: relative;
+  isolation: isolate;
+}
+
+.workspace-overview__header,
+.account-overview__header {
+  position: relative;
+  overflow: hidden;
+  background:
+    radial-gradient(
+      circle at 86% 0,
+      color-mix(in srgb, var(--brand) 18%, transparent),
+      transparent 30%
+    ),
+    linear-gradient(
+      135deg,
+      color-mix(in srgb, var(--surface2) 78%, transparent),
+      color-mix(in srgb, var(--surface) 92%, transparent)
+    );
+}
+
+.workspace-overview__header::after,
+.account-overview__header::after {
+  content: "";
+  width: 210px;
+  height: 210px;
+  position: absolute;
+  inset-inline-end: -94px;
+  inset-block-start: -106px;
+  border: 1px solid color-mix(in srgb, var(--brand) 32%, transparent);
+  border-radius: 50%;
+  box-shadow:
+    0 0 0 24px color-mix(in srgb, var(--brand) 5%, transparent),
+    0 0 70px color-mix(in srgb, var(--brand) 14%, transparent);
+  pointer-events: none;
+}
+
+.workspace-overview__header > div,
+.workspace-overview__header > span,
+.account-overview__header > div,
+.account-overview__header > strong {
+  position: relative;
+  z-index: 1;
+}
+
+.workspace-overview__status {
+  border-color: color-mix(in srgb, var(--success) 42%, var(--border));
+  background: color-mix(in srgb, var(--success) 8%, transparent);
+}
+
+.workspace-steps {
+  padding: 12px;
+  border-color: color-mix(in srgb, var(--brand) 24%, var(--border));
+  background: color-mix(in srgb, var(--surface) 62%, transparent);
+}
+
+.workspace-steps li {
+  transition:
+    transform 180ms ease,
+    border-color 180ms ease,
+    background 180ms ease;
+}
+
+.workspace-steps li:hover {
+  transform: translateY(-2px);
+  border-color: color-mix(in srgb, var(--brand) 52%, var(--border));
+  background: color-mix(in srgb, var(--brand) 8%, transparent);
+}
+
+.workspace-service {
+  transition:
+    transform 180ms ease,
+    border-color 180ms ease,
+    box-shadow 180ms ease;
+}
+
+.workspace-service:hover {
+  transform: translateY(-3px);
+  border-color: color-mix(in srgb, var(--brand) 52%, var(--border));
+  box-shadow: 0 22px 56px color-mix(in srgb, var(--brand) 9%, transparent);
+}
+
+.account-overview__header > strong {
+  display: grid;
+  justify-items: center;
+  gap: 4px;
+  color: var(--brand);
+  text-shadow: 0 0 28px color-mix(in srgb, var(--brand) 30%, transparent);
+}
+
+.account-overview__header > strong > span {
+  font-size: clamp(2.2rem, 5vw, 4rem);
+  line-height: 1;
+}
+
+.account-overview__header > strong > small {
+  color: var(--muted);
+  font-size: 0.62rem;
+  font-weight: 600;
+  text-shadow: none;
+}
+
+.account-overview__scope {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  width: fit-content;
+  margin-top: 14px;
+  padding: 7px 9px;
+  border: 1px solid color-mix(in srgb, var(--success) 30%, var(--border));
+  border-radius: 999px;
+  color: var(--success);
+  background: color-mix(in srgb, var(--success) 7%, transparent);
+  font-size: 0.65rem;
+}
+
+.account-overview__scope .icon {
+  width: 14px;
+}
+
+.account-overview__metrics a,
+.account-overview__grid section {
+  transition:
+    transform 180ms ease,
+    border-color 180ms ease,
+    box-shadow 180ms ease;
+}
+
+.account-overview__metrics a:hover,
+.account-overview__grid section:hover {
+  transform: translateY(-3px);
+  border-color: color-mix(in srgb, var(--brand) 46%, var(--border));
+  box-shadow: 0 22px 56px color-mix(in srgb, var(--brand) 8%, transparent);
+}
+
+.account-overview__metrics strong {
+  color: var(--brand);
+}
+
+.account-overview__metrics a {
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  min-height: 86px;
+}
+
+.account-overview__metric-icon {
+  width: 36px;
+  height: 36px;
+  display: grid;
+  place-items: center;
+  border: 1px solid color-mix(in srgb, var(--brand) 28%, var(--border));
+  border-radius: 8px;
+  color: var(--brand);
+  background: color-mix(in srgb, var(--brand) 8%, transparent);
+}
+
+.account-overview__metric-icon .icon {
+  width: 18px;
+}
+
+.account-overview__metrics a > strong {
+  font-size: 1.8rem;
+}
+
+.account-overview__grid {
+  grid-template-columns: repeat(12, minmax(0, 1fr));
+}
+
+.account-overview__grid > section {
+  min-width: 0;
+  border-radius: 10px;
+}
+
+.account-overview__grid > section > header {
+  display: flex;
+  align-items: center;
+  gap: 11px;
+  min-width: 0;
+  padding-bottom: 12px;
+  border-bottom: 1px solid color-mix(in srgb, var(--border) 56%, transparent);
+}
+
+.account-overview__grid > section > header > div {
+  min-width: 0;
+}
+
+.account-overview__grid > section > header h2,
+.account-overview__grid > section > header p {
+  margin: 0;
+}
+
+.account-overview__grid > section > header h2 {
+  font-size: 0.94rem;
+}
+
+.account-overview__grid > section > header p {
+  margin-top: 4px;
+  color: var(--muted);
+  font-size: 0.65rem;
+}
+
+.account-overview__account,
+.account-overview__activity {
+  grid-column: span 7;
+}
+
+.account-overview__investment,
+.account-overview__projects {
+  grid-column: span 5;
+}
+
+.account-overview__services,
+.account-overview__notifications {
+  grid-column: span 6;
+}
+
+.account-overview__learning {
+  grid-column: 1 / -1;
+}
+
+.account-overview__records,
+.account-overview__activity-list {
+  display: grid;
+  gap: 8px;
+}
+
+.account-overview__records article {
+  border: 1px solid color-mix(in srgb, var(--border) 46%, transparent);
+}
+
+.account-overview__access {
+  display: grid;
+  grid-template-columns: 1fr auto auto;
+  align-items: center;
+  gap: 10px;
+  padding: 11px 12px;
+  border: 1px solid color-mix(in srgb, var(--brand) 20%, var(--border));
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--deep) 44%, transparent);
+  font-size: 0.7rem;
+}
+
+.account-overview__access strong {
+  color: var(--warning);
+}
+
+.account-overview__access a,
+.account-overview__activity > header > a {
+  color: var(--brand);
+  font-size: 0.68rem;
+}
+
+.account-overview__feature-empty,
+.account-overview__empty {
+  display: grid;
+  place-content: center;
+  justify-items: center;
+  gap: 8px;
+  min-height: 144px;
+  padding: 18px;
+  color: var(--muted);
+  text-align: center;
+}
+
+.account-overview__feature-empty > .icon,
+.account-overview__empty > .icon {
+  width: 28px;
+  color: var(--brand);
+}
+
+.account-overview__feature-empty strong {
+  color: var(--text);
+}
+
+.account-overview__feature-empty span,
+.account-overview__empty span {
+  max-width: 420px;
+  font-size: 0.7rem;
+  line-height: 1.65;
+}
+
+.account-overview__service-list {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.account-overview__service-list a {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto auto;
+  align-items: center;
+  gap: 8px;
+  min-height: 54px;
+  padding: 10px;
+  border: 1px solid color-mix(in srgb, var(--border) 52%, transparent);
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--deep) 42%, transparent);
+}
+
+.account-overview__service-list a > span {
+  font-size: 0.7rem;
+}
+
+.account-overview__service-list a > strong {
+  color: var(--brand);
+}
+
+.account-overview__service-list .icon {
+  width: 15px;
+  color: var(--muted);
+}
+
+[dir="rtl"] .account-overview__service-list .icon {
+  transform: scaleX(-1);
+}
+
+.account-overview__activity > header > a {
+  margin-inline-start: auto;
+}
+
+.account-overview__activity-list > a {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 10px;
+  padding: 11px 12px;
+  border: 1px solid color-mix(in srgb, var(--border) 48%, transparent);
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--deep) 42%, transparent);
+}
+
+.account-overview__activity-list > a > div {
+  display: grid;
+  gap: 3px;
+  min-width: 0;
+}
+
+.account-overview__activity-list > a span,
+.account-overview__activity-list > a small {
+  font-size: 0.66rem;
+}
+
+.account-overview__activity-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--brand);
+  box-shadow: 0 0 12px color-mix(in srgb, var(--brand) 58%, transparent);
+}
+
+.visual-dna {
+  display: grid;
+  gap: 18px;
+}
+
+.visual-dna .card,
+.visual-dna .glass {
+  border-color: color-mix(in srgb, var(--brand) 28%, var(--border));
+  box-shadow: var(--shadow);
+}
+
+@media (max-width: 760px) {
+  .workspace-overview__header,
+  .account-overview__header {
+    padding: 18px;
+  }
+
+  .workspace-overview__header h1,
+  .account-overview__header h1 {
+    font-size: 1.45rem;
+  }
+
+  .account-overview__metrics {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .account-overview__metrics a {
+    grid-template-columns: auto 1fr;
+  }
+
+  .account-overview__metrics a > strong {
+    grid-column: 1 / -1;
+  }
+
+  .account-overview__grid {
+    grid-template-columns: 1fr;
+  }
+
+  .account-overview__grid > section {
+    grid-column: 1;
+  }
+
+  .account-overview__service-list {
+    grid-template-columns: 1fr;
+  }
+
+  .account-overview__activity-list > a {
+    grid-template-columns: auto minmax(0, 1fr);
+  }
+
+  .account-overview__activity-list > a > small {
+    grid-column: 2;
+  }
+}
+
+@media (min-width: 761px) and (max-width: 1100px) {
+  .account-overview__grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .account-overview__grid > section {
+    grid-column: auto;
+  }
+
+  .account-overview__activity,
+  .account-overview__learning {
+    grid-column: 1 / -1;
+  }
+}

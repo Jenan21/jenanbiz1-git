@@ -1,0 +1,25 @@
+Jenan PRO — Page Reference
+Page: 013
+Category: صفحة المستخدم
+Route: /user/reports
+Title: تقاريري
+Kind: list
+Description: جميع التقارير المحفوظة.
+
+Sections:
+- مشاريع
+- استثمار
+- فواتير
+- تقارير محفوظة
+
+Outputs:
+- PDF/Print/Share
+
+Actions:
+- عرض
+- تنزيل
+
+Next routes:
+- /reports/view/general
+
+Target: 60–70% baseline; responsive; Git checkpoint + local copy.

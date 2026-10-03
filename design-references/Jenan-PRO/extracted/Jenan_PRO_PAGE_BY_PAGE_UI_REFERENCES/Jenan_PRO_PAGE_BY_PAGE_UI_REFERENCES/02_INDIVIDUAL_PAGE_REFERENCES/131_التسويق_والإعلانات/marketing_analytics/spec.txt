@@ -1,0 +1,26 @@
+Jenan PRO — Page Reference
+Page: 131
+Category: التسويق والإعلانات
+Route: /marketing/analytics
+Title: تحليلات التسويق
+Kind: dashboard
+Description: رحلة تسويق كاملة.
+
+Sections:
+- Funnel
+- CAC
+- CPL
+- ROAS
+- Conversion
+- Trend
+
+Outputs:
+- Analytics Report
+
+Actions:
+- تصدير
+
+Next routes:
+- —
+
+Target: 60–70% baseline; responsive; Git checkpoint + local copy.

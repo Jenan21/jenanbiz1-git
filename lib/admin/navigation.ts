@@ -26,6 +26,11 @@ export const adminNavItems: readonly AdminNavItem[] = [
     icon: "grid",
   },
   {
+    href: "/admin/academy",
+    label: { ar: "أكاديمية الإدارة", en: "Admin Academy" },
+    icon: "graduation",
+  },
+  {
     href: "/admin/branches",
     label: { ar: "شبكة الفروع", en: "Branch Network" },
     icon: "building",
@@ -41,6 +46,11 @@ export const adminNavItems: readonly AdminNavItem[] = [
     icon: "brain",
   },
   {
+    href: "/admin/robot-coverage",
+    label: { ar: "تغطية الروبوتات", en: "Robot Coverage" },
+    icon: "activity",
+  },
+  {
     href: "/admin/committee",
     label: { ar: "اللجنة", en: "Committee" },
     icon: "shield",
@@ -54,6 +64,11 @@ export const adminNavItems: readonly AdminNavItem[] = [
     href: "/admin/reports",
     label: { ar: "التقارير", en: "Reports" },
     icon: "barChart",
+  },
+  {
+    href: "/admin/finance",
+    label: { ar: "المالية والتكاليف", en: "Finance & Costs" },
+    icon: "wallet",
   },
   {
     href: "/admin/robot-knowledge",
@@ -74,6 +89,11 @@ export const adminNavItems: readonly AdminNavItem[] = [
     href: "/admin/global-health",
     label: { ar: "صحة المنصة", en: "Platform Health" },
     icon: "activity",
+  },
+  {
+    href: "/admin/map-provider",
+    label: { ar: "تكاملات الخرائط", en: "Map Integrations" },
+    icon: "globe",
   },
   {
     href: "/admin/bounty-hunters",

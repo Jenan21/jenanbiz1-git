@@ -1,0 +1,25 @@
+Jenan PRO — Page Reference
+Page: 087
+Category: البرمجيات والأدوات
+Route: /studio/history
+Title: سجل الملفات
+Kind: list
+Description: أدوات Jenan PRO الأصلية.
+
+Sections:
+- الملف
+- النوع
+- التاريخ
+- الحالة
+
+Outputs:
+- إصدارات
+
+Actions:
+- فتح
+- استعادة
+
+Next routes:
+- —
+
+Target: 60–70% baseline; responsive; Git checkpoint + local copy.

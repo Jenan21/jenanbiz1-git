@@ -5,7 +5,7 @@ const ar = {
     navigation: "التنقل الرئيسي",
     placeholder: "مسار أولي — سيُطوّر لاحقًا.",
   },
-  home: { title: "Jenan BIZ", description: "نواة منصة أعمال قابلة للتوسع." },
+  home: { title: "Jenan Pro", description: "نواة منصة أعمال قابلة للتوسع." },
   auth: {
     login: "تسجيل الدخول",
     register: "إنشاء حساب",
@@ -25,7 +25,7 @@ const en: Dictionary = {
     placeholder: "Initial route — to be developed later.",
   },
   home: {
-    title: "Jenan BIZ",
+    title: "Jenan Pro",
     description: "A scalable business platform core.",
   },
   auth: {

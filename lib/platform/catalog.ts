@@ -10,7 +10,6 @@ export interface PlatformServiceDefinition {
   href: string;
   icon: IconName;
   id: string;
-  previewHref?: string;
   slug: string;
   template: ServiceTemplateKey;
   title: CatalogCopy;
@@ -22,7 +21,6 @@ export interface PlatformModuleDefinition {
   eyebrow: CatalogCopy;
   icon: IconName;
   id: string;
-  previewHref?: string;
   route: string;
   scene:
     | "dashboard"
@@ -58,26 +56,20 @@ const service = (
   description: CatalogCopy,
   hrefOrOptions:
     | string
-    | {
-        href?: string;
-        previewHref?: string;
-        template?: ServiceTemplateKey;
-      } = {},
+    | { href?: string; template?: ServiceTemplateKey } = {},
 ): PlatformServiceDefinition => ({
   description,
   href:
     typeof hrefOrOptions === "string"
       ? hrefOrOptions
-      : (hrefOrOptions.href ?? `/${moduleId}/${slug}`),
+      : hrefOrOptions.href ?? `/${moduleId}/${slug}`,
   icon,
   id: `${moduleId}.${slug}`,
-  previewHref:
-    typeof hrefOrOptions === "string" ? undefined : hrefOrOptions.previewHref,
   slug,
   template:
     typeof hrefOrOptions === "string"
       ? "catalog-service"
-      : (hrefOrOptions.template ?? "catalog-service"),
+      : hrefOrOptions.template ?? "catalog-service",
   title,
 });
 
@@ -159,6 +151,17 @@ const modules: readonly PlatformModuleDefinition[] = [
       ),
       service(
         "dashboard",
+        "robotics",
+        "brain",
+        ["Jenan Robotics", "Jenan Robotics"],
+        [
+          "بحث وتوصيات لروبوتات تشغيلية معتمدة بملفات عامة آمنة.",
+          "Search and recommendations for operational robots with safe public profiles.",
+        ],
+        "/robotics",
+      ),
+      service(
+        "dashboard",
         "programs",
         "grid",
         ["منظومة التشغيل المؤسسي", "Operations Suite"],
@@ -183,7 +186,6 @@ const modules: readonly PlatformModuleDefinition[] = [
   },
   {
     id: "projects",
-    previewHref: "/projects-showcase-review",
     route: "/projects",
     code: "BUILD / 01",
     icon: "building",
@@ -211,10 +213,7 @@ const modules: readonly PlatformModuleDefinition[] = [
           "واجهة لتنظيم فكرة المشروع وعناصرها الأساسية.",
           "An interface for structuring the project idea and its essentials.",
         ],
-        {
-          previewHref: "/projects-analysis-review",
-          template: "projects-analysis",
-        },
+        { template: "projects-analysis" },
       ),
       service(
         "projects",
@@ -225,10 +224,7 @@ const modules: readonly PlatformModuleDefinition[] = [
           "شاشة مرتبة لأقسام دراسة الجدوى ومخرجاتها.",
           "A structured screen for feasibility study sections and outputs.",
         ],
-        {
-          previewHref: "/projects-feasibility-review",
-          template: "projects-feasibility",
-        },
+        { href: "/projects/feasibility", template: "projects-feasibility" },
       ),
       service(
         "projects",
@@ -239,10 +235,7 @@ const modules: readonly PlatformModuleDefinition[] = [
           "واجهة تعرض محاور التقييم والملخصات دون تشغيل التحليل.",
           "An interface presenting evaluation dimensions without running analysis.",
         ],
-        {
-          previewHref: "/projects-evaluation-review",
-          template: "projects-evaluation",
-        },
+        { template: "projects-evaluation" },
       ),
       service(
         "projects",
@@ -253,13 +246,12 @@ const modules: readonly PlatformModuleDefinition[] = [
           "مساحة بصرية لتهيئة المشروع ومراحله الأولى.",
           "A visual space for preparing the project and its first stages.",
         ],
-        { previewHref: "/projects-start-review", template: "projects-launch" },
+        { template: "projects-launch" },
       ),
     ],
   },
   {
     id: "academy",
-    previewHref: "/academy-showcase-review",
     route: "/academy",
     code: "LEARN / 02",
     icon: "graduation",
@@ -290,21 +282,18 @@ const modules: readonly PlatformModuleDefinition[] = [
           "مكتبة واجهات للدراسات المتخصصة والمنظمة.",
           "A structured interface library for specialized studies.",
         ],
-        { previewHref: "/academy-studies-review", template: "academy-studies" },
+        { template: "academy-studies" },
       ),
       service(
         "academy",
-        "seminars",
+        "webinars",
         "people",
         ["الندوات", "Seminars"],
         [
           "شاشات للندوات والمحاور والمتحدثين.",
           "Screens for seminars, themes, and speakers.",
         ],
-        {
-          previewHref: "/academy-path-review/seminars",
-          template: "academy-seminars",
-        },
+        { href: "/academy/webinars", template: "academy-seminars" },
       ),
       service(
         "academy",
@@ -315,10 +304,7 @@ const modules: readonly PlatformModuleDefinition[] = [
           "مساحة لاستكشاف الأبحاث وتصنيفها وعرضها.",
           "A space to discover, categorize, and present research.",
         ],
-        {
-          previewHref: "/academy-path-review/research",
-          template: "academy-research",
-        },
+        { template: "academy-research" },
       ),
       service(
         "academy",
@@ -329,10 +315,7 @@ const modules: readonly PlatformModuleDefinition[] = [
           "واجهات لمسارات الدورات والمواد والمستويات.",
           "Interfaces for course tracks, materials, and levels.",
         ],
-        {
-          previewHref: "/academy-path-review/courses",
-          template: "academy-courses",
-        },
+        { template: "academy-courses" },
       ),
     ],
   },
@@ -368,6 +351,7 @@ const modules: readonly PlatformModuleDefinition[] = [
           "واجهة تعرض المشاريع المصنفة وتفاصيلها البصرية.",
           "An interface presenting categorized projects and visual details.",
         ],
+        "/market/listings?kind=PROJECT",
       ),
       service(
         "market",
@@ -378,6 +362,7 @@ const modules: readonly PlatformModuleDefinition[] = [
           "واجهة للأنشطة والمنشآت المعروضة للبيع.",
           "An interface for businesses and organizations offered for sale.",
         ],
+        "/market/listings?kind=BUSINESS",
       ),
     ],
   },
@@ -406,23 +391,25 @@ const modules: readonly PlatformModuleDefinition[] = [
     services: [
       service(
         "talent",
-        "job-seeker",
+        "jobs",
         "user",
         ["طالب وظيفة", "Job seeker"],
         [
           "صفحة مهنية للملف والسيرة الذاتية واستكشاف الفرص.",
           "A professional page for profiles, resumes, and opportunity discovery.",
         ],
+        "/talent/jobs",
       ),
       service(
         "talent",
-        "hiring-organization",
+        "employer",
         "building",
         ["منشأة تبحث عن موظفين", "Hiring organization"],
         [
           "صفحة للمنشأة واحتياجاتها والبحث في السير الذاتية.",
           "A page for organization needs and resume discovery.",
         ],
+        "/talent/employer",
       ),
     ],
   },
@@ -434,40 +421,66 @@ const modules: readonly PlatformModuleDefinition[] = [
     scene: "software",
     title: ["البرمجيات", "Software"],
     eyebrow: [
-      "أدوات عملية بهوية احترافية",
-      "Practical tools with a professional identity",
+      "نظام تشغيل أعمال متكامل",
+      "Integrated business operating system",
     ],
-    signature: ["أدوات تنجز وتصمم", "Tools that deliver and design"],
+    signature: ["تشغيل موحّد، قرارات أوضح", "Unified operations, clearer decisions"],
     description: [
-      "قسمان لواجهات أدوات المستندات والتصميم والإعداد المهني.",
-      "Two interface groups for document tools and professional design.",
+      "المبيعات والمحاسبة والموارد البشرية والمخزون والعملاء في مساحة تشغيل مترابطة.",
+      "Sales, accounting, HR, inventory, and customers in one connected operating workspace.",
     ],
     stages: [
-      ["اختر الأداة", "Choose tool"],
-      ["جهز المحتوى", "Prepare content"],
-      ["راجع التصميم", "Review design"],
-      ["صدر لاحقًا", "Export later"],
+      ["هيئ الشركة", "Set up company"],
+      ["سجل العمليات", "Record operations"],
+      ["راجع المؤشرات", "Review indicators"],
+      ["أصدر التقرير", "Issue report"],
     ],
     services: [
       service(
         "software",
-        "document-tools",
-        "grid",
-        ["أدوات PDF والمستندات", "PDF & document tools"],
+        "sales",
+        "trend",
+        ["المبيعات", "Sales"],
         [
-          "واجهة تجمع أدوات PDF والمستندات والخدمات المرتبطة بها.",
-          "An interface gathering PDF, document, and related tools.",
+          "العملاء وعروض الأسعار والأوامر والفواتير والتحصيل.",
+          "Customers, quotes, orders, invoices, and collections.",
         ],
+        "/software/sales",
       ),
       service(
         "software",
-        "professional-design",
-        "sparkles",
-        ["التصميم والإعداد المهني", "Professional design & preparation"],
+        "accounting",
+        "wallet",
+        ["المحاسبة", "Accounting"],
         [
-          "واجهات للسيرة الذاتية والورق الرسمي والخطابات وغيرها.",
-          "Interfaces for resumes, letterheads, letters, and more.",
+          "قيود مالية فعلية من المبيعات والمشتريات والرواتب.",
+          "Live financial entries from sales, purchases, and payroll.",
         ],
+        "/software/accounting",
+      ),
+      service(
+        "software",
+        "hr",
+        "people",
+        ["الموارد البشرية", "Human resources"],
+        ["الموظفون والحضور والإجازات والرواتب والأداء.", "Employees, attendance, leave, payroll, and performance."],
+        "/software/hr",
+      ),
+      service(
+        "software",
+        "inventory",
+        "grid",
+        ["المخزون", "Inventory"],
+        ["الأصناف والكميات والحركات وحدود إعادة الطلب.", "Products, quantities, movements, and reorder levels."],
+        "/software/inventory",
+      ),
+      service(
+        "software",
+        "crm",
+        "user",
+        ["إدارة علاقات العملاء", "CRM"],
+        ["العملاء المحتملون والقيمة والخطوة التالية.", "Leads, value, and next actions."],
+        "/software/crm",
       ),
     ],
   },
@@ -561,33 +574,36 @@ const modules: readonly PlatformModuleDefinition[] = [
     services: [
       service(
         "marketing",
-        "projects",
+        "campaigns",
         "briefcase",
-        ["تسويق المشاريع", "Project marketing"],
+        ["الحملات", "Campaigns"],
         [
-          "واجهة لعرض هوية المشروع ورسائله التسويقية.",
-          "An interface for presenting project identity and marketing messages.",
+          "إنشاء الحملات ومراجعة حالتها وميزانيتها ونتائجها المسجلة.",
+          "Create campaigns and review their status, budget, and recorded outcomes.",
         ],
+        "/marketing/campaigns",
       ),
       service(
         "marketing",
-        "businesses-for-sale",
+        "audience",
         "building",
-        ["تسويق الأنشطة للبيع", "Business-sale marketing"],
+        ["الجمهور", "Audience"],
         [
-          "واجهة لتقديم النشاط المعروض للبيع بصورة احترافية.",
-          "An interface for professionally presenting a business for sale.",
+          "شرائح الجمهور والموقع والاهتمامات المرتبطة بالحملات.",
+          "Campaign audience segments, locations, and interests.",
         ],
+        "/marketing/audience",
       ),
       service(
         "marketing",
-        "customer-acquisition",
+        "analytics",
         "trend",
-        ["إعلانات جذب العملاء", "Customer acquisition ads"],
+        ["التحليلات", "Analytics"],
         [
-          "واجهات إعلانية لجذب عملاء وزبائن النشاط كالمطاعم وغيرها.",
-          "Advertising interfaces for attracting customers to restaurants and other businesses.",
+          "تحويلات وpipeline ومؤشرات مبنية على leads المسجلة.",
+          "Conversion, pipeline, and indicators based on recorded leads.",
         ],
+        "/marketing/analytics",
       ),
     ],
   },

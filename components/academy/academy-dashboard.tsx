@@ -50,7 +50,6 @@ export function AcademyDashboard() {
   const [feedback, setFeedback] = useState("");
   const [demand, setDemand] = useState({ title: "", requiredCount: "1", priority: "50" });
   const [geography, setGeography] = useState({ name: "", type: "COUNTRY" });
-  const [lastDemandId, setLastDemandId] = useState<string | null>(null);
 
   async function refresh() {
     const response = await fetch("/api/admin/academy", { cache: "no-store" });
@@ -85,21 +84,7 @@ export function AcademyDashboard() {
     });
     const payload = await response.json();
     setFeedback(response.ok && payload.success ? "تم تسجيل الطلب وتحديث فجوة القوى العاملة." : (payload.message ?? "تعذر تسجيل الطلب."));
-    if (response.ok && payload.success) setLastDemandId(payload.result?.demand?.id ?? null);
     if (response.ok) { setDemand({ title: "", requiredCount: "1", priority: "50" }); await refresh(); }
-  }
-
-  async function generateCandidates() {
-    if (!lastDemandId) return;
-    setFeedback("");
-    const response = await fetch("/api/admin/academy", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ action: "generateCandidates", demandId: lastDemandId }),
-    });
-    const payload = await response.json();
-    setFeedback(response.ok && payload.success ? `تم توليد ${payload.result.generated} مرشح وإرسالهم للتعليم.` : (payload.message ?? "تعذر توليد المرشحين."));
-    if (response.ok) await refresh();
   }
 
   async function submitGeography(event: FormEvent<HTMLFormElement>) {
@@ -130,7 +115,7 @@ export function AcademyDashboard() {
       <section className="stats-grid stats-grid--admin">{metrics.map(([label, value], index) => <Card key={String(label)} className="stat-card"><span className={`stat-card__icon accent-${(index % 4) + 1}`} /><div><p>{label}</p><strong>{value}</strong><small>بيانات حقيقية</small></div></Card>)}</section>
 
       <section className="owner-grid">
-        <Card className="owner-panel"><header className="panel-header"><h2>تخطيط القوى العاملة</h2><span>{academy.openDemand} طلبات مفتوحة</span></header><form className="robot-generation-form" onSubmit={submitDemand}><label>احتياج جديد<input required value={demand.title} onChange={(event) => setDemand({ ...demand, title: event.target.value })} /></label><label>العدد<input required type="number" min="0" value={demand.requiredCount} onChange={(event) => setDemand({ ...demand, requiredCount: event.target.value })} /></label><label>الأولوية<input required type="number" min="0" max="100" value={demand.priority} onChange={(event) => setDemand({ ...demand, priority: event.target.value })} /></label><button className="btn primary" type="submit">تسجيل الطلب</button></form>{lastDemandId && <button className="btn secondary" type="button" onClick={generateCandidates}>توليد العدد المطلوب وبدء التعليم</button>}</Card>
+        <Card className="owner-panel"><header className="panel-header"><h2>تخطيط القوى العاملة</h2><span>{academy.openDemand} طلبات مفتوحة</span></header><form className="robot-generation-form" onSubmit={submitDemand}><label>احتياج جديد<input required value={demand.title} onChange={(event) => setDemand({ ...demand, title: event.target.value })} /></label><label>العدد<input required type="number" min="0" value={demand.requiredCount} onChange={(event) => setDemand({ ...demand, requiredCount: event.target.value })} /></label><label>الأولوية<input required type="number" min="0" max="100" value={demand.priority} onChange={(event) => setDemand({ ...demand, priority: event.target.value })} /></label><button className="btn primary" type="submit">تسجيل الطلب</button></form></Card>
         <Card className="owner-panel"><header className="panel-header"><h2>الذكاء الجغرافي</h2><span>{academy.geographyNodes} عقد</span></header><form className="robot-generation-form" onSubmit={submitGeography}><label>اسم الموقع<input required value={geography.name} onChange={(event) => setGeography({ ...geography, name: event.target.value })} /></label><label>المستوى<select value={geography.type} onChange={(event) => setGeography({ ...geography, type: event.target.value })}><option value="WORLD">العالم</option><option value="COUNTRY">دولة</option><option value="REGION">منطقة</option><option value="CITY">مدينة</option><option value="DISTRICT">حي</option><option value="LOCAL_ZONE">نطاق محلي</option></select></label><button className="btn primary" type="submit">إضافة عقدة</button></form></Card>
       </section>
       {feedback && <p className="robot-generation-feedback" role="status">{feedback}</p>}

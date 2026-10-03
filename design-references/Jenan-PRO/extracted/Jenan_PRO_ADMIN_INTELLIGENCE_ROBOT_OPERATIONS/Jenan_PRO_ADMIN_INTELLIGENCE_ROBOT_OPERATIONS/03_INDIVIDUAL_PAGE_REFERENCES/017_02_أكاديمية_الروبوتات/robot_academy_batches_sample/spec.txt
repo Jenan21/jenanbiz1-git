@@ -1,0 +1,36 @@
+Jenan PRO — Admin Intelligence Robot Operations
+Page: 017
+Group: 02 — أكاديمية الروبوتات
+Route: /robot-academy/batches/sample
+Title: مسار دفعة داخل الأكاديمية
+Kind: timeline
+Purpose: تتبع الرحلة الأكاديمية من القبول حتى التخرج.
+
+Modules:
+- القبول
+- الدراسة النظرية
+- التدريب العملي
+- اختبار التخصص
+- الاختبار النهائي
+- المراجعة
+- التخرج
+
+Actions:
+- فتح المرحلة
+- فتح الأعضاء
+
+Outputs:
+- Academy Batch Report
+
+Next Routes:
+- —
+
+Implementation:
+- Jenan PRO only.
+- Real React/CSS/SVG/components.
+- Responsive Desktop/Laptop/Tablet/Mobile.
+- No screenshot as production background.
+- No fake production values.
+- Reach ≥70% visual match before moving to next section.
+- Functional QA + responsive QA required.
+- Commit + save locally after PASS.

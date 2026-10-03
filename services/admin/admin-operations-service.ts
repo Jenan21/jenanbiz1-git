@@ -1,0 +1,240 @@
+import { Prisma, TaskStatus } from "@/generated/prisma/client";
+import { db } from "@/lib/db";
+import type { AdminOperationRoute } from "@/lib/admin/admin-operations-routes";
+import { getOperationsObservabilitySnapshot } from "@/services/observability/operations-observability-service";
+
+type AdminRow = Record<string, string | number | boolean | null>;
+export type AdminPanel = { key: string; title: string; sourceState: "LIVE" | "PARTIAL" | "UNAVAILABLE"; note?: string; rows: AdminRow[] };
+
+function iso(value: Date | null | undefined) {
+  return value?.toISOString() ?? null;
+}
+
+function panel(key: string, title: string, rows: AdminRow[], sourceState: AdminPanel["sourceState"] = "LIVE", note?: string): AdminPanel {
+  return { key, title, rows, sourceState, note };
+}
+
+async function adminPanels() {
+  const [users, plans, subscriptions, roles, audit, programs] = await Promise.all([
+    db.user.findMany({ select: { id: true, email: true, status: true, systemRole: true, createdAt: true }, orderBy: { createdAt: "desc" }, take: 100 }),
+    db.plan.findMany({ orderBy: { createdAt: "desc" }, take: 100 }),
+    db.subscription.findMany({ include: { plan: { select: { name: true } }, organization: { select: { name: true } } }, orderBy: { createdAt: "desc" }, take: 100 }),
+    db.role.findMany({ include: { permissions: { include: { permission: true } } }, orderBy: { createdAt: "asc" }, take: 100 }),
+    db.auditLog.findMany({ select: { id: true, action: true, entityType: true, entityId: true, actorId: true, organizationId: true, createdAt: true }, orderBy: { createdAt: "desc" }, take: 200 }),
+    db.organizationProgram.findMany({ include: { organization: { select: { name: true } } }, orderBy: { updatedAt: "desc" }, take: 100 }),
+  ]);
+  return [
+    panel("users", "Users", users.map((item) => ({ id: item.id, email: item.email, status: item.status, role: item.systemRole, createdAt: iso(item.createdAt) }))),
+    panel("subscriptions", "Plans and subscriptions", subscriptions.map((item) => ({ id: item.id, organization: item.organization.name, plan: item.plan.name, status: item.status, currentEnd: iso(item.currentEnd) }))),
+    panel("plans", "Plans", plans.map((item) => ({ id: item.id, code: item.code, name: item.name, priceMinor: item.priceMinor, currency: item.currency, active: item.isActive }))),
+    panel("services", "Organization services", programs.map((item) => ({ id: item.id, organization: item.organization.name, service: item.key, status: item.status, updatedAt: iso(item.updatedAt) }))),
+    panel("rbac", "Roles and permissions", roles.map((item) => ({ id: item.id, role: item.name, key: item.key, system: item.isSystem, permissions: item.permissions.map((entry) => entry.permission.key).join(", ") || "—" }))),
+    panel("audit", "Audit trail", audit.map((item) => ({ id: item.id, action: item.action, entityType: item.entityType, entityId: item.entityId, actorId: item.actorId, organizationId: item.organizationId, createdAt: iso(item.createdAt) }))),
+  ];
+}
+
+async function factoryPanels() {
+  const [robots, batches, profiles, informationRequests] = await Promise.all([
+    db.robot.findMany({ select: { id: true, name: true, team: true, status: true, isVisible: true, intelligence: true, skill: true, experience: true, createdAt: true }, orderBy: { createdAt: "desc" }, take: 200 }),
+    db.candidateBatch.findMany({ include: { _count: { select: { members: true } }, demand: { select: { title: true } } }, orderBy: { createdAt: "desc" }, take: 100 }),
+    db.robotAcademicProfile.findMany({ include: { robot: { select: { name: true } }, primarySpecialization: { select: { name: true } }, _count: { select: { skills: true, certifications: true } } }, orderBy: { updatedAt: "desc" }, take: 200 }),
+    db.robotInformationRequest.findMany({ include: { robot: { select: { name: true } }, requester: { select: { email: true } } }, orderBy: { createdAt: "desc" }, take: 100 }),
+  ]);
+  return [
+    panel("robots", "Robot registry", robots.map((item) => ({ id: item.id, name: item.name, team: item.team, status: item.status, visible: item.isVisible, intelligence: item.intelligence, skill: item.skill, experience: item.experience, createdAt: iso(item.createdAt) }))),
+    panel("batches", "Candidate batches", batches.map((item) => ({ id: item.id, name: item.name, status: item.status, requested: item.requestedCount, members: item._count.members, priority: item.priority, demand: item.demand?.title ?? null, createdAt: iso(item.createdAt) }))),
+    panel("profiles", "Academic robot profiles", profiles.map((item) => ({ id: item.id, robot: item.robot.name, status: item.status, specialization: item.primarySpecialization?.name ?? null, quality: item.qualityScore, trust: item.trustScore, skills: item._count.skills, certifications: item._count.certifications, verifiedAt: iso(item.lastVerifiedAt) }))),
+    panel("information-requests", "Public information requests", informationRequests.map((item) => ({ id: item.id, robot: item.robot.name, requester: item.requester.email, task: item.task, status: item.status, budgetMinor: item.budgetMinor, createdAt: iso(item.createdAt) }))),
+    panel("genetics", "Generation policy", [], "PARTIAL", "Agent genomes and capability rules exist; no autonomous generation policy is enabled."),
+  ];
+}
+
+async function academyPanels() {
+  const [academies, programs, batches, profiles, courses, exams, queues, queueItems, sandboxRuns, geography] = await Promise.all([
+    db.academy.findMany({ orderBy: { createdAt: "asc" }, take: 50 }),
+    db.academyProgram.findMany({ include: { academy: { select: { name: true } }, specialization: { select: { name: true } } }, orderBy: { updatedAt: "desc" }, take: 100 }),
+    db.candidateBatch.findMany({ include: { _count: { select: { members: true } } }, orderBy: { createdAt: "desc" }, take: 100 }),
+    db.robotAcademicProfile.findMany({ include: { robot: { select: { name: true } }, primarySpecialization: { select: { name: true } } }, orderBy: { updatedAt: "desc" }, take: 200 }),
+    db.academyCourse.findMany({ include: { academy: { select: { name: true } }, specialization: { select: { name: true } } }, orderBy: { updatedAt: "desc" }, take: 100 }),
+    db.academyExam.findMany({ include: { specialization: { select: { name: true } } }, orderBy: { updatedAt: "desc" }, take: 100 }),
+    db.academyWorkQueue.findMany({ include: { _count: { select: { items: true } } }, orderBy: { createdAt: "desc" }, take: 50 }),
+    db.academyQueueItem.findMany({ include: { queue: { select: { name: true } }, profile: { include: { robot: { select: { name: true } } } } }, orderBy: { createdAt: "desc" }, take: 100 }),
+    db.sandboxLabRun.findMany({ include: { profile: { include: { robot: { select: { name: true } } } }, lab: { select: { title: true } } }, orderBy: { createdAt: "desc" }, take: 100 }),
+    db.geographyNode.findMany({ include: { _count: { select: { agentProfiles: true, knowledge: true } } }, orderBy: { createdAt: "desc" }, take: 100 }),
+  ]);
+  return [
+    panel("academies", "Academies", academies.map((item) => ({ id: item.id, name: item.name, slug: item.slug, createdAt: iso(item.createdAt) }))),
+    panel("programs", "Curriculum programs", programs.map((item) => ({ id: item.id, academy: item.academy.name, name: item.name, specialization: item.specialization?.name ?? null, status: item.status, mastery: item.minimumMasteryScore }))),
+    panel("batches", "Academy batches", batches.map((item) => ({ id: item.id, name: item.name, status: item.status, requested: item.requestedCount, members: item._count.members, priority: item.priority }))),
+    panel("profiles", "Learner profiles", profiles.map((item) => ({ id: item.id, robot: item.robot.name, status: item.status, specialization: item.primarySpecialization?.name ?? null, theory: item.theoryScore, practical: item.practicalScore, quality: item.qualityScore, safety: item.safetyScore }))),
+    panel("courses", "Theory curriculum", courses.map((item) => ({ id: item.id, academy: item.academy.name, title: item.title, code: item.code, specialization: item.specialization?.name ?? null }))),
+    panel("exams", "Exams", exams.map((item) => ({ id: item.id, title: item.title, specialization: item.specialization?.name ?? null, assessmentType: item.assessmentType, passingScore: item.passingScore, critical: item.critical, version: item.version }))),
+    panel("queues", "Academy queues", queues.map((item) => ({ id: item.id, name: item.name, concurrency: item.concurrency, paused: item.paused, items: item._count.items }))),
+    panel("queue-items", "Queued academy work", queueItems.map((item) => ({ id: item.id, queue: item.queue.name, robot: item.profile?.robot.name ?? null, kind: item.kind, status: item.status, attempts: item.attempts, maxAttempts: item.maxAttempts, lastError: item.lastError }))),
+    panel("sandbox", "Practical sandbox", sandboxRuns.map((item) => ({ id: item.id, robot: item.profile.robot.name, lab: item.lab.title, status: item.status, providerState: item.providerState, completedAt: iso(item.completedAt), error: item.error }))),
+    panel("geography", "Geography coverage", geography.map((item) => ({ id: item.id, name: item.name, type: item.type, code: item.code, profiles: item._count.agentProfiles, knowledge: item._count.knowledge }))),
+  ];
+}
+
+async function organizationPanels() {
+  const [robots, reviews, requests] = await Promise.all([
+    db.robot.findMany({ where: { status: "ACTIVE" }, select: { id: true, name: true, team: true, intelligence: true, skill: true, experience: true, updatedAt: true }, orderBy: [{ team: "asc" }, { name: "asc" }], take: 200 }),
+    db.committeeReview.findMany({ include: { robot: { select: { name: true } } }, orderBy: { updatedAt: "desc" }, take: 100 }),
+    db.robotInformationRequest.findMany({ include: { robot: { select: { name: true } }, requester: { select: { email: true } } }, orderBy: { createdAt: "desc" }, take: 100 }),
+  ]);
+  return [
+    panel("organization", "Robot organization", robots.map((item) => ({ id: item.id, name: item.name, team: item.team, intelligence: item.intelligence, skill: item.skill, experience: item.experience, updatedAt: iso(item.updatedAt) }))),
+    panel("committee", "Committee reviews", reviews.map((item) => ({ id: item.id, robot: item.robot.name, verdict: item.verdict, score: item.score, notes: item.notes, updatedAt: iso(item.updatedAt) }))),
+    panel("escalations", "Information request escalations", requests.map((item) => ({ id: item.id, robot: item.robot.name, requester: item.requester.email, status: item.status, task: item.task, createdAt: iso(item.createdAt) }))),
+  ];
+}
+
+async function missionPanels() {
+  const [missions, runs, tasks, subtasks, dependencies, retryPolicies, fallbackPolicies, approvals, escalations, history, evidence, costs, robots] = await Promise.all([
+    db.mission.findMany({ include: { _count: { select: { assignedRobots: true, tasks: true, evidence: true, costs: true, runs: true } } }, orderBy: { updatedAt: "desc" }, take: 100 }),
+    db.missionRun.findMany({ include: { mission: { select: { name: true } }, _count: { select: { attempts: true, approvals: true, escalations: true, evidence: true, costs: true, subtasks: true } } }, orderBy: { createdAt: "desc" }, take: 200 }),
+    db.robotTask.findMany({ include: { robot: { select: { name: true } }, mission: { select: { name: true } } }, orderBy: { updatedAt: "desc" }, take: 200 }),
+    db.missionSubtask.findMany({ include: { run: { select: { traceId: true, mission: { select: { name: true } } } } }, orderBy: [{ runId: "asc" }, { sequence: "asc" }], take: 300 }),
+    db.missionDependency.findMany({ include: { run: { select: { traceId: true, mission: { select: { name: true } } } }, predecessor: { select: { key: true, title: true } }, successor: { select: { key: true, title: true } } }, orderBy: { createdAt: "desc" }, take: 300 }),
+    db.missionRetryPolicy.findMany({ include: { mission: { select: { name: true } } }, orderBy: { updatedAt: "desc" }, take: 100 }),
+    db.missionFallbackPolicy.findMany({ include: { mission: { select: { name: true } } }, orderBy: [{ missionId: "asc" }, { priority: "asc" }], take: 200 }),
+    db.missionApproval.findMany({ include: { run: { select: { traceId: true, mission: { select: { name: true } } } } }, orderBy: { requestedAt: "desc" }, take: 200 }),
+    db.missionEscalation.findMany({ include: { run: { select: { traceId: true, mission: { select: { name: true } } } } }, orderBy: { createdAt: "desc" }, take: 200 }),
+    db.missionHistory.findMany({ include: { mission: { select: { name: true } } }, orderBy: { createdAt: "desc" }, take: 300 }),
+    db.evidence.findMany({ include: { robot: { select: { name: true } }, mission: { select: { name: true } }, missionRun: { select: { traceId: true } } }, orderBy: { createdAt: "desc" }, take: 200 }),
+    db.costRecord.findMany({ include: { mission: { select: { name: true } }, missionRun: { select: { traceId: true } }, robot: { select: { name: true } } }, orderBy: { createdAt: "desc" }, take: 200 }),
+    db.robot.findMany({ where: { status: "ACTIVE" }, select: { id: true, name: true }, orderBy: { name: "asc" }, take: 100 }),
+  ]);
+  return [
+    panel("missions", "Missions", missions.map((item) => ({ id: item.id, name: item.name, status: item.status, requiredIntelligence: item.requiredIntelligence, runs: item._count.runs, robots: item._count.assignedRobots, tasks: item._count.tasks, evidence: item._count.evidence, costs: item._count.costs, updatedAt: iso(item.updatedAt) }))),
+    panel("runs", "Mission runs", runs.map((item) => ({ id: item.id, missionId: item.missionId, mission: item.mission.name, traceId: item.traceId, status: item.status, attempt: item.currentAttempt, subtasks: item._count.subtasks, approvals: item._count.approvals, escalations: item._count.escalations, evidence: item._count.evidence, costs: item._count.costs, createdAt: iso(item.createdAt) }))),
+    panel("tasks", "Task queue", [...subtasks.map((item) => ({ id: item.id, title: item.title, mission: item.run.mission.name, traceId: item.run.traceId, status: item.status, priority: item.priority, sequence: item.sequence, type: "SUBTASK" })), ...tasks.map((item) => ({ id: item.id, title: item.title, mission: item.mission?.name ?? null, traceId: null, status: item.status, priority: item.priority, sequence: 0, type: "ROBOT_TASK" }))]),
+    panel("dependencies", "Dependencies", dependencies.map((item) => ({ id: item.id, mission: item.run.mission.name, traceId: item.run.traceId, predecessor: item.predecessor.title, successor: item.successor.title, type: item.type, createdAt: iso(item.createdAt) }))),
+    panel("retry", "Retry and fallback policies", [...retryPolicies.map((item) => ({ id: item.id, mission: item.mission.name, policy: "RETRY", priority: 0, maxAttempts: item.maxAttempts, backoff: item.backoff, provider: null, model: null, active: item.active })), ...fallbackPolicies.map((item) => ({ id: item.id, mission: item.mission.name, policy: "FALLBACK", priority: item.priority, maxAttempts: null, backoff: null, provider: item.provider, model: item.model, active: item.active }))]),
+    panel("approvals", "Approval gates and escalations", [...approvals.map((item) => ({ id: item.id, mission: item.run.mission.name, traceId: item.run.traceId, type: "APPROVAL", gate: item.gate, status: item.status, level: null, rationale: item.rationale, createdAt: iso(item.requestedAt) })), ...escalations.map((item) => ({ id: item.id, mission: item.run.mission.name, traceId: item.run.traceId, type: "ESCALATION", gate: null, status: item.status, level: item.level, rationale: item.reason, createdAt: iso(item.createdAt) }))]),
+    panel("history", "Mission history", history.map((item) => ({ id: item.id, mission: item.mission.name, traceId: item.traceId, event: item.event, from: item.fromStatus, to: item.toStatus, createdAt: iso(item.createdAt) }))),
+    panel("evidence", "Evidence pack", evidence.map((item) => ({ id: item.id, type: item.type, description: item.description, verified: item.verified, robot: item.robot.name, mission: item.mission?.name ?? null, traceId: item.missionRun?.traceId ?? null, attemptId: item.attemptId, createdAt: iso(item.createdAt) }))),
+    panel("costs", "Mission costs", costs.map((item) => ({ id: item.id, mission: item.mission?.name ?? null, traceId: item.missionRun?.traceId ?? null, attemptId: item.attemptId, robot: item.robot?.name ?? null, provider: item.provider, model: item.model, inputTokens: item.inputTokens, outputTokens: item.outputTokens, costMinor: item.computeCostMinor, currency: item.currency, createdAt: iso(item.createdAt) }))),
+    panel("mission-robots", "Available mission robots", robots.map((item) => ({ id: item.id, name: item.name }))),
+  ];
+}
+
+async function intelligencePanels() {
+  const [knowledge, versions, learning, evidence, reviews, skills, evolutions] = await Promise.all([
+    db.sharedKnowledge.findMany({ include: { mission: { select: { name: true } }, _count: { select: { evidenceLinks: true, reviews: true, versions: true } } }, orderBy: { updatedAt: "desc" }, take: 200 }),
+    db.knowledgeVersion.findMany({ include: { knowledge: { select: { title: true } }, _count: { select: { evidenceLinks: true, reviews: true } } }, orderBy: { createdAt: "desc" }, take: 300 }),
+    db.learningLog.findMany({ include: { robot: { select: { name: true } }, mission: { select: { name: true } } }, orderBy: { createdAt: "desc" }, take: 200 }),
+    db.evidence.findMany({ include: { robot: { select: { name: true } } }, orderBy: { createdAt: "desc" }, take: 200 }),
+    db.knowledgeReview.findMany({ include: { knowledge: { select: { title: true } }, version: { select: { version: true } }, reviewer: { select: { email: true } } }, orderBy: { createdAt: "desc" }, take: 200 }),
+    db.skill.findMany({ include: { specialization: { select: { name: true } }, _count: { select: { robotSkills: true } } }, orderBy: { updatedAt: "desc" }, take: 200 }),
+    db.robotEvolution.findMany({ include: { robot: { select: { name: true } } }, orderBy: { createdAt: "desc" }, take: 200 }),
+  ]);
+  return [
+    panel("knowledge", "Shared knowledge", knowledge.map((item) => ({ id: item.id, title: item.title, source: item.source, sourceDate: iso(item.sourcePublishedAt), confidence: item.confidence, approvalState: item.approvalState, currentVersion: item.currentVersion, versions: item._count.versions, reviews: item._count.reviews, evidence: item._count.evidenceLinks, mission: item.mission?.name ?? null, updatedAt: iso(item.updatedAt) }))),
+    panel("experiences", "Validated experiences", knowledge.filter((item) => Boolean(item.missionId)).map((item) => ({ id: item.id, title: item.title, source: item.source, confidence: item.confidence, mission: item.mission?.name ?? null })), "PARTIAL", "Experience records are represented through mission-linked shared knowledge."),
+    panel("learning", "Learning logs", learning.map((item) => ({ id: item.id, robot: item.robot.name, mission: item.mission?.name ?? null, signal: item.signal, scoreBefore: item.scoreBefore, scoreAfter: item.scoreAfter, feedback: item.feedback, createdAt: iso(item.createdAt) }))),
+    panel("evidence", "Evidence base", evidence.map((item) => ({ id: item.id, robot: item.robot.name, type: item.type, description: item.description, verified: item.verified, createdAt: iso(item.createdAt) }))),
+    panel("reviews", "Knowledge reviews", reviews.map((item) => ({ id: item.id, knowledge: item.knowledge.title, version: item.version.version, state: item.state, reviewer: item.reviewer?.email ?? null, notes: item.notes, createdAt: iso(item.createdAt) }))),
+    panel("versions", "Knowledge versions", versions.map((item) => ({ id: item.id, knowledgeId: item.knowledgeId, knowledge: item.knowledge.title, version: item.version, state: item.approvalState, source: item.source, sourceDate: iso(item.sourcePublishedAt), confidence: item.confidence, rollbackFrom: item.rollbackFrom, reviews: item._count.reviews, evidence: item._count.evidenceLinks, createdAt: iso(item.createdAt) }))),
+    panel("evolution", "Robot evolution", evolutions.map((item) => ({ id: item.id, robot: item.robot.name, generation: item.generation, intelligenceDelta: item.intelligenceDelta, skillDelta: item.skillDelta, experienceDelta: item.experienceDelta, reason: item.reason, createdAt: iso(item.createdAt) }))),
+    panel("skills", "Skill registry", skills.map((item) => ({ id: item.id, name: item.name, key: item.key, specialization: item.specialization?.name ?? null, riskLevel: item.riskLevel, robots: item._count.robotSkills, updatedAt: iso(item.updatedAt) }))),
+  ];
+}
+
+async function modelPanels() {
+  const [models, rules, fallbacks, executions, tools, permissions, toolExecutions] = await Promise.all([
+    db.modelRegistryEntry.findMany({ include: { _count: { select: { executions: true, routingRules: true } } }, orderBy: [{ enabled: "desc" }, { qualityScore: "desc" }], take: 200 }),
+    db.modelRoutingRule.findMany({ include: { model: { select: { displayName: true, provider: true, modelKey: true } } }, orderBy: [{ taskType: "asc" }, { priority: "desc" }], take: 200 }),
+    db.modelFallbackLink.findMany({ include: { fallbackModel: { select: { displayName: true } }, primaryModel: { select: { displayName: true } } }, orderBy: [{ primaryModelId: "asc" }, { priority: "asc" }], take: 200 }),
+    db.modelExecution.findMany({ include: { registryModel: { select: { displayName: true } }, robot: { select: { name: true } }, routingRule: { select: { name: true } } }, orderBy: { createdAt: "desc" }, take: 200 }),
+    db.toolDefinition.findMany({ include: { _count: { select: { executions: true, permissions: true } } }, orderBy: { name: "asc" }, take: 200 }),
+    db.toolPermission.findMany({ include: { tool: { select: { key: true, name: true } } }, orderBy: [{ toolId: "asc" }, { role: "asc" }], take: 300 }),
+    db.toolExecution.findMany({ include: { actor: { select: { email: true } }, approval: true, tool: { select: { key: true, name: true } } }, orderBy: { createdAt: "desc" }, take: 300 }),
+  ]);
+  return [
+    panel("models", "Model registry", models.map((item) => ({ id: item.id, displayName: item.displayName, provider: item.provider, modelKey: item.modelKey, status: item.status, enabled: item.enabled, quality: item.qualityScore, latencyMs: item.averageLatencyMs, inputCostMinor: item.inputCostPerMillionMinor, outputCostMinor: item.outputCostPerMillionMinor, currency: item.currency, rules: item._count.routingRules, executions: item._count.executions }))),
+    panel("router", "Model routing rules and fallbacks", [...rules.map((item) => ({ id: item.id, type: "RULE", name: item.name, taskType: item.taskType, primaryModelId: item.modelId, model: item.model.displayName, fallbackModelId: null, priority: item.priority, minQuality: item.minimumQuality, maxLatencyMs: item.maximumLatencyMs, maxCostMinor: item.maximumCostMinor, enabled: item.enabled })), ...fallbacks.map((item) => ({ id: item.id, type: "FALLBACK", name: `${item.primaryModel.displayName} → ${item.fallbackModel.displayName}`, taskType: null, primaryModelId: item.primaryModelId, model: item.primaryModel.displayName, fallbackModelId: item.fallbackModelId, priority: item.priority, minQuality: null, maxLatencyMs: null, maxCostMinor: null, enabled: item.enabled }))]),
+    panel("model-executions", "Model executions", executions.map((item) => ({ id: item.id, traceId: item.traceId, provider: item.provider, model: item.registryModel?.displayName ?? item.model, rule: item.routingRule?.name ?? null, taskType: item.taskType, robot: item.robot?.name ?? null, inputTokens: item.inputTokens, outputTokens: item.outputTokens, latencyMs: item.latencyMs, costMinor: item.costMinor, quality: item.qualityScore, success: item.success, error: item.error, createdAt: iso(item.createdAt) }))),
+    panel("tools", "Tool registry", tools.map((item) => ({ id: item.id, key: item.key, name: item.name, handlerId: item.handlerId, risk: item.riskLevel, enabled: item.enabled, permissions: item._count.permissions, executions: item._count.executions }))),
+    panel("tool-permissions", "Tool permissions", permissions.map((item) => ({ id: item.id, toolId: item.toolId, tool: item.tool.name, key: item.tool.key, role: item.role, allowed: item.allowed, approvalRequired: item.approvalRequired, updatedAt: iso(item.updatedAt) }))),
+    panel("tool-executions", "Tool execution history", toolExecutions.map((item) => ({ id: item.id, traceId: item.traceId, tool: item.tool.name, key: item.tool.key, actor: item.actor?.email ?? null, status: item.status, approval: item.approval?.status ?? "NOT_REQUIRED", error: item.error, startedAt: iso(item.startedAt), completedAt: iso(item.completedAt), createdAt: iso(item.createdAt) }))),
+  ];
+}
+
+async function financePanels() {
+  const [payments, entries, costs] = await Promise.all([
+    db.payment.findMany({ include: { organization: { select: { name: true } }, payerUser: { select: { email: true } } }, orderBy: { createdAt: "desc" }, take: 200 }),
+    db.financialEntry.findMany({ include: { organization: { select: { name: true } } }, orderBy: { occurredAt: "desc" }, take: 200 }),
+    db.costRecord.findMany({ include: { robot: { select: { name: true } }, mission: { select: { name: true } } }, orderBy: { createdAt: "desc" }, take: 200 }),
+  ]);
+  return [
+    panel("revenue", "Recorded revenue and payments", payments.map((item) => ({ id: item.id, organization: item.organization?.name ?? null, payer: item.payerUser?.email ?? null, amountMinor: item.amountMinor, currency: item.currency, status: item.status, provider: item.provider, paidAt: iso(item.paidAt), createdAt: iso(item.createdAt) }))),
+    panel("financial-entries", "Operational financial entries", entries.map((item) => ({ id: item.id, organization: item.organization.name, type: item.type, amountMinor: item.amountMinor, currency: item.currency, description: item.description, occurredAt: iso(item.occurredAt) }))),
+    panel("costs", "Traceable costs", costs.map((item) => ({ id: item.id, robot: item.robot?.name ?? null, mission: item.mission?.name ?? null, provider: item.provider, model: item.model, costMinor: item.computeCostMinor, currency: item.currency, inputTokens: item.inputTokens, outputTokens: item.outputTokens, createdAt: iso(item.createdAt) }))),
+  ];
+}
+
+async function observabilityPanels() {
+  const [snapshot, sessions] = await Promise.all([
+    getOperationsObservabilitySnapshot(),
+    db.session.count({ where: { expiresAt: { gt: new Date() } } }),
+  ]);
+  return [
+    panel("health", "Application health", [{ database: "AVAILABLE", activeSessions: sessions, redis: process.env.REDIS_URL ? "CONFIGURED" : "NOT_CONFIGURED", onlineWorkers: snapshot.workers.filter((item) => item.status === "ONLINE").length, openAlerts: snapshot.alerts.filter((item) => item.status === "OPEN").length, openIncidents: snapshot.incidents.filter((item) => item.status !== "RESOLVED").length }]),
+    panel("workers", "Workers and heartbeats", snapshot.workers.map((item) => ({ id: item.id, key: item.key, name: item.name, status: item.status, version: item.version, lastHeartbeatAt: iso(item.lastHeartbeatAt), heartbeats: item._count.heartbeats, jobs: item._count.jobs }))),
+    panel("queues", "Operations queues", snapshot.queues.map((item) => ({ id: item.id, key: item.key, name: item.name, concurrency: item.concurrency, paused: item.paused, jobs: item._count.jobs, updatedAt: iso(item.updatedAt) }))),
+    panel("jobs", "Queue jobs", snapshot.jobs.map((item) => ({ id: item.id, queue: item.queue.name, worker: item.worker?.name ?? null, kind: item.kind, status: item.status, traceId: item.traceId, attempts: item.attempts, maxAttempts: item.maxAttempts, lastError: item.lastError, availableAt: iso(item.availableAt), completedAt: iso(item.completedAt) }))),
+    panel("logs", "Structured logs", snapshot.logs.map((item) => ({ id: item.id, level: item.level, source: item.source, message: item.message, traceId: item.traceId, createdAt: iso(item.createdAt) })), process.env.MONITORING_PROVIDER ? "LIVE" : "PARTIAL", process.env.MONITORING_PROVIDER ? undefined : "Internal structured logs are live; an external collector is not configured."),
+    panel("alerts", "Alerts and incidents", [...snapshot.alerts.map((item) => ({ id: item.id, type: "ALERT", severity: item.severity, status: item.status, title: item.title, source: item.source, traceId: item.traceId, createdAt: iso(item.createdAt) })), ...snapshot.incidents.map((item) => ({ id: item.id, type: "INCIDENT", severity: item.severity, status: item.status, title: item.title, source: "INCIDENT", traceId: item.traceId, createdAt: iso(item.openedAt) }))]),
+    panel("backups", "Backups and restore drills", [...snapshot.backups.map((item) => ({ id: item.id, type: "BACKUP", provider: item.provider, status: item.status, storageKey: item.storageKey, sizeBytes: item.sizeBytes?.toString() ?? null, checksum: item.checksum, target: null, startedAt: iso(item.startedAt), completedAt: iso(item.completedAt) })), ...snapshot.drills.map((item) => ({ id: item.id, type: "RESTORE_DRILL", provider: item.backup.provider, status: item.status, storageKey: item.backup.storageKey, sizeBytes: null, checksum: null, target: item.target, startedAt: iso(item.startedAt), completedAt: iso(item.completedAt) }))], process.env.BACKUP_STORAGE_PROVIDER ? "LIVE" : "PARTIAL", process.env.BACKUP_STORAGE_PROVIDER ? undefined : "Internal backup and restore-drill records are live; external backup storage is not configured."),
+  ];
+}
+
+async function reportPanels() {
+  const [robots, profiles, missions, tasks, knowledge, costs, payments, audit] = await Promise.all([
+    db.robot.count(), db.robotAcademicProfile.count(), db.mission.count(), db.robotTask.count(), db.sharedKnowledge.count(), db.costRecord.aggregate({ _sum: { computeCostMinor: true } }), db.payment.aggregate({ where: { status: "SUCCEEDED" }, _sum: { amountMinor: true } }), db.auditLog.count(),
+  ]);
+  return [panel("executive", "Executive metrics", [{ robots, academicProfiles: profiles, missions, tasks, knowledgeEntries: knowledge, recordedCostMinor: costs._sum.computeCostMinor ?? 0, successfulPaymentsMinor: payments._sum.amountMinor ?? 0, auditEvents: audit }])];
+}
+
+export async function getAdminOperationSnapshot(definition: AdminOperationRoute) {
+  const panels = definition.group === "admin" ? await adminPanels()
+    : definition.group === "factory" ? await factoryPanels()
+    : definition.group === "academy" ? await academyPanels()
+    : definition.group === "organization" ? await organizationPanels()
+    : definition.group === "missions" ? await missionPanels()
+    : definition.group === "intelligence" ? await intelligencePanels()
+    : definition.group === "models" ? await modelPanels()
+    : definition.group === "finance" ? await financePanels()
+    : definition.group === "observability" ? await observabilityPanels()
+    : await reportPanels();
+  const livePanels = panels.filter((item) => item.sourceState === "LIVE").length;
+  const records = panels.reduce((total, item) => total + item.rows.length, 0);
+  return { definition, panels, metrics: { panels: panels.length, livePanels, records, unavailablePanels: panels.filter((item) => item.sourceState === "UNAVAILABLE").length }, generatedAt: new Date().toISOString() };
+}
+
+export async function createAdminMission(input: { description?: string; name: string; requiredIntelligence?: number }, actorId: string) {
+  return db.$transaction(async (transaction) => {
+    const mission = await transaction.mission.create({ data: { name: input.name.trim(), description: input.description?.trim() || undefined, requiredIntelligence: input.requiredIntelligence ?? 0, status: TaskStatus.DRAFT } });
+    await transaction.auditLog.create({ data: { actorId, action: "admin.mission.created", entityType: "Mission", entityId: mission.id } });
+    return mission;
+  });
+}
+
+export async function createAdminCandidateBatch(input: { name: string; priority?: number; requestedCount: number }, actorId: string) {
+  return db.$transaction(async (transaction) => {
+    const batch = await transaction.candidateBatch.create({ data: { name: input.name.trim(), requestedCount: input.requestedCount, priority: input.priority ?? 0 } });
+    await transaction.auditLog.create({ data: { actorId, action: "admin.robot.batch.created", entityType: "CandidateBatch", entityId: batch.id } });
+    return batch;
+  });
+}
+
+export async function reviewRobotInformationRequest(input: { requestId: string; status: "REVIEWED" | "CLOSED" }, actorId: string) {
+  return db.$transaction(async (transaction) => {
+    const request = await transaction.robotInformationRequest.findUnique({ where: { id: input.requestId } });
+    if (!request) throw new Error("Robot information request not found");
+    const updated = await transaction.robotInformationRequest.update({ where: { id: request.id }, data: { status: input.status } });
+    await transaction.auditLog.create({ data: { actorId, action: "admin.robot.information-request.updated", entityType: "RobotInformationRequest", entityId: request.id, metadata: { status: input.status } as Prisma.InputJsonValue } });
+    return updated;
+  });
+}

@@ -4,22 +4,22 @@ import { useEffect, useState } from "react";
 import { AdminShell } from "@/components/admin/admin-shell";
 import { Card } from "@/components/ui/card";
 
-type Insight = {
+type Observation = {
   title: string;
   summary: string;
-  confidence: number;
   action: string;
+  source: "PERSISTED_RECORDS";
 };
 
 export default function IntelligencePage() {
-  const [insights, setInsights] = useState<Insight[]>([]);
+  const [observations, setObservations] = useState<Observation[]>([]);
 
   useEffect(() => {
     fetch("/api/admin/intel")
       .then((response) => response.json())
       .then((payload) => {
-        if (payload?.success && Array.isArray(payload.insights)) {
-          setInsights(payload.insights);
+        if (payload?.success && Array.isArray(payload.observations)) {
+          setObservations(payload.observations);
         }
       })
       .catch(() => undefined);
@@ -31,22 +31,22 @@ export default function IntelligencePage() {
         <section className="robot-hero card">
           <div>
             <div className="kicker">مركز الذكاء</div>
-            <h1>ذكاء المنصة الحي</h1>
-            <p>يستند هذا المركز إلى بيانات المنصة الفعلية، ويولد توصيات ذكية حول قوة الروبوتات، مراجعات اللجنة، وثقة العمليات.</p>
+            <h1>مؤشرات المنصة التشغيلية</h1>
+            <p>يعرض هذا المركز ملاحظات قابلة للتحقق من سجلات المنصة. لا يعرض توصيات نموذج أو نسبة ثقة قبل تنفيذ تحليل حقيقي ومسجل.</p>
           </div>
           <div className="owner-summary">
-            <span className="pill"><span className="live-dot" /> حية</span>
-            <strong>{insights.length}</strong>
-            <small>توصيات ذكية</small>
+            <span className="pill"><span className="live-dot" /> سجلية</span>
+            <strong>{observations.length}</strong>
+            <small>ملاحظات تشغيلية</small>
           </div>
         </section>
 
         <section className="owner-grid">
-          {insights.map((item) => (
+          {observations.map((item) => (
             <Card key={item.title} className="owner-panel">
               <header className="panel-header">
                 <h2>{item.title}</h2>
-                <span>ثقة {item.confidence}%</span>
+                <span>سجل المنصة</span>
               </header>
               <div className="mission-list">
                 <div className="mission-item">

@@ -1,0 +1,26 @@
+Jenan PRO — Page Reference
+Page: 086
+Category: البرمجيات والأدوات
+Route: /studio/cv
+Title: منشئ السيرة الذاتية
+Kind: wizard
+Description: أدوات Jenan PRO الأصلية.
+
+Sections:
+- البيانات
+- الخبرة
+- التعليم
+- المهارات
+- القالب
+
+Outputs:
+- PDF
+
+Actions:
+- معاينة
+- تنزيل
+
+Next routes:
+- —
+
+Target: 60–70% baseline; responsive; Git checkpoint + local copy.

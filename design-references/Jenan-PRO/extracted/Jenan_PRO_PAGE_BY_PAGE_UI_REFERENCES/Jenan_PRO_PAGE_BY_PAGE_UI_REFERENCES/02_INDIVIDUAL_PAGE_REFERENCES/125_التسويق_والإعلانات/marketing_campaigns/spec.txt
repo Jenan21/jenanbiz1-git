@@ -1,0 +1,24 @@
+Jenan PRO — Page Reference
+Page: 125
+Category: التسويق والإعلانات
+Route: /marketing/campaigns
+Title: الحملات
+Kind: list
+Description: رحلة تسويق كاملة.
+
+Sections:
+- الحالة
+- القناة
+- الميزانية
+- النتائج
+
+Outputs:
+- Campaign Report
+
+Actions:
+- عرض
+
+Next routes:
+- /marketing/campaign/sample
+
+Target: 60–70% baseline; responsive; Git checkpoint + local copy.

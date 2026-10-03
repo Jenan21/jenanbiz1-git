@@ -1,0 +1,37 @@
+"use client";
+
+import { FormEvent } from "react";
+
+import type { SoftwareCommandRunner } from "@/components/software/software-erp-workspace";
+import type { SoftwareWorkspaceData } from "@/components/software/software-erp-types";
+import { Icon } from "@/components/ui/icons";
+import type { Locale } from "@/types/i18n";
+
+function value(form: FormData, key: string) {
+  return String(form.get(key) ?? "").trim();
+}
+
+export function SoftwareCompanyControls({ busy, locale, message, runCommand, workspace }: { busy: boolean; locale: Locale; message: string; runCommand: SoftwareCommandRunner; workspace: SoftwareWorkspaceData }) {
+  const ar = locale === "ar";
+  const owner = workspace.company.currentUserIsOwner;
+  const settings = workspace.company.softwareSettings;
+
+  async function createBranch(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    const form = event.currentTarget;
+    const data = new FormData(form);
+    if (await runCommand({ action: "createBranch", organizationId: workspace.company.id, code: value(data, "code"), name: value(data, "name"), countryCode: value(data, "countryCode") || undefined, city: value(data, "city") || undefined, address: value(data, "address") || undefined }, ["تم إنشاء الفرع.", "Branch created."])) form.reset();
+  }
+
+  async function saveSettings(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    const data = new FormData(event.currentTarget);
+    await runCommand({ action: "saveSoftwareSettings", organizationId: workspace.company.id, defaultBranchId: value(data, "defaultBranchId") || undefined, defaultCurrency: value(data, "defaultCurrency"), taxRateBps: Math.round(Number(value(data, "taxRate")) * 100), fiscalYearStartMonth: Number(value(data, "fiscalYearStartMonth")), invoicePrefix: value(data, "invoicePrefix"), allowNegativeInventory: data.get("allowNegativeInventory") === "on", timezone: value(data, "timezone") }, ["تم حفظ إعدادات التشغيل.", "Operating settings saved."]);
+  }
+
+  return <section className="software-company-controls" data-software-company-controls>
+    <section className="software-company-branches"><header><div><span>BRANCHES</span><h2>{ar ? "الفروع" : "Branches"}</h2><p>{ar ? "مواقع تشغيل حقيقية تُستخدم لإسناد ورديات نقاط البيع." : "Real operating locations used to attribute POS shifts."}</p></div><strong>{workspace.company.softwareBranches.length}</strong></header>{owner ? <form onSubmit={createBranch}><input name="code" required maxLength={24} pattern="[A-Za-z0-9_-]+" placeholder={ar ? "كود الفرع" : "Branch code"} /><input name="name" required minLength={2} placeholder={ar ? "اسم الفرع" : "Branch name"} /><input aria-label={ar ? "رمز الدولة" : "Country code"} name="countryCode" maxLength={2} minLength={2} placeholder="SA" /><input name="city" placeholder={ar ? "المدينة" : "City"} /><input name="address" placeholder={ar ? "العنوان" : "Address"} /><button className="button button--primary" disabled={busy} type="submit"><Icon name="plus" />{ar ? "إنشاء الفرع" : "Create branch"}</button></form> : <div className="software-locked"><Icon name="lock" /><p>{ar ? "إدارة الفروع متاحة لمالك المنظمة." : "Branch management is restricted to the organization owner."}</p></div>}<div className="software-company-branches__list">{workspace.company.softwareBranches.map((branch) => <article key={branch.id}><div><span>{branch.code}</span><strong>{branch.name}</strong><small>{[branch.city, branch.countryCode, branch.address].filter(Boolean).join(" · ") || (ar ? "لا يوجد عنوان" : "No address")}</small></div><b className={`software-status software-status--${branch.status.toLocaleLowerCase()}`}>{branch.status}</b>{owner ? <button disabled={busy} onClick={() => void runCommand({ action: "updateBranchStatus", organizationId: workspace.company.id, branchId: branch.id, status: branch.status === "ACTIVE" ? "INACTIVE" : "ACTIVE" }, [branch.status === "ACTIVE" ? "تم تعطيل الفرع." : "تم تفعيل الفرع.", branch.status === "ACTIVE" ? "Branch deactivated." : "Branch activated."])} type="button">{branch.status === "ACTIVE" ? (ar ? "تعطيل" : "Deactivate") : (ar ? "تفعيل" : "Activate")}</button> : null}</article>)}{!workspace.company.softwareBranches.length ? <p>{ar ? "لا توجد فروع. أنشئ أول فرع لربط ورديات POS." : "No branches yet. Create one to attribute POS shifts."}</p> : null}</div></section>
+    <section className="software-company-settings"><header><div><span>SETTINGS</span><h2>{ar ? "إعدادات التشغيل" : "Operating settings"}</h2><p>{ar ? "قيم افتراضية محفوظة للمنظمة؛ لا تُغيّر السجلات التاريخية." : "Organization defaults; historical records are not rewritten."}</p></div><Icon name="settings" /></header><form key={settings?.updatedAt ?? "new"} onSubmit={saveSettings}><label>{ar ? "الفرع الافتراضي" : "Default branch"}<select disabled={!owner} name="defaultBranchId" defaultValue={settings?.defaultBranchId ?? ""}><option value="">{ar ? "بدون فرع افتراضي" : "No default branch"}</option>{workspace.company.softwareBranches.filter((branch) => branch.status === "ACTIVE").map((branch) => <option key={branch.id} value={branch.id}>{branch.code} · {branch.name}</option>)}</select></label><label>{ar ? "العملة الافتراضية" : "Default currency"}<input disabled={!owner} name="defaultCurrency" maxLength={3} minLength={3} required defaultValue={settings?.defaultCurrency ?? "SAR"} /></label><label>{ar ? "الضريبة الافتراضية %" : "Default tax %"}<input disabled={!owner} name="taxRate" min="0" max="100" step="0.01" type="number" required defaultValue={(settings?.taxRateBps ?? 1500) / 100} /></label><label>{ar ? "بداية السنة المالية" : "Fiscal year starts"}<select disabled={!owner} name="fiscalYearStartMonth" defaultValue={settings?.fiscalYearStartMonth ?? 1}>{Array.from({ length: 12 }, (_, index) => <option key={index + 1} value={index + 1}>{new Intl.DateTimeFormat(ar ? "ar-SA" : "en-GB", { month: "long", timeZone: "UTC" }).format(new Date(Date.UTC(2026, index, 1)))}</option>)}</select></label><label>{ar ? "بادئة الفاتورة" : "Invoice prefix"}<input disabled={!owner} name="invoicePrefix" maxLength={12} pattern="[A-Za-z0-9_-]+" required defaultValue={settings?.invoicePrefix ?? "INV"} /></label><label>{ar ? "المنطقة الزمنية" : "Timezone"}<select disabled={!owner} name="timezone" defaultValue={settings?.timezone ?? "Asia/Riyadh"}><option value="Asia/Riyadh">Asia/Riyadh</option><option value="Asia/Dubai">Asia/Dubai</option><option value="Africa/Cairo">Africa/Cairo</option><option value="Europe/London">Europe/London</option><option value="UTC">UTC</option></select></label><label className="software-company-settings__toggle"><input disabled={!owner} name="allowNegativeInventory" type="checkbox" defaultChecked={settings?.allowNegativeInventory ?? false} /><span>{ar ? "السماح بالمخزون السالب" : "Allow negative inventory"}</span><small>{ar ? "الإعداد محفوظ، لكن التنفيذ الحالي يظل مانعًا للمخزون السالب حتى مراجعة سياسة المخاطر." : "The preference is stored, but enforcement remains blocked pending a risk-policy review."}</small></label>{owner ? <button className="button button--primary" disabled={busy} type="submit"><Icon name="check" />{ar ? "حفظ الإعدادات" : "Save settings"}</button> : null}</form></section>
+    {message ? <p className="software-erp__message" role="status">{message}</p> : null}
+  </section>;
+}

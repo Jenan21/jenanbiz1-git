@@ -1,0 +1,26 @@
+Jenan PRO — Page Reference
+Page: 120
+Category: الوظائف والمواهب
+Route: /talent/candidate/sample
+Title: ملف المرشح
+Kind: detail
+Description: رحلة توظيف كاملة.
+
+Sections:
+- الخبرة
+- المهارات
+- CV
+- المطابقة
+- الملاحظات
+
+Outputs:
+- Candidate Summary
+
+Actions:
+- نقل المرحلة
+- مراسلة
+
+Next routes:
+- —
+
+Target: 60–70% baseline; responsive; Git checkpoint + local copy.

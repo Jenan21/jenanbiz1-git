@@ -19,6 +19,13 @@ const fields = [
   ["cost-optimization", "Cost Optimization"],
   ["documentation", "Documentation"],
   ["localization", "Localization"],
+  ["business-finance", "Business Finance"],
+  ["accounting-financial-management", "Accounting & Financial Management"],
+  ["entrepreneurship-projects", "Entrepreneurship & Projects"],
+  ["human-resources-workforce", "Human Resources & Workforce"],
+  ["ecommerce-digital-commerce", "E-commerce & Digital Commerce"],
+  ["sales-business-development", "Sales & Business Development"],
+  ["business-law-compliance", "Business Law & Compliance"],
 ];
 
 const colleges = [
@@ -83,6 +90,29 @@ try {
       [`academy_queue_${key}`, academyId, name, key, concurrency],
     );
   }
+  for (const [key, name] of fields) {
+    const fieldId = `academy_field_${key}`;
+    const specializationId = `academy_specialization_${key}`;
+    const collegeKey = ["business-finance", "accounting-financial-management", "entrepreneurship-projects", "human-resources-workforce", "ecommerce-digital-commerce", "sales-business-development", "business-law-compliance"].includes(key)
+      ? "finance-business"
+      : ["software-engineering", "ui-ux-design", "database-data-engineering", "ai-engineering", "qa-testing", "security", "maintenance-operations", "devops-infrastructure", "architecture", "performance", "innovation-rnd"].includes(key)
+        ? "technology-engineering"
+        : ["product-project-management", "supervision", "management", "review", "cost-optimization", "documentation", "localization"].includes(key)
+          ? "management"
+          : "commercial";
+    await client.query(
+      `INSERT INTO "AcademyField" ("id", "academyId", "collegeId", "name", "key", "createdAt", "updatedAt")
+       VALUES ($1, $2, $3, $4, $5, NOW(), NOW())
+       ON CONFLICT ("academyId", "key") DO UPDATE SET "collegeId" = EXCLUDED."collegeId", "name" = EXCLUDED."name", "updatedAt" = NOW()`,
+      [fieldId, academyId, `academy_college_${collegeKey}`, name, key],
+    );
+    await client.query(
+      `INSERT INTO "Specialization" ("id", "fieldId", "name", "key", "description", "createdAt", "updatedAt")
+       VALUES ($1, $2, 'Foundation', 'foundation', $3, NOW(), NOW())
+       ON CONFLICT ("fieldId", "key") DO UPDATE SET "name" = EXCLUDED."name", "updatedAt" = NOW()`,
+      [specializationId, fieldId, `Foundational ${name} specialization.`],
+    );
+  }
   await client.query(
     `INSERT INTO "AgentGenome" ("id", "name", "key", "description", "createdAt", "updatedAt")
      VALUES ('genome_jenan_foundation_v1', 'Jenan Foundation Genome', 'jenan-foundation', 'Shared identity template for academy candidates.', NOW(), NOW())
@@ -115,7 +145,7 @@ try {
   await client.query(
     `INSERT INTO "GeographyNode" ("id", "type", "name", "code", "createdAt", "updatedAt")
      VALUES ('geography_world', 'WORLD', 'World', 'WORLD', NOW(), NOW())
-     ON CONFLICT ("parentId", "type", "name") DO NOTHING`,
+      ON CONFLICT ("id") DO UPDATE SET "name" = EXCLUDED."name", "code" = EXCLUDED."code", "updatedAt" = NOW()`,
   );
 
   for (const [key, name] of fields) {
@@ -124,7 +154,9 @@ try {
       ? "technology-engineering"
       : ["product-project-management", "supervision", "management", "review", "cost-optimization", "documentation", "localization"].includes(key)
         ? "management"
-        : "commercial";
+        : ["business-finance", "accounting-financial-management", "entrepreneurship-projects", "human-resources-workforce", "ecommerce-digital-commerce", "sales-business-development", "business-law-compliance"].includes(key)
+          ? "finance-business"
+          : "commercial";
     const specializationId = `academy_specialization_${key}`;
     const skillId = `academy_skill_${key}`;
     const courseId = `academy_course_${key}`;
@@ -173,6 +205,7 @@ try {
        ON CONFLICT ("academyId", "code") DO UPDATE SET "title" = EXCLUDED."title", "updatedAt" = NOW()`,
       [courseId, academyId, fieldId, specializationId, `${name} Foundation`, courseCode, `Course path for ${name}.`],
     );
+    await client.query(`UPDATE "AcademyCourse" SET "curriculumVersionId" = $1, "updatedAt" = NOW() WHERE "id" = $2`, [curriculumVersionId, courseId]);
     await client.query(`INSERT INTO "CourseSkill" ("courseId", "skillId") VALUES ($1, $2) ON CONFLICT DO NOTHING`, [courseId, skillId]);
     await client.query(
       `INSERT INTO "SkillResourceRequirement" ("id", "skillId", "relationType", "resourceKey", "resourceVersion", "description", "createdAt", "updatedAt")

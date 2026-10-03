@@ -39,10 +39,30 @@ function statusToLabel(status: RobotRow["status"]) {
 }
 
 export default function RobotRankingPage() {
+  const [lang, setLang] = useState<"ar" | "en">("ar");
   const [rows, setRows] = useState<RobotRow[]>([]);
   const [form, setForm] = useState({ name: "", team: "", mission: "" });
   const [feedback, setFeedback] = useState("");
   const [isGenerating, setIsGenerating] = useState(false);
+
+  useEffect(() => {
+    const frame = requestAnimationFrame(() => {
+      try {
+        const locale = document.cookie
+          .split(";")
+          .map((item) => item.trim())
+          .find((item) => item.startsWith("locale="))
+          ?.split("=")[1];
+        const saved = localStorage.getItem("jenan-admin-lang");
+        const nextLocale = locale === "ar" || locale === "en" ? locale : saved === "ar" || saved === "en" ? saved : "ar";
+        setLang(nextLocale);
+      } catch {
+        setLang("ar");
+      }
+    });
+
+    return () => cancelAnimationFrame(frame);
+  }, []);
 
   async function generateRobot(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -108,21 +128,43 @@ export default function RobotRankingPage() {
     };
   }, []);
 
+  const qaScore = Math.min(
+    10,
+    Math.round(
+      (rows.length > 0 ? 3 : 0) +
+      (rows.filter((robot) => robot.status === "ACTIVE").length > 0 ? 3 : 0) +
+      (rows.some((robot) => robot.intelligence >= 90) ? 2 : 0) +
+      (rows.some((robot) => robot.skill >= 80) ? 2 : 0),
+    ),
+  );
+
   return (
     <AdminShell>
-      <main className="shell robot-admin-shell" dir="rtl">
+      <main className="shell robot-admin-shell" dir={lang === "ar" ? "rtl" : "ltr"}>
         <section className="robot-hero card">
           <div>
-            <div className="kicker">تصنيف الذكاء</div>
-            <h1>مجموعة الصائدين كاملة</h1>
+            <div className="kicker">{lang === "ar" ? "تصنيف الذكاء" : "INTELLIGENCE RANKING"}</div>
+            <h1>{lang === "ar" ? "مجموعة الصائدين كاملة" : "Complete bounty scout roster"}</h1>
             <p>
-              تحافظ واجهة المالك على المرشحين الضعفاء بعيداً عن المقدمة وتبقي فقط الأفضلية العالية ظاهرة لاتخاذ الإجراءات الفورية.
+              {lang === "ar"
+                ? "تحافظ واجهة المالك على المرشحين الضعفاء بعيداً عن المقدمة وتبقي فقط الأفضلية العالية ظاهرة لاتخاذ الإجراءات الفورية."
+                : "The owner view keeps weaker candidates away from the front while the highest-performing robots stay visible for immediate actions."}
             </p>
           </div>
           <div className="owner-summary">
-            <span className="pill"><span className="live-dot" /> {rows.length} صائد</span>
-            <strong>أفضل جودة</strong>
-            <small>{rows.filter((robot) => robot.status === "ACTIVE").length} مرئيون</small>
+            <span className="pill"><span className="live-dot" /> {rows.length} {lang === "ar" ? "صائد" : "robots"}</span>
+            <strong>{lang === "ar" ? "أفضل جودة" : "top quality"}</strong>
+            <small>{rows.filter((robot) => robot.status === "ACTIVE").length} {lang === "ar" ? "مرئيون" : "visible"}</small>
+          </div>
+        </section>
+
+        <section className="panel qa-gate-panel" style={{ marginBottom: "20px" }}>
+          <div className="panel-header">
+            <div>
+              <p className="panel-kicker">{lang === "ar" ? "معيار الاعتماد" : "Approval standard"}</p>
+              <h2>{lang === "ar" ? "جودة قسم الروبوتات" : "Robots section quality"}</h2>
+            </div>
+            <span className={`chip ${qaScore >= 10 ? "chip--success" : "chip--warning"}`}>{qaScore}/10</span>
           </div>
         </section>
 

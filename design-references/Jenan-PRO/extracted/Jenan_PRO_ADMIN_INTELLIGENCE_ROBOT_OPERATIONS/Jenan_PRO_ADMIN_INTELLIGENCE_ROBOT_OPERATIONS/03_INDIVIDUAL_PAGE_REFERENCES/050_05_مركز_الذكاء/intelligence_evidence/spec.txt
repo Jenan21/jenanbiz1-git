@@ -1,0 +1,35 @@
+Jenan PRO — Admin Intelligence Robot Operations
+Page: 050
+Group: 05 — مركز الذكاء
+Route: /intelligence/evidence
+Title: قاعدة الأدلة
+Kind: evidence
+Purpose: المصادر والأدلة المرتبطة بالمعرفة والمهام.
+
+Modules:
+- المصدر
+- النوع
+- الثقة
+- التاريخ
+- الاستخدام
+- الحالة
+
+Actions:
+- فتح
+- ربط بمعرفة
+
+Outputs:
+- —
+
+Next Routes:
+- —
+
+Implementation:
+- Jenan PRO only.
+- Real React/CSS/SVG/components.
+- Responsive Desktop/Laptop/Tablet/Mobile.
+- No screenshot as production background.
+- No fake production values.
+- Reach ≥70% visual match before moving to next section.
+- Functional QA + responsive QA required.
+- Commit + save locally after PASS.

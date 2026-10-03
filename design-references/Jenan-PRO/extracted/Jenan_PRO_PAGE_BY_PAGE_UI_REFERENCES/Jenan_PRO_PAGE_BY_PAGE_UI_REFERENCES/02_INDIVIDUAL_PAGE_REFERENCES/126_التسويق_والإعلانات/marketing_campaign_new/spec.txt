@@ -1,0 +1,26 @@
+Jenan PRO — Page Reference
+Page: 126
+Category: التسويق والإعلانات
+Route: /marketing/campaign/new
+Title: إنشاء حملة
+Kind: wizard
+Description: رحلة تسويق كاملة.
+
+Sections:
+- الهدف
+- الجمهور
+- القنوات
+- الميزانية
+- المحتوى
+- المدة
+
+Outputs:
+- —
+
+Actions:
+- إطلاق
+
+Next routes:
+- /marketing/campaign/sample
+
+Target: 60–70% baseline; responsive; Git checkpoint + local copy.

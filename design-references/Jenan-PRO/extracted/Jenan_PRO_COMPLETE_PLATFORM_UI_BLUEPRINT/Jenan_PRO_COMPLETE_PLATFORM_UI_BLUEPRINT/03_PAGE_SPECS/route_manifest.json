@@ -1,0 +1,3698 @@
+[
+  {
+    "category": "الدخول والتسجيل",
+    "route": "/auth",
+    "title": "بوابة الدخول",
+    "kind": "landing",
+    "subtitle": "اختيار تسجيل الدخول أو إنشاء حساب.",
+    "sections": [
+      "Jenan PRO",
+      "اللغة",
+      "الأمان"
+    ],
+    "outputs": [],
+    "actions": [
+      "تسجيل الدخول",
+      "إنشاء حساب"
+    ],
+    "next_routes": [
+      "/auth/login",
+      "/auth/register"
+    ]
+  },
+  {
+    "category": "الدخول والتسجيل",
+    "route": "/auth/login",
+    "title": "تسجيل الدخول",
+    "kind": "form",
+    "subtitle": "وصول آمن إلى الحساب.",
+    "sections": [
+      "البريد الإلكتروني",
+      "كلمة المرور",
+      "تذكرني",
+      "نسيت كلمة المرور"
+    ],
+    "outputs": [],
+    "actions": [
+      "دخول"
+    ],
+    "next_routes": [
+      "/home"
+    ]
+  },
+  {
+    "category": "الدخول والتسجيل",
+    "route": "/auth/register",
+    "title": "إنشاء حساب",
+    "kind": "form",
+    "subtitle": "إنشاء حساب Jenan PRO.",
+    "sections": [
+      "الاسم",
+      "البريد",
+      "الجوال عند الحاجة",
+      "كلمة المرور",
+      "تأكيد كلمة المرور",
+      "الشروط"
+    ],
+    "outputs": [],
+    "actions": [
+      "إنشاء الحساب"
+    ],
+    "next_routes": [
+      "/user/onboarding"
+    ]
+  },
+  {
+    "category": "الدخول والتسجيل",
+    "route": "/auth/forgot",
+    "title": "استعادة كلمة المرور",
+    "kind": "form",
+    "subtitle": "استعادة الوصول.",
+    "sections": [
+      "البريد",
+      "رمز التحقق",
+      "كلمة مرور جديدة"
+    ],
+    "outputs": [],
+    "actions": [
+      "إرسال",
+      "تأكيد"
+    ],
+    "next_routes": [
+      "/auth/login"
+    ]
+  },
+  {
+    "category": "الدخول والتسجيل",
+    "route": "/user/onboarding",
+    "title": "تهيئة الحساب",
+    "kind": "wizard",
+    "subtitle": "استكمال بيانات البداية.",
+    "sections": [
+      "نوع المستخدم",
+      "الدولة",
+      "المدينة",
+      "الاهتمامات"
+    ],
+    "outputs": [],
+    "actions": [
+      "حفظ"
+    ],
+    "next_routes": [
+      "/home"
+    ]
+  },
+  {
+    "category": "الرئيسية",
+    "route": "/home",
+    "title": "الصفحة الرئيسية",
+    "kind": "dashboard",
+    "subtitle": "مركز أعمال Jenan PRO العالمي.",
+    "sections": [
+      "Hero عالمي",
+      "الأقسام",
+      "الأخبار والفرص",
+      "الإحصائيات",
+      "توزيع المستخدمين",
+      "شريط الثقة",
+      "الفوتر"
+    ],
+    "outputs": [
+      "روابط جميع الأقسام"
+    ],
+    "actions": [
+      "فتح قسم"
+    ],
+    "next_routes": [
+      "/projects",
+      "/academy",
+      "/market",
+      "/studio",
+      "/software",
+      "/talent",
+      "/marketing",
+      "/funding"
+    ]
+  },
+  {
+    "category": "صفحة المستخدم",
+    "route": "/user",
+    "title": "لوحة المستخدم",
+    "kind": "dashboard",
+    "subtitle": "مركز المستخدم الشخصي.",
+    "sections": [
+      "الحساب",
+      "الاستثمارات",
+      "الخدمات المفتوحة",
+      "الإشعارات",
+      "النشاط"
+    ],
+    "outputs": [
+      "ملخصات"
+    ],
+    "actions": [
+      "إدارة"
+    ],
+    "next_routes": [
+      "/user/investments",
+      "/user/unlocks",
+      "/user/payments",
+      "/user/reports"
+    ]
+  },
+  {
+    "category": "صفحة المستخدم",
+    "route": "/user/investments",
+    "title": "بياناتي الاستثمارية",
+    "kind": "dashboard",
+    "subtitle": "إدارة ومتابعة الاستثمارات.",
+    "sections": [
+      "إجمالي الاستثمارات",
+      "العائد",
+      "القيمة السوقية",
+      "توزيع المحفظة",
+      "الأداء",
+      "الفرص",
+      "التحديثات"
+    ],
+    "outputs": [
+      "تقرير المحفظة"
+    ],
+    "actions": [
+      "عرض التفاصيل",
+      "تصدير"
+    ],
+    "next_routes": [
+      "/user/investment/detail",
+      "/reports/view/portfolio"
+    ]
+  },
+  {
+    "category": "صفحة المستخدم",
+    "route": "/user/investment/detail",
+    "title": "تفاصيل استثمار",
+    "kind": "detail",
+    "subtitle": "تفصيل استثمار منفرد.",
+    "sections": [
+      "بيانات الأصل",
+      "العائد",
+      "الأداء الزمني",
+      "التحديثات",
+      "المستندات"
+    ],
+    "outputs": [
+      "تقرير الاستثمار"
+    ],
+    "actions": [
+      "طباعة",
+      "PDF",
+      "مشاركة",
+      "بريد"
+    ],
+    "next_routes": [
+      "/reports/view/investment"
+    ]
+  },
+  {
+    "category": "صفحة المستخدم",
+    "route": "/user/unlocks",
+    "title": "اشترك وافتح الخدمات",
+    "kind": "dashboard",
+    "subtitle": "كل متابعة تفتح خدمة مجانية محددة.",
+    "sections": [
+      "YouTube",
+      "X",
+      "Instagram",
+      "Facebook",
+      "TikTok",
+      "Snapchat",
+      "حالة الفتح"
+    ],
+    "outputs": [
+      "حالة الاستحقاق"
+    ],
+    "actions": [
+      "اشترك",
+      "تحقق",
+      "فتح الخدمة"
+    ],
+    "next_routes": [
+      "/academy",
+      "/talent",
+      "/studio",
+      "/projects/analysis/new"
+    ]
+  },
+  {
+    "category": "صفحة المستخدم",
+    "route": "/user/payments",
+    "title": "المدفوعات والفواتير",
+    "kind": "list",
+    "subtitle": "المدفوعات من لوحة المستخدم.",
+    "sections": [
+      "الفواتير",
+      "المدفوعات",
+      "طرق الدفع",
+      "السجل"
+    ],
+    "outputs": [
+      "فاتورة PDF",
+      "إيصال"
+    ],
+    "actions": [
+      "عرض",
+      "تنزيل"
+    ],
+    "next_routes": [
+      "/user/payments/invoice"
+    ]
+  },
+  {
+    "category": "صفحة المستخدم",
+    "route": "/user/payments/invoice",
+    "title": "تفاصيل فاتورة",
+    "kind": "report",
+    "subtitle": "فاتورة مفصلة.",
+    "sections": [
+      "بنود الفاتورة",
+      "الضريبة",
+      "الإجمالي",
+      "الحالة"
+    ],
+    "outputs": [
+      "PDF",
+      "طباعة"
+    ],
+    "actions": [
+      "تنزيل",
+      "طباعة",
+      "بريد"
+    ],
+    "next_routes": []
+  },
+  {
+    "category": "صفحة المستخدم",
+    "route": "/user/reports",
+    "title": "تقاريري",
+    "kind": "list",
+    "subtitle": "جميع التقارير المحفوظة.",
+    "sections": [
+      "مشاريع",
+      "استثمار",
+      "فواتير",
+      "تقارير محفوظة"
+    ],
+    "outputs": [
+      "PDF/Print/Share"
+    ],
+    "actions": [
+      "عرض",
+      "تنزيل"
+    ],
+    "next_routes": [
+      "/reports/view/general"
+    ]
+  },
+  {
+    "category": "المشاريع",
+    "route": "/projects",
+    "title": "قسم المشاريع",
+    "kind": "dashboard",
+    "subtitle": "تحليل، تقييم، بدء، ودراسات جدوى.",
+    "sections": [
+      "تحليل مشروع",
+      "تقييم مشروع",
+      "بدء مشروع",
+      "دراسات الجدوى",
+      "مشروعاتي",
+      "الإحصائيات"
+    ],
+    "outputs": [
+      "تقارير المشاريع"
+    ],
+    "actions": [
+      "بدء خدمة"
+    ],
+    "next_routes": [
+      "/projects/analysis/new",
+      "/projects/evaluation/new",
+      "/projects/start/new",
+      "/projects/feasibility"
+    ]
+  },
+  {
+    "category": "المشاريع/تحليل مشروع",
+    "route": "/projects/analysis/new",
+    "title": "تحليل مشروع — إدخال البيانات",
+    "kind": "form",
+    "subtitle": "رحلة تحليل مشروع كاملة.",
+    "sections": [
+      "فكرة المشروع",
+      "القطاع",
+      "المدينة",
+      "الفئة المستهدفة",
+      "رفع ملفات"
+    ],
+    "outputs": [],
+    "actions": [
+      "ابدأ التحليل"
+    ],
+    "next_routes": [
+      "/projects/analysis/progress"
+    ]
+  },
+  {
+    "category": "المشاريع/تحليل مشروع",
+    "route": "/projects/analysis/progress",
+    "title": "تحليل مشروع — جاري التحليل",
+    "kind": "progress",
+    "subtitle": "رحلة تحليل مشروع كاملة.",
+    "sections": [
+      "السوق",
+      "الطلب",
+      "المنافسة",
+      "الموقع",
+      "المخاطر",
+      "التوصيات"
+    ],
+    "outputs": [],
+    "actions": [
+      "متابعة"
+    ],
+    "next_routes": [
+      "/projects/analysis/result"
+    ]
+  },
+  {
+    "category": "المشاريع/تحليل مشروع",
+    "route": "/projects/analysis/result",
+    "title": "نتيجة تحليل المشروع",
+    "kind": "dashboard",
+    "subtitle": "رحلة تحليل مشروع كاملة.",
+    "sections": [
+      "مؤشر الفرصة",
+      "حجم الطلب",
+      "المنافسة",
+      "القوة الشرائية",
+      "المخاطر",
+      "اتجاه الطلب"
+    ],
+    "outputs": [
+      "ملخص التحليل"
+    ],
+    "actions": [
+      "تفاصيل",
+      "الخريطة",
+      "التوصيات",
+      "التقرير"
+    ],
+    "next_routes": [
+      "/projects/analysis/details",
+      "/projects/analysis/map",
+      "/projects/analysis/recommendations",
+      "/projects/analysis/report"
+    ]
+  },
+  {
+    "category": "المشاريع/تحليل مشروع",
+    "route": "/projects/analysis/details",
+    "title": "تفاصيل تحليل السوق",
+    "kind": "detail",
+    "subtitle": "رحلة تحليل مشروع كاملة.",
+    "sections": [
+      "السوق",
+      "المنافسون",
+      "العملاء",
+      "التسعير",
+      "الفجوات",
+      "اتجاهات النمو"
+    ],
+    "outputs": [
+      "جداول ورسوم"
+    ],
+    "actions": [
+      "مقارنة"
+    ],
+    "next_routes": []
+  },
+  {
+    "category": "المشاريع/تحليل مشروع",
+    "route": "/projects/analysis/map",
+    "title": "الخريطة الجغرافية للفرص",
+    "kind": "dashboard",
+    "subtitle": "رحلة تحليل مشروع كاملة.",
+    "sections": [
+      "الخريطة",
+      "القوة الشرائية",
+      "الطلب",
+      "المنافسة",
+      "المناطق الأعلى فرصة"
+    ],
+    "outputs": [
+      "تقرير جغرافي"
+    ],
+    "actions": [
+      "تغيير الموقع"
+    ],
+    "next_routes": []
+  },
+  {
+    "category": "المشاريع/تحليل مشروع",
+    "route": "/projects/analysis/recommendations",
+    "title": "الرؤى والتوصيات",
+    "kind": "detail",
+    "subtitle": "رحلة تحليل مشروع كاملة.",
+    "sections": [
+      "نقاط القوة",
+      "التحديات",
+      "التوصيات",
+      "الخطوة التالية"
+    ],
+    "outputs": [
+      "ملخص تنفيذي"
+    ],
+    "actions": [
+      "اعتماد",
+      "حفظ"
+    ],
+    "next_routes": []
+  },
+  {
+    "category": "المشاريع/تحليل مشروع",
+    "route": "/projects/analysis/report",
+    "title": "تقرير تحليل المشروع",
+    "kind": "report",
+    "subtitle": "رحلة تحليل مشروع كاملة.",
+    "sections": [
+      "الغلاف",
+      "الملخص",
+      "السوق",
+      "المنافسة",
+      "الجغرافيا",
+      "المخاطر",
+      "التوصيات"
+    ],
+    "outputs": [
+      "PDF",
+      "طباعة",
+      "مشاركة",
+      "بريد"
+    ],
+    "actions": [
+      "طباعة",
+      "PDF",
+      "مشاركة",
+      "بريد"
+    ],
+    "next_routes": [
+      "/reports/print/project-analysis"
+    ]
+  },
+  {
+    "category": "المشاريع/تقييم مشروع",
+    "route": "/projects/evaluation/new",
+    "title": "تقييم مشروع — إدخال البيانات",
+    "kind": "form",
+    "subtitle": "رحلة تقييم مشروع كاملة.",
+    "sections": [
+      "اسم المشروع",
+      "القطاع",
+      "المرحلة",
+      "الموقع",
+      "السوق المستهدف",
+      "الميزانية"
+    ],
+    "outputs": [],
+    "actions": [
+      "ابدأ التقييم"
+    ],
+    "next_routes": [
+      "/projects/evaluation/progress"
+    ]
+  },
+  {
+    "category": "المشاريع/تقييم مشروع",
+    "route": "/projects/evaluation/progress",
+    "title": "تقييم مشروع — جاري التقييم",
+    "kind": "progress",
+    "subtitle": "رحلة تقييم مشروع كاملة.",
+    "sections": [
+      "الجاهزية",
+      "السوق",
+      "التنفيذ",
+      "المالية",
+      "الفريق",
+      "التوسع"
+    ],
+    "outputs": [],
+    "actions": [
+      "متابعة"
+    ],
+    "next_routes": [
+      "/projects/evaluation/result"
+    ]
+  },
+  {
+    "category": "المشاريع/تقييم مشروع",
+    "route": "/projects/evaluation/result",
+    "title": "نتيجة تقييم المشروع",
+    "kind": "dashboard",
+    "subtitle": "رحلة تقييم مشروع كاملة.",
+    "sections": [
+      "النتيجة الإجمالية",
+      "الجاهزية",
+      "جاذبية السوق",
+      "القدرة التنفيذية",
+      "الجدوى المالية",
+      "المخاطر",
+      "الفريق",
+      "قابلية التوسع"
+    ],
+    "outputs": [
+      "ملخص التقييم"
+    ],
+    "actions": [
+      "تفاصيل",
+      "مخاطر",
+      "توصيات",
+      "التقرير"
+    ],
+    "next_routes": [
+      "/projects/evaluation/details",
+      "/projects/evaluation/risks",
+      "/projects/evaluation/recommendations",
+      "/projects/evaluation/report"
+    ]
+  },
+  {
+    "category": "المشاريع/تقييم مشروع",
+    "route": "/projects/evaluation/details",
+    "title": "تفاصيل نقاط التقييم",
+    "kind": "detail",
+    "subtitle": "رحلة تقييم مشروع كاملة.",
+    "sections": [
+      "Radar",
+      "المحاور",
+      "الأدلة",
+      "الملاحظات",
+      "المقارنات"
+    ],
+    "outputs": [
+      "جداول تقييم"
+    ],
+    "actions": [
+      "عرض الأدلة"
+    ],
+    "next_routes": []
+  },
+  {
+    "category": "المشاريع/تقييم مشروع",
+    "route": "/projects/evaluation/risks",
+    "title": "تحليل المخاطر والعائد",
+    "kind": "dashboard",
+    "subtitle": "رحلة تقييم مشروع كاملة.",
+    "sections": [
+      "مستوى المخاطر",
+      "العائد المتوقع",
+      "سيناريوهات",
+      "مصفوفة المخاطر"
+    ],
+    "outputs": [
+      "تقرير مخاطر"
+    ],
+    "actions": [
+      "عرض"
+    ],
+    "next_routes": []
+  },
+  {
+    "category": "المشاريع/تقييم مشروع",
+    "route": "/projects/evaluation/recommendations",
+    "title": "التوصيات النهائية",
+    "kind": "detail",
+    "subtitle": "رحلة تقييم مشروع كاملة.",
+    "sections": [
+      "نقاط القوة",
+      "نقاط التحسين",
+      "التوصية النهائية",
+      "الخطوات التالية"
+    ],
+    "outputs": [
+      "ملخص توصيات"
+    ],
+    "actions": [
+      "حفظ",
+      "تحويل إلى بدء مشروع"
+    ],
+    "next_routes": [
+      "/projects/start/new"
+    ]
+  },
+  {
+    "category": "المشاريع/تقييم مشروع",
+    "route": "/projects/evaluation/report",
+    "title": "تقرير تقييم المشروع",
+    "kind": "report",
+    "subtitle": "رحلة تقييم مشروع كاملة.",
+    "sections": [
+      "الغلاف",
+      "النتيجة",
+      "المحاور",
+      "المخاطر",
+      "العائد",
+      "التوصيات"
+    ],
+    "outputs": [
+      "PDF",
+      "طباعة",
+      "مشاركة",
+      "بريد"
+    ],
+    "actions": [
+      "طباعة",
+      "PDF",
+      "مشاركة",
+      "بريد"
+    ],
+    "next_routes": [
+      "/reports/print/project-evaluation"
+    ]
+  },
+  {
+    "category": "المشاريع/بدء مشروع",
+    "route": "/projects/start/new",
+    "title": "بدء مشروع — بيانات البداية",
+    "kind": "form",
+    "subtitle": "رحلة بدء مشروع كاملة.",
+    "sections": [
+      "فكرة المشروع",
+      "الكيان القانوني",
+      "المدينة",
+      "رأس المال",
+      "المدة",
+      "الفريق"
+    ],
+    "outputs": [],
+    "actions": [
+      "ابدأ المشروع"
+    ],
+    "next_routes": [
+      "/projects/start/roadmap"
+    ]
+  },
+  {
+    "category": "المشاريع/بدء مشروع",
+    "route": "/projects/start/roadmap",
+    "title": "خارطة تنفيذ المشروع",
+    "kind": "timeline",
+    "subtitle": "رحلة بدء مشروع كاملة.",
+    "sections": [
+      "الفكرة",
+      "التسجيل والتأسيس",
+      "التجهيز",
+      "الفريق",
+      "الموردون",
+      "الإطلاق والنمو"
+    ],
+    "outputs": [
+      "خارطة زمنية"
+    ],
+    "actions": [
+      "فتح المرحلة"
+    ],
+    "next_routes": [
+      "/projects/start/licenses",
+      "/projects/start/setup",
+      "/projects/start/team",
+      "/projects/start/vendors",
+      "/projects/start/launch"
+    ]
+  },
+  {
+    "category": "المشاريع/بدء مشروع",
+    "route": "/projects/start/licenses",
+    "title": "التراخيص والإجراءات",
+    "kind": "checklist",
+    "subtitle": "رحلة بدء مشروع كاملة.",
+    "sections": [
+      "حجز الاسم",
+      "السجل",
+      "الزكاة/الضريبة",
+      "البلدية",
+      "التراخيص القطاعية",
+      "التأمينات"
+    ],
+    "outputs": [
+      "Checklist"
+    ],
+    "actions": [
+      "تحديث الحالة"
+    ],
+    "next_routes": []
+  },
+  {
+    "category": "المشاريع/بدء مشروع",
+    "route": "/projects/start/setup",
+    "title": "التجهيز والميزانية",
+    "kind": "dashboard",
+    "subtitle": "رحلة بدء مشروع كاملة.",
+    "sections": [
+      "التراخيص",
+      "التجهيزات",
+      "الموارد البشرية",
+      "التسويق",
+      "المخزون",
+      "مصاريف أخرى"
+    ],
+    "outputs": [
+      "ميزانية"
+    ],
+    "actions": [
+      "تعديل",
+      "حفظ"
+    ],
+    "next_routes": []
+  },
+  {
+    "category": "المشاريع/بدء مشروع",
+    "route": "/projects/start/team",
+    "title": "الفريق والمهام",
+    "kind": "dashboard",
+    "subtitle": "رحلة بدء مشروع كاملة.",
+    "sections": [
+      "أعضاء الفريق",
+      "الأدوار",
+      "المهام",
+      "التقدم"
+    ],
+    "outputs": [
+      "خطة فريق"
+    ],
+    "actions": [
+      "إضافة عضو",
+      "إسناد مهمة"
+    ],
+    "next_routes": []
+  },
+  {
+    "category": "المشاريع/بدء مشروع",
+    "route": "/projects/start/vendors",
+    "title": "الموردون والشركاء",
+    "kind": "list",
+    "subtitle": "رحلة بدء مشروع كاملة.",
+    "sections": [
+      "المورد",
+      "التصنيف",
+      "العرض",
+      "الحالة",
+      "المستندات"
+    ],
+    "outputs": [
+      "قائمة موردين"
+    ],
+    "actions": [
+      "إضافة",
+      "مقارنة",
+      "اعتماد"
+    ],
+    "next_routes": []
+  },
+  {
+    "category": "المشاريع/بدء مشروع",
+    "route": "/projects/start/launch",
+    "title": "الإطلاق والنمو",
+    "kind": "dashboard",
+    "subtitle": "رحلة بدء مشروع كاملة.",
+    "sections": [
+      "الإطلاق التجريبي",
+      "التسويق",
+      "التوظيف",
+      "الافتتاح",
+      "النمو"
+    ],
+    "outputs": [
+      "خطة إطلاق"
+    ],
+    "actions": [
+      "تحديث"
+    ],
+    "next_routes": [
+      "/projects/start/report"
+    ]
+  },
+  {
+    "category": "المشاريع/بدء مشروع",
+    "route": "/projects/start/report",
+    "title": "تقرير خطة بدء المشروع",
+    "kind": "report",
+    "subtitle": "رحلة بدء مشروع كاملة.",
+    "sections": [
+      "الخطة",
+      "الميزانية",
+      "الجدول",
+      "الفريق",
+      "الموردون",
+      "المخاطر",
+      "المعالم"
+    ],
+    "outputs": [
+      "PDF",
+      "طباعة",
+      "مشاركة",
+      "بريد"
+    ],
+    "actions": [
+      "طباعة",
+      "PDF",
+      "مشاركة",
+      "بريد"
+    ],
+    "next_routes": []
+  },
+  {
+    "category": "المشاريع/دراسات الجدوى",
+    "route": "/projects/feasibility",
+    "title": "اختيار نوع دراسة الجدوى",
+    "kind": "landing",
+    "subtitle": "دراسات جدوى متكاملة.",
+    "sections": [
+      "دراسة مبسطة",
+      "دراسة احترافية دقيقة ومفصلة"
+    ],
+    "outputs": [],
+    "actions": [
+      "اختيار النوع"
+    ],
+    "next_routes": [
+      "/projects/feasibility/simple/new",
+      "/projects/feasibility/pro/new"
+    ]
+  },
+  {
+    "category": "المشاريع/دراسات الجدوى",
+    "route": "/projects/feasibility/simple/new",
+    "title": "الدراسة المبسطة — البيانات",
+    "kind": "form",
+    "subtitle": "دراسات جدوى متكاملة.",
+    "sections": [
+      "الفكرة",
+      "الموقع",
+      "القطاع",
+      "رأس المال",
+      "السوق"
+    ],
+    "outputs": [],
+    "actions": [
+      "إنشاء الدراسة"
+    ],
+    "next_routes": [
+      "/projects/feasibility/simple/result"
+    ]
+  },
+  {
+    "category": "المشاريع/دراسات الجدوى",
+    "route": "/projects/feasibility/simple/result",
+    "title": "نتيجة الدراسة المبسطة",
+    "kind": "dashboard",
+    "subtitle": "دراسات جدوى متكاملة.",
+    "sections": [
+      "ملخص السوق",
+      "تقدير التكلفة",
+      "الإيراد",
+      "نقطة التعادل",
+      "SWOT مختصر",
+      "التوصية"
+    ],
+    "outputs": [
+      "تقرير مبسط"
+    ],
+    "actions": [
+      "طباعة",
+      "PDF",
+      "ترقية"
+    ],
+    "next_routes": [
+      "/projects/feasibility/simple/report",
+      "/projects/feasibility/pro/new"
+    ]
+  },
+  {
+    "category": "المشاريع/دراسات الجدوى",
+    "route": "/projects/feasibility/simple/report",
+    "title": "تقرير الدراسة المبسطة",
+    "kind": "report",
+    "subtitle": "دراسات جدوى متكاملة.",
+    "sections": [
+      "الغلاف",
+      "الملخص",
+      "السوق",
+      "التكاليف",
+      "التوصية"
+    ],
+    "outputs": [
+      "PDF",
+      "Print",
+      "Share",
+      "Email"
+    ],
+    "actions": [
+      "طباعة",
+      "PDF",
+      "مشاركة",
+      "بريد"
+    ],
+    "next_routes": []
+  },
+  {
+    "category": "المشاريع/دراسات الجدوى",
+    "route": "/projects/feasibility/pro/new",
+    "title": "الدراسة الاحترافية — البداية",
+    "kind": "wizard",
+    "subtitle": "دراسات جدوى متكاملة.",
+    "sections": [
+      "بيانات المشروع",
+      "السوق",
+      "المالية",
+      "الفنية",
+      "التشغيلية"
+    ],
+    "outputs": [],
+    "actions": [
+      "ابدأ"
+    ],
+    "next_routes": [
+      "/projects/feasibility/pro/market"
+    ]
+  },
+  {
+    "category": "المشاريع/دراسات الجدوى",
+    "route": "/projects/feasibility/pro/market",
+    "title": "الدراسة السوقية",
+    "kind": "dashboard",
+    "subtitle": "دراسات جدوى متكاملة.",
+    "sections": [
+      "حجم السوق",
+      "الطلب",
+      "المنافسة",
+      "التسعير",
+      "العملاء",
+      "الحصة المستهدفة"
+    ],
+    "outputs": [
+      "جداول ورسوم"
+    ],
+    "actions": [
+      "التالي"
+    ],
+    "next_routes": [
+      "/projects/feasibility/pro/financial"
+    ]
+  },
+  {
+    "category": "المشاريع/دراسات الجدوى",
+    "route": "/projects/feasibility/pro/financial",
+    "title": "الدراسة المالية",
+    "kind": "dashboard",
+    "subtitle": "دراسات جدوى متكاملة.",
+    "sections": [
+      "CAPEX",
+      "OPEX",
+      "الإيرادات",
+      "التدفقات",
+      "Break-even",
+      "ROI",
+      "NPV",
+      "IRR",
+      "Payback"
+    ],
+    "outputs": [
+      "جداول مالية"
+    ],
+    "actions": [
+      "التالي"
+    ],
+    "next_routes": [
+      "/projects/feasibility/pro/technical"
+    ]
+  },
+  {
+    "category": "المشاريع/دراسات الجدوى",
+    "route": "/projects/feasibility/pro/technical",
+    "title": "الدراسة الفنية والتقنية",
+    "kind": "detail",
+    "subtitle": "دراسات جدوى متكاملة.",
+    "sections": [
+      "الموقع",
+      "المساحة",
+      "المعدات",
+      "التقنية",
+      "المواد",
+      "الطاقة"
+    ],
+    "outputs": [
+      "قائمة متطلبات"
+    ],
+    "actions": [
+      "التالي"
+    ],
+    "next_routes": [
+      "/projects/feasibility/pro/operational"
+    ]
+  },
+  {
+    "category": "المشاريع/دراسات الجدوى",
+    "route": "/projects/feasibility/pro/operational",
+    "title": "الدراسة التشغيلية",
+    "kind": "detail",
+    "subtitle": "دراسات جدوى متكاملة.",
+    "sections": [
+      "العمليات",
+      "الفريق",
+      "الموردون",
+      "الجودة",
+      "المخزون",
+      "السياسات"
+    ],
+    "outputs": [
+      "خطة تشغيل"
+    ],
+    "actions": [
+      "التالي"
+    ],
+    "next_routes": [
+      "/projects/feasibility/pro/swot"
+    ]
+  },
+  {
+    "category": "المشاريع/دراسات الجدوى",
+    "route": "/projects/feasibility/pro/swot",
+    "title": "SWOT والمخاطر والحساسية",
+    "kind": "dashboard",
+    "subtitle": "دراسات جدوى متكاملة.",
+    "sections": [
+      "SWOT",
+      "المخاطر",
+      "المتحفظ",
+      "الأساسي",
+      "المتفائل",
+      "الحساسية"
+    ],
+    "outputs": [
+      "تحليل سيناريوهات"
+    ],
+    "actions": [
+      "التالي"
+    ],
+    "next_routes": [
+      "/projects/feasibility/pro/timeline"
+    ]
+  },
+  {
+    "category": "المشاريع/دراسات الجدوى",
+    "route": "/projects/feasibility/pro/timeline",
+    "title": "الجدول الزمني والتنفيذ",
+    "kind": "timeline",
+    "subtitle": "دراسات جدوى متكاملة.",
+    "sections": [
+      "مراحل التنفيذ",
+      "الاعتماديات",
+      "المعالم",
+      "المسؤوليات"
+    ],
+    "outputs": [
+      "Timeline"
+    ],
+    "actions": [
+      "إنهاء"
+    ],
+    "next_routes": [
+      "/projects/feasibility/pro/result"
+    ]
+  },
+  {
+    "category": "المشاريع/دراسات الجدوى",
+    "route": "/projects/feasibility/pro/result",
+    "title": "النتيجة الاحترافية",
+    "kind": "dashboard",
+    "subtitle": "دراسات جدوى متكاملة.",
+    "sections": [
+      "معدل الربحية",
+      "فترة الاسترداد",
+      "NPV",
+      "ROI",
+      "التدفقات",
+      "التوصية"
+    ],
+    "outputs": [
+      "Executive Summary"
+    ],
+    "actions": [
+      "عرض التقرير"
+    ],
+    "next_routes": [
+      "/projects/feasibility/pro/report"
+    ]
+  },
+  {
+    "category": "المشاريع/دراسات الجدوى",
+    "route": "/projects/feasibility/pro/report",
+    "title": "تقرير الدراسة الاحترافية",
+    "kind": "report",
+    "subtitle": "دراسات جدوى متكاملة.",
+    "sections": [
+      "الغلاف",
+      "الملخص التنفيذي",
+      "السوق",
+      "المالية",
+      "الفنية",
+      "التشغيلية",
+      "SWOT",
+      "المخاطر",
+      "الجدول",
+      "التوصيات"
+    ],
+    "outputs": [
+      "PDF",
+      "Word",
+      "Excel",
+      "PowerPoint عند دعمها",
+      "Print",
+      "Share",
+      "Email"
+    ],
+    "actions": [
+      "تنزيل",
+      "طباعة",
+      "مشاركة",
+      "بريد"
+    ],
+    "next_routes": []
+  },
+  {
+    "category": "الأكاديمية",
+    "route": "/academy",
+    "title": "أكاديمية جنان",
+    "kind": "dashboard",
+    "subtitle": "رحلة أكاديمية كاملة.",
+    "sections": [
+      "الدورات",
+      "الدروس",
+      "الدراسات",
+      "الأبحاث",
+      "الندوات",
+      "المسارات",
+      "الشهادات",
+      "التقدم"
+    ],
+    "outputs": [
+      "شهادات",
+      "تقارير تعلم"
+    ],
+    "actions": [
+      "استكشف"
+    ],
+    "next_routes": [
+      "/academy/courses",
+      "/academy/webinars",
+      "/academy/studies",
+      "/academy/research",
+      "/academy/paths"
+    ]
+  },
+  {
+    "category": "الأكاديمية",
+    "route": "/academy/courses",
+    "title": "الدورات",
+    "kind": "list",
+    "subtitle": "رحلة أكاديمية كاملة.",
+    "sections": [
+      "بحث",
+      "فلترة",
+      "بطاقات الدورات",
+      "المحفوظة",
+      "التقدم"
+    ],
+    "outputs": [],
+    "actions": [
+      "عرض الدورة"
+    ],
+    "next_routes": [
+      "/academy/course/sample"
+    ]
+  },
+  {
+    "category": "الأكاديمية",
+    "route": "/academy/course/sample",
+    "title": "تفاصيل الدورة",
+    "kind": "detail",
+    "subtitle": "رحلة أكاديمية كاملة.",
+    "sections": [
+      "الغلاف",
+      "الوصف",
+      "المدرب",
+      "المستوى",
+      "المدة",
+      "الدروس",
+      "المراجعات",
+      "المخرجات"
+    ],
+    "outputs": [
+      "خطة الدورة"
+    ],
+    "actions": [
+      "ابدأ/تابع الدورة"
+    ],
+    "next_routes": [
+      "/academy/course/sample/lesson/1"
+    ]
+  },
+  {
+    "category": "الأكاديمية",
+    "route": "/academy/course/sample/lesson/1",
+    "title": "مشغل الدرس",
+    "kind": "player",
+    "subtitle": "رحلة أكاديمية كاملة.",
+    "sections": [
+      "فيديو/محتوى",
+      "قائمة الدروس",
+      "الملاحظات",
+      "المرفقات",
+      "اختبار قصير"
+    ],
+    "outputs": [
+      "ملخص الدرس"
+    ],
+    "actions": [
+      "التالي",
+      "حفظ ملاحظة"
+    ],
+    "next_routes": [
+      "/academy/course/sample/quiz"
+    ]
+  },
+  {
+    "category": "الأكاديمية",
+    "route": "/academy/course/sample/quiz",
+    "title": "اختبار الدورة",
+    "kind": "form",
+    "subtitle": "رحلة أكاديمية كاملة.",
+    "sections": [
+      "الأسئلة",
+      "الإجابات",
+      "التقدم"
+    ],
+    "outputs": [
+      "النتيجة"
+    ],
+    "actions": [
+      "إرسال"
+    ],
+    "next_routes": [
+      "/academy/course/sample/result"
+    ]
+  },
+  {
+    "category": "الأكاديمية",
+    "route": "/academy/course/sample/result",
+    "title": "نتيجة الدورة",
+    "kind": "dashboard",
+    "subtitle": "رحلة أكاديمية كاملة.",
+    "sections": [
+      "نسبة الإكمال",
+      "نتيجة الاختبار",
+      "المهارات المكتسبة"
+    ],
+    "outputs": [
+      "شهادة"
+    ],
+    "actions": [
+      "عرض الشهادة"
+    ],
+    "next_routes": [
+      "/academy/certificates/sample"
+    ]
+  },
+  {
+    "category": "الأكاديمية",
+    "route": "/academy/webinars",
+    "title": "الندوات",
+    "kind": "list",
+    "subtitle": "رحلة أكاديمية كاملة.",
+    "sections": [
+      "القادمة",
+      "المباشرة",
+      "المسجلة",
+      "التصنيفات"
+    ],
+    "outputs": [],
+    "actions": [
+      "عرض الندوة"
+    ],
+    "next_routes": [
+      "/academy/webinar/sample"
+    ]
+  },
+  {
+    "category": "الأكاديمية",
+    "route": "/academy/webinar/sample",
+    "title": "تفاصيل الندوة",
+    "kind": "detail",
+    "subtitle": "رحلة أكاديمية كاملة.",
+    "sections": [
+      "العنوان",
+      "المتحدث",
+      "الموعد",
+      "المحاور",
+      "التسجيل"
+    ],
+    "outputs": [],
+    "actions": [
+      "سجل",
+      "ادخل البث"
+    ],
+    "next_routes": [
+      "/academy/webinar/sample/live"
+    ]
+  },
+  {
+    "category": "الأكاديمية",
+    "route": "/academy/webinar/sample/live",
+    "title": "الندوة المباشرة",
+    "kind": "live",
+    "subtitle": "رحلة أكاديمية كاملة.",
+    "sections": [
+      "البث",
+      "الأسئلة",
+      "المرفقات",
+      "الملاحظات"
+    ],
+    "outputs": [
+      "تسجيل/ملخص"
+    ],
+    "actions": [
+      "إرسال سؤال"
+    ],
+    "next_routes": []
+  },
+  {
+    "category": "الأكاديمية",
+    "route": "/academy/studies",
+    "title": "الدراسات",
+    "kind": "list",
+    "subtitle": "رحلة أكاديمية كاملة.",
+    "sections": [
+      "البحث",
+      "التصنيف",
+      "البطاقات",
+      "المحفوظة"
+    ],
+    "outputs": [],
+    "actions": [
+      "فتح الدراسة"
+    ],
+    "next_routes": [
+      "/academy/study/sample"
+    ]
+  },
+  {
+    "category": "الأكاديمية",
+    "route": "/academy/study/sample",
+    "title": "تفاصيل دراسة",
+    "kind": "reader",
+    "subtitle": "رحلة أكاديمية كاملة.",
+    "sections": [
+      "الملخص",
+      "المحتوى",
+      "الجداول",
+      "المراجع",
+      "المصادر"
+    ],
+    "outputs": [
+      "PDF عند التوفر"
+    ],
+    "actions": [
+      "حفظ",
+      "مشاركة"
+    ],
+    "next_routes": []
+  },
+  {
+    "category": "الأكاديمية",
+    "route": "/academy/research",
+    "title": "الأبحاث",
+    "kind": "list",
+    "subtitle": "رحلة أكاديمية كاملة.",
+    "sections": [
+      "البحث",
+      "التصنيف",
+      "الباحث",
+      "التاريخ"
+    ],
+    "outputs": [],
+    "actions": [
+      "فتح البحث"
+    ],
+    "next_routes": [
+      "/academy/research/sample"
+    ]
+  },
+  {
+    "category": "الأكاديمية",
+    "route": "/academy/research/sample",
+    "title": "تفاصيل بحث",
+    "kind": "reader",
+    "subtitle": "رحلة أكاديمية كاملة.",
+    "sections": [
+      "الملخص",
+      "المنهج",
+      "النتائج",
+      "المراجع"
+    ],
+    "outputs": [
+      "PDF/Reference"
+    ],
+    "actions": [
+      "حفظ",
+      "مشاركة"
+    ],
+    "next_routes": []
+  },
+  {
+    "category": "الأكاديمية",
+    "route": "/academy/paths",
+    "title": "المسارات التعليمية",
+    "kind": "list",
+    "subtitle": "رحلة أكاديمية كاملة.",
+    "sections": [
+      "المسارات",
+      "المراحل",
+      "التقدم"
+    ],
+    "outputs": [],
+    "actions": [
+      "فتح المسار"
+    ],
+    "next_routes": [
+      "/academy/path/sample"
+    ]
+  },
+  {
+    "category": "الأكاديمية",
+    "route": "/academy/path/sample",
+    "title": "تفاصيل المسار",
+    "kind": "timeline",
+    "subtitle": "رحلة أكاديمية كاملة.",
+    "sections": [
+      "المراحل",
+      "المتطلبات",
+      "التقدم",
+      "الشهادة"
+    ],
+    "outputs": [
+      "خطة تعلم"
+    ],
+    "actions": [
+      "ابدأ"
+    ],
+    "next_routes": []
+  },
+  {
+    "category": "الأكاديمية",
+    "route": "/academy/certificates/sample",
+    "title": "شهادة إتمام",
+    "kind": "report",
+    "subtitle": "رحلة أكاديمية كاملة.",
+    "sections": [
+      "اسم المتعلم",
+      "اسم الدورة",
+      "التاريخ",
+      "التحقق"
+    ],
+    "outputs": [
+      "PDF",
+      "Print",
+      "Share"
+    ],
+    "actions": [
+      "تنزيل",
+      "طباعة",
+      "مشاركة"
+    ],
+    "next_routes": []
+  },
+  {
+    "category": "سوق جنان",
+    "route": "/market",
+    "title": "سوق جنان",
+    "kind": "dashboard",
+    "subtitle": "رحلة سوق كاملة.",
+    "sections": [
+      "العروض المميزة",
+      "التصنيفات",
+      "نشاط السوق",
+      "رحلة المشتري",
+      "الأمان والسرية"
+    ],
+    "outputs": [
+      "ملخصات السوق"
+    ],
+    "actions": [
+      "عرض الفرص",
+      "أضف عرضك"
+    ],
+    "next_routes": [
+      "/market/listings",
+      "/market/sell"
+    ]
+  },
+  {
+    "category": "سوق جنان",
+    "route": "/market/listings",
+    "title": "قائمة العروض",
+    "kind": "list",
+    "subtitle": "رحلة سوق كاملة.",
+    "sections": [
+      "بحث",
+      "فلترة",
+      "السعر",
+      "الموقع",
+      "النوع",
+      "الحالة"
+    ],
+    "outputs": [],
+    "actions": [
+      "عرض التفاصيل"
+    ],
+    "next_routes": [
+      "/market/listing/sample"
+    ]
+  },
+  {
+    "category": "سوق جنان",
+    "route": "/market/listing/sample",
+    "title": "تفاصيل إعلان/فرصة",
+    "kind": "detail",
+    "subtitle": "رحلة سوق كاملة.",
+    "sections": [
+      "صور",
+      "الوصف",
+      "المؤشرات المالية المصرح بها",
+      "الموقع",
+      "المستندات المتاحة",
+      "البائع",
+      "السرية"
+    ],
+    "outputs": [
+      "ملخص فرصة"
+    ],
+    "actions": [
+      "طلب تفاصيل",
+      "توقيع NDA",
+      "حجز معاينة",
+      "تقديم عرض"
+    ],
+    "next_routes": [
+      "/market/nda/sample",
+      "/market/viewing/sample",
+      "/market/offer/sample"
+    ]
+  },
+  {
+    "category": "سوق جنان",
+    "route": "/market/nda/sample",
+    "title": "اتفاقية السرية",
+    "kind": "form",
+    "subtitle": "رحلة سوق كاملة.",
+    "sections": [
+      "نص الاتفاقية",
+      "بيانات الأطراف",
+      "الموافقة"
+    ],
+    "outputs": [
+      "نسخة الاتفاقية"
+    ],
+    "actions": [
+      "توقيع/موافقة"
+    ],
+    "next_routes": [
+      "/market/listing/sample/secure"
+    ]
+  },
+  {
+    "category": "سوق جنان",
+    "route": "/market/listing/sample/secure",
+    "title": "التفاصيل المحمية",
+    "kind": "detail",
+    "subtitle": "رحلة سوق كاملة.",
+    "sections": [
+      "القوائم",
+      "المستندات",
+      "الصور",
+      "معلومات إضافية"
+    ],
+    "outputs": [
+      "ملف فحص أولي"
+    ],
+    "actions": [
+      "طلب معاينة",
+      "تقديم عرض"
+    ],
+    "next_routes": []
+  },
+  {
+    "category": "سوق جنان",
+    "route": "/market/viewing/sample",
+    "title": "حجز المعاينة",
+    "kind": "form",
+    "subtitle": "رحلة سوق كاملة.",
+    "sections": [
+      "التاريخ",
+      "الوقت",
+      "الحضور",
+      "الملاحظات"
+    ],
+    "outputs": [
+      "تأكيد موعد"
+    ],
+    "actions": [
+      "حجز"
+    ],
+    "next_routes": [
+      "/market/deal/sample"
+    ]
+  },
+  {
+    "category": "سوق جنان",
+    "route": "/market/offer/sample",
+    "title": "تقديم عرض شراء",
+    "kind": "form",
+    "subtitle": "رحلة سوق كاملة.",
+    "sections": [
+      "القيمة",
+      "الشروط",
+      "المدة",
+      "الملاحظات"
+    ],
+    "outputs": [
+      "عرض شراء"
+    ],
+    "actions": [
+      "إرسال العرض"
+    ],
+    "next_routes": [
+      "/market/deal/sample"
+    ]
+  },
+  {
+    "category": "سوق جنان",
+    "route": "/market/deal/sample",
+    "title": "مسار الصفقة",
+    "kind": "timeline",
+    "subtitle": "رحلة سوق كاملة.",
+    "sections": [
+      "تواصل",
+      "NDA",
+      "فحص",
+      "معاينة",
+      "عرض",
+      "تفاوض",
+      "إغلاق"
+    ],
+    "outputs": [
+      "سجل الصفقة"
+    ],
+    "actions": [
+      "تحديث",
+      "عرض المستندات"
+    ],
+    "next_routes": [
+      "/market/deal/sample/report"
+    ]
+  },
+  {
+    "category": "سوق جنان",
+    "route": "/market/deal/sample/report",
+    "title": "تقرير الصفقة",
+    "kind": "report",
+    "subtitle": "رحلة سوق كاملة.",
+    "sections": [
+      "الأطراف",
+      "المراحل",
+      "المستندات",
+      "العروض",
+      "الحالة"
+    ],
+    "outputs": [
+      "PDF",
+      "Print",
+      "Share"
+    ],
+    "actions": [
+      "تنزيل",
+      "طباعة"
+    ],
+    "next_routes": []
+  },
+  {
+    "category": "سوق جنان",
+    "route": "/market/sell",
+    "title": "إنشاء إعلان بيع",
+    "kind": "wizard",
+    "subtitle": "رحلة سوق كاملة.",
+    "sections": [
+      "نوع الأصل",
+      "المعلومات الأساسية",
+      "التقييم",
+      "الصور",
+      "المستندات",
+      "السرية"
+    ],
+    "outputs": [],
+    "actions": [
+      "التالي"
+    ],
+    "next_routes": [
+      "/market/sell/media"
+    ]
+  },
+  {
+    "category": "سوق جنان",
+    "route": "/market/sell/media",
+    "title": "صور ومستندات الإعلان",
+    "kind": "form",
+    "subtitle": "رحلة سوق كاملة.",
+    "sections": [
+      "الصور",
+      "الملفات",
+      "المستندات",
+      "إعدادات السرية"
+    ],
+    "outputs": [],
+    "actions": [
+      "التالي"
+    ],
+    "next_routes": [
+      "/market/sell/review"
+    ]
+  },
+  {
+    "category": "سوق جنان",
+    "route": "/market/sell/review",
+    "title": "مراجعة ونشر الإعلان",
+    "kind": "detail",
+    "subtitle": "رحلة سوق كاملة.",
+    "sections": [
+      "المعاينة",
+      "البيانات",
+      "الصور",
+      "السرية"
+    ],
+    "outputs": [
+      "نسخة الإعلان"
+    ],
+    "actions": [
+      "نشر"
+    ],
+    "next_routes": []
+  },
+  {
+    "category": "البرمجيات والأدوات",
+    "route": "/studio",
+    "title": "برمجيات وأدوات Jenan PRO",
+    "kind": "dashboard",
+    "subtitle": "أدوات Jenan PRO الأصلية.",
+    "sections": [
+      "Jenan PDF",
+      "Jenan Docs",
+      "Jenan Sheets",
+      "Presentations",
+      "الشعار",
+      "الورق الرسمي",
+      "السيرة الذاتية"
+    ],
+    "outputs": [
+      "ملفات ومخرجات"
+    ],
+    "actions": [
+      "فتح الأداة"
+    ],
+    "next_routes": [
+      "/studio/pdf",
+      "/studio/docs",
+      "/studio/sheets",
+      "/studio/presentations",
+      "/studio/logo",
+      "/studio/cv"
+    ]
+  },
+  {
+    "category": "البرمجيات والأدوات",
+    "route": "/studio/pdf",
+    "title": "Jenan PDF",
+    "kind": "tool",
+    "subtitle": "أدوات Jenan PRO الأصلية.",
+    "sections": [
+      "دمج",
+      "تقسيم",
+      "استخراج",
+      "حذف",
+      "ترتيب",
+      "تدوير",
+      "ضغط",
+      "صور↔PDF",
+      "Watermark",
+      "Page numbers",
+      "Redaction"
+    ],
+    "outputs": [
+      "PDF"
+    ],
+    "actions": [
+      "اختيار أداة"
+    ],
+    "next_routes": [
+      "/studio/pdf/editor"
+    ]
+  },
+  {
+    "category": "البرمجيات والأدوات",
+    "route": "/studio/pdf/editor",
+    "title": "محرر PDF",
+    "kind": "editor",
+    "subtitle": "أدوات Jenan PRO الأصلية.",
+    "sections": [
+      "صفحات",
+      "معاينة",
+      "ترتيب",
+      "أدوات",
+      "تقدم العملية"
+    ],
+    "outputs": [
+      "PDF"
+    ],
+    "actions": [
+      "حفظ",
+      "تنزيل"
+    ],
+    "next_routes": []
+  },
+  {
+    "category": "البرمجيات والأدوات",
+    "route": "/studio/docs",
+    "title": "Jenan Docs",
+    "kind": "editor",
+    "subtitle": "أدوات Jenan PRO الأصلية.",
+    "sections": [
+      "العناوين",
+      "الفقرات",
+      "الجداول",
+      "الصور",
+      "Header/Footer",
+      "أنماط",
+      "قوالب"
+    ],
+    "outputs": [
+      "DOCX",
+      "PDF"
+    ],
+    "actions": [
+      "حفظ",
+      "تصدير"
+    ],
+    "next_routes": []
+  },
+  {
+    "category": "البرمجيات والأدوات",
+    "route": "/studio/sheets",
+    "title": "Jenan Sheets",
+    "kind": "editor",
+    "subtitle": "أدوات Jenan PRO الأصلية.",
+    "sections": [
+      "Sheets",
+      "Cells",
+      "Formulas",
+      "Filters",
+      "Charts",
+      "KPI"
+    ],
+    "outputs": [
+      "XLSX",
+      "CSV",
+      "PDF"
+    ],
+    "actions": [
+      "حفظ",
+      "تصدير"
+    ],
+    "next_routes": []
+  },
+  {
+    "category": "البرمجيات والأدوات",
+    "route": "/studio/presentations",
+    "title": "Jenan Presentations",
+    "kind": "editor",
+    "subtitle": "أدوات Jenan PRO الأصلية.",
+    "sections": [
+      "Slides",
+      "Layouts",
+      "Themes",
+      "Charts",
+      "Images"
+    ],
+    "outputs": [
+      "PPTX عند الدعم",
+      "PDF"
+    ],
+    "actions": [
+      "حفظ",
+      "تصدير"
+    ],
+    "next_routes": []
+  },
+  {
+    "category": "البرمجيات والأدوات",
+    "route": "/studio/logo",
+    "title": "مصمم الشعار والهوية",
+    "kind": "wizard",
+    "subtitle": "أدوات Jenan PRO الأصلية.",
+    "sections": [
+      "الاسم",
+      "النشاط",
+      "الأسلوب",
+      "الألوان",
+      "المقترحات"
+    ],
+    "outputs": [
+      "PNG/SVG/PDF عند الدعم"
+    ],
+    "actions": [
+      "توليد",
+      "حفظ"
+    ],
+    "next_routes": []
+  },
+  {
+    "category": "البرمجيات والأدوات",
+    "route": "/studio/letterhead",
+    "title": "تصميم الورق الرسمي",
+    "kind": "editor",
+    "subtitle": "أدوات Jenan PRO الأصلية.",
+    "sections": [
+      "الشعار",
+      "بيانات الشركة",
+      "Header/Footer",
+      "المقاس"
+    ],
+    "outputs": [
+      "PDF/DOCX عند الدعم"
+    ],
+    "actions": [
+      "حفظ",
+      "تنزيل"
+    ],
+    "next_routes": []
+  },
+  {
+    "category": "البرمجيات والأدوات",
+    "route": "/studio/cv",
+    "title": "منشئ السيرة الذاتية",
+    "kind": "wizard",
+    "subtitle": "أدوات Jenan PRO الأصلية.",
+    "sections": [
+      "البيانات",
+      "الخبرة",
+      "التعليم",
+      "المهارات",
+      "القالب"
+    ],
+    "outputs": [
+      "PDF"
+    ],
+    "actions": [
+      "معاينة",
+      "تنزيل"
+    ],
+    "next_routes": []
+  },
+  {
+    "category": "البرمجيات والأدوات",
+    "route": "/studio/history",
+    "title": "سجل الملفات",
+    "kind": "list",
+    "subtitle": "أدوات Jenan PRO الأصلية.",
+    "sections": [
+      "الملف",
+      "النوع",
+      "التاريخ",
+      "الحالة"
+    ],
+    "outputs": [
+      "إصدارات"
+    ],
+    "actions": [
+      "فتح",
+      "استعادة"
+    ],
+    "next_routes": []
+  },
+  {
+    "category": "Jenan Software",
+    "route": "/software",
+    "title": "Jenan Software",
+    "kind": "dashboard",
+    "subtitle": "نظام تشغيل أعمال متكامل.",
+    "sections": [
+      "Sales",
+      "Accounting",
+      "HR",
+      "Inventory",
+      "CRM",
+      "Projects",
+      "POS",
+      "Purchases",
+      "Invoices",
+      "Company"
+    ],
+    "outputs": [
+      "تقارير تشغيلية"
+    ],
+    "actions": [
+      "فتح"
+    ],
+    "next_routes": [
+      "/software/sales",
+      "/software/accounting",
+      "/software/hr",
+      "/software/inventory",
+      "/software/crm"
+    ]
+  },
+  {
+    "category": "Jenan Software/Sales",
+    "route": "/software/sales",
+    "title": "Jenan Sales",
+    "kind": "dashboard",
+    "subtitle": "إدارة دورة المبيعات.",
+    "sections": [
+      "العملاء",
+      "العروض",
+      "أوامر البيع",
+      "الفواتير",
+      "سندات القبض",
+      "المنتجات",
+      "المرتجعات",
+      "التقارير"
+    ],
+    "outputs": [
+      "Sales Reports"
+    ],
+    "actions": [
+      "فتح"
+    ],
+    "next_routes": [
+      "/software/sales/customers",
+      "/software/sales/quotes",
+      "/software/sales/invoices"
+    ]
+  },
+  {
+    "category": "Jenan Software/Sales",
+    "route": "/software/sales/customers",
+    "title": "العملاء",
+    "kind": "list",
+    "subtitle": "إدارة العملاء.",
+    "sections": [
+      "بحث",
+      "فلترة",
+      "جدول",
+      "حالات",
+      "إجراءات"
+    ],
+    "outputs": [
+      "تقرير/تصدير"
+    ],
+    "actions": [
+      "إضافة",
+      "عرض",
+      "تعديل"
+    ],
+    "next_routes": []
+  },
+  {
+    "category": "Jenan Software/Sales",
+    "route": "/software/sales/quotes",
+    "title": "عروض الأسعار",
+    "kind": "list",
+    "subtitle": "إدارة عروض الأسعار.",
+    "sections": [
+      "بحث",
+      "فلترة",
+      "جدول",
+      "حالات",
+      "إجراءات"
+    ],
+    "outputs": [
+      "تقرير/تصدير"
+    ],
+    "actions": [
+      "إضافة",
+      "عرض",
+      "تعديل"
+    ],
+    "next_routes": []
+  },
+  {
+    "category": "Jenan Software/Sales",
+    "route": "/software/sales/orders",
+    "title": "أوامر البيع",
+    "kind": "list",
+    "subtitle": "إدارة أوامر البيع.",
+    "sections": [
+      "بحث",
+      "فلترة",
+      "جدول",
+      "حالات",
+      "إجراءات"
+    ],
+    "outputs": [
+      "تقرير/تصدير"
+    ],
+    "actions": [
+      "إضافة",
+      "عرض",
+      "تعديل"
+    ],
+    "next_routes": []
+  },
+  {
+    "category": "Jenan Software/Sales",
+    "route": "/software/sales/invoices",
+    "title": "فواتير المبيعات",
+    "kind": "list",
+    "subtitle": "إدارة فواتير المبيعات.",
+    "sections": [
+      "بحث",
+      "فلترة",
+      "جدول",
+      "حالات",
+      "إجراءات"
+    ],
+    "outputs": [
+      "تقرير/تصدير"
+    ],
+    "actions": [
+      "إضافة",
+      "عرض",
+      "تعديل"
+    ],
+    "next_routes": []
+  },
+  {
+    "category": "Jenan Software/Sales",
+    "route": "/software/sales/receipts",
+    "title": "سندات القبض",
+    "kind": "list",
+    "subtitle": "إدارة سندات القبض.",
+    "sections": [
+      "بحث",
+      "فلترة",
+      "جدول",
+      "حالات",
+      "إجراءات"
+    ],
+    "outputs": [
+      "تقرير/تصدير"
+    ],
+    "actions": [
+      "إضافة",
+      "عرض",
+      "تعديل"
+    ],
+    "next_routes": []
+  },
+  {
+    "category": "Jenan Software/Sales",
+    "route": "/software/sales/products",
+    "title": "المنتجات",
+    "kind": "list",
+    "subtitle": "إدارة المنتجات.",
+    "sections": [
+      "بحث",
+      "فلترة",
+      "جدول",
+      "حالات",
+      "إجراءات"
+    ],
+    "outputs": [
+      "تقرير/تصدير"
+    ],
+    "actions": [
+      "إضافة",
+      "عرض",
+      "تعديل"
+    ],
+    "next_routes": []
+  },
+  {
+    "category": "Jenan Software/Sales",
+    "route": "/software/sales/returns",
+    "title": "المرتجعات",
+    "kind": "list",
+    "subtitle": "إدارة المرتجعات.",
+    "sections": [
+      "بحث",
+      "فلترة",
+      "جدول",
+      "حالات",
+      "إجراءات"
+    ],
+    "outputs": [
+      "تقرير/تصدير"
+    ],
+    "actions": [
+      "إضافة",
+      "عرض",
+      "تعديل"
+    ],
+    "next_routes": []
+  },
+  {
+    "category": "Jenan Software/Sales",
+    "route": "/software/sales/reports",
+    "title": "تقارير المبيعات",
+    "kind": "dashboard",
+    "subtitle": "تقارير وتحليلات المبيعات.",
+    "sections": [
+      "الإيرادات",
+      "العملاء",
+      "المنتجات",
+      "التحصيل",
+      "الاتجاهات"
+    ],
+    "outputs": [
+      "PDF/Excel"
+    ],
+    "actions": [
+      "تصدير"
+    ],
+    "next_routes": []
+  },
+  {
+    "category": "Jenan Software",
+    "route": "/software/accounting",
+    "title": "المحاسبة",
+    "kind": "dashboard",
+    "subtitle": "الحسابات والقيود والتقارير المالية.",
+    "sections": [
+      "دليل الحسابات",
+      "القيود",
+      "المصروفات",
+      "الإيرادات",
+      "الضرائب",
+      "القوائم المالية"
+    ],
+    "outputs": [
+      "P&L",
+      "Balance Sheet",
+      "Cash Flow"
+    ],
+    "actions": [
+      "فتح التقرير"
+    ],
+    "next_routes": []
+  },
+  {
+    "category": "Jenan Software/HR",
+    "route": "/software/hr",
+    "title": "Jenan HR",
+    "kind": "dashboard",
+    "subtitle": "إدارة الموارد البشرية.",
+    "sections": [
+      "الموظفون",
+      "الحضور",
+      "الإجازات",
+      "الرواتب",
+      "الملفات",
+      "الأداء"
+    ],
+    "outputs": [
+      "HR Reports"
+    ],
+    "actions": [
+      "فتح"
+    ],
+    "next_routes": [
+      "/software/hr/employees",
+      "/software/hr/attendance",
+      "/software/hr/payroll"
+    ]
+  },
+  {
+    "category": "Jenan Software/HR",
+    "route": "/software/hr/employees",
+    "title": "الموظفون",
+    "kind": "list",
+    "subtitle": "إدارة الموظفون.",
+    "sections": [
+      "بحث",
+      "جدول",
+      "حالات",
+      "إجراءات"
+    ],
+    "outputs": [
+      "تقرير"
+    ],
+    "actions": [
+      "إضافة",
+      "عرض",
+      "تعديل"
+    ],
+    "next_routes": []
+  },
+  {
+    "category": "Jenan Software/HR",
+    "route": "/software/hr/attendance",
+    "title": "الحضور والانصراف",
+    "kind": "list",
+    "subtitle": "إدارة الحضور والانصراف.",
+    "sections": [
+      "بحث",
+      "جدول",
+      "حالات",
+      "إجراءات"
+    ],
+    "outputs": [
+      "تقرير"
+    ],
+    "actions": [
+      "إضافة",
+      "عرض",
+      "تعديل"
+    ],
+    "next_routes": []
+  },
+  {
+    "category": "Jenan Software/HR",
+    "route": "/software/hr/leave",
+    "title": "الإجازات",
+    "kind": "list",
+    "subtitle": "إدارة الإجازات.",
+    "sections": [
+      "بحث",
+      "جدول",
+      "حالات",
+      "إجراءات"
+    ],
+    "outputs": [
+      "تقرير"
+    ],
+    "actions": [
+      "إضافة",
+      "عرض",
+      "تعديل"
+    ],
+    "next_routes": []
+  },
+  {
+    "category": "Jenan Software/HR",
+    "route": "/software/hr/payroll",
+    "title": "الرواتب",
+    "kind": "list",
+    "subtitle": "إدارة الرواتب.",
+    "sections": [
+      "بحث",
+      "جدول",
+      "حالات",
+      "إجراءات"
+    ],
+    "outputs": [
+      "تقرير"
+    ],
+    "actions": [
+      "إضافة",
+      "عرض",
+      "تعديل"
+    ],
+    "next_routes": []
+  },
+  {
+    "category": "Jenan Software/HR",
+    "route": "/software/hr/performance",
+    "title": "الأداء",
+    "kind": "list",
+    "subtitle": "إدارة الأداء.",
+    "sections": [
+      "بحث",
+      "جدول",
+      "حالات",
+      "إجراءات"
+    ],
+    "outputs": [
+      "تقرير"
+    ],
+    "actions": [
+      "إضافة",
+      "عرض",
+      "تعديل"
+    ],
+    "next_routes": []
+  },
+  {
+    "category": "Jenan Software",
+    "route": "/software/inventory",
+    "title": "المخزون",
+    "kind": "dashboard",
+    "subtitle": "واجهة المخزون.",
+    "sections": [
+      "الأصناف",
+      "الكميات",
+      "الحركات",
+      "إعادة الطلب",
+      "الجرد"
+    ],
+    "outputs": [
+      "تقارير/تصدير"
+    ],
+    "actions": [
+      "فتح",
+      "تصدير"
+    ],
+    "next_routes": []
+  },
+  {
+    "category": "Jenan Software",
+    "route": "/software/crm",
+    "title": "CRM",
+    "kind": "dashboard",
+    "subtitle": "واجهة CRM.",
+    "sections": [
+      "Leads",
+      "Pipeline",
+      "Activities",
+      "Customers",
+      "Forecast"
+    ],
+    "outputs": [
+      "تقارير/تصدير"
+    ],
+    "actions": [
+      "فتح",
+      "تصدير"
+    ],
+    "next_routes": []
+  },
+  {
+    "category": "Jenan Software",
+    "route": "/software/projects",
+    "title": "إدارة المشاريع التشغيلية",
+    "kind": "dashboard",
+    "subtitle": "واجهة إدارة المشاريع التشغيلية.",
+    "sections": [
+      "المشاريع",
+      "المهام",
+      "الوقت",
+      "الميزانية",
+      "الفريق"
+    ],
+    "outputs": [
+      "تقارير/تصدير"
+    ],
+    "actions": [
+      "فتح",
+      "تصدير"
+    ],
+    "next_routes": []
+  },
+  {
+    "category": "Jenan Software",
+    "route": "/software/pos",
+    "title": "نقاط البيع",
+    "kind": "dashboard",
+    "subtitle": "واجهة نقاط البيع.",
+    "sections": [
+      "المبيعات",
+      "الورديات",
+      "الفروع",
+      "المنتجات",
+      "المدفوعات"
+    ],
+    "outputs": [
+      "تقارير/تصدير"
+    ],
+    "actions": [
+      "فتح",
+      "تصدير"
+    ],
+    "next_routes": []
+  },
+  {
+    "category": "Jenan Software",
+    "route": "/software/purchases",
+    "title": "المشتريات",
+    "kind": "dashboard",
+    "subtitle": "واجهة المشتريات.",
+    "sections": [
+      "الموردون",
+      "طلبات الشراء",
+      "الفواتير",
+      "الاستلام"
+    ],
+    "outputs": [
+      "تقارير/تصدير"
+    ],
+    "actions": [
+      "فتح",
+      "تصدير"
+    ],
+    "next_routes": []
+  },
+  {
+    "category": "Jenan Software",
+    "route": "/software/company",
+    "title": "إدارة الشركات",
+    "kind": "dashboard",
+    "subtitle": "واجهة إدارة الشركات.",
+    "sections": [
+      "الشركة",
+      "الفروع",
+      "المستخدمون",
+      "الصلاحيات",
+      "الإعدادات"
+    ],
+    "outputs": [
+      "تقارير/تصدير"
+    ],
+    "actions": [
+      "فتح",
+      "تصدير"
+    ],
+    "next_routes": []
+  },
+  {
+    "category": "Jenan Software",
+    "route": "/software/reports",
+    "title": "التقارير الموحدة",
+    "kind": "dashboard",
+    "subtitle": "واجهة التقارير الموحدة.",
+    "sections": [
+      "مبيعات",
+      "مالية",
+      "HR",
+      "مخزون",
+      "CRM",
+      "مشاريع"
+    ],
+    "outputs": [
+      "تقارير/تصدير"
+    ],
+    "actions": [
+      "فتح",
+      "تصدير"
+    ],
+    "next_routes": []
+  },
+  {
+    "category": "الوظائف والمواهب",
+    "route": "/talent",
+    "title": "الوظائف والمواهب",
+    "kind": "dashboard",
+    "subtitle": "رحلة توظيف كاملة.",
+    "sections": [
+      "وظائف",
+      "مواهب",
+      "المطابقة",
+      "أدوات أصحاب العمل",
+      "الإحصائيات"
+    ],
+    "outputs": [
+      "تقارير"
+    ],
+    "actions": [
+      "ابحث",
+      "ابدأ التوظيف"
+    ],
+    "next_routes": [
+      "/talent/jobs",
+      "/talent/employer"
+    ]
+  },
+  {
+    "category": "الوظائف والمواهب",
+    "route": "/talent/jobs",
+    "title": "البحث عن وظائف",
+    "kind": "list",
+    "subtitle": "رحلة توظيف كاملة.",
+    "sections": [
+      "بحث",
+      "فلترة",
+      "الموقع",
+      "الخبرة",
+      "الدوام"
+    ],
+    "outputs": [],
+    "actions": [
+      "عرض الوظيفة"
+    ],
+    "next_routes": [
+      "/talent/job/sample"
+    ]
+  },
+  {
+    "category": "الوظائف والمواهب",
+    "route": "/talent/job/sample",
+    "title": "تفاصيل الوظيفة",
+    "kind": "detail",
+    "subtitle": "رحلة توظيف كاملة.",
+    "sections": [
+      "الوصف",
+      "المتطلبات",
+      "المزايا",
+      "الموقع",
+      "الشركة"
+    ],
+    "outputs": [],
+    "actions": [
+      "قدم الآن"
+    ],
+    "next_routes": [
+      "/talent/apply/sample"
+    ]
+  },
+  {
+    "category": "الوظائف والمواهب",
+    "route": "/talent/apply/sample",
+    "title": "التقديم على وظيفة",
+    "kind": "form",
+    "subtitle": "رحلة توظيف كاملة.",
+    "sections": [
+      "السيرة",
+      "الأسئلة",
+      "الرسالة",
+      "المرفقات"
+    ],
+    "outputs": [
+      "طلب توظيف"
+    ],
+    "actions": [
+      "إرسال"
+    ],
+    "next_routes": []
+  },
+  {
+    "category": "الوظائف والمواهب",
+    "route": "/talent/profile",
+    "title": "ملف الباحث عن عمل",
+    "kind": "detail",
+    "subtitle": "رحلة توظيف كاملة.",
+    "sections": [
+      "النبذة",
+      "الخبرة",
+      "التعليم",
+      "المهارات",
+      "CV"
+    ],
+    "outputs": [
+      "CV"
+    ],
+    "actions": [
+      "تعديل",
+      "مشاركة"
+    ],
+    "next_routes": []
+  },
+  {
+    "category": "الوظائف والمواهب",
+    "route": "/talent/employer",
+    "title": "لوحة صاحب العمل",
+    "kind": "dashboard",
+    "subtitle": "رحلة توظيف كاملة.",
+    "sections": [
+      "الوظائف المنشورة",
+      "المتقدمون",
+      "المطابقة",
+      "الإحصائيات"
+    ],
+    "outputs": [
+      "Hiring Report"
+    ],
+    "actions": [
+      "نشر وظيفة",
+      "عرض المتقدمين"
+    ],
+    "next_routes": [
+      "/talent/employer/post",
+      "/talent/employer/applicants"
+    ]
+  },
+  {
+    "category": "الوظائف والمواهب",
+    "route": "/talent/employer/post",
+    "title": "نشر وظيفة",
+    "kind": "form",
+    "subtitle": "رحلة توظيف كاملة.",
+    "sections": [
+      "المسمى",
+      "الوصف",
+      "المهارات",
+      "الموقع",
+      "النطاق المالي إن وجد",
+      "الشروط"
+    ],
+    "outputs": [],
+    "actions": [
+      "نشر"
+    ],
+    "next_routes": []
+  },
+  {
+    "category": "الوظائف والمواهب",
+    "route": "/talent/employer/applicants",
+    "title": "إدارة المتقدمين",
+    "kind": "list",
+    "subtitle": "رحلة توظيف كاملة.",
+    "sections": [
+      "المرشح",
+      "المطابقة",
+      "المرحلة",
+      "الملاحظات"
+    ],
+    "outputs": [
+      "Applicant Report"
+    ],
+    "actions": [
+      "عرض المرشح"
+    ],
+    "next_routes": [
+      "/talent/candidate/sample"
+    ]
+  },
+  {
+    "category": "الوظائف والمواهب",
+    "route": "/talent/candidate/sample",
+    "title": "ملف المرشح",
+    "kind": "detail",
+    "subtitle": "رحلة توظيف كاملة.",
+    "sections": [
+      "الخبرة",
+      "المهارات",
+      "CV",
+      "المطابقة",
+      "الملاحظات"
+    ],
+    "outputs": [
+      "Candidate Summary"
+    ],
+    "actions": [
+      "نقل المرحلة",
+      "مراسلة"
+    ],
+    "next_routes": []
+  },
+  {
+    "category": "الوظائف والمواهب",
+    "route": "/talent/search",
+    "title": "البحث في المواهب",
+    "kind": "list",
+    "subtitle": "رحلة توظيف كاملة.",
+    "sections": [
+      "المهارات",
+      "الخبرة",
+      "الموقع",
+      "التوفر"
+    ],
+    "outputs": [],
+    "actions": [
+      "عرض المرشح"
+    ],
+    "next_routes": []
+  },
+  {
+    "category": "الوظائف والمواهب",
+    "route": "/talent/matching",
+    "title": "المطابقة الذكية",
+    "kind": "dashboard",
+    "subtitle": "رحلة توظيف كاملة.",
+    "sections": [
+      "نسبة المطابقة",
+      "الأسباب",
+      "الفجوات",
+      "الترتيب"
+    ],
+    "outputs": [
+      "Matching Report"
+    ],
+    "actions": [
+      "عرض"
+    ],
+    "next_routes": []
+  },
+  {
+    "category": "الوظائف والمواهب",
+    "route": "/talent/reports",
+    "title": "تقارير التوظيف",
+    "kind": "dashboard",
+    "subtitle": "رحلة توظيف كاملة.",
+    "sections": [
+      "الوظائف",
+      "المتقدمون",
+      "الوقت للتوظيف",
+      "المطابقة"
+    ],
+    "outputs": [
+      "PDF/Excel"
+    ],
+    "actions": [
+      "تصدير"
+    ],
+    "next_routes": []
+  },
+  {
+    "category": "التسويق والإعلانات",
+    "route": "/marketing",
+    "title": "التسويق والإعلانات",
+    "kind": "dashboard",
+    "subtitle": "رحلة تسويق كاملة.",
+    "sections": [
+      "الحملات",
+      "القنوات",
+      "الجمهور",
+      "العملاء المحتملون",
+      "التحليلات"
+    ],
+    "outputs": [
+      "Marketing Reports"
+    ],
+    "actions": [
+      "إنشاء حملة"
+    ],
+    "next_routes": [
+      "/marketing/campaign/new"
+    ]
+  },
+  {
+    "category": "التسويق والإعلانات",
+    "route": "/marketing/campaigns",
+    "title": "الحملات",
+    "kind": "list",
+    "subtitle": "رحلة تسويق كاملة.",
+    "sections": [
+      "الحالة",
+      "القناة",
+      "الميزانية",
+      "النتائج"
+    ],
+    "outputs": [
+      "Campaign Report"
+    ],
+    "actions": [
+      "عرض"
+    ],
+    "next_routes": [
+      "/marketing/campaign/sample"
+    ]
+  },
+  {
+    "category": "التسويق والإعلانات",
+    "route": "/marketing/campaign/new",
+    "title": "إنشاء حملة",
+    "kind": "wizard",
+    "subtitle": "رحلة تسويق كاملة.",
+    "sections": [
+      "الهدف",
+      "الجمهور",
+      "القنوات",
+      "الميزانية",
+      "المحتوى",
+      "المدة"
+    ],
+    "outputs": [],
+    "actions": [
+      "إطلاق"
+    ],
+    "next_routes": [
+      "/marketing/campaign/sample"
+    ]
+  },
+  {
+    "category": "التسويق والإعلانات",
+    "route": "/marketing/campaign/sample",
+    "title": "تفاصيل الحملة",
+    "kind": "dashboard",
+    "subtitle": "رحلة تسويق كاملة.",
+    "sections": [
+      "الإنفاق",
+      "الوصول",
+      "النقرات",
+      "العملاء",
+      "التحويل",
+      "العائد"
+    ],
+    "outputs": [
+      "Campaign Report"
+    ],
+    "actions": [
+      "تعديل",
+      "إيقاف",
+      "التقرير"
+    ],
+    "next_routes": [
+      "/marketing/report/sample"
+    ]
+  },
+  {
+    "category": "التسويق والإعلانات",
+    "route": "/marketing/audience",
+    "title": "الجمهور",
+    "kind": "dashboard",
+    "subtitle": "رحلة تسويق كاملة.",
+    "sections": [
+      "الشرائح",
+      "الموقع",
+      "الاهتمامات",
+      "الأداء"
+    ],
+    "outputs": [
+      "Audience Report"
+    ],
+    "actions": [
+      "إنشاء شريحة"
+    ],
+    "next_routes": []
+  },
+  {
+    "category": "التسويق والإعلانات",
+    "route": "/marketing/channels",
+    "title": "القنوات",
+    "kind": "dashboard",
+    "subtitle": "رحلة تسويق كاملة.",
+    "sections": [
+      "Social",
+      "Search",
+      "Email",
+      "Referral",
+      "Direct"
+    ],
+    "outputs": [
+      "Channel Report"
+    ],
+    "actions": [
+      "عرض"
+    ],
+    "next_routes": []
+  },
+  {
+    "category": "التسويق والإعلانات",
+    "route": "/marketing/leads",
+    "title": "العملاء المحتملون",
+    "kind": "list",
+    "subtitle": "رحلة تسويق كاملة.",
+    "sections": [
+      "الاسم",
+      "المصدر",
+      "الحالة",
+      "القيمة"
+    ],
+    "outputs": [
+      "Lead Export"
+    ],
+    "actions": [
+      "عرض",
+      "تحديث"
+    ],
+    "next_routes": []
+  },
+  {
+    "category": "التسويق والإعلانات",
+    "route": "/marketing/analytics",
+    "title": "تحليلات التسويق",
+    "kind": "dashboard",
+    "subtitle": "رحلة تسويق كاملة.",
+    "sections": [
+      "Funnel",
+      "CAC",
+      "CPL",
+      "ROAS",
+      "Conversion",
+      "Trend"
+    ],
+    "outputs": [
+      "Analytics Report"
+    ],
+    "actions": [
+      "تصدير"
+    ],
+    "next_routes": []
+  },
+  {
+    "category": "التسويق والإعلانات",
+    "route": "/marketing/report/sample",
+    "title": "تقرير الحملة",
+    "kind": "report",
+    "subtitle": "رحلة تسويق كاملة.",
+    "sections": [
+      "الملخص",
+      "القنوات",
+      "الجمهور",
+      "النتائج",
+      "التوصيات"
+    ],
+    "outputs": [
+      "PDF",
+      "Print",
+      "Share",
+      "Email"
+    ],
+    "actions": [
+      "تنزيل",
+      "طباعة",
+      "مشاركة",
+      "بريد"
+    ],
+    "next_routes": []
+  },
+  {
+    "category": "أهلية التمويل",
+    "route": "/funding",
+    "title": "مركز أهلية التمويل الذكي",
+    "kind": "dashboard",
+    "subtitle": "قياس الجاهزية دون ضمان التمويل.",
+    "sections": [
+      "درجة الجاهزية",
+      "الجهات المناسبة",
+      "المنتجات",
+      "المخاطر",
+      "الملف"
+    ],
+    "outputs": [
+      "Readiness Report"
+    ],
+    "actions": [
+      "ابدأ التقييم"
+    ],
+    "next_routes": [
+      "/funding/readiness"
+    ]
+  },
+  {
+    "category": "أهلية التمويل",
+    "route": "/funding/readiness",
+    "title": "تقييم الجاهزية",
+    "kind": "form",
+    "subtitle": "قياس الجاهزية دون ضمان التمويل.",
+    "sections": [
+      "بيانات المنشأة",
+      "التدفقات",
+      "الالتزامات",
+      "مدة النشاط",
+      "المستندات"
+    ],
+    "outputs": [],
+    "actions": [
+      "احسب الجاهزية"
+    ],
+    "next_routes": [
+      "/funding/result"
+    ]
+  },
+  {
+    "category": "أهلية التمويل",
+    "route": "/funding/result",
+    "title": "نتيجة الجاهزية",
+    "kind": "dashboard",
+    "subtitle": "قياس الجاهزية دون ضمان التمويل.",
+    "sections": [
+      "الدرجة",
+      "العوامل",
+      "القوة",
+      "التحسين",
+      "الجهات المحتملة"
+    ],
+    "outputs": [
+      "Readiness Summary"
+    ],
+    "actions": [
+      "التفاصيل",
+      "الفرص",
+      "التقرير"
+    ],
+    "next_routes": [
+      "/funding/company",
+      "/funding/opportunities",
+      "/funding/report"
+    ]
+  },
+  {
+    "category": "أهلية التمويل",
+    "route": "/funding/company",
+    "title": "ملف المنشأة",
+    "kind": "detail",
+    "subtitle": "قياس الجاهزية دون ضمان التمويل.",
+    "sections": [
+      "السجل",
+      "التأسيس",
+      "القطاع",
+      "المدينة",
+      "الإيرادات",
+      "المستندات"
+    ],
+    "outputs": [
+      "Company File"
+    ],
+    "actions": [
+      "تعديل",
+      "رفع مستند"
+    ],
+    "next_routes": []
+  },
+  {
+    "category": "أهلية التمويل",
+    "route": "/funding/opportunities",
+    "title": "فرص تمويل محتملة",
+    "kind": "list",
+    "subtitle": "قياس الجاهزية دون ضمان التمويل.",
+    "sections": [
+      "الجهة",
+      "المنتج",
+      "المتطلبات",
+      "الملاءمة"
+    ],
+    "outputs": [
+      "Opportunity List"
+    ],
+    "actions": [
+      "عرض"
+    ],
+    "next_routes": []
+  },
+  {
+    "category": "أهلية التمويل",
+    "route": "/funding/advisor",
+    "title": "Jenan AI Advisor",
+    "kind": "detail",
+    "subtitle": "قياس الجاهزية دون ضمان التمويل.",
+    "sections": [
+      "نقاط التحسين",
+      "المستندات الناقصة",
+      "مجالات التحسين"
+    ],
+    "outputs": [
+      "Advice Summary"
+    ],
+    "actions": [
+      "حفظ"
+    ],
+    "next_routes": []
+  },
+  {
+    "category": "أهلية التمويل",
+    "route": "/funding/report",
+    "title": "تقرير أهلية التمويل",
+    "kind": "report",
+    "subtitle": "قياس الجاهزية دون ضمان التمويل.",
+    "sections": [
+      "الدرجة",
+      "العوامل",
+      "القوة",
+      "التحسين",
+      "الفرص",
+      "المستندات"
+    ],
+    "outputs": [
+      "PDF",
+      "Print",
+      "Share",
+      "Email"
+    ],
+    "actions": [
+      "تنزيل",
+      "طباعة",
+      "مشاركة",
+      "بريد"
+    ],
+    "next_routes": []
+  },
+  {
+    "category": "Jenan Robotics",
+    "route": "/robotics",
+    "title": "Jenan Robotics — الروبوتات الذكية",
+    "kind": "dashboard",
+    "subtitle": "رحلة Robotics كاملة.",
+    "sections": [
+      "المستشار",
+      "التصنيفات",
+      "الروبوتات المميزة",
+      "القطاعات"
+    ],
+    "outputs": [
+      "Recommendations"
+    ],
+    "actions": [
+      "ابحث عن روبوت"
+    ],
+    "next_routes": [
+      "/robotics/search"
+    ]
+  },
+  {
+    "category": "Jenan Robotics",
+    "route": "/robotics/search",
+    "title": "البحث عن روبوت",
+    "kind": "form",
+    "subtitle": "رحلة Robotics كاملة.",
+    "sections": [
+      "المهمة",
+      "القطاع",
+      "الموقع",
+      "البيئة",
+      "الميزانية"
+    ],
+    "outputs": [
+      "Matching"
+    ],
+    "actions": [
+      "بحث"
+    ],
+    "next_routes": [
+      "/robotics/results"
+    ]
+  },
+  {
+    "category": "Jenan Robotics",
+    "route": "/robotics/results",
+    "title": "نتائج الروبوتات",
+    "kind": "list",
+    "subtitle": "رحلة Robotics كاملة.",
+    "sections": [
+      "البطاقات",
+      "المطابقة",
+      "المواصفات",
+      "الاستخدام"
+    ],
+    "outputs": [],
+    "actions": [
+      "عرض"
+    ],
+    "next_routes": [
+      "/robotics/item/sample"
+    ]
+  },
+  {
+    "category": "Jenan Robotics",
+    "route": "/robotics/item/sample",
+    "title": "تفاصيل روبوت",
+    "kind": "detail",
+    "subtitle": "رحلة Robotics كاملة.",
+    "sections": [
+      "الصور",
+      "المواصفات",
+      "المهام",
+      "القطاع",
+      "المقارنة"
+    ],
+    "outputs": [
+      "Specification Sheet"
+    ],
+    "actions": [
+      "طلب معلومات",
+      "مقارنة"
+    ],
+    "next_routes": []
+  },
+  {
+    "category": "Jenan Robotics",
+    "route": "/robotics/recommendations",
+    "title": "التوصيات",
+    "kind": "dashboard",
+    "subtitle": "رحلة Robotics كاملة.",
+    "sections": [
+      "الخيارات",
+      "الأسباب",
+      "المقارنة",
+      "المخاطر"
+    ],
+    "outputs": [
+      "Recommendation Report"
+    ],
+    "actions": [
+      "تصدير"
+    ],
+    "next_routes": []
+  },
+  {
+    "category": "الأدمن",
+    "route": "/admin",
+    "title": "لوحة تحكم الأدمن",
+    "kind": "dashboard",
+    "subtitle": "إدارة Jenan PRO.",
+    "sections": [
+      "المستخدمون",
+      "الاشتراكات",
+      "الإيرادات",
+      "الخدمات",
+      "النشاط",
+      "الصحة",
+      "التكلفة"
+    ],
+    "outputs": [
+      "Admin Reports"
+    ],
+    "actions": [
+      "فتح"
+    ],
+    "next_routes": [
+      "/admin/users",
+      "/admin/subscriptions",
+      "/admin/finance",
+      "/admin/health"
+    ]
+  },
+  {
+    "category": "الأدمن",
+    "route": "/admin/users",
+    "title": "المستخدمون",
+    "kind": "list",
+    "subtitle": "إدارة المستخدمون.",
+    "sections": [
+      "بحث",
+      "مؤشرات",
+      "جداول",
+      "حالات",
+      "إجراءات"
+    ],
+    "outputs": [
+      "تقارير/تصدير"
+    ],
+    "actions": [
+      "عرض"
+    ],
+    "next_routes": []
+  },
+  {
+    "category": "الأدمن",
+    "route": "/admin/subscriptions",
+    "title": "الاشتراكات",
+    "kind": "list",
+    "subtitle": "إدارة الاشتراكات.",
+    "sections": [
+      "بحث",
+      "مؤشرات",
+      "جداول",
+      "حالات",
+      "إجراءات"
+    ],
+    "outputs": [
+      "تقارير/تصدير"
+    ],
+    "actions": [
+      "عرض"
+    ],
+    "next_routes": []
+  },
+  {
+    "category": "الأدمن",
+    "route": "/admin/services",
+    "title": "الخدمات والأقسام",
+    "kind": "dashboard",
+    "subtitle": "إدارة الخدمات والأقسام.",
+    "sections": [
+      "بحث",
+      "مؤشرات",
+      "جداول",
+      "حالات",
+      "إجراءات"
+    ],
+    "outputs": [
+      "تقارير/تصدير"
+    ],
+    "actions": [
+      "عرض"
+    ],
+    "next_routes": []
+  },
+  {
+    "category": "الأدمن",
+    "route": "/admin/finance",
+    "title": "الإيرادات والتكاليف",
+    "kind": "dashboard",
+    "subtitle": "إدارة الإيرادات والتكاليف.",
+    "sections": [
+      "بحث",
+      "مؤشرات",
+      "جداول",
+      "حالات",
+      "إجراءات"
+    ],
+    "outputs": [
+      "تقارير/تصدير"
+    ],
+    "actions": [
+      "عرض"
+    ],
+    "next_routes": []
+  },
+  {
+    "category": "الأدمن",
+    "route": "/admin/ai",
+    "title": "تكاليف الذكاء والنماذج",
+    "kind": "dashboard",
+    "subtitle": "إدارة تكاليف الذكاء والنماذج.",
+    "sections": [
+      "بحث",
+      "مؤشرات",
+      "جداول",
+      "حالات",
+      "إجراءات"
+    ],
+    "outputs": [
+      "تقارير/تصدير"
+    ],
+    "actions": [
+      "عرض"
+    ],
+    "next_routes": []
+  },
+  {
+    "category": "الأدمن",
+    "route": "/admin/agents",
+    "title": "الوكلاء والروبوتات",
+    "kind": "dashboard",
+    "subtitle": "إدارة الوكلاء والروبوتات.",
+    "sections": [
+      "بحث",
+      "مؤشرات",
+      "جداول",
+      "حالات",
+      "إجراءات"
+    ],
+    "outputs": [
+      "تقارير/تصدير"
+    ],
+    "actions": [
+      "عرض"
+    ],
+    "next_routes": []
+  },
+  {
+    "category": "الأدمن",
+    "route": "/admin/audit",
+    "title": "سجل التدقيق",
+    "kind": "list",
+    "subtitle": "إدارة سجل التدقيق.",
+    "sections": [
+      "بحث",
+      "مؤشرات",
+      "جداول",
+      "حالات",
+      "إجراءات"
+    ],
+    "outputs": [
+      "تقارير/تصدير"
+    ],
+    "actions": [
+      "عرض"
+    ],
+    "next_routes": []
+  },
+  {
+    "category": "الأدمن",
+    "route": "/admin/health",
+    "title": "صحة النظام",
+    "kind": "dashboard",
+    "subtitle": "إدارة صحة النظام.",
+    "sections": [
+      "بحث",
+      "مؤشرات",
+      "جداول",
+      "حالات",
+      "إجراءات"
+    ],
+    "outputs": [
+      "تقارير/تصدير"
+    ],
+    "actions": [
+      "عرض"
+    ],
+    "next_routes": []
+  },
+  {
+    "category": "الأدمن",
+    "route": "/admin/reports",
+    "title": "تقارير الأدمن",
+    "kind": "dashboard",
+    "subtitle": "إدارة تقارير الأدمن.",
+    "sections": [
+      "بحث",
+      "مؤشرات",
+      "جداول",
+      "حالات",
+      "إجراءات"
+    ],
+    "outputs": [
+      "تقارير/تصدير"
+    ],
+    "actions": [
+      "عرض"
+    ],
+    "next_routes": []
+  },
+  {
+    "category": "المخرجات المشتركة",
+    "route": "/reports/view/general",
+    "title": "عارض التقرير",
+    "kind": "report",
+    "subtitle": "صفحة مخرج موحدة.",
+    "sections": [
+      "العنوان",
+      "الفهرس",
+      "المحتوى",
+      "الجداول",
+      "الرسوم",
+      "المصادر"
+    ],
+    "outputs": [
+      "PDF",
+      "Print",
+      "Share",
+      "Email"
+    ],
+    "actions": [
+      "تنزيل",
+      "طباعة",
+      "مشاركة",
+      "بريد"
+    ],
+    "next_routes": []
+  },
+  {
+    "category": "المخرجات المشتركة",
+    "route": "/reports/print/project-analysis",
+    "title": "طباعة تقرير تحليل المشروع",
+    "kind": "report",
+    "subtitle": "صفحة مخرج موحدة.",
+    "sections": [
+      "العنوان",
+      "الفهرس",
+      "المحتوى",
+      "الجداول",
+      "الرسوم",
+      "المصادر"
+    ],
+    "outputs": [
+      "PDF",
+      "Print",
+      "Share",
+      "Email"
+    ],
+    "actions": [
+      "تنزيل",
+      "طباعة",
+      "مشاركة",
+      "بريد"
+    ],
+    "next_routes": []
+  },
+  {
+    "category": "المخرجات المشتركة",
+    "route": "/reports/print/project-evaluation",
+    "title": "طباعة تقرير تقييم المشروع",
+    "kind": "report",
+    "subtitle": "صفحة مخرج موحدة.",
+    "sections": [
+      "العنوان",
+      "الفهرس",
+      "المحتوى",
+      "الجداول",
+      "الرسوم",
+      "المصادر"
+    ],
+    "outputs": [
+      "PDF",
+      "Print",
+      "Share",
+      "Email"
+    ],
+    "actions": [
+      "تنزيل",
+      "طباعة",
+      "مشاركة",
+      "بريد"
+    ],
+    "next_routes": []
+  },
+  {
+    "category": "المخرجات المشتركة",
+    "route": "/reports/view/portfolio",
+    "title": "تقرير المحفظة الاستثمارية",
+    "kind": "report",
+    "subtitle": "صفحة مخرج موحدة.",
+    "sections": [
+      "العنوان",
+      "الفهرس",
+      "المحتوى",
+      "الجداول",
+      "الرسوم",
+      "المصادر"
+    ],
+    "outputs": [
+      "PDF",
+      "Print",
+      "Share",
+      "Email"
+    ],
+    "actions": [
+      "تنزيل",
+      "طباعة",
+      "مشاركة",
+      "بريد"
+    ],
+    "next_routes": []
+  },
+  {
+    "category": "المخرجات المشتركة",
+    "route": "/reports/view/investment",
+    "title": "تقرير استثمار",
+    "kind": "report",
+    "subtitle": "صفحة مخرج موحدة.",
+    "sections": [
+      "العنوان",
+      "الفهرس",
+      "المحتوى",
+      "الجداول",
+      "الرسوم",
+      "المصادر"
+    ],
+    "outputs": [
+      "PDF",
+      "Print",
+      "Share",
+      "Email"
+    ],
+    "actions": [
+      "تنزيل",
+      "طباعة",
+      "مشاركة",
+      "بريد"
+    ],
+    "next_routes": []
+  }
+]

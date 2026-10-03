@@ -1,0 +1,49 @@
+70% ACCEPTANCE GATE — لكل قسم قبل الانتقال
+
+Visual:
+[ ] Composition قريب بوضوح من المرجع
+[ ] Hierarchy
+[ ] Cards / Panels
+[ ] Typography
+[ ] Spacing
+[ ] Icons
+[ ] Glass / Glow / Depth
+[ ] Charts / Tables / Networks
+[ ] Responsive behavior
+[ ] Jenan PRO only
+
+Functional:
+[ ] Routes
+[ ] Buttons
+[ ] Forms / Validation
+[ ] Details
+[ ] Reports
+[ ] Print/Export where supported
+[ ] Loading
+[ ] Empty
+[ ] Error
+[ ] No dead links
+[ ] No 404
+
+Responsive:
+[ ] 2560×1440
+[ ] 1920×1080
+[ ] 1440×900
+[ ] 1366×768
+[ ] 1280×800
+[ ] 1024×1366
+[ ] 820×1180
+[ ] 430×932
+[ ] 390×844
+[ ] 360×800
+
+Engineering:
+[ ] lint
+[ ] typecheck
+[ ] relevant tests
+[ ] build
+[ ] Git checkpoint
+[ ] Local project save
+
+PASS فقط عند:
+Visual Match ≈70% أو أعلى + Functional Flow يعمل + Responsive QA ناجح.
