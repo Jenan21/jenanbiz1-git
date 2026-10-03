@@ -154,7 +154,7 @@ async function findUserManagedFile(userId: string, fileId: string) {
     where: {
       id: fileId,
       OR: [
-        uploadedFileAccessWhere(userId),
+        { uploadedById: userId, projectId: null, marketListingId: null },
         { project: { OR: [{ createdById: userId }, { members: { some: { userId, role: { in: ["OWNER", "EDITOR"] } } } }] } },
         { marketListing: ownedOrganizationRecordWhere(userId) },
       ],

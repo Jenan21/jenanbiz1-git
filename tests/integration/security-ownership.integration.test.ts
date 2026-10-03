@@ -148,6 +148,21 @@ describe.sequential("security ownership and DTO boundaries", () => {
     await expect(createMarketingCampaign({ budgetMinor: 100, channel: "CONTENT", customerType: "INDIVIDUAL", organizationId, name: "Forged", objective: "Foreign organization association" }, outsiderId)).rejects.toThrow("cannot specify an organization");
   });
 
+  it.each(["VIEWER", "REVIEWER"] as const)("prevents a downgraded %s from deleting their previous project uploads", async (role) => {
+    await db.projectMember.updateMany({ where: { projectId, userId: memberId }, data: { role: "EDITOR" } });
+    const file = await uploadUserFile(memberId, new File(["Project evidence"], "evidence.txt", { type: "text/plain" }), projectId);
+    try {
+      await db.projectMember.updateMany({ where: { projectId, userId: memberId }, data: { role } });
+      expect(await deleteUserFile(memberId, file.id)).toBe(false);
+      expect(await db.fileAsset.findUnique({ where: { id: file.id } })).not.toBeNull();
+      expect((await downloadUserFile(ownerId, file.id))?.bytes).toEqual(new TextEncoder().encode("Project evidence"));
+      expect(await deleteUserFile(ownerId, file.id)).toBe(true);
+    } finally {
+      await deleteUserFile(ownerId, file.id);
+      await db.projectMember.updateMany({ where: { projectId, userId: memberId }, data: { role: "VIEWER" } });
+    }
+  });
+
   it.each(["suspended", "demoted"] as const)("revokes hiring and campaign access when the owner is %s", async (mode) => {
     await db.organizationMember.updateMany({ where: { organizationId, userId: ownerId }, data: { status: mode === "suspended" ? "SUSPENDED" : "ACTIVE", isOwner: mode !== "demoted" } });
     expect((await listMarketingCampaigns(ownerId)).map(({ id }) => id)).toEqual([personalCampaignId]);
