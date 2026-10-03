@@ -1,13 +1,17 @@
-import { ProjectsLiveServicePage } from "@/components/projects/projects-live-service-page";
+import { ProjectFeasibilityDashboard } from "@/components/projects/project-feasibility-dashboard";
+import { requireUser } from "@/lib/auth/session";
+import { getRequestDictionary } from "@/lib/i18n/server";
 
-export default function ProjectFeasibilityPage() {
+export default async function ProjectFeasibilityPage() {
+  const [{ locale }, user] = await Promise.all([
+    getRequestDictionary(),
+    requireUser("/projects/feasibility"),
+  ]);
+
   return (
-    <ProjectsLiveServicePage
-      title={["إعداد دراسة الجدوى", "Feasibility study"]}
-      description={["حسابات مالية وسيناريوهات مشتقة من المدخلات الفعلية فقط.", "Financial calculations and scenarios derived only from submitted inputs."]}
-      focus="feasibility"
-      flowGroup="feasibility"
-      route="/projects/feasibility"
+    <ProjectFeasibilityDashboard
+      locale={locale}
+      userLabel={user.profile?.displayName ?? user.email}
     />
   );
 }

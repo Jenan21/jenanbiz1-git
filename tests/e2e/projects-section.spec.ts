@@ -235,6 +235,13 @@ test.describe.serial("projects section acceptance", () => {
         await expect(
           page.locator(".project-analysis-dashboard__form"),
         ).toBeVisible();
+      } else if (route === "/projects/feasibility") {
+        await expect(
+          page.locator(".project-feasibility-dashboard"),
+        ).toHaveAttribute("data-project-feasibility-source", "USER_INPUT_REQUIRED");
+        await expect(
+          page.locator(".project-feasibility-dashboard__choices > article"),
+        ).toHaveCount(2);
       } else {
         await expect(page.locator(".projects-live-service")).toBeVisible();
         await expect(page.locator(".projects-workspace")).toBeVisible();
