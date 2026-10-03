@@ -52,7 +52,17 @@ function slugify(value: string) {
 function projectInclude() {
   return {
     phases: { orderBy: { sequence: "asc" as const } },
-    assessments: { orderBy: { type: "asc" as const } },
+    assessments: {
+      orderBy: { type: "asc" as const },
+      include: {
+        evidenceFiles: {
+          orderBy: { createdAt: "asc" as const },
+          include: {
+            fileAsset: { select: { id: true, fileName: true, mimeType: true, checksum: true, createdAt: true } },
+          },
+        },
+      },
+    },
     decisions: { orderBy: { createdAt: "desc" as const }, take: 1 },
     financialPlans: { orderBy: { version: "desc" as const }, take: 1 },
     risks: { orderBy: [{ score: "desc" as const }, { createdAt: "desc" as const }] },
@@ -238,7 +248,11 @@ export async function updateProjectPhase(
     await lockProjectMutation(transaction, projectId, userId, [ProjectMemberRole.OWNER, ProjectMemberRole.EDITOR]);
     const project = await transaction.project.findFirst({
       where: { id: projectId, ...projectAccessWhere(userId, [ProjectMemberRole.OWNER, ProjectMemberRole.EDITOR]) },
-      include: { phases: { orderBy: { sequence: "asc" } }, assessments: true, financialPlans: { orderBy: { version: "desc" }, take: 1 } },
+      include: {
+        phases: { orderBy: { sequence: "asc" } },
+        assessments: { include: { evidenceFiles: { select: { fileAssetId: true, fileAsset: { select: { checksum: true } } } } } },
+        financialPlans: { orderBy: { version: "desc" }, take: 1 },
+      },
     });
     if (!project) throw new Error("Project not found");
     const currentPhase = project.phases.find((item) => item.type === phaseType);
@@ -310,7 +324,7 @@ export async function updateProjectPhase(
 
 export async function recordProjectAssessment(
   projectId: string,
-  input: { type: ProjectAssessmentType; score?: number; summary?: string; source?: string },
+  input: { type: ProjectAssessmentType; score?: number; summary?: string; source?: string; evidenceFileIds?: string[] },
   userId: string,
 ) {
   const score = input.score;
@@ -326,6 +340,16 @@ export async function recordProjectAssessment(
     await lockProjectMutation(transaction, projectId, userId, [ProjectMemberRole.OWNER, ProjectMemberRole.EDITOR]);
     const project = await transaction.project.findFirst({ where: { id: projectId, ...projectAccessWhere(userId, [ProjectMemberRole.OWNER, ProjectMemberRole.EDITOR]) } });
     if (!project) throw new Error("Project not found");
+    const evidenceFileIds = input.evidenceFileIds;
+    if (evidenceFileIds !== undefined) {
+      const projectFiles = await transaction.fileAsset.findMany({
+        where: { id: { in: evidenceFileIds }, projectId },
+        select: { id: true },
+      });
+      if (projectFiles.length !== evidenceFileIds.length) {
+        throw new Error("Assessment evidence files must belong to the same project");
+      }
+    }
     const assessment = await transaction.projectAssessment.upsert({
       where: { projectId_type: { projectId, type: input.type } },
       update: {
@@ -345,6 +369,14 @@ export async function recordProjectAssessment(
         assessedAt: new Date(),
       },
     });
+    if (evidenceFileIds !== undefined) {
+      await transaction.projectAssessmentEvidence.deleteMany({ where: { assessmentId: assessment.id } });
+      if (evidenceFileIds.length) {
+        await transaction.projectAssessmentEvidence.createMany({
+          data: evidenceFileIds.map((fileAssetId) => ({ assessmentId: assessment.id, fileAssetId })),
+        });
+      }
+    }
     const revisionCount = await transaction.projectAssessmentRevision.count({ where: { assessmentId: assessment.id } });
     await transaction.projectAssessmentRevision.create({
       data: {
@@ -363,7 +395,7 @@ export async function recordProjectAssessment(
         action: "project.assessment.recorded",
         entityType: "ProjectAssessment",
         entityId: assessment.id,
-        metadata: { projectId, type: input.type, score: input.score ?? null },
+        metadata: { projectId, type: input.type, score: input.score ?? null, evidenceFileIds: evidenceFileIds ?? null },
       },
     });
         return assessment;
@@ -532,7 +564,10 @@ export async function recordProjectDecision(
     const project = await transaction.project.findFirst({
       where: { id: projectId, ...projectAccessWhere(userId, [ProjectMemberRole.OWNER, ProjectMemberRole.REVIEWER]) },
       include: {
-        assessments: { orderBy: { type: "asc" } },
+        assessments: {
+          orderBy: { type: "asc" },
+          include: { evidenceFiles: { select: { fileAssetId: true, fileAsset: { select: { checksum: true } } } } },
+        },
         phases: { where: { type: ProjectPhaseType.EVALUATION } },
         financialPlans: { orderBy: { version: "desc" }, take: 1 },
       },
@@ -558,7 +593,14 @@ export async function recordProjectDecision(
         evidenceSnapshot: {
           financialPlanId: project.financialPlans[0].id,
           financialPlanVersion: project.financialPlans[0].version,
-          assessments: project.assessments.map((assessment) => ({ type: assessment.type, score: assessment.score, summary: assessment.summary, source: assessment.source, assessedAt: assessment.assessedAt?.toISOString() ?? null })),
+          assessments: project.assessments.map((assessment) => ({
+            type: assessment.type,
+            score: assessment.score,
+            summary: assessment.summary,
+            source: assessment.source,
+            assessedAt: assessment.assessedAt?.toISOString() ?? null,
+            evidenceFiles: assessment.evidenceFiles.map((evidence) => ({ fileAssetId: evidence.fileAssetId, checksum: evidence.fileAsset.checksum })),
+          })),
         },
       },
     });
@@ -574,7 +616,13 @@ export async function startProject(projectId: string, userId: string) {
     await lockProjectMutation(transaction, projectId, userId, [ProjectMemberRole.OWNER]);
     const project = await transaction.project.findFirst({
       where: { id: projectId, ...projectAccessWhere(userId, [ProjectMemberRole.OWNER]) },
-      include: { phases: { orderBy: { sequence: "asc" } }, assessments: true, decisions: { orderBy: { createdAt: "desc" }, take: 1 }, financialPlans: { orderBy: { version: "desc" }, take: 1 }, risks: true },
+      include: {
+        phases: { orderBy: { sequence: "asc" } },
+        assessments: { include: { evidenceFiles: { select: { fileAssetId: true, fileAsset: { select: { checksum: true } } } } } },
+        decisions: { orderBy: { createdAt: "desc" }, take: 1 },
+        financialPlans: { orderBy: { version: "desc" }, take: 1 },
+        risks: true,
+      },
     });
     if (!project) throw new Error("Project not found");
     if (project.status === ProjectStatus.IN_PROGRESS) return project;

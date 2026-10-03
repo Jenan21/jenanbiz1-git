@@ -104,6 +104,7 @@ const commandSchema = z.discriminatedUnion("action", [
     score: z.number().int().min(0).max(100),
     summary: z.string().trim().min(3).max(4000),
     source: z.string().trim().min(3).max(500),
+    evidenceFileIds: z.array(z.string().cuid()).max(50).refine((ids) => new Set(ids).size === ids.length).optional(),
   }),
   z.object({ action: z.literal("start"), projectId: z.string().cuid() }),
   z.object({ action: z.literal("addMember"), projectId: z.string().cuid(), email: z.string().trim().email().max(320), role: z.enum(projectMemberRoles) }),

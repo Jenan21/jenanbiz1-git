@@ -1,6 +1,9 @@
 import { assessProjectQuality, type AssessmentInput } from "./project-quality";
 
-type DatedAssessment = AssessmentInput & { assessedAt?: Date | string | null };
+type DatedAssessment = AssessmentInput & {
+  assessedAt?: Date | string | null;
+  evidenceFiles?: Array<{ fileAssetId: string; checksum?: string | null; fileAsset?: { checksum?: string | null } }>;
+};
 type ReadinessProject = {
   assessments: DatedAssessment[];
   financialPlans: Array<{ id?: string; createdAt: Date | string; baseCase?: unknown }>;
@@ -18,8 +21,13 @@ export function isProjectDecisionCurrent(project: Pick<ReadinessProject, "assess
   if (!Array.isArray(evidence.assessments) || !project.financialPlans[0]?.id || evidence.financialPlanId !== project.financialPlans[0].id) return false;
   const snapshot = evidence.assessments;
   return project.assessments.length === snapshot.length && project.assessments.every((assessment) =>
-    snapshot.some((saved) => saved.type === assessment.type && saved.score === assessment.score && saved.summary === assessment.summary && saved.source === assessment.source &&
-      (saved.assessedAt ? new Date(saved.assessedAt).getTime() : null) === (assessment.assessedAt ? new Date(assessment.assessedAt).getTime() : null)),
+    snapshot.some((saved) => {
+      const savedFiles = (saved.evidenceFiles ?? []).map((file) => `${file.fileAssetId}:${file.checksum ?? file.fileAsset?.checksum ?? ""}`).sort();
+      const currentFiles = (assessment.evidenceFiles ?? []).map((file) => `${file.fileAssetId}:${file.fileAsset?.checksum ?? ""}`).sort();
+      return saved.type === assessment.type && saved.score === assessment.score && saved.summary === assessment.summary && saved.source === assessment.source &&
+        (saved.assessedAt ? new Date(saved.assessedAt).getTime() : null) === (assessment.assessedAt ? new Date(assessment.assessedAt).getTime() : null) &&
+        savedFiles.length === currentFiles.length && savedFiles.every((file, index) => file === currentFiles[index]);
+    }),
   );
 }
 
