@@ -1,13 +1,17 @@
-import { ProjectsLiveServicePage } from "@/components/projects/projects-live-service-page";
+import { ProjectAnalysisDashboard } from "@/components/projects/project-analysis-dashboard";
+import { requireUser } from "@/lib/auth/session";
+import { getRequestDictionary } from "@/lib/i18n/server";
 
-export default function ProjectAnalysisPage() {
+export default async function ProjectAnalysisPage() {
+  const [{ locale }, user] = await Promise.all([
+    getRequestDictionary(),
+    requireUser("/projects/analysis"),
+  ]);
+
   return (
-    <ProjectsLiveServicePage
-      title={["تحليل المشروع", "Project analysis"]}
-      description={["تحليل موثق يعتمد على بيانات المشروع والأدلة المحفوظة.", "Evidence-backed analysis using the project data and saved assessments."]}
-      focus="assessment"
-      flowGroup="analysis"
-      route="/projects/analysis"
+    <ProjectAnalysisDashboard
+      locale={locale}
+      userLabel={user.profile?.displayName ?? user.email}
     />
   );
 }

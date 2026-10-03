@@ -227,9 +227,35 @@ test.describe.serial("projects section acceptance", () => {
     ]) {
       const livePage = await page.goto(route, { waitUntil: "networkidle" });
       expect(livePage?.status(), `${route} live page`).toBe(200);
-      await expect(page.locator(".projects-live-service")).toBeVisible();
-      await expect(page.locator(".projects-workspace")).toBeVisible();
+      if (route === "/projects/analysis") {
+        await expect(page.locator(".project-analysis-dashboard")).toHaveAttribute(
+          "data-project-analysis-source",
+          "USER_INPUT_REQUIRED",
+        );
+        await expect(
+          page.locator(".project-analysis-dashboard__form"),
+        ).toBeVisible();
+      } else {
+        await expect(page.locator(".projects-live-service")).toBeVisible();
+        await expect(page.locator(".projects-workspace")).toBeVisible();
+      }
     }
+
+    await page.goto("/projects/analysis", { waitUntil: "networkidle" });
+    await page
+      .getByPlaceholder("Example: a healthy food delivery platform...")
+      .fill("Verified E2E analysis entry");
+    await page.getByLabel("Sector *").selectOption("Technology");
+    await page.getByLabel("City *").selectOption("Riyadh");
+    await page.getByLabel("Target audience *").selectOption("Businesses");
+    await Promise.all([
+      page.waitForURL(/\/projects\/analysis\/progress\?project=/),
+      page.getByRole("button", { name: "Start analysis" }).click(),
+    ]);
+    await expect(page.locator(".projects-workspace")).toHaveAttribute(
+      "data-project-route",
+      "/projects/analysis/progress",
+    );
 
     const intelligence = await page.request.post("/api/projects", {
       headers: { origin, "Content-Type": "application/json" },

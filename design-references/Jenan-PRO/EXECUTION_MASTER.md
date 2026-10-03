@@ -28,6 +28,8 @@ For the user investment workspace, `APPROVED_USER_INVESTMENTS_REFERENCE/user-inv
 
 For the projects section home, `APPROVED_PROJECTS_REFERENCE/projects-home.png` is the canonical visual source for `/projects`. Preserve its city command scene, four primary project services, project statistics, sector distribution, outputs, recent projects, activity, and sector intelligence. All values must come from the authenticated user's project records or use explicit unavailable states. The funding eligibility navigation item visible in the historical reference remains permanently removed.
 
+The four project subsection references under `APPROVED_PROJECT_SUBSECTION_REFERENCES/` are canonical for their section entry routes: `project-analysis.png` for `/projects/analysis`, `project-feasibility.png` for `/projects/feasibility`, `project-start.png` for `/projects/start`, and `project-evaluation.png` for `/projects/evaluation`. Implement and review them one at a time. Their sample scores, forecasts, budgets, maps, and recommendations are composition references only; production results must be calculated from submitted or persisted project data.
+
 Legacy `Jenan BIZ` or `جنان بيز` names are visual-history references only. New UI uses `Jenan PRO` and `جنان برو` exclusively.
 
 ## Permanent Product Decisions

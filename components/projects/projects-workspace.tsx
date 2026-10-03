@@ -9,6 +9,7 @@ import {
   useState,
 } from "react";
 import dynamic from "next/dynamic";
+import { useSearchParams } from "next/navigation";
 import {
   ProjectComplianceWorkspace,
   ProjectVendorWorkspace,
@@ -274,6 +275,7 @@ export function ProjectsWorkspace({
   route?: string;
 }) {
   const ar = locale === "ar";
+  const requestedProjectId = useSearchParams().get("project") ?? "";
   const [projects, setProjects] = useState<Project[]>([]);
   const [hasMoreProjects, setHasMoreProjects] = useState(false);
   const [projectSearch, setProjectSearch] = useState("");
@@ -404,9 +406,11 @@ export function ProjectsWorkspace({
         ),
       );
       setSelectedId((current) =>
-        mergedProjects.some((project) => project.id === current)
-          ? current
-          : (mergedProjects[0]?.id ?? ""),
+        mergedProjects.some((project) => project.id === requestedProjectId)
+          ? requestedProjectId
+          : mergedProjects.some((project) => project.id === current)
+            ? current
+            : (mergedProjects[0]?.id ?? ""),
       );
     } catch (error) {
       setMessage(
