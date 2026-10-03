@@ -114,7 +114,9 @@ function CountrySelector({
           <span className="auth-country__selected" aria-hidden="true">
             <strong>{selectedCountry?.[locale]}</strong>
             <small>
-              {locale === "ar" ? "يمكنك تغيير الدولة" : "You can change country"}
+              {locale === "ar"
+                ? "يمكنك تغيير الدولة"
+                : "You can change country"}
             </small>
           </span>
           <span className="auth-country__flag" aria-hidden="true">
@@ -360,16 +362,26 @@ export function AuthForm({ mode, locale, labels }: AuthFormProps) {
         </div>
       ) : (
         <>
-          <div className="auth-methods" role="group" aria-label={methodCopy.title}>
+          <div
+            className="auth-methods"
+            role="group"
+            aria-label={methodCopy.title}
+          >
             <span className="auth-method auth-method--active">
               <Icon name="mail" />
               {methodCopy.email}
             </span>
-            <span className="auth-method auth-method--disabled" aria-disabled="true">
+            <span
+              className="auth-method auth-method--disabled"
+              aria-disabled="true"
+            >
               <Icon name="shield" />
               {methodCopy.phone}
             </span>
-            <span className="auth-method auth-method--disabled" aria-disabled="true">
+            <span
+              className="auth-method auth-method--disabled"
+              aria-disabled="true"
+            >
               <Icon name="sparkles" />
               {methodCopy.apple}
             </span>

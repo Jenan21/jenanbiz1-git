@@ -40,7 +40,12 @@ export function AdminShell({ children }: { children: ReactNode }) {
           .find((item) => item.startsWith("locale="))
           ?.split("=")[1];
         const saved = localStorage.getItem("jenan-admin-lang");
-        const nextLocale = locale === "ar" || locale === "en" ? locale : saved === "ar" || saved === "en" ? saved : "ar";
+        const nextLocale =
+          locale === "ar" || locale === "en"
+            ? locale
+            : saved === "ar" || saved === "en"
+              ? saved
+              : "ar";
         setLang(nextLocale);
       } catch {
         setLang("ar");
@@ -101,12 +106,16 @@ export function AdminShell({ children }: { children: ReactNode }) {
             <h2>{t.heading}</h2>
           </div>
           <div className="admin-topbar__actions">
-            <span className="pill"><span className="live-dot" /> {t.live}</span>
+            <span className="pill">
+              <span className="live-dot" /> {t.live}
+            </span>
             <button
               type="button"
               className="btn small secondary"
               onClick={() => setLang((prev) => (prev === "ar" ? "en" : "ar"))}
-              aria-label={lang === "ar" ? "Switch to English" : "التبديل إلى العربية"}
+              aria-label={
+                lang === "ar" ? "Switch to English" : "التبديل إلى العربية"
+              }
             >
               {t.toggle}
             </button>
