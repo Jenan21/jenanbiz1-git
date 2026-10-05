@@ -53,6 +53,7 @@ jobs:
       - run: npx prisma generate
       - run: npm run db:migrate
       - run: npx prisma migrate status
+      - run: npm run academy:seed
       - run: npm run typecheck
       - run: npm run lint
       - run: npm run test

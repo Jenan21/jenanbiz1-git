@@ -8,7 +8,10 @@ const divisionDestinations = Object.fromEntries(
     module.services.map((service) => service.href),
   ]),
 );
-import { resolveModuleHref, resolveServiceHref } from "@/lib/platform/navigation";
+import {
+  resolveModuleHref,
+  resolveServiceHref,
+} from "@/lib/platform/navigation";
 import { resolveServiceTemplate } from "@/lib/platform/service-templates";
 
 const expectedServiceCounts = {
@@ -16,7 +19,7 @@ const expectedServiceCounts = {
   academy: 4,
   market: 2,
   talent: 2,
-  software: 2,
+  software: 5,
   programs: 4,
   marketing: 3,
 } as const;
