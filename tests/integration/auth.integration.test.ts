@@ -236,19 +236,44 @@ describe.sequential("real PostgreSQL authentication integration", () => {
 
   it("keeps recovery responses neutral for an unknown email", async () => {
     let deliveries = 0;
-    const requested = await requestPasswordReset(
+    const provider = {
+      name: "integration-email",
+      async send() {
+        deliveries += 1;
+        return { messageId: "unexpected" };
+      },
+    };
+    const unknownRequest = await requestPasswordReset(
       "missing.account@example.test",
       {},
-      {
-        name: "integration-email",
-        async send() {
-          deliveries += 1;
-          return { messageId: "unexpected" };
-        },
-      },
+      provider,
     );
-    expect(requested).toEqual({ accepted: true, delivery: "email" });
+    expect(unknownRequest).toEqual({ accepted: true, delivery: "email" });
     expect(deliveries).toBe(0);
+
+    await registerUser(baseRegistration);
+    const knownRequest = await requestPasswordReset(
+      baseRegistration.email,
+      {},
+      provider,
+    );
+    expect(knownRequest).toEqual(unknownRequest);
+    expect(deliveries).toBe(1);
+  });
+
+  it("keeps password-reset errors neutral for disabled accounts", async () => {
+    const registered = await registerUser(baseRegistration);
+    await db.user.update({
+      where: { id: registered.user.id },
+      data: { status: UserStatus.SUSPENDED },
+    });
+    await expect(
+      confirmPasswordReset({
+        email: baseRegistration.email,
+        code: "000000",
+        password: "Replacement-Password-2026!",
+      }),
+    ).rejects.toMatchObject({ code: "INVALID_OR_EXPIRED_CODE" });
   });
 
   it("rejects invalid registration input before database access", () => {
