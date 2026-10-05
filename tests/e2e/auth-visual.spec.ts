@@ -175,6 +175,16 @@ for (const locale of ["ar", "en"] as const) {
             "data-source",
             "manual",
           );
+          const termsDisclosure = page.locator(".auth-form__terms-details");
+          await termsDisclosure.locator("summary").click();
+          await expect(termsDisclosure.locator("p")).toBeVisible();
+          const termsCheckbox = page.locator('input[name="terms"]');
+          await termsCheckbox.check();
+          await expect(termsCheckbox).toBeChecked();
+          await termsCheckbox.uncheck();
+          await expect(termsCheckbox).not.toBeChecked();
+          await termsDisclosure.locator("summary").click();
+          await expect(termsDisclosure.locator("p")).toBeHidden();
         }
 
         if (route.screen === "forgot") {

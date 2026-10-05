@@ -780,12 +780,8 @@ body:has(.access-page) nextjs-portal {
 }
 
 .access-page__form-panel .auth-form__terms-details p {
-  position: absolute;
-  z-index: 5;
-  right: 0;
-  bottom: calc(100% + 8px);
   width: min(310px, calc(100vw - 70px));
-  margin: 0;
+  margin: 8px 0 0;
   padding: 10px 12px;
   border: 1px solid rgba(89, 243, 255, 0.3);
   border-radius: 9px;
