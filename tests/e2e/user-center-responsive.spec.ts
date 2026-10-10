@@ -176,4 +176,40 @@ test.describe.serial("User center responsive acceptance", () => {
       });
     }
   }
+
+  test("a user can hide a section without blocking its direct route, then restore it", async ({
+    context,
+    page,
+  }) => {
+    const sessionToken = await createE2ESession(e2eIdentity.user.email);
+    await context.addCookies([
+      { name: "locale", value: "en", url: "http://127.0.0.1:3101" },
+      {
+        name: "jenan_session",
+        value: sessionToken,
+        url: "http://127.0.0.1:3101",
+        httpOnly: true,
+        sameSite: "Lax",
+      },
+    ]);
+
+    await page.goto("/user/interface");
+    await page.getByRole("button", { name: "Hide Projects section" }).click();
+    await expect(page.getByText("Interface customization saved.")).toBeVisible();
+
+    await page.goto("/dashboard");
+    const projectLinks = page.locator('a[href="/projects"]');
+    await expect(projectLinks.first()).toBeHidden();
+    expect(await projectLinks.evaluateAll((links) => links.every((link) => getComputedStyle(link).display === "none"))).toBe(true);
+
+    const directResponse = await page.goto("/projects");
+    expect(directResponse?.status()).toBe(200);
+
+    await page.goto("/user/interface");
+    await page.getByRole("button", { name: "Show Projects section" }).click();
+    await expect(page.getByText("Interface customization saved.")).toBeVisible();
+
+    await page.goto("/dashboard");
+    await expect(page.locator('a[href="/projects"]').first()).toBeVisible();
+  });
 });

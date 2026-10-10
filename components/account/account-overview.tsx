@@ -168,6 +168,10 @@ export function AccountOverview({
             <Icon name="shield" />
             {ar ? "بيانات خاصة بهذا الحساب" : "Data scoped to this account"}
           </span>
+          <Link className="account-overview__customize" href="/user/interface">
+            <Icon name="settings" />
+            {ar ? "تخصيص الأقسام والخدمات" : "Customize sections and services"}
+          </Link>
         </div>
         <strong>
           <span>{countTotal(overview)}</span>

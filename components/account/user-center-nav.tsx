@@ -7,6 +7,7 @@ const links = [
   ["/user/unlocks", "الخدمات المجانية", "Community access"],
   ["/user/payments", "المدفوعات", "Payments"],
   ["/user/reports", "التقارير", "Reports"],
+  ["/user/interface", "تخصيص الواجهة", "Interface"],
 ] as const;
 
 export function UserCenterNav({ activeRoute, locale }: { activeRoute: string; locale: Locale }) {

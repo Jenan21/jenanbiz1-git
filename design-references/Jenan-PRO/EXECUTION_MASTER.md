@@ -78,6 +78,7 @@ Required responsive checks: 2560x1440, 1920x1080, 1440x900, 1366x768, 1280x800, 
 
 - Account/dashboard, investment data and detail, voluntary social unlocks, payments, invoice, reports, notifications, and activity.
 - Social unlocks must follow platform policies. Use official APIs only where allowed; otherwise use claim/manual/periodic verification. Never use bots or fake followers.
+- `/user/interface` is the user-owned interface customization center. It may hide allowlisted sections and services from navigation, cards, and shared links to reduce clutter, while preserving all records and direct-route access. Account recovery surfaces, `/user`, `/account`, and `/user/interface` must always remain visible. Preferences are private to each user, auditable, reversible individually or as a group, and restorable in one action.
 
 ### Projects
 

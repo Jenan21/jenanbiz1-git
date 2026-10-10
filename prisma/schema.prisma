@@ -897,6 +897,7 @@ model Profile {
   accountType String?
   city        String?
   interests   Json?
+  hiddenInterfacePaths Json?
   onboardedAt DateTime?
   createdAt   DateTime  @default(now())
   updatedAt   DateTime  @updatedAt

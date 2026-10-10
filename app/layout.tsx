@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { cookies, headers } from "next/headers";
 import type { ReactNode } from "react";
+import { InterfaceVisibilityProvider } from "@/components/account/interface-visibility-provider";
 import { getDirection, resolveLocale } from "@/lib/i18n";
 import "@fontsource-variable/alexandria";
 import "@/styles/globals.css";
@@ -27,6 +28,7 @@ import "@/styles/admin-operations.css";
 import "@/styles/reports.css";
 import "@/styles/auth-workflow.css";
 import "@/styles/user-center.css";
+import "@/styles/interface-visibility.css";
 import "@/styles/user-investments-dashboard.css";
 import "@/styles/academy-flow.css";
 import "@/styles/market-flow.css";
@@ -85,7 +87,10 @@ export default async function RootLayout({
       data-theme="balanced-dark"
       suppressHydrationWarning
     >
-      <body className="app-shell">{children}</body>
+      <body className="app-shell">
+        <InterfaceVisibilityProvider />
+        {children}
+      </body>
     </html>
   );
 }

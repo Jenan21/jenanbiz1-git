@@ -7,6 +7,7 @@ export const USER_CENTER_ROUTES = [
   { id: "payments", path: "/user/payments", source: "PAYMENT_RECORDS", outputs: "INVOICE_LINK" },
   { id: "invoice", path: "/user/payments/invoice", source: "PAYMENT_RECORDS", outputs: "PRINT" },
   { id: "reports", path: "/user/reports", source: "PROJECT_AND_AUDIT_RECORDS", outputs: "REPORT_LINKS" },
+  { id: "interface", path: "/user/interface", source: "PROFILE_PREFERENCES", outputs: "NONE" },
 ] as const;
 
 export type UserCenterRoute = (typeof USER_CENTER_ROUTES)[number];
