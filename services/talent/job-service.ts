@@ -1,4 +1,4 @@
-import { JobApplicationStatus, JobPostingStatus, Prisma, StudioDocumentKind } from "@/generated/prisma/client";
+import { JobApplicationStatus, JobPostingStatus, Prisma, StudioDocumentKind, TalentInterviewMode, TalentInterviewStatus } from "@/generated/prisma/client";
 import { db } from "@/lib/db";
 
 const postingInclude = {
@@ -110,6 +110,45 @@ export async function listJobPostings(userId: string, filters: JobPostingFilters
   });
 }
 
+export async function listSavedJobs(userId: string) {
+  return db.talentSavedJob.findMany({
+    where: { userId },
+    include: { jobPosting: { include: postingInclude } },
+    orderBy: { createdAt: "desc" },
+  });
+}
+
+export async function saveJob(jobPostingId: string, userId: string) {
+  return db.$transaction(async (transaction) => {
+    const posting = await transaction.jobPosting.findFirst({
+      where: { id: jobPostingId, status: JobPostingStatus.PUBLISHED, createdById: { not: userId } },
+      select: { id: true },
+    });
+    if (!posting) throw new Error("Published job posting not found");
+    const savedJob = await transaction.talentSavedJob.upsert({
+      where: { userId_jobPostingId: { userId, jobPostingId } },
+      create: { userId, jobPostingId },
+      update: {},
+      include: { jobPosting: { include: postingInclude } },
+    });
+    await transaction.auditLog.create({
+      data: { actorId: userId, action: "talent.job.saved", entityType: "JobPosting", entityId: jobPostingId },
+    });
+    return savedJob;
+  });
+}
+
+export async function removeSavedJob(jobPostingId: string, userId: string) {
+  return db.$transaction(async (transaction) => {
+    const removed = await transaction.talentSavedJob.deleteMany({ where: { userId, jobPostingId } });
+    if (!removed.count) throw new Error("Saved job not found");
+    await transaction.auditLog.create({
+      data: { actorId: userId, action: "talent.job.unsaved", entityType: "JobPosting", entityId: jobPostingId },
+    });
+    return { jobPostingId };
+  });
+}
+
 export async function createJobPosting(input: { benefits?: string; city?: string; conditions?: string; countryCode?: string; currency?: string; department?: string; description: string; organizationId?: string; questions?: Array<{ prompt: string; required?: boolean }>; requiredSkills?: string; salaryMaxMinor?: number; salaryMinMinor?: number; title: string; workMode: "ON_SITE" | "HYBRID" | "REMOTE" }, userId: string) {
   if (input.organizationId) {
     const membership = await db.organizationMember.findFirst({ where: { organizationId: input.organizationId, userId, status: "ACTIVE", isOwner: true }, select: { id: true } });
@@ -211,7 +250,7 @@ export async function listDiscoverableTalent(userId: string, query?: string) {
 export async function listMyJobApplications(userId: string) {
   return db.jobApplication.findMany({
     where: { applicantId: userId },
-    include: { jobPosting: { include: { organization: { select: { name: true } }, createdBy: { include: { profile: true } } } }, cvDocument: { select: { id: true, title: true, currentVersion: true } }, answers: { orderBy: { createdAt: "asc" } }, messages: { include: { sender: { select: { profile: { select: { displayName: true } } } } }, orderBy: { createdAt: "asc" } } },
+    include: { jobPosting: { include: { organization: { select: { id: true, name: true } }, createdBy: { include: { profile: true } } } }, cvDocument: { select: { id: true, title: true, currentVersion: true } }, answers: { orderBy: { createdAt: "asc" } }, interviews: { orderBy: { scheduledAt: "desc" } }, messages: { include: { sender: { select: { profile: { select: { displayName: true } } } } }, orderBy: { createdAt: "asc" } } },
     orderBy: { updatedAt: "desc" },
   });
 }
@@ -222,6 +261,87 @@ export async function withdrawJobApplication(applicationId: string, userId: stri
     if (!application) throw new Error("Active job application not found");
     const updated = await transaction.jobApplication.update({ where: { id: application.id }, data: { status: JobApplicationStatus.WITHDRAWN } });
     await transaction.auditLog.create({ data: { actorId: userId, action: "talent.job.application.withdrawn", entityType: "JobApplication", entityId: application.id } });
+    return updated;
+  });
+}
+
+export async function scheduleTalentInterview(
+  input: {
+    applicationId: string;
+    durationMinutes: number;
+    location?: string;
+    mode: "VIDEO" | "PHONE" | "ON_SITE";
+    notes?: string;
+    scheduledAt: string;
+  },
+  userId: string,
+) {
+  const scheduledAt = new Date(input.scheduledAt);
+  if (Number.isNaN(scheduledAt.getTime()) || scheduledAt <= new Date()) throw new Error("Interview time must be in the future");
+  return db.$transaction(async (transaction) => {
+    const application = await transaction.jobApplication.findFirst({
+      where: {
+        id: input.applicationId,
+        status: { in: [JobApplicationStatus.UNDER_REVIEW, JobApplicationStatus.ACCEPTED] },
+        jobPosting: { createdById: userId },
+      },
+      select: { id: true, applicantId: true, jobPosting: { select: { id: true, title: true } } },
+    });
+    if (!application) throw new Error("Reviewable job application not found");
+    const interview = await transaction.talentInterview.create({
+      data: {
+        applicationId: application.id,
+        createdById: userId,
+        durationMinutes: input.durationMinutes,
+        location: input.location?.trim() || undefined,
+        mode: TalentInterviewMode[input.mode],
+        notes: input.notes?.trim() || undefined,
+        scheduledAt,
+      },
+    });
+    await transaction.notification.create({
+      data: {
+        userId: application.applicantId,
+        type: "TALENT_INTERVIEW",
+        title: "Interview scheduled",
+        body: `An interview was scheduled for ${application.jobPosting.title}.`,
+        data: { applicationId: application.id, interviewId: interview.id, jobPostingId: application.jobPosting.id, scheduledAt: interview.scheduledAt.toISOString() },
+      },
+    });
+    await transaction.auditLog.create({
+      data: { actorId: userId, action: "talent.interview.scheduled", entityType: "TalentInterview", entityId: interview.id, metadata: { applicationId: application.id } },
+    });
+    return interview;
+  });
+}
+
+export async function updateTalentInterviewStatus(
+  interviewId: string,
+  status: "COMPLETED" | "CANCELLED",
+  userId: string,
+) {
+  return db.$transaction(async (transaction) => {
+    const interview = await transaction.talentInterview.findFirst({
+      where: { id: interviewId, createdById: userId, status: TalentInterviewStatus.SCHEDULED },
+      select: { id: true, applicationId: true, application: { select: { applicantId: true, jobPosting: { select: { id: true, title: true } } } } },
+    });
+    if (!interview) throw new Error("Scheduled interview not found");
+    const updated = await transaction.talentInterview.update({
+      where: { id: interview.id },
+      data: { status: TalentInterviewStatus[status] },
+    });
+    await transaction.notification.create({
+      data: {
+        userId: interview.application.applicantId,
+        type: "TALENT_INTERVIEW",
+        title: status === "CANCELLED" ? "Interview cancelled" : "Interview completed",
+        body: `The interview for ${interview.application.jobPosting.title} was marked ${status.toLowerCase()}.`,
+        data: { applicationId: interview.applicationId, interviewId: interview.id, jobPostingId: interview.application.jobPosting.id, status },
+      },
+    });
+    await transaction.auditLog.create({
+      data: { actorId: userId, action: "talent.interview.status.updated", entityType: "TalentInterview", entityId: interview.id, metadata: { status } },
+    });
     return updated;
   });
 }
@@ -246,6 +366,7 @@ export async function listOwnedJobApplications(userId: string) {
       applicant: { select: { email: true, profile: { select: { displayName: true } } } },
       cvDocument: { select: { id: true, title: true, currentVersion: true, content: true } },
       answers: { orderBy: { createdAt: "asc" } },
+      interviews: { orderBy: { scheduledAt: "desc" } },
       messages: {
         include: { sender: { select: { profile: { select: { displayName: true } } } } },
         orderBy: { createdAt: "asc" },

@@ -395,6 +395,18 @@ enum JobApplicationStatus {
   ACCEPTED
 }
 
+enum TalentInterviewMode {
+  VIDEO
+  PHONE
+  ON_SITE
+}
+
+enum TalentInterviewStatus {
+  SCHEDULED
+  COMPLETED
+  CANCELLED
+}
+
 enum MarketingCampaignStatus {
   DRAFT
   ACTIVE
@@ -833,7 +845,9 @@ model User {
   learnerCertificates        LearnerCertificate[]
   createdJobPostings         JobPosting[]                @relation("JobPostingCreator")
   jobApplications            JobApplication[]            @relation("JobApplicant")
+  savedTalentJobs            TalentSavedJob[]
   sentTalentMessages         TalentMessage[]             @relation("TalentMessageSender")
+  createdTalentInterviews    TalentInterview[]            @relation("TalentInterviewCreator")
   talentProfile              TalentProfile?
   marketingCampaigns         MarketingCampaign[]         @relation("MarketingCampaignCreator")
   payments                   Payment[]                   @relation("PaymentPayer")
@@ -3408,6 +3422,7 @@ model JobPosting {
   createdBy      User             @relation("JobPostingCreator", fields: [createdById], references: [id], onDelete: Restrict)
   organization   Organization?    @relation(fields: [organizationId], references: [id], onDelete: SetNull)
   applications   JobApplication[]
+  savedBy        TalentSavedJob[]
   questions      JobPostingQuestion[]
   createdAt      DateTime         @default(now())
   updatedAt      DateTime         @updatedAt
@@ -3472,6 +3487,7 @@ model JobApplication {
   cvDocument      StudioDocument?      @relation("JobApplicationCv", fields: [cvDocumentId], references: [id], onDelete: SetNull)
   answers         JobApplicationAnswer[]
   messages        TalentMessage[]
+  interviews      TalentInterview[]
   createdAt       DateTime             @default(now())
   updatedAt       DateTime             @updatedAt
 
@@ -3492,6 +3508,39 @@ model TalentMessage {
 
   @@index([applicationId, createdAt])
   @@index([senderId, createdAt])
+}
+
+model TalentSavedJob {
+  id           String     @id @default(cuid())
+  userId       String
+  jobPostingId String
+  user         User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  jobPosting   JobPosting @relation(fields: [jobPostingId], references: [id], onDelete: Cascade)
+  createdAt    DateTime   @default(now())
+
+  @@unique([userId, jobPostingId])
+  @@index([userId, createdAt])
+  @@index([jobPostingId])
+}
+
+model TalentInterview {
+  id              String                @id @default(cuid())
+  applicationId   String
+  createdById     String
+  scheduledAt     DateTime
+  durationMinutes Int                   @default(30)
+  mode            TalentInterviewMode
+  location        String?
+  notes           String?
+  status          TalentInterviewStatus @default(SCHEDULED)
+  application     JobApplication        @relation(fields: [applicationId], references: [id], onDelete: Cascade)
+  createdBy       User                  @relation("TalentInterviewCreator", fields: [createdById], references: [id], onDelete: Restrict)
+  createdAt       DateTime              @default(now())
+  updatedAt       DateTime              @updatedAt
+
+  @@index([applicationId, scheduledAt])
+  @@index([createdById, status])
+  @@index([scheduledAt, status])
 }
 
 model JobApplicationAnswer {

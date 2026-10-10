@@ -7,10 +7,15 @@ import {
   listJobPostings,
   listMyJobApplications,
   listOwnedJobApplications,
+  listSavedJobs,
   listTalentMatches,
+  removeSavedJob,
+  saveJob,
   saveTalentProfile,
+  scheduleTalentInterview,
   updateJobApplicationStatus,
   updateJobPostingStatus,
+  updateTalentInterviewStatus,
   withdrawJobApplication,
 } from "@/services/talent/job-service";
 import { createStudioDocument } from "@/services/studio/studio-document-service";
@@ -68,6 +73,12 @@ describe("talent domain", () => {
     const visible = await listJobPostings(applicant.id, { countryCode: "SA", search: "growth", workMode: "HYBRID" });
     expect(visible.map((posting) => posting.id)).toContain(strong.id);
     expect(visible.map((posting) => posting.id)).not.toContain(weak.id);
+    await expect(saveJob(strong.id, owner.id)).rejects.toThrow("Published job posting not found");
+    await saveJob(strong.id, applicant.id);
+    await saveJob(strong.id, applicant.id);
+    expect((await listSavedJobs(applicant.id)).map((savedJob) => savedJob.jobPostingId)).toContain(strong.id);
+    await removeSavedJob(strong.id, applicant.id);
+    expect(await listSavedJobs(applicant.id)).toHaveLength(0);
 
     const cv = await createStudioDocument({ kind: "CV", title: "Applicant CV", content: { name: "Talent applicant", role: "AI growth lead" } }, applicant.id);
     await saveTalentProfile({ headline: "AI growth operator", summary: "I build measurable growth systems across research, sales operations, automation, and reporting.", countryCode: "SA", city: "Riyadh", yearsExperience: 6, skills: "market research, sales operations, ai, reporting", desiredWorkModes: ["HYBRID", "REMOTE"], availability: "Within 30 days", cvDocumentId: cv.id, isDiscoverable: true }, applicant.id);
@@ -98,9 +109,19 @@ describe("talent domain", () => {
     expect((await listMyJobApplications(applicant.id))[0]?.id).toBe(application.id);
     expect((await updateJobApplicationStatus(application.id, "UNDER_REVIEW", owner.id)).status).toBe("UNDER_REVIEW");
     expect((await updateJobApplicationStatus(application.id, "ACCEPTED", owner.id, "Proceed to the next hiring stage.")).status).toBe("ACCEPTED");
+    const interview = await scheduleTalentInterview({
+      applicationId: application.id,
+      durationMinutes: 45,
+      location: "https://meet.example.test/talent-interview",
+      mode: "VIDEO",
+      scheduledAt: new Date(Date.now() + 86_400_000).toISOString(),
+    }, owner.id);
+    expect((await listMyJobApplications(applicant.id))[0]?.interviews[0]?.id).toBe(interview.id);
+    expect((await updateTalentInterviewStatus(interview.id, "COMPLETED", owner.id)).status).toBe("COMPLETED");
     await expect(withdrawJobApplication(application.id, applicant.id)).rejects.toThrow("Active job application not found");
     expect(await db.notification.count({ where: { userId: applicant.id, type: "JOB_APPLICATION_STATUS" } })).toBe(2);
     expect(await db.notification.count({ where: { userId: { in: [owner.id, applicant.id] }, type: "TALENT_MESSAGE" } })).toBe(2);
+    expect(await db.notification.count({ where: { userId: applicant.id, type: "TALENT_INTERVIEW" } })).toBe(2);
     expect(await db.auditLog.count({ where: { action: "talent.message.sent", entityType: "TalentMessage" } })).toBeGreaterThanOrEqual(2);
 
     const second = await createJobPosting({

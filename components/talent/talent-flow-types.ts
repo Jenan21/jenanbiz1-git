@@ -27,6 +27,19 @@ export type TalentPosting = {
 
 export type TalentCv = { id: string; title: string; currentVersion: number; updatedAt: string; content?: Record<string, unknown> };
 export type TalentMessageRecord = { id: string; senderId: string; body: string; createdAt: string; sender: { profile: { displayName: string | null } | null } };
+export type TalentInterviewRecord = {
+  id: string;
+  applicationId: string;
+  createdById: string;
+  scheduledAt: string;
+  durationMinutes: number;
+  mode: "VIDEO" | "PHONE" | "ON_SITE";
+  location: string | null;
+  notes: string | null;
+  status: "SCHEDULED" | "COMPLETED" | "CANCELLED";
+  createdAt: string;
+  updatedAt: string;
+};
 
 export type TalentProfileRecord = {
   id: string;
@@ -61,6 +74,7 @@ export type OwnedTalentApplication = {
   applicant: { email: string; profile: { displayName: string | null } | null };
   cvDocument: TalentCv | null;
   answers: { id: string; questionId: string; promptSnapshot: string; answer: string }[];
+  interviews: TalentInterviewRecord[];
   messages: TalentMessageRecord[];
   createdAt: string;
   updatedAt: string;
@@ -71,9 +85,11 @@ export type MyTalentApplication = {
   matchScore: number;
   status: OwnedTalentApplication["status"];
   message: string | null;
+  employerNotes: string | null;
   jobPosting: TalentPosting;
   cvDocument: TalentCv | null;
   answers?: { id: string; questionId: string; promptSnapshot: string; answer: string }[];
+  interviews: TalentInterviewRecord[];
   messages: TalentMessageRecord[];
   createdAt: string;
   updatedAt: string;
@@ -103,6 +119,7 @@ export type TalentPayload = {
   postings: TalentPosting[];
   applications: OwnedTalentApplication[];
   ownApplications: MyTalentApplication[];
+  savedJobs: { id: string; jobPostingId: string; createdAt: string; jobPosting: TalentPosting }[];
   talentProfile: { profile: TalentProfileRecord | null; cvDocuments: TalentCv[] };
   talent: DiscoverableTalent[];
   matches: { candidateMatches: CandidateMatch[]; employerMatches: EmployerMatch[] };

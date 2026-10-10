@@ -27,6 +27,15 @@ import type { TalentFlowRoute } from "@/lib/talent/talent-routes";
 import type { Locale } from "@/types/i18n";
 
 type TalentCommand = Record<string, unknown> & { action: string };
+type TalentNotification = {
+  id: string;
+  type: string;
+  title: string;
+  body: string | null;
+  data: Record<string, unknown> | null;
+  status: "UNREAD" | "READ" | "ARCHIVED";
+  createdAt: string;
+};
 
 const routeDescriptions: Record<TalentFlowRoute["id"], [string, string]> = {
   dashboard: [
@@ -37,6 +46,10 @@ const routeDescriptions: Record<TalentFlowRoute["id"], [string, string]> = {
     "اكتشف فرص العمل المناسبة لك وتابع حالة طلباتك نحو مستقبل مهني أفضل.",
     "Discover suitable roles and track your applications toward a stronger career.",
   ],
+  "saved-jobs": [
+    "راجع الفرص التي حفظتها وقارنها قبل التقديم.",
+    "Review and compare the opportunities you saved before applying.",
+  ],
   "job-detail": [
     "متطلبات ومهارات ونطاق مالي ومصدر واضح للإعلان.",
     "Requirements, skills, salary range, and a clear posting source.",
@@ -45,9 +58,37 @@ const routeDescriptions: Record<TalentFlowRoute["id"], [string, string]> = {
     "شارك رسالتك وملفك المهني مع موافقة صريحة ومحددة.",
     "Share your message and professional profile with explicit, scoped consent.",
   ],
+  applications: [
+    "تابع جميع طلباتك ومراحلها ونتائجها من مكان واحد.",
+    "Track every application, stage, and outcome in one place.",
+  ],
+  "application-detail": [
+    "راجع مراحل الطلب وإجاباتك ومرفقاتك وتواصل مع فريق التوظيف.",
+    "Review application stages, answers, attachments, and hiring-team messages.",
+  ],
   profile: [
     "أكمل ملفك المهني لزيادة فرصك في الحصول على أفضل الفرص الوظيفية.",
     "Complete your profile to improve your access to the best suitable roles.",
+  ],
+  cv: [
+    "اربط سيرتك المهنية المعتمدة بملفك وطلباتك.",
+    "Connect your approved professional CV to your profile and applications.",
+  ],
+  interviews: [
+    "تابع المقابلات المؤكدة ومعلومات الانضمام دون مواعيد تجريبية.",
+    "Track confirmed interviews and joining details without sample schedules.",
+  ],
+  notifications: [
+    "اطلع على تحديثات الطلبات والرسائل والمقابلات المرتبطة بالتوظيف.",
+    "Review hiring-related application, message, and interview updates.",
+  ],
+  messages: [
+    "تواصل مع أصحاب العمل داخل الطلبات المصرح بها فقط.",
+    "Communicate with employers only inside authorized applications.",
+  ],
+  company: [
+    "تعرف على الجهة المعلنة وفرصها المنشورة من بياناتها الحقيقية.",
+    "Explore the posting organization and its published opportunities from real records.",
   ],
   employer: [
     "إعلاناتك والمتقدمون وجودة الوصف ومراحل التوظيف.",
@@ -126,6 +167,11 @@ const statusLabels: Record<string, [string, string]> = {
   PUBLISHED: ["منشور", "Published"],
   REJECTED: ["مرفوض", "Rejected"],
   REMOTE: ["عن بُعد", "Remote"],
+  SCHEDULED: ["مجدولة", "Scheduled"],
+  COMPLETED: ["مكتملة", "Completed"],
+  CANCELLED: ["ملغاة", "Cancelled"],
+  VIDEO: ["اتصال مرئي", "Video"],
+  PHONE: ["اتصال هاتفي", "Phone"],
   SUBMITTED: ["تم التقديم", "Submitted"],
   UNDER_REVIEW: ["قيد المراجعة", "Under review"],
   WITHDRAWN: ["مسحوب", "Withdrawn"],
@@ -160,11 +206,13 @@ export function TalentFlowWorkspace({
   applicationId,
   jobId,
   locale,
+  organizationId,
   route,
 }: {
   applicationId?: string;
   jobId?: string;
   locale: Locale;
+  organizationId?: string;
   route: TalentFlowRoute;
 }) {
   const ar = locale === "ar";
@@ -178,6 +226,15 @@ export function TalentFlowWorkspace({
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState("");
+  const [notifications, setNotifications] = useState<TalentNotification[]>([]);
+  const [applicationStep, setApplicationStep] = useState(1);
+  const [applicationDraft, setApplicationDraft] = useState<{
+    answers: Record<string, string>;
+    cvDocumentId: string;
+    message: string;
+    shareProfile: boolean;
+  }>({ answers: {}, cvDocumentId: "", message: "", shareProfile: false });
+  const [applicationStatusFilter, setApplicationStatusFilter] = useState("");
   const [jobFilters, setJobFilters] = useState<JobFilters>({
     city: "",
     countryCode: "",
@@ -208,10 +265,16 @@ export function TalentFlowWorkspace({
     let active = true;
     async function load() {
       setLoading(true);
-      const response = await fetch("/api/talent", { cache: "no-store" });
+      const [response, notificationResponse] = await Promise.all([
+        fetch("/api/talent", { cache: "no-store" }),
+        fetch("/api/notifications", { cache: "no-store" }),
+      ]);
       const payload = (await response
         .json()
         .catch(() => null)) as TalentPayload | null;
+      const notificationPayload = (await notificationResponse.json().catch(() => null)) as {
+        notifications?: TalentNotification[];
+      } | null;
       if (!active) return;
       if (response.ok && payload) setData(payload);
       else
@@ -221,6 +284,14 @@ export function TalentFlowWorkspace({
               ? "تعذر تحميل مساحة المواهب."
               : "Talent workspace could not be loaded."),
         );
+      if (notificationResponse.ok && notificationPayload?.notifications) {
+        setNotifications(
+          notificationPayload.notifications.filter((notification) =>
+            notification.type.startsWith("TALENT_") ||
+            notification.type.startsWith("JOB_APPLICATION_"),
+          ),
+        );
+      }
       setLoading(false);
     }
     void load();
@@ -254,14 +325,40 @@ export function TalentFlowWorkspace({
     return false;
   }
 
+  async function markNotificationRead(notificationId: string) {
+    setBusy(true);
+    const response = await fetch("/api/notifications", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ notificationId }),
+    });
+    if (response.ok) {
+      setNotifications((items) =>
+        items.map((item) =>
+          item.id === notificationId ? { ...item, status: "READ" } : item,
+        ),
+      );
+    } else {
+      const payload = (await response.json().catch(() => null)) as { message?: string } | null;
+      setMessage(payload?.message ?? (ar ? "تعذر تحديث الإشعار." : "Notification could not be updated."));
+    }
+    setBusy(false);
+  }
+
   const selectedJob =
     data?.postings.find((posting) => posting.id === jobId) ??
-    data?.postings.find((posting) => posting.status === "PUBLISHED") ??
-    data?.postings[0];
+    (!jobId
+      ? data?.postings.find((posting) => posting.status === "PUBLISHED") ??
+        data?.postings[0]
+      : undefined);
   const selectedApplication =
     data?.applications.find(
       (application) => application.id === applicationId,
     ) ?? data?.applications[0];
+  const selectedOwnApplication =
+    data?.ownApplications.find(
+      (application) => application.id === applicationId,
+    ) ?? (!applicationId ? data?.ownApplications[0] : undefined);
   const visibleJobs = data
     ? filterTalentJobs(data.postings, data.viewerId, jobFilters)
     : [];
@@ -293,6 +390,24 @@ export function TalentFlowWorkspace({
         (application) => application.jobPosting.id === selectedJob.id,
       )
     : undefined;
+  const savedJobs = data?.savedJobs ?? [];
+  const savedJobIds = new Set(savedJobs.map((savedJob) => savedJob.jobPostingId));
+  const companyJobs = organizationId
+    ? data?.postings.filter((posting) => posting.organizationId === organizationId) ?? []
+    : [];
+  const selectedCompany = companyJobs[0]?.organization;
+  const seekerInterviews =
+    data?.ownApplications.flatMap((application) =>
+      application.interviews.map((interview) => ({ application, interview })),
+    ) ?? [];
+  const filteredOwnApplications =
+    data?.ownApplications.filter(
+      (application) => !applicationStatusFilter || application.status === applicationStatusFilter,
+    ) ?? [];
+  const conversationApplication =
+    selectedOwnApplication ??
+    data?.ownApplications.find((application) => application.messages.length) ??
+    data?.ownApplications[0];
   const profile = data?.talentProfile.profile;
   const profileCompletion = profile
     ? Math.round(
@@ -333,6 +448,31 @@ export function TalentFlowWorkspace({
     );
   }
 
+  async function linkCvToProfile(cvDocumentId: string) {
+    if (!profile) {
+      setMessage(ar ? "أكمل الملف المهني أولًا قبل ربط السيرة." : "Complete your professional profile before linking a CV.");
+      return;
+    }
+    await runCommand(
+      {
+        action: "saveProfile",
+        headline: profile.headline,
+        summary: profile.summary,
+        city: profile.city ?? undefined,
+        countryCode: profile.countryCode ?? undefined,
+        yearsExperience: profile.yearsExperience,
+        skills: profile.skills?.join(", ") || undefined,
+        experience: profile.experience ?? undefined,
+        education: profile.education ?? undefined,
+        desiredWorkModes: profile.desiredWorkModes ?? [],
+        availability: profile.availability ?? undefined,
+        cvDocumentId,
+        isDiscoverable: profile.isDiscoverable,
+      },
+      ["تم ربط السيرة بالملف المهني.", "CV linked to your professional profile."],
+    );
+  }
+
   async function submitPosting(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     const form = event.currentTarget;
@@ -370,29 +510,28 @@ export function TalentFlowWorkspace({
   async function submitApplication(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     if (!selectedJob) return;
-    const form = event.currentTarget;
-    const values = new FormData(form);
     const answers = selectedJob.questions.flatMap((question) => {
-      const answer = formValue(values, `question-${question.id}`);
+      const answer = applicationDraft.answers[question.id]?.trim();
       return answer ? [{ questionId: question.id, answer }] : [];
     });
-    if (
-      await runCommand(
+    const submitted = await runCommand(
         {
           action: "apply",
           jobPostingId: selectedJob.id,
-          message: optional(values, "applicationMessage"),
+          message: applicationDraft.message.trim() || undefined,
           answers,
-          cvDocumentId: optional(values, "cvDocumentId"),
-          shareProfile: values.get("shareProfile") === "on",
+          cvDocumentId: applicationDraft.cvDocumentId || undefined,
+          shareProfile: applicationDraft.shareProfile,
         },
         [
           "تم إرسال الطلب مع درجة مطابقة أولية. لا يمثل ذلك ضماناً للتوظيف.",
           "Application submitted with an initial match score. This does not guarantee employment.",
         ],
-      )
-    )
-      form.reset();
+      );
+    if (submitted) {
+      setApplicationDraft({ answers: {}, cvDocumentId: "", message: "", shareProfile: false });
+      setApplicationStep(1);
+    }
   }
 
   if (loading || !data)
@@ -426,26 +565,26 @@ export function TalentFlowWorkspace({
       data-talent-route={route.route}
       data-talent-source="PERSISTED_RECORDS"
     >
-      {route.id === "dashboard" ? (
+      {audience === "CANDIDATE" ? (
         <aside className="talent-seeker-sidebar">
           <Link className="talent-seeker-sidebar__brand" href="/dashboard">
-            <strong>Jenan PRO</strong>
+            <strong aria-label="Jenan PRO" />
             <small>{ar ? "مركز الأعمال الذكي" : "Intelligent Business Center"}</small>
           </Link>
           <nav aria-label={ar ? "مساحة الباحث عن وظيفة" : "Job seeker workspace"}>
-            <Link className="is-active" href="/talent">
+            <Link className={route.id === "dashboard" ? "is-active" : undefined} href="/talent">
               <Icon name="dashboard" />
               {ar ? "الرئيسية" : "Overview"}
             </Link>
-            <Link href="/talent/jobs">
+            <Link className={["jobs", "saved-jobs", "job-detail", "apply", "company", "matching"].includes(route.id) ? "is-active" : undefined} href="/talent/jobs">
               <Icon name="briefcase" />
               {ar ? "الوظائف" : "Jobs"}
             </Link>
-            <Link href="/talent/profile">
+            <Link className={["profile", "cv"].includes(route.id) ? "is-active" : undefined} href="/talent/profile">
               <Icon name="user" />
               {ar ? "ملفي" : "My profile"}
             </Link>
-            <Link href="/talent/jobs#applications">
+            <Link className={["applications", "application-detail", "interviews", "notifications", "messages"].includes(route.id) ? "is-active" : undefined} href="/talent/applications">
               <Icon name="activity" />
               {ar ? "طلباتي" : "Applications"}
             </Link>
@@ -455,14 +594,9 @@ export function TalentFlowWorkspace({
             {ar ? "العودة للرئيسية" : "Back to home"}
           </Link>
           <blockquote>
-            “{ar ? "فرص أفضل لمستقبل أوسع" : "Better opportunities for a broader future"}”
+            {ar ? "فرص أفضل لمستقبل أوسع" : "Better opportunities for a broader future"}
           </blockquote>
         </aside>
-      ) : audience === "CANDIDATE" ? (
-        <Link className="talent-seeker-back" href="/talent">
-          <Icon name="dashboard" />
-          {ar ? "العودة للرئيسية" : "Back to overview"}
-        </Link>
       ) : null}
       <header className="talent-flow__hero">
         <div className="talent-flow__hero-copy">
@@ -525,7 +659,7 @@ export function TalentFlowWorkspace({
               </div>
               <small>{ar ? "غير متاح حاليًا" : "Unavailable"}</small>
             </button>
-            <Link href="/studio/cv">
+            <Link href="/talent/profile/cv">
               <Icon name="activity" />
               <div>
                 <h2>{ar ? "رفع السيرة الذاتية" : "Add your CV"}</h2>
@@ -553,7 +687,7 @@ export function TalentFlowWorkspace({
               </div>
               <Icon name="arrow" />
             </Link>
-            <Link href="/talent/jobs#applications">
+            <Link href="/talent/applications">
               <Icon name="briefcase" />
               <div>
                 <h2>{ar ? "تتبع الطلبات" : "Track applications"}</h2>
@@ -627,7 +761,7 @@ export function TalentFlowWorkspace({
                     <p>{match.posting.organization?.name ?? (ar ? "صاحب إعلان مستقل" : "Independent employer")}</p>
                     <small>{[match.posting.city, match.posting.countryCode, match.posting.workMode.replace("_", " ")].filter(Boolean).join(" · ")}</small>
                   </div>
-                  <Link href={`/talent/job/sample?job=${match.posting.id}`}>{ar ? "عرض الوظيفة" : "View role"}</Link>
+                  <Link href={`/talent/jobs/${match.posting.id}`}>{ar ? "عرض الوظيفة" : "View role"}</Link>
                 </section>
               ))}
               {!data.matches.candidateMatches.length ? (
@@ -652,7 +786,7 @@ export function TalentFlowWorkspace({
                 <h2>{ar ? "أحدث الفرص" : "Latest opportunities"}</h2>
               </header>
               {visibleJobs.slice(0, 3).map((posting) => (
-                <Link href={`/talent/job/sample?job=${posting.id}`} key={posting.id}>
+                <Link href={`/talent/jobs/${posting.id}`} key={posting.id}>
                   <span><Icon name="briefcase" /></span>
                   <div><strong>{posting.title}</strong><small>{[posting.city, posting.countryCode].filter(Boolean).join(" · ") || (ar ? "الموقع غير محدد" : "Location unavailable")}</small></div>
                   <Icon name="chevron" />
@@ -702,10 +836,32 @@ export function TalentFlowWorkspace({
                     (ar ? "الموقع غير محدد" : "Location not specified")}
                 </small>
                 <strong>{salary(posting, locale)}</strong>
-                <Link href={`/talent/job/sample?job=${posting.id}`}>
-                  {ar ? "عرض الوظيفة" : "View job"}
-                  <Icon name="arrow" />
-                </Link>
+                <div className="talent-job-card__actions">
+                  <button
+                    disabled={busy || posting.createdById === data.viewerId}
+                    onClick={() =>
+                      void runCommand(
+                        {
+                          action: savedJobIds.has(posting.id) ? "removeSavedJob" : "saveJob",
+                          jobPostingId: posting.id,
+                        },
+                        savedJobIds.has(posting.id)
+                          ? ["تمت إزالة الوظيفة من المحفوظات.", "Job removed from saved roles."]
+                          : ["تم حفظ الوظيفة.", "Job saved."],
+                      )
+                    }
+                    type="button"
+                  >
+                    <Icon name={savedJobIds.has(posting.id) ? "check" : "shield"} />
+                    {savedJobIds.has(posting.id)
+                      ? ar ? "محفوظة" : "Saved"
+                      : ar ? "حفظ" : "Save"}
+                  </button>
+                  <Link href={`/talent/jobs/${posting.id}`}>
+                    {ar ? "عرض الوظيفة" : "View job"}
+                    <Icon name="arrow" />
+                  </Link>
+                </div>
               </article>
             ))}
           </section>
@@ -735,7 +891,7 @@ export function TalentFlowWorkspace({
                     <small>{formatDate(application.updatedAt, locale)}</small>
                   </div>
                   <Status locale={locale} value={application.status} />
-                  <Link href={`/talent/apply/sample?job=${application.jobPosting.id}`}>
+                  <Link href={`/talent/applications/${application.id}`}>
                     {ar ? "عرض التفاصيل" : "View details"}
                     <Icon name="arrow" />
                   </Link>
@@ -753,24 +909,20 @@ export function TalentFlowWorkspace({
                 <Icon name="activity" />
                 <h3>{ar ? "المقابلات والخطوات القادمة" : "Interviews and next steps"}</h3>
               </header>
-              {data.ownApplications
-                .filter((application) => application.status === "ACCEPTED")
-                .map((application) => (
-                  <article key={application.id}>
+              {seekerInterviews.slice(0, 3).map(({ application, interview }) => (
+                  <article key={interview.id}>
                     <div>
                       <strong>{application.jobPosting.title}</strong>
                       <small>
-                        {ar
-                          ? "انتقلت للمرحلة التالية؛ راجع المحادثة لتأكيد الموعد."
-                          : "Advanced to the next stage; use the conversation to confirm timing."}
+                        {new Intl.DateTimeFormat(ar ? "ar-SA" : "en-GB", { dateStyle: "medium", timeStyle: "short" }).format(new Date(interview.scheduledAt))}
                       </small>
                     </div>
-                    <Link href={`/talent/apply/sample?job=${application.jobPosting.id}`}>
+                    <Link href={`/talent/applications/${application.id}`}>
                       {ar ? "عرض التفاصيل" : "View details"}
                     </Link>
                   </article>
                 ))}
-              {!data.ownApplications.some((application) => application.status === "ACCEPTED") ? (
+              {!seekerInterviews.length ? (
                 <p>{ar ? "لا توجد مقابلات أو مواعيد مؤكدة حاليًا." : "No interviews or confirmed times are available yet."}</p>
               ) : null}
             </section>
@@ -780,22 +932,294 @@ export function TalentFlowWorkspace({
                 <h3>{ar ? "الوظائف المحفوظة" : "Saved jobs"}</h3>
               </header>
               <p>
-                {ar
-                  ? "الحفظ غير متصل بقاعدة البيانات حاليًا، لذلك لن نعرض وظائف تجريبية."
-                  : "Saving is not connected to persisted records yet, so no sample jobs are displayed."}
+                {savedJobs.length
+                  ? ar
+                    ? `لديك ${savedJobs.length} وظائف محفوظة للمراجعة والمقارنة.`
+                    : `You have ${savedJobs.length} saved roles ready to review and compare.`
+                  : ar
+                    ? "لم تحفظ أي وظيفة حتى الآن."
+                    : "You have not saved any roles yet."}
               </p>
-              <button disabled type="button">{ar ? "غير متاح حاليًا" : "Currently unavailable"}</button>
+              <Link href="/talent/jobs/saved">{ar ? "عرض الوظائف المحفوظة" : "View saved jobs"}</Link>
             </section>
           </section>
         </>
       ) : null}
 
+      {route.id === "saved-jobs" ? (
+        <>
+          <section className="talent-seeker-stat-strip">
+            <article><Icon name="shield" /><strong>{savedJobs.length}</strong><span>{ar ? "وظيفة محفوظة" : "saved jobs"}</span></article>
+            <article><Icon name="sparkles" /><strong>{savedJobs.filter((item) => data.matches.candidateMatches.some((match) => match.posting.id === item.jobPostingId && match.score >= 80)).length}</strong><span>{ar ? "مطابقة مرتفعة" : "high matches"}</span></article>
+            <article><Icon name="briefcase" /><strong>{savedJobs.filter((item) => item.jobPosting.status === "PUBLISHED").length}</strong><span>{ar ? "متاحة للتقديم" : "open to apply"}</span></article>
+          </section>
+          <section className="talent-seeker-list">
+            <header>
+              <div><span>{ar ? "فرصك المختارة" : "YOUR SHORTLIST"}</span><h2>{ar ? "الوظائف المحفوظة" : "Saved jobs"}</h2></div>
+              <Link href="/talent/jobs">{ar ? "استكشاف وظائف أخرى" : "Explore more jobs"}</Link>
+            </header>
+            {savedJobs.map(({ jobPosting, createdAt }) => {
+              const match = data.matches.candidateMatches.find((candidateMatch) => candidateMatch.posting.id === jobPosting.id);
+              return (
+                <article key={jobPosting.id}>
+                  <div className="talent-seeker-list__score"><strong>{match?.score ?? jobPosting.qualityScore}%</strong><small>{match ? (ar ? "مطابقة" : "match") : (ar ? "جودة" : "quality")}</small></div>
+                  <div>
+                    <h3>{jobPosting.title}</h3>
+                    <p>{jobPosting.organization?.name ?? jobPosting.createdBy.profile?.displayName ?? (ar ? "صاحب إعلان مستقل" : "Independent employer")}</p>
+                    <small>{[jobPosting.city, jobPosting.countryCode, salary(jobPosting, locale)].filter(Boolean).join(" · ")}</small>
+                  </div>
+                  <Status locale={locale} value={jobPosting.status} />
+                  <small>{ar ? "حُفظت" : "Saved"} {formatDate(createdAt, locale)}</small>
+                  <div className="talent-seeker-list__actions">
+                    <Link href={`/talent/jobs/${jobPosting.id}`}>{ar ? "عرض التفاصيل" : "View details"}</Link>
+                    <button disabled={busy} onClick={() => void runCommand({ action: "removeSavedJob", jobPostingId: jobPosting.id }, ["تمت إزالة الوظيفة من المحفوظات.", "Job removed from saved roles."])} type="button">{ar ? "إزالة" : "Remove"}</button>
+                  </div>
+                </article>
+              );
+            })}
+            {!savedJobs.length ? <EmptyState locale={locale} message={ar ? "لم تحفظ أي وظيفة حتى الآن." : "You have not saved any jobs yet."} /> : null}
+          </section>
+        </>
+      ) : null}
+
+      {route.id === "applications" ? (
+        <>
+          <section className="talent-seeker-stat-strip talent-seeker-stat-strip--applications">
+            {[
+              [data.ownApplications.length, ar ? "إجمالي الطلبات" : "total applications", "activity"],
+              [data.ownApplications.filter((item) => item.status === "UNDER_REVIEW").length, ar ? "قيد المراجعة" : "under review", "search"],
+              [data.ownApplications.filter((item) => item.interviews.some((interview) => interview.status === "SCHEDULED")).length, ar ? "لديها مقابلات" : "with interviews", "people"],
+              [data.ownApplications.filter((item) => item.status === "ACCEPTED").length, ar ? "المرحلة التالية" : "advanced", "check"],
+              [data.ownApplications.filter((item) => item.status === "REJECTED").length, ar ? "مرفوضة" : "rejected", "x"],
+            ].map(([value, label, icon]) => (
+              <article key={String(label)}><Icon name={icon as "activity"} /><strong>{value}</strong><span>{label}</span></article>
+            ))}
+          </section>
+          <section className="talent-seeker-toolbar">
+            <label>
+              <span>{ar ? "تصفية حسب الحالة" : "Filter by status"}</span>
+              <select aria-label={ar ? "حالة الطلب" : "Application status"} onChange={(event) => setApplicationStatusFilter(event.target.value)} value={applicationStatusFilter}>
+                <option value="">{ar ? "جميع الحالات" : "All statuses"}</option>
+                {["SUBMITTED", "UNDER_REVIEW", "ACCEPTED", "REJECTED", "WITHDRAWN"].map((status) => <option key={status} value={status}>{pick(statusLabels[status]!, locale)}</option>)}
+              </select>
+            </label>
+            <Link href="/talent/interviews">{ar ? "عرض المقابلات" : "View interviews"}</Link>
+            <Link href="/talent/messages">{ar ? "فتح الرسائل" : "Open messages"}</Link>
+          </section>
+          <section className="talent-seeker-list">
+            <header><div><span>{ar ? "متابعة الطلبات" : "APPLICATION TRACKING"}</span><h2>{ar ? "طلباتي الوظيفية" : "My applications"}</h2></div><strong>{filteredOwnApplications.length}</strong></header>
+            {filteredOwnApplications.map((application) => (
+              <article key={application.id}>
+                <div className="talent-seeker-list__score"><strong>{application.matchScore}%</strong><small>{ar ? "مطابقة" : "match"}</small></div>
+                <div>
+                  <h3>{application.jobPosting.title}</h3>
+                  <p>{application.jobPosting.organization?.name ?? application.jobPosting.createdBy.profile?.displayName ?? (ar ? "صاحب إعلان مستقل" : "Independent employer")}</p>
+                  <small>{formatDate(application.createdAt, locale)} · {application.jobPosting.city ?? (ar ? "الموقع غير محدد" : "Location unavailable")}</small>
+                </div>
+                <Status locale={locale} value={application.status} />
+                <small>{ar ? "آخر تحديث" : "Updated"} {formatDate(application.updatedAt, locale)}</small>
+                <div className="talent-seeker-list__actions">
+                  <Link href={`/talent/applications/${application.id}`}>{ar ? "تفاصيل الطلب" : "Application details"}</Link>
+                  <Link href={`/talent/messages?application=${application.id}`}>{ar ? "الرسائل" : "Messages"}</Link>
+                </div>
+              </article>
+            ))}
+            {!filteredOwnApplications.length ? <EmptyState locale={locale} message={ar ? "لا توجد طلبات مطابقة لهذه الحالة." : "No applications match this status."} /> : null}
+          </section>
+        </>
+      ) : null}
+
+      {route.id === "application-detail" ? (
+        selectedOwnApplication ? (
+          <section className="talent-application-detail">
+            <header>
+              <div>
+                <Status locale={locale} value={selectedOwnApplication.status} />
+                <h2>{selectedOwnApplication.jobPosting.title}</h2>
+                <p>{selectedOwnApplication.jobPosting.organization?.name ?? selectedOwnApplication.jobPosting.createdBy.profile?.displayName ?? (ar ? "صاحب إعلان مستقل" : "Independent employer")}</p>
+              </div>
+              <div><small>{ar ? "تم التقديم" : "Submitted"}</small><strong>{formatDate(selectedOwnApplication.createdAt, locale)}</strong></div>
+            </header>
+            <ol className="talent-application-timeline">
+              {[
+                [ar ? "تم التقديم" : "Submitted", true],
+                [ar ? "قيد المراجعة" : "Under review", ["UNDER_REVIEW", "ACCEPTED"].includes(selectedOwnApplication.status)],
+                [ar ? "المقابلة" : "Interview", selectedOwnApplication.interviews.length > 0],
+                [ar ? "القرار النهائي" : "Final decision", ["ACCEPTED", "REJECTED"].includes(selectedOwnApplication.status)],
+              ].map(([label, complete]) => (
+                <li className={complete ? "is-complete" : undefined} key={String(label)}><span>{complete ? <Icon name="check" /> : <Icon name="activity" />}</span><strong>{label}</strong></li>
+              ))}
+            </ol>
+            <div className="talent-application-detail__grid">
+              <article>
+                <h3>{ar ? "إجابات طلب التوظيف" : "Application answers"}</h3>
+                {selectedOwnApplication.message ? <div><strong>{ar ? "رسالة التقديم" : "Application message"}</strong><p>{selectedOwnApplication.message}</p></div> : null}
+                {selectedOwnApplication.answers?.map((answer) => <div key={answer.id}><strong>{answer.promptSnapshot}</strong><p>{answer.answer}</p></div>)}
+                {!selectedOwnApplication.message && !selectedOwnApplication.answers?.length ? <p>{ar ? "لم تُسجّل إجابات إضافية." : "No additional answers were recorded."}</p> : null}
+              </article>
+              <article>
+                <h3>{ar ? "المرفقات" : "Attachments"}</h3>
+                {selectedOwnApplication.cvDocument ? <div><Icon name="activity" /><strong>{selectedOwnApplication.cvDocument.title}</strong><small>v{selectedOwnApplication.cvDocument.currentVersion}</small></div> : <p>{ar ? "لم تُرفق سيرة ذاتية." : "No CV was attached."}</p>}
+              </article>
+              <article>
+                <h3>{ar ? "موعد المقابلة" : "Interview schedule"}</h3>
+                {selectedOwnApplication.interviews.map((interview) => <div key={interview.id}><Status locale={locale} value={interview.status} /><strong>{new Intl.DateTimeFormat(ar ? "ar-SA" : "en-GB", { dateStyle: "full", timeStyle: "short" }).format(new Date(interview.scheduledAt))}</strong><small>{pick(statusLabels[interview.mode]!, locale)} · {interview.durationMinutes} {ar ? "دقيقة" : "minutes"}</small>{interview.location ? <p>{interview.location}</p> : null}</div>)}
+                {!selectedOwnApplication.interviews.length ? <p>{ar ? "لا يوجد موعد مقابلة مؤكد حاليًا." : "No interview is currently confirmed."}</p> : null}
+              </article>
+              <article>
+                <h3>{ar ? "الخطوة التالية" : "Next step"}</h3>
+                <p>{selectedOwnApplication.employerNotes ?? (ar ? "ستصلك أي تحديثات موثقة من فريق التوظيف عبر الإشعارات والرسائل." : "Documented hiring-team updates will appear in notifications and messages.")}</p>
+              </article>
+            </div>
+            <TalentConversation
+              applicationId={selectedOwnApplication.id}
+              busy={busy}
+              closed={["REJECTED", "WITHDRAWN"].includes(selectedOwnApplication.status)}
+              currentUserId={data.viewerId}
+              locale={locale}
+              messages={selectedOwnApplication.messages}
+              runCommand={runCommand}
+            />
+            <footer>
+              <Link href={`/talent/jobs/${selectedOwnApplication.jobPosting.id}`}>{ar ? "عرض تفاصيل الوظيفة" : "View job details"}</Link>
+              {["SUBMITTED", "UNDER_REVIEW"].includes(selectedOwnApplication.status) ? <button disabled={busy} onClick={() => void runCommand({ action: "withdrawApplication", applicationId: selectedOwnApplication.id }, ["تم سحب الطلب.", "Application withdrawn."])} type="button">{ar ? "سحب الطلب" : "Withdraw application"}</button> : null}
+            </footer>
+          </section>
+        ) : <EmptyState locale={locale} message={ar ? "طلب التوظيف غير موجود أو لا يخص حسابك." : "The application does not exist or does not belong to your account."} />
+      ) : null}
+
+      {route.id === "cv" ? (
+        <section className="talent-cv-center">
+          <header>
+            <div><span>{ar ? "السيرة المهنية" : "PROFESSIONAL CV"}</span><h2>{ar ? "السيرة الذاتية المرتبطة بالتوظيف" : "Employment CV"}</h2><p>{ar ? "أنشئ سيرتك في Studio ثم اختر النسخة التي ستظهر في ملفك وطلباتك." : "Create your CV in Studio, then choose the version used by your profile and applications."}</p></div>
+            <Link className="button button--primary" href="/studio/cv">{ar ? "إنشاء أو تحرير سيرة" : "Create or edit CV"}</Link>
+          </header>
+          <div className="talent-cv-center__quality">
+            <span><Icon name="activity" /></span>
+            <div><strong>{profile?.cvDocument ? (ar ? "سيرة مرتبطة" : "CV linked") : (ar ? "لا توجد سيرة مرتبطة" : "No linked CV")}</strong><p>{profile?.cvDocument?.title ?? (ar ? "اختر نسخة محفوظة أدناه أو أنشئ سيرة جديدة." : "Choose a saved version below or create a new CV.")}</p></div>
+          </div>
+          <section>
+            {data.talentProfile.cvDocuments.map((cv) => (
+              <article className={profile?.cvDocumentId === cv.id ? "is-active" : undefined} key={cv.id}>
+                <span><Icon name="activity" /></span>
+                <div><h3>{cv.title}</h3><p>v{cv.currentVersion} · {formatDate(cv.updatedAt, locale)}</p></div>
+                <button disabled={busy || profile?.cvDocumentId === cv.id} onClick={() => void linkCvToProfile(cv.id)} type="button">{profile?.cvDocumentId === cv.id ? (ar ? "السيرة الحالية" : "Current CV") : (ar ? "ربط بالملف" : "Link to profile")}</button>
+              </article>
+            ))}
+            {!data.talentProfile.cvDocuments.length ? <EmptyState locale={locale} message={ar ? "لا توجد سير محفوظة في Studio حتى الآن." : "No CV documents are saved in Studio yet."} /> : null}
+          </section>
+        </section>
+      ) : null}
+
+      {route.id === "interviews" ? (
+        <section className="talent-interview-center">
+          <div className="talent-seeker-stat-strip">
+            <article><Icon name="people" /><strong>{seekerInterviews.filter(({ interview }) => interview.status === "SCHEDULED").length}</strong><span>{ar ? "مقابلات قادمة" : "upcoming"}</span></article>
+            <article><Icon name="check" /><strong>{seekerInterviews.filter(({ interview }) => interview.status === "COMPLETED").length}</strong><span>{ar ? "مكتملة" : "completed"}</span></article>
+            <article><Icon name="x" /><strong>{seekerInterviews.filter(({ interview }) => interview.status === "CANCELLED").length}</strong><span>{ar ? "ملغاة" : "cancelled"}</span></article>
+          </div>
+          <section className="talent-seeker-list">
+            <header><div><span>{ar ? "جدول المقابلات" : "INTERVIEW SCHEDULE"}</span><h2>{ar ? "مقابلاتي" : "My interviews"}</h2></div></header>
+            {seekerInterviews.map(({ application, interview }) => (
+              <article key={interview.id}>
+                <div className="talent-seeker-list__score"><Icon name="people" /><small>{pick(statusLabels[interview.mode]!, locale)}</small></div>
+                <div><h3>{application.jobPosting.title}</h3><p>{application.jobPosting.organization?.name ?? application.jobPosting.createdBy.profile?.displayName ?? "—"}</p><strong>{new Intl.DateTimeFormat(ar ? "ar-SA" : "en-GB", { dateStyle: "full", timeStyle: "short" }).format(new Date(interview.scheduledAt))}</strong></div>
+                <Status locale={locale} value={interview.status} />
+                <small>{interview.durationMinutes} {ar ? "دقيقة" : "minutes"}</small>
+                <div className="talent-seeker-list__actions">
+                  <Link href={`/talent/applications/${application.id}`}>{ar ? "تفاصيل الطلب" : "Application details"}</Link>
+                  {interview.location?.startsWith("https://") || interview.location?.startsWith("http://")
+                    ? <a href={interview.location} rel="noreferrer" target="_blank">{ar ? "الانضمام للمقابلة" : "Join interview"}</a>
+                    : null}
+                </div>
+              </article>
+            ))}
+            {!seekerInterviews.length ? <EmptyState locale={locale} message={ar ? "لا توجد مقابلات مؤكدة حاليًا. ستظهر هنا بعد جدولة صاحب العمل لموعد فعلي." : "No confirmed interviews yet. They will appear after an employer schedules a real appointment."} /> : null}
+          </section>
+        </section>
+      ) : null}
+
+      {route.id === "notifications" ? (
+        <section className="talent-notification-center">
+          <header><div><span>{ar ? "تحديثات التوظيف" : "HIRING UPDATES"}</span><h2>{ar ? "الإشعارات" : "Notifications"}</h2></div><strong>{notifications.filter((notification) => notification.status === "UNREAD").length} {ar ? "غير مقروء" : "unread"}</strong></header>
+          {notifications.map((notification) => (
+            <article className={notification.status === "UNREAD" ? "is-unread" : undefined} key={notification.id}>
+              <span><Icon name={notification.type === "TALENT_MESSAGE" ? "mail" : "bell"} /></span>
+              <div><h3>{notification.title}</h3><p>{notification.body ?? (ar ? "تحديث جديد في مسار التوظيف." : "A new hiring workflow update.")}</p><small>{new Intl.DateTimeFormat(ar ? "ar-SA" : "en-GB", { dateStyle: "medium", timeStyle: "short" }).format(new Date(notification.createdAt))}</small></div>
+              {notification.status === "UNREAD" ? <button disabled={busy} onClick={() => void markNotificationRead(notification.id)} type="button">{ar ? "تحديد كمقروء" : "Mark as read"}</button> : <Status locale={locale} value="COMPLETED" />}
+            </article>
+          ))}
+          {!notifications.length ? <EmptyState locale={locale} message={ar ? "لا توجد إشعارات توظيف حاليًا." : "No hiring notifications are available."} /> : null}
+        </section>
+      ) : null}
+
+      {route.id === "messages" ? (
+        <section className="talent-message-center">
+          <aside>
+            <header><h2>{ar ? "المحادثات" : "Conversations"}</h2><strong>{data.ownApplications.filter((application) => application.messages.length).length}</strong></header>
+            {data.ownApplications.map((application) => (
+              <Link className={conversationApplication?.id === application.id ? "is-active" : undefined} href={`/talent/messages?application=${application.id}`} key={application.id}>
+                <span><Icon name="building" /></span>
+                <div><strong>{application.jobPosting.organization?.name ?? application.jobPosting.createdBy.profile?.displayName ?? application.jobPosting.title}</strong><small>{application.messages.at(-1)?.body ?? (ar ? "لا توجد رسائل بعد" : "No messages yet")}</small></div>
+              </Link>
+            ))}
+          </aside>
+          <div>
+            {conversationApplication ? (
+              <>
+                <header><div><h2>{conversationApplication.jobPosting.title}</h2><p>{conversationApplication.jobPosting.organization?.name ?? conversationApplication.jobPosting.createdBy.profile?.displayName ?? "—"}</p></div><Link href={`/talent/applications/${conversationApplication.id}`}>{ar ? "تفاصيل الطلب" : "Application details"}</Link></header>
+                <TalentConversation applicationId={conversationApplication.id} busy={busy} closed={["REJECTED", "WITHDRAWN"].includes(conversationApplication.status)} currentUserId={data.viewerId} locale={locale} messages={conversationApplication.messages} runCommand={runCommand} />
+              </>
+            ) : <EmptyState locale={locale} message={ar ? "ابدأ بالتقديم على وظيفة لفتح قناة تواصل موثقة." : "Submit an application to open an authorized conversation."} />}
+          </div>
+        </section>
+      ) : null}
+
+      {route.id === "company" ? (
+        selectedCompany ? (
+          <section className="talent-company-profile">
+            <header>
+              <span><Icon name="building" /></span>
+              <div><small>{ar ? "جهة موثقة داخل المنصة" : "Platform organization"}</small><h2>{selectedCompany.name}</h2><p>{ar ? "يعرض هذا الملف المعلومات المتاحة من السجلات المنشورة فقط." : "This profile shows only information available in published records."}</p></div>
+              <Link className="button button--primary" href="/talent/jobs">{ar ? "تصفح جميع الوظائف" : "Browse all jobs"}</Link>
+            </header>
+            <nav><a href="#company-overview">{ar ? "نظرة عامة" : "Overview"}</a><a href="#company-jobs">{ar ? "الوظائف" : "Jobs"}</a><a href="#company-locations">{ar ? "المواقع" : "Locations"}</a></nav>
+            <div className="talent-company-profile__content" id="company-overview">
+              <article><h3>{ar ? "نبذة عن الشركة" : "About the company"}</h3><p>{ar ? "لم تضف الشركة وصفًا عامًا منشورًا بعد. لن تُعرض معلومات تجريبية بدلًا منه." : "The organization has not published a public description yet. Sample information is not substituted."}</p></article>
+              <article id="company-locations"><h3>{ar ? "المواقع المتاحة" : "Available locations"}</h3><div className="talent-flow__skills">{[...new Set(companyJobs.map((posting) => [posting.city, posting.countryCode].filter(Boolean).join(", ")).filter(Boolean))].map((location) => <span key={location}>{location}</span>)}</div>{!companyJobs.some((posting) => posting.city || posting.countryCode) ? <p>{ar ? "لم تُنشر مواقع بعد." : "No locations have been published."}</p> : null}</article>
+            </div>
+            <section className="talent-seeker-list" id="company-jobs">
+              <header><div><span>{ar ? "فرص الشركة" : "OPEN ROLES"}</span><h2>{ar ? "الوظائف المتاحة" : "Available jobs"}</h2></div><strong>{companyJobs.length}</strong></header>
+              {companyJobs.map((posting) => <article key={posting.id}><div className="talent-seeker-list__score"><strong>{data.matches.candidateMatches.find((match) => match.posting.id === posting.id)?.score ?? posting.qualityScore}%</strong><small>{ar ? "مطابقة/جودة" : "match/quality"}</small></div><div><h3>{posting.title}</h3><p>{posting.department ?? (ar ? "القسم غير محدد" : "Department unavailable")}</p><small>{[posting.city, salary(posting, locale)].filter(Boolean).join(" · ")}</small></div><Status locale={locale} value={posting.workMode} /><div className="talent-seeker-list__actions"><Link href={`/talent/jobs/${posting.id}`}>{ar ? "عرض الوظيفة" : "View job"}</Link></div></article>)}
+            </section>
+          </section>
+        ) : <EmptyState locale={locale} message={ar ? "ملف الشركة غير موجود أو لا يحتوي على وظائف ظاهرة لك." : "The company profile does not exist or has no jobs visible to you."} />
+      ) : null}
+
       {route.id === "job-detail" ? (
         selectedJob ? (
           <JobDetail locale={locale} posting={selectedJob}>
+            <button
+              className="button button--ghost"
+              disabled={busy || selectedJob.createdById === data.viewerId}
+              onClick={() =>
+                void runCommand(
+                  {
+                    action: savedJobIds.has(selectedJob.id) ? "removeSavedJob" : "saveJob",
+                    jobPostingId: selectedJob.id,
+                  },
+                  savedJobIds.has(selectedJob.id)
+                    ? ["تمت إزالة الوظيفة من المحفوظات.", "Job removed from saved roles."]
+                    : ["تم حفظ الوظيفة.", "Job saved."],
+                )
+              }
+              type="button"
+            >
+              {savedJobIds.has(selectedJob.id) ? (ar ? "إزالة من المحفوظة" : "Remove saved job") : (ar ? "حفظ الوظيفة" : "Save job")}
+            </button>
             <Link
               className="button button--primary"
-              href={`/talent/apply/sample?job=${selectedJob.id}`}
+              href={currentApplication ? `/talent/applications/${currentApplication.id}` : `/talent/jobs/${selectedJob.id}/apply`}
             >
               {currentApplication
                 ? ar
@@ -869,71 +1293,118 @@ export function TalentFlowWorkspace({
               </article>
             ) : (
               <form className="talent-apply__form" onSubmit={submitApplication}>
-                <h2>{ar ? "بيانات التقديم" : "Application details"}</h2>
-                <textarea
-                  name="applicationMessage"
-                  minLength={20}
-                  required
-                  placeholder={
-                    ar
-                      ? "اربط خبرتك بالمهارات المطلوبة"
-                      : "Connect your experience to the required skills"
-                  }
-                />
-                {selectedJob.questions.length ? (
-                  <fieldset className="talent-screening-questions">
-                    <legend>
-                      {ar
-                        ? "أسئلة صاحب الإعلان"
-                        : "Employer screening questions"}
-                    </legend>
-                    {selectedJob.questions.map((question) => (
-                      <label key={question.id}>
-                        <span>
-                          {question.prompt}
-                          {question.required ? " *" : ""}
-                        </span>
-                        <textarea
-                          aria-label={question.prompt}
-                          maxLength={2000}
-                          name={`question-${question.id}`}
-                          required={question.required}
-                        />
-                      </label>
-                    ))}
-                  </fieldset>
-                ) : null}
-                <label>
-                  {ar ? "السيرة من Studio" : "CV from Studio"}
-                  <select name="cvDocumentId">
-                    <option value="">
-                      {ar ? "بدون مرفق" : "No attachment"}
-                    </option>
-                    {data.talentProfile.cvDocuments.map((cv) => (
-                      <option key={cv.id} value={cv.id}>
-                        {cv.title} · v{cv.currentVersion}
-                      </option>
-                    ))}
-                  </select>
-                </label>
-                <label className="talent-consent">
-                  <input name="shareProfile" required type="checkbox" />
-                  {ar
-                    ? "أوافق على مشاركة رسالتي وإجاباتي ونسخة من ملفي المهني مع صاحب هذا الإعلان فقط."
-                    : "I consent to sharing my message, answers, and a profile snapshot with this posting's owner only."}
-                </label>
-                <button
-                  className="button button--primary"
-                  disabled={busy}
-                  type="submit"
-                >
-                  {ar ? "إرسال الطلب" : "Submit application"}
-                </button>
-                <small>
-                  {ar
-                    ? "التقديم ودرجة المطابقة لا يضمنان التوظيف."
-                    : "Applying and receiving a match score do not guarantee employment."}
-                </small>
+                <ol className="talent-application-steps">
+                  {[
+                    ar ? "المعلومات الشخصية" : "Personal information",
+                    ar ? "السيرة الذاتية" : "CV",
+                    ar ? "الأسئلة الإضافية" : "Questions",
+                    ar ? "مراجعة الطلب" : "Review",
+                  ].map((label, index) => (
+                    <li className={applicationStep === index + 1 ? "is-active" : applicationStep > index + 1 ? "is-complete" : undefined} key={label}>
+                      <span>{applicationStep > index + 1 ? <Icon name="check" /> : index + 1}</span>
+                      <strong>{label}</strong>
+                    </li>
+                  ))}
+                </ol>
+                <section hidden={applicationStep !== 1}>
+                  <h2>{ar ? "معلوماتك المهنية" : "Your professional information"}</h2>
+                  {profile ? (
+                    <div className="talent-application-review">
+                      <strong>{profile.headline}</strong>
+                      <p>{profile.summary}</p>
+                      <small>{[profile.city, profile.countryCode, `${profile.yearsExperience} ${ar ? "سنوات خبرة" : "years experience"}`].filter(Boolean).join(" · ")}</small>
+                    </div>
+                  ) : (
+                    <EmptyState locale={locale} message={ar ? "أكمل ملفك المهني قبل إرسال الطلب." : "Complete your professional profile before submitting an application."} />
+                  )}
+                  <div className="talent-application-navigation">
+                    <Link className="button button--ghost" href="/talent/profile">{ar ? "تحديث الملف" : "Update profile"}</Link>
+                    <button className="button button--primary" disabled={!profile} onClick={() => setApplicationStep(2)} type="button">{ar ? "التالي" : "Next"}</button>
+                  </div>
+                </section>
+                <section hidden={applicationStep !== 2}>
+                  <h2>{ar ? "إرفاق السيرة الذاتية" : "Attach your CV"}</h2>
+                  <label>
+                    {ar ? "السيرة من Studio" : "CV from Studio"}
+                    <select
+                      aria-label={ar ? "السيرة من Studio" : "CV from Studio"}
+                      onChange={(event) => setApplicationDraft((draft) => ({ ...draft, cvDocumentId: event.target.value }))}
+                      value={applicationDraft.cvDocumentId}
+                    >
+                      <option value="">{ar ? "بدون مرفق" : "No attachment"}</option>
+                      {data.talentProfile.cvDocuments.map((cv) => (
+                        <option key={cv.id} value={cv.id}>{cv.title} · v{cv.currentVersion}</option>
+                      ))}
+                    </select>
+                  </label>
+                  {!data.talentProfile.cvDocuments.length ? (
+                    <Link className="button button--ghost" href="/talent/profile/cv">{ar ? "إنشاء سيرة ذاتية" : "Create a CV"}</Link>
+                  ) : null}
+                  <label className="talent-consent">
+                    <input
+                      checked={applicationDraft.shareProfile}
+                      onChange={(event) => setApplicationDraft((draft) => ({ ...draft, shareProfile: event.target.checked }))}
+                      type="checkbox"
+                    />
+                    {ar
+                      ? "أوافق على مشاركة رسالتي وإجاباتي ونسخة من ملفي المهني مع صاحب هذا الإعلان فقط."
+                      : "I consent to sharing my message, answers, and a profile snapshot with this posting's owner only."}
+                  </label>
+                  <div className="talent-application-navigation">
+                    <button className="button button--ghost" onClick={() => setApplicationStep(1)} type="button">{ar ? "السابق" : "Previous"}</button>
+                    <button className="button button--primary" disabled={!applicationDraft.shareProfile} onClick={() => setApplicationStep(3)} type="button">{ar ? "التالي" : "Next"}</button>
+                  </div>
+                </section>
+                <section hidden={applicationStep !== 3}>
+                  <h2>{ar ? "الأسئلة الإضافية" : "Additional questions"}</h2>
+                  <textarea
+                    minLength={20}
+                    onChange={(event) => setApplicationDraft((draft) => ({ ...draft, message: event.target.value }))}
+                    placeholder={ar ? "اربط خبرتك بالمهارات المطلوبة" : "Connect your experience to the required skills"}
+                    value={applicationDraft.message}
+                  />
+                  {selectedJob.questions.length ? (
+                    <fieldset className="talent-screening-questions">
+                      <legend>{ar ? "أسئلة صاحب الإعلان" : "Employer screening questions"}</legend>
+                      {selectedJob.questions.map((question) => (
+                        <label key={question.id}>
+                          <span>{question.prompt}{question.required ? " *" : ""}</span>
+                          <textarea
+                            aria-label={question.prompt}
+                            maxLength={2000}
+                            onChange={(event) => setApplicationDraft((draft) => ({ ...draft, answers: { ...draft.answers, [question.id]: event.target.value } }))}
+                            value={applicationDraft.answers[question.id] ?? ""}
+                          />
+                        </label>
+                      ))}
+                    </fieldset>
+                  ) : null}
+                  <div className="talent-application-navigation">
+                    <button className="button button--ghost" onClick={() => setApplicationStep(2)} type="button">{ar ? "السابق" : "Previous"}</button>
+                    <button
+                      className="button button--primary"
+                      disabled={applicationDraft.message.trim().length < 20 || selectedJob.questions.some((question) => question.required && !applicationDraft.answers[question.id]?.trim())}
+                      onClick={() => setApplicationStep(4)}
+                      type="button"
+                    >
+                      {ar ? "مراجعة الطلب" : "Review application"}
+                    </button>
+                  </div>
+                </section>
+                <section hidden={applicationStep !== 4}>
+                  <h2>{ar ? "مراجعة طلب التقديم" : "Review application"}</h2>
+                  <div className="talent-application-review">
+                    <strong>{selectedJob.title}</strong>
+                    <p>{applicationDraft.message}</p>
+                    <small>{applicationDraft.cvDocumentId ? (ar ? "تم إرفاق سيرة ذاتية" : "CV attached") : (ar ? "دون مرفق CV" : "No CV attached")}</small>
+                    <small>{selectedJob.questions.length} {ar ? "إجابات إضافية" : "screening answers"}</small>
+                  </div>
+                  <div className="talent-application-navigation">
+                    <button className="button button--ghost" onClick={() => setApplicationStep(3)} type="button">{ar ? "السابق" : "Previous"}</button>
+                    <button className="button button--primary" disabled={busy} type="submit">{ar ? "إرسال الطلب" : "Submit application"}</button>
+                  </div>
+                  <small>{ar ? "التقديم ودرجة المطابقة لا يضمنان التوظيف." : "Applying and receiving a match score do not guarantee employment."}</small>
+                </section>
               </form>
             )}
           </section>
@@ -992,7 +1463,7 @@ export function TalentFlowWorkspace({
                     : "You control discovery and CV sharing for every application."}
                 </p>
               </div>
-              <Link className="button button--ghost" href="/studio/cv">
+              <Link className="button button--ghost" href="/talent/profile/cv">
                 {ar ? "تحرير CV في Studio" : "Edit CV in Studio"}
               </Link>
             </header>
@@ -1271,7 +1742,7 @@ export function TalentFlowWorkspace({
                       {ar ? "إغلاق" : "Close"}
                     </button>
                   ) : null}
-                  <Link href={`/talent/job/sample?job=${posting.id}`}>
+                  <Link href={`/talent/jobs/${posting.id}`}>
                     {ar ? "عرض" : "View"}
                   </Link>
                 </div>
@@ -1485,7 +1956,7 @@ export function TalentFlowWorkspace({
                       (ar ? "لا توجد فجوات مسجلة" : "No recorded gaps")}
                   </small>
                 </div>
-                <Link href={`/talent/job/sample?job=${match.posting.id}`}>
+                <Link href={`/talent/jobs/${match.posting.id}`}>
                   {ar ? "عرض" : "View"}
                 </Link>
               </article>
@@ -1556,11 +2027,16 @@ function JobDetail({
           </span>
         </div>
         <h2>{posting.title}</h2>
-        <p>
-          {posting.organization?.name ??
-            posting.createdBy.profile?.displayName ??
-            (ar ? "صاحب إعلان مستقل" : "Independent employer")}
-        </p>
+        {posting.organization ? (
+          <Link href={`/talent/companies/${posting.organization.id}`}>
+            {posting.organization.name}
+          </Link>
+        ) : (
+          <p>
+            {posting.createdBy.profile?.displayName ??
+              (ar ? "صاحب إعلان مستقل" : "Independent employer")}
+          </p>
+        )}
       </header>
       <section>
         <div>
