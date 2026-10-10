@@ -48,6 +48,15 @@ test.describe.serial("Projects full route flow", () => {
         await expect(page.locator(".professional-feasibility")).toHaveAttribute("data-project-route", definition.route);
         await expect(page.locator(".pfs-stepper a[aria-current='step']")).toBeVisible();
         await expect(page.locator(".pfs-stage [data-project-focus], .pfs-stage[data-project-focus]")).toBeVisible();
+      } else if (
+        definition.route.startsWith("/projects/evaluation/") ||
+        definition.route.startsWith("/projects/start/evaluation")
+      ) {
+        await expect(page.locator(".project-start-evaluation")).toHaveAttribute(
+          "data-project-evaluation-source",
+          "ACCOUNT_PROJECT_RECORDS",
+        );
+        await expect(page.locator(".pse-sidebar a.is-active")).toBeVisible();
       } else if (definition.route.startsWith("/projects/start/")) {
         await expect(page.locator(".project-start-workspace")).toHaveAttribute("data-project-start-route", definition.route);
         if (definition.route !== "/projects/start/report") {
@@ -86,18 +95,100 @@ test.describe.serial("Projects full route flow", () => {
     const sessionToken = await createE2ESession(e2eIdentity.user.email);
     await context.addCookies([{ name: "jenan_session", value: sessionToken, url: "http://127.0.0.1:3101", httpOnly: true, sameSite: "Lax" }]);
     await page.setViewportSize({ width: 390, height: 844 });
-    for (const route of ["/projects", "/projects/analysis/map", "/projects/evaluation/risks", "/projects/feasibility/pro/financial", "/projects/start/team"]) {
+    for (const route of ["/projects", "/projects/analysis/map", "/projects/start/evaluation/risks", "/projects/feasibility/pro/financial", "/projects/start/team"]) {
       expect((await page.goto(route, { waitUntil: "domcontentloaded" }))?.status()).toBe(200);
       if (route === "/projects") {
         await expect(page.locator(".projects-dashboard")).toHaveAttribute(
           "data-projects-source",
           "ACCOUNT_PROJECT_RECORDS",
         );
-        await expect(page.locator(".projects-dashboard__services > a")).toHaveCount(4);
+        await expect(page.locator(".projects-dashboard__services > a")).toHaveCount(3);
       }
       const layout = await page.evaluate(() => ({ scrollWidth: document.documentElement.scrollWidth, viewportWidth: document.documentElement.clientWidth }));
       expect(layout.scrollWidth, route).toBeLessThanOrEqual(layout.viewportWidth + 1);
     }
+  });
+
+  test("persists evaluation evidence, risk, results, and report from the integrated workflow", async ({
+    context,
+    page,
+  }) => {
+    const sessionToken = await createE2ESession(e2eIdentity.user.email);
+    await context.addCookies([
+      { name: "locale", value: "en", url: "http://127.0.0.1:3101" },
+      {
+        name: "jenan_session",
+        value: sessionToken,
+        url: "http://127.0.0.1:3101",
+        httpOnly: true,
+        sameSite: "Lax",
+      },
+    ]);
+    const created = await page.request.post("/api/projects", {
+      headers: { origin },
+      data: {
+        action: "create",
+        countryCode: "SA",
+        name: "Integrated evaluation E2E project",
+        sector: "Technology",
+      },
+    });
+    expect(created.status()).toBe(201);
+    const projectId = (await created.json()).result.id as string;
+
+    await page.goto(`/projects/start/evaluation/new?project=${projectId}`, {
+      waitUntil: "networkidle",
+    });
+    for (const type of [
+      "FINANCIAL",
+      "MARKET",
+      "OPERATIONAL",
+      "TECHNICAL",
+      "COMPLIANCE",
+      "RISK",
+    ]) {
+      const form = page.locator(`[data-assessment-type="${type}"]`);
+      await form.getByLabel("Score out of 100").fill("80");
+      await form
+        .getByLabel("Evidence and analysis")
+        .fill(`${type} evidence recorded from verified E2E inputs`);
+      await form.getByLabel("Source").fill(`E2E ${type} source`);
+      await form.getByRole("button", { name: "Save area" }).click();
+      await expect(page.getByRole("status")).toContainText(
+        "Assessment area and evidence saved.",
+      );
+    }
+
+    await page.goto(`/projects/start/evaluation/result?project=${projectId}`, {
+      waitUntil: "networkidle",
+    });
+    await expect(page.locator(".pse-result-banner")).toContainText("80/100");
+    await expect(page.getByText("Ready for approval").first()).toBeVisible();
+
+    await page.goto(`/projects/start/evaluation/risks?project=${projectId}`, {
+      waitUntil: "networkidle",
+    });
+    const riskForm = page.getByTestId("evaluation-risk-form");
+    await riskForm.getByLabel("Risk description").fill("E2E supplier concentration risk");
+    await riskForm.getByLabel("Likelihood 1-5").fill("4");
+    await riskForm.getByLabel("Impact 1-5").fill("5");
+    await riskForm.getByLabel("Mitigation plan").fill("Approve a second verified supplier");
+    await riskForm.getByLabel("Owner").fill("Procurement manager");
+    await riskForm.getByRole("button", { name: "Save risk" }).click();
+    await expect(
+      page.getByText("E2E supplier concentration risk").first(),
+    ).toBeVisible();
+
+    await page.goto(`/projects/start/evaluation/report?project=${projectId}`, {
+      waitUntil: "networkidle",
+    });
+    await expect(page.locator(".pse-report-preview")).toContainText(
+      "Integrated evaluation E2E project",
+    );
+    await expect(page.getByRole("link", { name: /Download PDF/ })).toHaveAttribute(
+      "href",
+      `/api/projects/${projectId}/report`,
+    );
   });
 
   test("keeps every professional feasibility stage responsive at the approved sizes", async ({
@@ -225,6 +316,12 @@ test.describe.serial("Projects full route flow", () => {
     ];
     const routes = [
       "/projects/start",
+      "/projects/start/evaluation",
+      "/projects/start/evaluation/new",
+      "/projects/start/evaluation/result",
+      "/projects/start/evaluation/risks",
+      "/projects/start/evaluation/recommendations",
+      "/projects/start/evaluation/report",
       "/projects/start/new",
       "/projects/start/licenses",
       "/projects/start/setup",
@@ -238,7 +335,11 @@ test.describe.serial("Projects full route flow", () => {
       await page.setViewportSize(size);
       for (const route of routes) {
         expect((await page.goto(route, { waitUntil: "domcontentloaded" }))?.status()).toBe(200);
-        await expect(page.locator(".project-start-workspace")).toBeVisible();
+        if (route.startsWith("/projects/start/evaluation")) {
+          await expect(page.locator(".project-start-evaluation")).toBeVisible();
+        } else {
+          await expect(page.locator(".project-start-workspace")).toBeVisible();
+        }
         const layout = await page.evaluate(() => ({
           scrollWidth: document.documentElement.scrollWidth,
           viewportWidth: document.documentElement.clientWidth,

@@ -476,10 +476,10 @@ test.describe.serial("projects section acceptance", () => {
         await expect(page.locator(".psw-dashboard")).toBeVisible();
       } else if (route === "/projects/evaluation") {
         await expect(
-          page.locator(".project-evaluation-dashboard"),
-        ).toHaveAttribute("data-project-evaluation-source", "USER_INPUT_REQUIRED");
+          page.locator(".project-start-evaluation"),
+        ).toHaveAttribute("data-project-evaluation-source", "ACCOUNT_PROJECT_RECORDS");
         await expect(
-          page.locator(".project-evaluation-dashboard__form"),
+          page.locator(".pse-sidebar a.is-active"),
         ).toBeVisible();
       } else {
         await expect(page.locator(".projects-live-service")).toBeVisible();

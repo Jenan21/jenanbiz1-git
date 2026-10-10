@@ -32,7 +32,7 @@ const services: ReadonlyArray<{ href: string; icon: IconName; title: Copy }> = [
   { href: "/academy", icon: "graduation", title: ["الأكاديمية", "Academy"] },
   { href: "/software", icon: "grid", title: ["البرمجيات", "Software"] },
   { href: "/talent", icon: "briefcase", title: ["الوظائف", "Jobs"] },
-  { href: "/projects/evaluation", icon: "barChart", title: ["تقييم مشروع", "Project evaluation"] },
+  { href: "/projects/start/evaluation", icon: "barChart", title: ["تقييم مشروع", "Project evaluation"] },
   { href: "/projects/start", icon: "rocket", title: ["بدء مشروع", "Start project"] },
   { href: "/projects/analysis", icon: "trend", title: ["تحليل مشروع", "Project analysis"] },
 ];

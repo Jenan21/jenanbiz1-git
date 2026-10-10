@@ -192,8 +192,8 @@ const modules: readonly PlatformModuleDefinition[] = [
     eyebrow: ["من الفكرة إلى بداية المشروع", "From idea to project launch"],
     signature: ["مشروع أوضح، قرار أفضل", "Clearer project, better decision"],
     description: [
-      "أربع واجهات متخصصة لفهم المشروع ودراسة جدواه وتقييمه ثم بدء مساحته.",
-      "Four focused interfaces to analyze, study, evaluate, and start a project.",
+      "ثلاث واجهات متخصصة لفهم المشروع ودراسة جدواه ثم تقييمه وإطلاقه ضمن مساحة البدء.",
+      "Three focused interfaces to analyze, study, then evaluate and launch a project within the start workspace.",
     ],
     stages: [
       ["تحليل", "Analyze"],
@@ -226,23 +226,12 @@ const modules: readonly PlatformModuleDefinition[] = [
       ),
       service(
         "projects",
-        "evaluation",
-        "activity",
-        ["تقييم مشروع", "Project evaluation"],
-        [
-          "واجهة تعرض محاور التقييم والملخصات دون تشغيل التحليل.",
-          "An interface presenting evaluation dimensions without running analysis.",
-        ],
-        { template: "projects-evaluation" },
-      ),
-      service(
-        "projects",
         "start",
         "rocket",
         ["بدء مشروع", "Start a project"],
         [
-          "مساحة بصرية لتهيئة المشروع ومراحله الأولى.",
-          "A visual space for preparing the project and its first stages.",
+          "مساحة متكاملة لتقييم جاهزية المشروع واعتماده ثم تخطيط إطلاقه وتنفيذه.",
+          "An integrated workspace to evaluate and approve readiness before planning and executing the launch.",
         ],
         { template: "projects-launch" },
       ),

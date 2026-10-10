@@ -304,6 +304,11 @@ function StartNavigation({
       label: ["لوحة البداية", "Dashboard"],
     },
     {
+      route: "/projects/start/evaluation",
+      icon: "barChart" as const,
+      label: ["التقييم", "Evaluation"],
+    },
+    {
       route: "/projects/start/new",
       icon: "briefcase" as const,
       label: ["بيانات المشروع", "Project data"],

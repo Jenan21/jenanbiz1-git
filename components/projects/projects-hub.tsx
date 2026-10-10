@@ -48,22 +48,12 @@ const services: ReadonlyArray<{
     tone: "cyan",
   },
   {
-    href: "/projects/evaluation",
-    icon: "activity",
-    title: ["تقييم مشروع", "Project evaluation"],
-    description: [
-      "تقييم شامل للأبعاد المالية والسوقية والفنية",
-      "Complete financial, market, and technical evaluation",
-    ],
-    tone: "violet",
-  },
-  {
     href: "/projects/start",
     icon: "rocket",
     title: ["بدء مشروع", "Start project"],
     description: [
-      "حوّل خطتك إلى واقع من خلال خارطة تنفيذية متكاملة",
-      "Turn the plan into reality through a complete launch roadmap",
+      "قيّم جاهزية المشروع ثم حوّل خطتك إلى واقع عبر مسار إطلاق متكامل",
+      "Evaluate project readiness, then turn the plan into reality through a complete launch workflow",
     ],
     tone: "emerald",
   },

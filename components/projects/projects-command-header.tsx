@@ -5,7 +5,7 @@ import { LanguageSwitcher } from "@/components/ui/language-switcher";
 import type { Locale } from "@/types/i18n";
 
 type Copy = readonly [string, string];
-type ProjectSection = "analysis" | "evaluation" | "feasibility" | "start";
+type ProjectSection = "analysis" | "feasibility" | "start";
 
 const navigation: ReadonlyArray<{
   href: string;
@@ -28,7 +28,6 @@ const sections: ReadonlyArray<{
   label: Copy;
 }> = [
   { href: "/projects/analysis", icon: "barChart", id: "analysis", label: ["تحليل مشروع", "Project analysis"] },
-  { href: "/projects/evaluation", icon: "activity", id: "evaluation", label: ["تقييم مشروع", "Project evaluation"] },
   { href: "/projects/start", icon: "rocket", id: "start", label: ["بدء مشروع", "Start project"] },
   { href: "/projects/feasibility", icon: "pieChart", id: "feasibility", label: ["إعداد دراسات الجدوى", "Feasibility studies"] },
 ];

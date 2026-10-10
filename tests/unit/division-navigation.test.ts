@@ -15,7 +15,7 @@ import {
 import { resolveServiceTemplate } from "@/lib/platform/service-templates";
 
 const expectedServiceCounts = {
-  projects: 4,
+  projects: 3,
   academy: 4,
   market: 2,
   talent: 2,
@@ -69,14 +69,13 @@ describe("platform catalog navigation contract", () => {
     }
   });
 
-  it("selects the four project experiences from catalog data", () => {
+  it("selects the three project experiences from catalog data", () => {
     const projects = builtInPlatformCatalog.modules.find(
       (module) => module.id === "projects",
     );
     expect(projects?.services.map((service) => service.template)).toEqual([
       "projects-analysis",
       "projects-feasibility",
-      "projects-evaluation",
       "projects-launch",
     ]);
   });
