@@ -3,9 +3,8 @@ import Link from "next/link";
 import { requireUser } from "@/lib/auth/session";
 import { db } from "@/lib/db";
 import { getRequestDictionary } from "@/lib/i18n/server";
-import { PlatformShell } from "@/components/custom/platform-shell";
+import { AcademyShell } from "@/components/academy/academy-shell";
 import { AcademyCourseJourney } from "@/components/academy/academy-course-journey";
-import { AcademySectionNav } from "@/components/academy/academy-section-nav";
 import type { Locale } from "@/types/i18n";
 
 export default async function AcademyCoursePage({
@@ -33,8 +32,7 @@ export default async function AcademyCoursePage({
 
   const ar = locale === "ar";
   return (
-    <PlatformShell locale={locale as Locale} activeRoute="/academy" userLabel={user.profile?.displayName ?? user.email}>
-      <AcademySectionNav activeRoute="/academy/courses" locale={locale as Locale} />
+    <AcademyShell locale={locale as Locale} activeRoute="/academy/courses" userLabel={user.profile?.displayName ?? user.email}>
       <article className="academy-course-page">
         <Link className="academy-course-page__back" href="/academy">{ar ? "العودة إلى الأكاديمية" : "Back to academy"}</Link>
         <header>
@@ -57,6 +55,6 @@ export default async function AcademyCoursePage({
           {course.exams.map((exam) => <article className="academy-course-page__item" key={exam.id}><span>{exam.passingScore}%</span><div><h3>{exam.title}</h3><p>{ar ? `نوع التقييم: ${exam.assessmentType}` : `Assessment type: ${exam.assessmentType}`}</p></div></article>)}
         </section>
       </article>
-    </PlatformShell>
+    </AcademyShell>
   );
 }

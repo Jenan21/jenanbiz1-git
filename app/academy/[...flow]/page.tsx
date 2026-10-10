@@ -1,6 +1,7 @@
 import { notFound } from "next/navigation";
+import { AcademyResourceApprovalState } from "@/generated/prisma/client";
+import { AcademyShell } from "@/components/academy/academy-shell";
 import { AcademyReferenceWorkspace } from "@/components/academy/academy-reference-workspace";
-import { PlatformShell } from "@/components/custom/platform-shell";
 import { requireUser } from "@/lib/auth/session";
 import { db } from "@/lib/db";
 import { getRequestDictionary } from "@/lib/i18n/server";
@@ -8,7 +9,9 @@ import { findAcademyFlow } from "@/lib/academy/user-academy-routes";
 import {
   academyResourceKindForRoute,
   getApprovedAcademyResources,
+  listAcademyResources,
 } from "@/services/academy/content-library-service";
+import { getLearnerAcademySnapshot } from "@/services/academy/learner-portal-service";
 import { listAcademyResourceEngagements } from "@/services/academy/resource-engagement-service";
 
 export default async function AcademyFlowPage({
@@ -27,7 +30,7 @@ export default async function AcademyFlowPage({
     getRequestDictionary(),
     requireUser(route),
   ]);
-  const [course, resources] = await Promise.all([
+  const [course, courses, resources, snapshot] = await Promise.all([
     definition.source === "course"
       ? db.academyCourse.findFirst({
           include: {
@@ -39,27 +42,52 @@ export default async function AcademyFlowPage({
           orderBy: { createdAt: "asc" },
         })
       : Promise.resolve(null),
-    getApprovedAcademyResources({
-      category: filters.category?.trim() || undefined,
-      kind: academyResourceKindForRoute(route),
-      query: filters.query?.trim().slice(0, 160) || undefined,
+    db.academyCourse.findMany({
+      select: {
+        id: true,
+        code: true,
+        title: true,
+        description: true,
+        field: { select: { key: true, name: true } },
+        specialization: { select: { name: true } },
+        _count: { select: { lessons: true, labs: true, exams: true } },
+      },
+      orderBy: { title: "asc" },
     }),
+    definition.source === "resource"
+      ? getApprovedAcademyResources({
+          category: filters.category?.trim() || undefined,
+          kind: academyResourceKindForRoute(route),
+          query: filters.query?.trim().slice(0, 160) || undefined,
+        })
+      : definition.source === "mixed"
+        ? listAcademyResources({
+            approvalState: AcademyResourceApprovalState.APPROVED,
+            category: filters.category?.trim() || undefined,
+            query: filters.query?.trim().slice(0, 160) || undefined,
+          })
+        : Promise.resolve([]),
+    getLearnerAcademySnapshot(user.id),
   ]);
   const engagements = await listAcademyResourceEngagements(user.id, resources.map((resource) => resource.id));
   return (
-    <PlatformShell
+    <AcademyShell
       locale={locale}
-      activeRoute="/academy"
+      activeRoute={route}
       userLabel={user.profile?.displayName ?? user.email}
     >
       <AcademyReferenceWorkspace
         course={course}
+        courses={courses}
         definition={definition}
         engagements={engagements}
+        learnerName={user.profile?.displayName ?? user.email}
         locale={locale}
+        query={filters.query}
         requestedResource={filters.resource}
         resources={resources}
+        snapshot={snapshot}
       />
-    </PlatformShell>
+    </AcademyShell>
   );
 }

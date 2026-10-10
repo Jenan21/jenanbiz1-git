@@ -29,18 +29,25 @@ test.describe.serial("Academy full route flow", () => {
     ]);
     const catalog = await page.request.get("/api/academy/catalog");
     expect(catalog.status()).toBe(200);
-    expect((await catalog.json()).courses.length).toBeGreaterThan(0);
+    const catalogPayload = await catalog.json() as { courses: Array<{ id: string; title: string }> };
+    expect(catalogPayload.courses.length).toBeGreaterThan(0);
+
+    const selectedCourse = catalogPayload.courses.at(-1)!;
+    expect((await page.goto(`/academy/courses/${selectedCourse.id}`, { waitUntil: "domcontentloaded" }))?.status()).toBe(200);
+    await expect(page.getByRole("heading", { name: selectedCourse.title, level: 1 })).toBeVisible();
+    expect((await page.goto(`/academy/courses/${selectedCourse.id}/lesson/1`, { waitUntil: "domcontentloaded" }))?.status()).toBe(200);
+    await expect(page.locator(".academy-course-focus, .academy-reference__header--course")).toContainText(selectedCourse.title);
 
     for (const definition of academyFlowDefinitions) {
       const response = await page.goto(definition.route, { waitUntil: "domcontentloaded" });
       expect(response?.status(), definition.route).toBe(200);
       await expect(page.locator(".academy-section-nav")).toBeVisible();
-      if (definition.route === "/academy/courses") await expect(page.locator(".academy-library")).toBeVisible();
-      else if (definition.source === "course") {
+      if (definition.route === "/academy/courses") await expect(page.locator(".academy-catalog")).toBeVisible();
+      else if (definition.source === "course" && ["detail", "player", "form", "dashboard", "report"].includes(definition.kind)) {
         const expectedMode = definition.kind === "player" ? "lesson" : definition.kind === "form" ? "quiz" : definition.kind === "dashboard" ? "result" : definition.kind === "report" ? "certificate" : "detail";
         await expect(page.locator(".academy-course-journey")).toHaveAttribute("data-academy-course-mode", expectedMode);
       }
-      else await expect(page.locator(".academy-reference__empty")).toContainText("Awaiting approved source");
+      else await expect(page.locator(".academy-reference")).toHaveAttribute("data-academy-kind", definition.kind);
       const layout = await page.evaluate(() => ({ scrollWidth: document.documentElement.scrollWidth, viewportWidth: document.documentElement.clientWidth }));
       expect(layout.scrollWidth, definition.route).toBeLessThanOrEqual(layout.viewportWidth + 1);
     }

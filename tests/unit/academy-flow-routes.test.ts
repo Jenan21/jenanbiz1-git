@@ -5,7 +5,19 @@ import { academyFlowDefinitions, findAcademyFlow } from "@/lib/academy/user-acad
 describe("academy route contract", () => {
   it("matches every academy child route in the authoritative blueprint", () => {
     const expected = manifest.map((item) => item.route).filter((route) => route.startsWith("/academy/")).sort();
-    expect(academyFlowDefinitions.map((item) => item.route).sort()).toEqual(expected);
+    const actual = academyFlowDefinitions.map((item) => item.route);
+    expect(actual).toEqual(expect.arrayContaining(expected));
+    expect(actual).toEqual(expect.arrayContaining([
+      "/academy/sections",
+      "/academy/section/business",
+      "/academy/journey",
+      "/academy/assessments",
+      "/academy/certificates",
+      "/academy/downloads",
+      "/academy/community",
+      "/academy/search",
+      "/academy/profile",
+    ]));
   });
 
   it("keeps routes unique and resolves course-backed flows", () => {

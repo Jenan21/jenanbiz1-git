@@ -90,6 +90,8 @@ Required responsive checks: 2560x1440, 1920x1080, 1440x900, 1366x768, 1280x800, 
 - Academy, courses, course details, lessons, player, attachments/notes, quiz, result, completion, and certificate.
 - Webinars with details, registration, and live/recorded content.
 - Studies with list/detail/reader; research with list/detail/sources; learning paths with progress; certificates with verification and supported print/PDF/share.
+- The visual authority for the Academy is `APPROVED_ACADEMY_REFERENCES/academy-primary-board.png`. The two `academy-complementary-board-*.png` files extend route and state coverage where the primary board does not show a screen.
+- Academy supplemental production routes include `/academy/sections`, `/academy/section/business`, `/academy/journey`, `/academy/assessments`, `/academy/certificates`, `/academy/downloads`, `/academy/community`, `/academy/search`, and `/academy/profile`. They reuse the live course, approved resource, engagement, assessment, and certificate registries; unavailable community or media providers must remain explicit.
 
 ### Jenan Market
 
