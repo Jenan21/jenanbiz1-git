@@ -1605,7 +1605,8 @@
 }
 
 .academy-assessment-layout,
-.academy-download-layout {
+.academy-download-layout,
+.academy-obligations {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 12px;
@@ -1613,6 +1614,7 @@
 
 .academy-assessment-layout > section,
 .academy-download-layout > section,
+.academy-obligations > section,
 .academy-profile > section,
 .academy-community > *,
 .academy-search-results > section {
@@ -1628,6 +1630,7 @@
 
 .academy-assessment-layout > section > article,
 .academy-download-layout > section > article,
+.academy-obligations > section > article,
 .academy-profile > section > article {
   min-width: 0;
   display: grid;
@@ -1642,6 +1645,7 @@
 
 .academy-assessment-layout article > span,
 .academy-download-layout article > span,
+.academy-obligations article > span,
 .academy-profile > section article > span {
   width: 36px;
   height: 36px;
@@ -1665,6 +1669,7 @@
 
 .academy-assessment-layout article div,
 .academy-download-layout article div,
+.academy-obligations article div,
 .academy-profile > section article div {
   min-width: 0;
   display: grid;
@@ -1673,6 +1678,7 @@
 
 .academy-assessment-layout article small,
 .academy-download-layout article small,
+.academy-obligations article small,
 .academy-profile > section article small {
   color: #7797a7;
   font-size: 0.65rem;
@@ -1681,6 +1687,7 @@
 .academy-assessment-layout article a,
 .academy-assessment-layout article > b,
 .academy-download-layout article a,
+.academy-obligations article a,
 .academy-profile > section article a {
   color: var(--academy-cyan);
   font-size: 0.68rem;
@@ -1941,6 +1948,60 @@
 
 .academy-profile > section {
   grid-column: 2;
+}
+
+.academy-settings {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 11px;
+}
+
+.academy-settings > section {
+  min-width: 0;
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 12px;
+  padding: 17px;
+  border: 1px solid rgba(41, 180, 208, 0.2);
+  border-radius: 9px;
+  background: rgba(5, 29, 45, 0.82);
+}
+
+.academy-settings > section > span {
+  width: 42px;
+  height: 42px;
+  display: grid;
+  place-items: center;
+  border-radius: 8px;
+  color: var(--academy-cyan);
+  background: rgba(35, 185, 213, 0.11);
+}
+
+.academy-settings h2 {
+  margin: 0;
+  font-size: 0.9rem;
+}
+
+.academy-settings p {
+  margin: 4px 0 0;
+  color: #7f9dac;
+  font-size: 0.7rem;
+  line-height: 1.65;
+}
+
+.academy-settings a {
+  color: var(--academy-cyan);
+  font-size: 0.7rem;
+  font-weight: 900;
+}
+
+.academy-settings button {
+  padding: 7px 10px;
+  border: 1px solid rgba(95, 120, 132, 0.28);
+  border-radius: 5px;
+  color: #637f8c;
+  background: transparent;
 }
 
 .academy-resource-catalog__grid {
@@ -2520,6 +2581,8 @@
 
   .academy-assessment-layout,
   .academy-download-layout,
+  .academy-obligations,
+  .academy-settings,
   .academy-community {
     grid-template-columns: 1fr;
   }
@@ -2670,6 +2733,7 @@
 
   .academy-assessment-layout > section > article,
   .academy-download-layout > section > article,
+  .academy-obligations > section > article,
   .academy-profile > section > article {
     grid-template-columns: auto minmax(0, 1fr);
   }
@@ -2678,6 +2742,7 @@
   .academy-assessment-layout article > b,
   .academy-download-layout article > a,
   .academy-download-layout article > button,
+  .academy-obligations article > a,
   .academy-profile > section article > a {
     grid-column: 2;
     justify-self: start;

@@ -14,7 +14,9 @@ const links: ReadonlyArray<{
   { href: "/academy/journey", icon: "trend", label: ["رحلتي", "My journey"] },
   { href: "/academy/webinars", icon: "people", label: ["الندوات", "Webinars"] },
   { href: "/academy/research", icon: "brain", label: ["الأبحاث", "Research"] },
+  { href: "/academy/library", icon: "grid", label: ["المكتبة", "Library"] },
   { href: "/academy/assessments", icon: "check", label: ["الاختبارات", "Assessments"] },
+  { href: "/academy/obligations", icon: "briefcase", label: ["الالتزامات", "Obligations"] },
   { href: "/academy/certificates", icon: "shield", label: ["الشهادات", "Certificates"] },
   { href: "/academy/profile", icon: "user", label: ["ملفي", "Profile"] },
 ];

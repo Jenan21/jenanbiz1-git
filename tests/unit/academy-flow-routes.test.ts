@@ -14,9 +14,19 @@ describe("academy route contract", () => {
       "/academy/assessments",
       "/academy/certificates",
       "/academy/downloads",
+      "/academy/library",
+      "/academy/library/sample",
+      "/academy/favorites",
+      "/academy/saved",
+      "/academy/obligations",
       "/academy/community",
       "/academy/search",
       "/academy/profile",
+      "/academy/settings",
+      "/academy/exams",
+      "/academy/exam/sample",
+      "/academy/exam/sample/result",
+      "/academy/webinar/sample/watch",
     ]));
   });
 

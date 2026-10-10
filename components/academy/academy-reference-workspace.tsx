@@ -115,10 +115,12 @@ function formatDate(value: Date | string | null, locale: Locale) {
 }
 
 function ResourceCard({
+  detailBase,
   engagement,
   locale,
   resource,
 }: {
+  detailBase?: string;
   engagement?: ResourceEngagement;
   locale: Locale;
   resource: LibraryResource;
@@ -139,7 +141,7 @@ function ResourceCard({
           <div><dt>{ar ? "المصدر" : "Source"}</dt><dd>{resource.sourceName ?? (ar ? "غير متاح" : "Unavailable")}</dd></div>
         </dl>
         {engagement ? <small>{engagement.status.replaceAll("_", " ")}{engagement.progressPercent ? ` · ${engagement.progressPercent}%` : ""}</small> : null}
-        <Link className="button button--primary" href={`${detailRoutes[resource.kind]}?resource=${resource.slug}`}>{ar ? "فتح المحتوى" : "Open content"} <Icon name="arrow" /></Link>
+        <Link className="button button--primary" href={`${detailBase ?? detailRoutes[resource.kind]}?resource=${resource.slug}`}>{ar ? "فتح المحتوى" : "Open content"} <Icon name="arrow" /></Link>
       </div>
     </article>
   );
@@ -422,6 +424,35 @@ export function AcademyReferenceWorkspace({
         </div>
       </>
     );
+  } else if (definition.kind === "obligations") {
+    const completedExamIds = new Set(snapshot.attempts.filter((item) => item.outcome === "PASSED").map((item) => item.exam.id));
+    const requiredLessons = snapshot.enrollments.flatMap((enrollment) =>
+      enrollment.course.lessons
+        .filter((lesson) => lesson.learnerCompletions.length === 0)
+        .map((lesson) => ({ course: enrollment.course, lesson })));
+    const requiredAssessments = snapshot.enrollments.flatMap((enrollment) =>
+      enrollment.course.exams
+        .filter((exam) => !completedExamIds.has(exam.id))
+        .map((exam) => ({ course: enrollment.course, exam })));
+    content = (
+      <>
+        <ScreenHeader definition={definition} locale={locale} stats={[
+          { label: ar ? "درس مطلوب" : "required lessons", value: requiredLessons.length },
+          { label: ar ? "اختبار مطلوب" : "required assessments", value: requiredAssessments.length },
+          { label: ar ? "دروس مكتملة" : "completed lessons", value: snapshot.completedLessons },
+        ]} />
+        <div className="academy-obligations">
+          <section>
+            <header><h2>{ar ? "الدروس المطلوبة" : "Required lessons"}</h2><span>{requiredLessons.length}</span></header>
+            {requiredLessons.length ? requiredLessons.map(({ course: enrolledCourse, lesson }) => <article key={lesson.id}><span><Icon name="graduation" /></span><div><strong>{lesson.title}</strong><small>{enrolledCourse.title}</small></div><Link href={`/academy/courses/${enrolledCourse.id}/lesson/${lesson.sequence}`}>{ar ? "متابعة" : "Continue"}</Link></article>) : <p className="academy-inline-empty">{ar ? "لا توجد دروس مطلوبة حاليًا." : "No required lessons at this time."}</p>}
+          </section>
+          <section>
+            <header><h2>{ar ? "الاختبارات المطلوبة" : "Required assessments"}</h2><span>{requiredAssessments.length}</span></header>
+            {requiredAssessments.length ? requiredAssessments.map(({ course: enrolledCourse, exam }) => <article key={exam.id}><span><Icon name="check" /></span><div><strong>{exam.title}</strong><small>{enrolledCourse.title} · {ar ? `الاجتياز ${exam.passingScore}%` : `Pass ${exam.passingScore}%`}</small></div><Link href={`/academy/courses/${enrolledCourse.id}/quiz`}>{ar ? "بدء الاختبار" : "Start"}</Link></article>) : <p className="academy-inline-empty">{ar ? "لا توجد اختبارات مطلوبة حاليًا." : "No required assessments at this time."}</p>}
+          </section>
+        </div>
+      </>
+    );
   } else if (definition.kind === "community") {
     content = (
       <>
@@ -485,7 +516,19 @@ export function AcademyReferenceWorkspace({
         </div>
       </>
     );
-  } else if (selectedResource && definition.kind === "list") {
+  } else if (definition.kind === "settings") {
+    content = (
+      <>
+        <ScreenHeader compact definition={definition} locale={locale} />
+        <div className="academy-settings">
+          <section><span><Icon name="user" /></span><div><h2>{ar ? "الحساب والهوية" : "Account and identity"}</h2><p>{learnerName}</p></div><Link href="/user/onboarding">{ar ? "تحديث البيانات" : "Update profile"}</Link></section>
+          <section><span><Icon name="globe" /></span><div><h2>{ar ? "اللغة" : "Language"}</h2><p>{ar ? "العربية هي لغة العرض الحالية. استخدم مبدّل اللغة في الشريط العلوي للتغيير." : "English is the current display language. Use the language switcher in the top bar to change it."}</p></div></section>
+          <section><span><Icon name="bell" /></span><div><h2>{ar ? "تنبيهات الأكاديمية" : "Academy notifications"}</h2><p>{ar ? "لا يوجد مزود تنبيهات أكاديمي مخصص متصل حاليًا." : "No dedicated academy notification provider is currently connected."}</p></div><button disabled type="button">{ar ? "غير متاح" : "Unavailable"}</button></section>
+          <section><span><Icon name="shield" /></span><div><h2>{ar ? "الخصوصية والأمان" : "Privacy and security"}</h2><p>{ar ? "الملاحظات والتقدم والنتائج خاصة بحسابك ولا تظهر في الروابط العامة." : "Notes, progress, and results remain private to your account."}</p></div><Link href="/user">{ar ? "مركز الحساب" : "Account center"}</Link></section>
+        </div>
+      </>
+    );
+  } else if (selectedResource && (definition.kind === "list" || definition.kind === "library")) {
     content = (
       <>
         <ScreenHeader definition={definition} locale={locale} stats={[
@@ -494,7 +537,7 @@ export function AcademyReferenceWorkspace({
         ]} />
         <div className="academy-resource-catalog">
           <form className="academy-resource-search" method="get"><Icon name="search" /><input name="query" defaultValue={query ?? ""} placeholder={ar ? "بحث في العنوان أو المؤلف أو المصدر" : "Search title, author, or source"} /><input name="category" placeholder={ar ? "التصنيف" : "Category"} /><button type="submit">{ar ? "بحث" : "Search"}</button></form>
-          <div className="academy-resource-catalog__grid">{resources.map((resource) => <ResourceCard engagement={engagements.find((item) => item.resourceId === resource.id)} key={resource.id} locale={locale} resource={resource} />)}</div>
+          <div className="academy-resource-catalog__grid">{resources.map((resource) => <ResourceCard detailBase={definition.kind === "library" ? "/academy/library/sample" : undefined} engagement={engagements.find((item) => item.resourceId === resource.id)} key={resource.id} locale={locale} resource={resource} />)}</div>
         </div>
       </>
     );
