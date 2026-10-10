@@ -152,6 +152,7 @@ test.describe.serial("Jenan Talent full flow", () => {
     await expect(employerPage.getByRole("status")).toContainText("without an employment guarantee");
 
     await employerPage.goto("/talent/employer/company", { waitUntil: "domcontentloaded" });
+    await employerPage.getByRole("button", { name: "Edit company profile" }).click();
     await employerPage.getByLabel("Industry").fill("Technology");
     await employerPage.getByLabel("Website").fill("https://example.test");
     await employerPage.getByLabel("Country").fill("SA");
@@ -166,7 +167,7 @@ test.describe.serial("Jenan Talent full flow", () => {
     await employerPage.getByLabel("Default work mode").selectOption("HYBRID");
     await employerPage.getByLabel("Default interview duration").fill("45");
     const settingsResponse = employerPage.waitForResponse((response) => response.url().endsWith("/api/talent") && response.request().method() === "POST");
-    await employerPage.getByRole("button", { name: "Save settings" }).click();
+    await employerPage.getByRole("button", { name: "Save changes" }).click();
     expect((await settingsResponse).status()).toBe(200);
 
     await employerPage.goto("/talent/employer/support", { waitUntil: "domcontentloaded" });
@@ -192,25 +193,21 @@ test.describe.serial("Jenan Talent full flow", () => {
     const screenshotDirectory = process.env.TALENT_QA_SCREENSHOT_DIR;
     if (screenshotDirectory) {
       await mkdir(screenshotDirectory, { recursive: true });
-      await employerPage.setViewportSize({ width: 1440, height: 900 });
-      for (const [name, route] of [
-        ["dashboard", "/talent/employer"],
-        ["jobs", "/talent/employer/jobs"],
-        ["requests", "/talent/employer/requests"],
-        ["shortlists", "/talent/employer/shortlists"],
-        ["interviews", "/talent/employer/interviews"],
-        ["company", "/talent/employer/company"],
-      ] as const) {
+      await employerContext.addCookies([{ name: "locale", value: "ar", url: origin }]);
+      await employerPage.setViewportSize({ width: 1365, height: 768 });
+      for (const definition of TALENT_FLOW_ROUTES.filter((item) => item.route.startsWith("/talent/employer"))) {
+        const route = definition.route.replace("[applicationId]", applicationId);
         await employerPage.goto(route, { waitUntil: "domcontentloaded" });
         await expect(employerPage.locator(".talent-flow")).toBeVisible();
         await expect(employerPage.locator(".talent-flow__loading")).toHaveCount(0);
-        await employerPage.screenshot({ path: join(screenshotDirectory, `current-employer-${name}.png`), fullPage: true });
+        await employerPage.screenshot({ path: join(screenshotDirectory, `current-${definition.id}-ar.png`) });
       }
       await employerPage.setViewportSize({ width: 390, height: 844 });
       await employerPage.goto("/talent/employer", { waitUntil: "domcontentloaded" });
       await expect(employerPage.locator(".talent-flow")).toBeVisible();
       await expect(employerPage.locator(".talent-flow__loading")).toHaveCount(0);
-      await employerPage.screenshot({ path: join(screenshotDirectory, "current-employer-dashboard-mobile.png"), fullPage: true });
+      await employerPage.screenshot({ path: join(screenshotDirectory, "current-employer-mobile-ar.png"), fullPage: true });
+      await employerContext.addCookies([{ name: "locale", value: "en", url: origin }]);
     }
 
     for (const definition of TALENT_FLOW_ROUTES) {
