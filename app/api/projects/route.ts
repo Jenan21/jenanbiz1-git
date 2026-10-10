@@ -11,6 +11,7 @@ import {
   listUserProjectsPage,
   recordProjectDecision,
   recordProjectAssessment,
+  saveProjectFeasibilityStudySection,
   saveProjectFinancialPlan,
   startProject,
   updateProjectRiskStatus,
@@ -46,11 +47,82 @@ const financialInputs = z.object({
   annualInflationRate: z.number().finite().min(0).max(100).optional(),
   taxRate: z.number().finite().min(0).max(100).optional(),
 });
+const feasibilityStudyPayload = z.discriminatedUnion("section", [
+  z.object({
+    section: z.literal("GENERAL"),
+    data: z.object({
+      projectType: z.string().trim().min(2).max(120),
+      legalNature: z.string().trim().min(2).max(120),
+      size: z.enum(["SMALL", "MEDIUM", "LARGE"]),
+      location: z.string().trim().min(2).max(200),
+      description: z.string().trim().min(10).max(4000),
+    }),
+  }),
+  z.object({
+    section: z.literal("MARKET"),
+    data: z.object({
+      scope: z.enum(["LOCAL", "REGIONAL", "NATIONAL", "INTERNATIONAL"]),
+      customerSegment: z.string().trim().min(3).max(1000),
+      demandTrend: z.string().trim().min(3).max(1000),
+      marketSizeNotes: z.string().trim().min(3).max(2000),
+      competitorNotes: z.string().trim().min(3).max(2000),
+      pricingNotes: z.string().trim().min(3).max(2000),
+      distributionNotes: z.string().trim().min(3).max(2000),
+    }),
+  }),
+  z.object({
+    section: z.literal("MARKETING"),
+    data: z.object({
+      objectives: z.array(z.enum(["AWARENESS", "ACQUISITION", "RETENTION", "SALES"])).min(1).max(4),
+      strategy: z.enum(["DIGITAL", "DIRECT", "PARTNERSHIPS", "MIXED"]),
+      budget: z.number().finite().min(0),
+      channels: z.array(z.enum(["SEARCH", "SOCIAL", "EMAIL", "CONTENT", "EVENTS", "PARTNERS"])).min(1).max(6),
+      awarenessMonths: z.number().int().min(0).max(36),
+      launchMonths: z.number().int().min(0).max(36),
+      growthMonths: z.number().int().min(0).max(36),
+    }),
+  }),
+  z.object({
+    section: z.literal("TECHNICAL"),
+    data: z.object({
+      facilityType: z.string().trim().min(2).max(160),
+      facilityArea: z.number().finite().min(0),
+      equipmentCount: z.number().int().min(0).max(100000),
+      productsServices: z.string().trim().min(3).max(3000),
+      rawMaterials: z.string().trim().min(3).max(3000),
+      staffingPlan: z.string().trim().min(3).max(3000),
+      organizationNotes: z.string().trim().min(3).max(3000),
+    }),
+  }),
+  z.object({ section: z.literal("FINANCIAL"), data: financialInputs }),
+  z.object({
+    section: z.literal("SWOT"),
+    data: z.object({
+      strengths: z.string().trim().min(3).max(3000),
+      weaknesses: z.string().trim().min(3).max(3000),
+      opportunities: z.string().trim().min(3).max(3000),
+      threats: z.string().trim().min(3).max(3000),
+      recommendation: z.string().trim().min(10).max(4000),
+    }),
+  }),
+  z.object({
+    section: z.literal("TIMELINE"),
+    data: z.object({
+      startDate: z.string().date(),
+      durationMonths: z.number().int().min(1).max(120),
+      preparationMonths: z.number().int().min(0).max(120),
+      launchMonths: z.number().int().min(0).max(120),
+      growthMonths: z.number().int().min(0).max(120),
+      milestones: z.string().trim().min(3).max(4000),
+    }),
+  }),
+]);
 
 function actionRateLimit(action: (typeof commandSchema)["_output"]["action"]): ProjectRateLimitAction | undefined {
   if (action === "create") return "create";
   if (action === "recordAssessment") return "assessment";
   if (action === "calculateFeasibility") return "financial";
+  if (action === "saveFeasibilityStudy") return "assessment";
   if (action === "searchIntelligence") return "intelligence";
   if (action === "createRisk" || action === "updateRiskStatus" || action === "calculateRisk") return "risk";
   if (action === "recordDecision") return "decision";
@@ -110,6 +182,11 @@ const commandSchema = z.discriminatedUnion("action", [
   z.object({ action: z.literal("createVendor"), projectId: z.string().cuid(), kind: z.enum(vendorKinds), name: z.string().trim().min(2).max(240), category: z.string().trim().max(160).optional(), contactEmail: z.string().trim().email().max(320).optional(), notes: z.string().trim().max(4000).optional() }),
   z.object({ action: z.literal("updateVendorStatus"), projectId: z.string().cuid(), vendorId: z.string().cuid(), status: z.enum(vendorStatuses) }),
   z.object({ action: z.literal("calculateFeasibility"), inputs: financialInputs, projectId: z.string().cuid().optional(), persist: z.boolean().optional() }),
+  z.object({
+    action: z.literal("saveFeasibilityStudy"),
+    projectId: z.string().cuid(),
+    payload: feasibilityStudyPayload,
+  }),
   z.object({ action: z.literal("recordDecision"), projectId: z.string().cuid(), verdict: z.enum(decisionVerdicts), rationale: z.string().trim().min(10).max(4000) }),
   z.object({ action: z.literal("createRisk"), projectId: z.string().cuid(), category: z.string().trim().min(2).max(120), title: z.string().trim().min(3).max(300), likelihood: z.number().int().min(1).max(5), impact: z.number().int().min(1).max(5), mitigation: z.string().trim().min(3).max(4000), ownerLabel: z.string().trim().min(2).max(160), reviewAt: z.string().datetime().optional() }),
   z.object({ action: z.literal("updateRiskStatus"), projectId: z.string().cuid(), riskId: z.string().cuid(), status: z.enum(riskStatuses) }),
@@ -191,6 +268,12 @@ export async function POST(request: NextRequest) {
                 }
                 return result;
               })()
+            : input.action === "saveFeasibilityStudy"
+              ? await saveProjectFeasibilityStudySection(
+                  input.projectId,
+                  input.payload,
+                  user.id,
+                )
             : input.action === "recordDecision"
               ? await recordProjectDecision(input.projectId, input, user.id)
               : input.action === "createRisk"

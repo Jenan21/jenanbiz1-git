@@ -14,6 +14,7 @@ describe("project flow route contract", () => {
   it("keeps routes unique and rejects unknown paths", () => {
     expect(new Set(projectFlowDefinitions.map((item) => item.route)).size).toBe(projectFlowDefinitions.length);
     expect(findProjectFlow("/projects/analysis/result")?.focus).toBe("assessment");
+    expect(findProjectFlow("/projects/feasibility/pro/marketing")?.kind).toBe("wizard");
     expect(findProjectFlow("/projects/not-real")).toBeUndefined();
   });
 });

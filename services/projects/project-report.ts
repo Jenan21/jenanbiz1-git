@@ -9,6 +9,19 @@ function formatValue(value: string | number | null | undefined) {
   return value === null || value === undefined || value === "" ? "-" : String(value);
 }
 
+function jsonRecord(value: unknown) {
+  return value && typeof value === "object" && !Array.isArray(value)
+    ? (value as Record<string, unknown>)
+    : undefined;
+}
+
+function jsonText(value: unknown) {
+  if (Array.isArray(value)) return value.map(String).join(", ");
+  return typeof value === "string" || typeof value === "number"
+    ? String(value)
+    : "-";
+}
+
 export async function createProjectReport(projectId: string, userId: string, intelligence?: ProjectIntelligenceResult) {
   const project = await getUserProject(projectId, userId);
   if (!project) throw new Error("Project not found");
@@ -79,6 +92,44 @@ export async function createProjectReport(projectId: string, userId: string, int
     ["Current phase", formatValue(project.currentPhase)],
   ]);
   addText(`Description: ${formatValue(project.description)}`);
+  const feasibilityStudy = jsonRecord(project.feasibilityStudy);
+  const feasibilitySections = jsonRecord(feasibilityStudy?.sections);
+  if (feasibilitySections) {
+    const sectionNames = ["GENERAL", "MARKET", "MARKETING", "TECHNICAL", "FINANCIAL", "SWOT", "TIMELINE"];
+    const completedSections = sectionNames.filter((section) => jsonRecord(feasibilitySections[section]));
+    const general = jsonRecord(feasibilitySections.GENERAL);
+    const market = jsonRecord(feasibilitySections.MARKET);
+    const marketing = jsonRecord(feasibilitySections.MARKETING);
+    const technical = jsonRecord(feasibilitySections.TECHNICAL);
+    const swot = jsonRecord(feasibilitySections.SWOT);
+    const timeline = jsonRecord(feasibilitySections.TIMELINE);
+    y -= 10;
+    addText("Professional feasibility study", 14, true);
+    addText(`Study completion: ${completedSections.length}/${sectionNames.length} sections`);
+    addKeyValueTable([
+      ["Project type", jsonText(general?.projectType)],
+      ["Legal nature", jsonText(general?.legalNature)],
+      ["Project size", jsonText(general?.size)],
+      ["Study location", jsonText(general?.location)],
+      ["Market scope", jsonText(market?.scope)],
+      ["Marketing strategy", jsonText(marketing?.strategy)],
+      ["Marketing budget", jsonText(marketing?.budget)],
+      ["Facility type", jsonText(technical?.facilityType)],
+      ["Facility area", jsonText(technical?.facilityArea)],
+      ["Equipment count", jsonText(technical?.equipmentCount)],
+    ]);
+    addText(`Customer segment: ${jsonText(market?.customerSegment)}`);
+    addText(`Market size and sources: ${jsonText(market?.marketSizeNotes)}`);
+    addText(`Competitor assessment: ${jsonText(market?.competitorNotes)}`);
+    addText(`Marketing objectives: ${jsonText(marketing?.objectives)}`);
+    addText(`Marketing channels: ${jsonText(marketing?.channels)}`);
+    addText(`Products and services: ${jsonText(technical?.productsServices)}`);
+    addText(`Workforce plan: ${jsonText(technical?.staffingPlan)}`);
+    addText(`SWOT recommendation: ${jsonText(swot?.recommendation)}`);
+    addText(`Delivery start: ${jsonText(timeline?.startDate)}`);
+    addText(`Delivery duration: ${jsonText(timeline?.durationMonths)} months`);
+    addText(`Key milestones: ${jsonText(timeline?.milestones)}`);
+  }
   y -= 10;
   addText("Project lifecycle", 14, true);
   for (const phase of project.phases) addText(`${phase.sequence}. ${phase.title} - ${phase.status}`);
@@ -96,6 +147,18 @@ export async function createProjectReport(projectId: string, userId: string, int
   addText(`Decision score: ${formatValue(decision?.weightedScore)}/100`);
   addText(`Decision rationale: ${formatValue(decision?.rationale)}`);
   addText(`Financial plan version: ${financialPlan ? `v${financialPlan.version}` : "-"}`);
+  if (financialPlan) {
+    const baseCase = jsonRecord(financialPlan.baseCase);
+    addKeyValueTable([
+      ["Monthly revenue", jsonText(baseCase?.monthlyRevenue)],
+      ["Monthly profit", jsonText(baseCase?.monthlyProfit)],
+      ["Break-even units", jsonText(baseCase?.breakEvenUnits)],
+      ["ROI percent", jsonText(baseCase?.roiPercent)],
+      ["Payback months", jsonText(baseCase?.paybackMonths)],
+      ["Net present value", jsonText(baseCase?.netPresentValue)],
+      ["Internal rate of return", jsonText(baseCase?.internalRateReturn)],
+    ]);
+  }
   if (project.risks.length) {
     addText("Risk register", 14, true);
     for (const risk of project.risks) {

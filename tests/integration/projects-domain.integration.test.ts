@@ -10,6 +10,7 @@ import {
   listUserProjects,
   recordProjectDecision,
   recordProjectAssessment,
+  saveProjectFeasibilityStudySection,
   saveProjectFinancialPlan,
   startProject,
   updateProjectComplianceStatus,
@@ -72,6 +73,71 @@ describe("projects domain", () => {
     expect(project.phases).toHaveLength(7);
     expect(project.assessments).toHaveLength(6);
     expect(project.phases[0]?.status).toBe("ACTIVE");
+
+    await saveProjectFeasibilityStudySection(
+      project.id,
+      {
+        section: "GENERAL",
+        data: {
+          description: "A documented professional feasibility study.",
+          legalNature: "Limited liability company",
+          location: "Riyadh",
+          projectType: "Service",
+          size: "MEDIUM",
+        },
+      },
+      user.id,
+    );
+    await saveProjectFeasibilityStudySection(
+      project.id,
+      {
+        section: "MARKET",
+        data: {
+          competitorNotes: "Named competitors were reviewed.",
+          customerSegment: "Regional logistics operators",
+          demandTrend: "Documented demand growth",
+          distributionNotes: "Direct distribution",
+          marketSizeNotes: "Source-backed market estimate",
+          pricingNotes: "Comparable contract pricing",
+          scope: "REGIONAL",
+        },
+      },
+      editor.id,
+    );
+    await expect(
+      saveProjectFeasibilityStudySection(
+        project.id,
+        { section: "SWOT", data: { strengths: "Private" } },
+        reviewer.id,
+      ),
+    ).rejects.toThrow("Project not found");
+    await expect(
+      saveProjectFeasibilityStudySection(
+        project.id,
+        { section: "SWOT", data: { strengths: "Private" } },
+        outsider.id,
+      ),
+    ).rejects.toThrow("Project not found");
+    const feasibilityDraft = await db.project.findUniqueOrThrow({
+      where: { id: project.id },
+      select: { feasibilityStudy: true, feasibilityStudyUpdatedAt: true },
+    });
+    expect(feasibilityDraft.feasibilityStudyUpdatedAt).not.toBeNull();
+    expect(feasibilityDraft.feasibilityStudy).toMatchObject({
+      sections: {
+        GENERAL: { location: "Riyadh", size: "MEDIUM" },
+        MARKET: { scope: "REGIONAL" },
+      },
+      version: 1,
+    });
+    expect(
+      await db.auditLog.count({
+        where: {
+          action: "project.feasibility_section.saved",
+          entityId: project.id,
+        },
+      }),
+    ).toBe(2);
 
     await expect(startProject(project.id, user.id)).rejects.toThrow("Approved evaluation evidence");
     await expect(recordProjectAssessment(project.id, { type: "MARKET", score: 84 }, user.id)).rejects.toThrow("requires a summary and source");

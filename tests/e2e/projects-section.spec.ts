@@ -137,6 +137,112 @@ test.describe.serial("projects section acceptance", () => {
     expect(feasibility.status()).toBe(200);
     expect((await feasibility.json()).result.base.valid).toBe(true);
 
+    const professionalSections = [
+      {
+        section: "GENERAL",
+        data: {
+          projectType: "Digital service",
+          legalNature: "Limited liability company",
+          size: "MEDIUM",
+          location: "Riyadh",
+          description: "A source-backed professional feasibility study for E2E acceptance.",
+        },
+      },
+      {
+        section: "MARKET",
+        data: {
+          scope: "REGIONAL",
+          customerSegment: "Regional business customers",
+          demandTrend: "Demand is documented from named sources.",
+          marketSizeNotes: "Market size is reviewed against traceable sources.",
+          competitorNotes: "Named competitors are assessed.",
+          pricingNotes: "Pricing is based on comparable offers.",
+          distributionNotes: "Direct and partner distribution.",
+        },
+      },
+      {
+        section: "MARKETING",
+        data: {
+          objectives: ["AWARENESS", "ACQUISITION"],
+          strategy: "MIXED",
+          budget: 25000,
+          channels: ["SEARCH", "CONTENT", "PARTNERS"],
+          awarenessMonths: 2,
+          launchMonths: 1,
+          growthMonths: 6,
+        },
+      },
+      {
+        section: "TECHNICAL",
+        data: {
+          facilityType: "Operations office",
+          facilityArea: 120,
+          equipmentCount: 18,
+          productsServices: "Managed digital services",
+          rawMaterials: "Cloud infrastructure and licensed tools",
+          staffingPlan: "Operations, finance, and growth teams",
+          organizationNotes: "Documented ownership and delivery responsibilities",
+        },
+      },
+      {
+        section: "FINANCIAL",
+        data: {
+          initialInvestment: 100000,
+          monthlyFixedCosts: 10000,
+          variableCostPerUnit: 20,
+          pricePerUnit: 50,
+          monthlyUnits: 1000,
+          months: 12,
+          annualDiscountRate: 10,
+          annualInflationRate: 2,
+          taxRate: 15,
+        },
+      },
+      {
+        section: "SWOT",
+        data: {
+          strengths: "Documented operating capability",
+          weaknesses: "Early-stage market presence",
+          opportunities: "Regional demand growth",
+          threats: "Competitive price pressure",
+          recommendation: "Proceed through a controlled launch with monthly evidence reviews.",
+        },
+      },
+      {
+        section: "TIMELINE",
+        data: {
+          startDate: "2026-10-01",
+          durationMonths: 12,
+          preparationMonths: 2,
+          launchMonths: 1,
+          growthMonths: 9,
+          milestones: "Setup, controlled launch, evidence review, and scale decision.",
+        },
+      },
+    ];
+    for (const payload of professionalSections) {
+      const savedSection = await page.request.post("/api/projects", {
+        headers: { origin, "Content-Type": "application/json" },
+        data: {
+          action: "saveFeasibilityStudy",
+          projectId,
+          payload,
+        },
+      });
+      expect(savedSection.status(), `${payload.section} feasibility section`).toBe(200);
+    }
+    const professionalDetail = await page.request.get(`/api/projects/${projectId}`);
+    expect(professionalDetail.status()).toBe(200);
+    expect((await professionalDetail.json()).project.feasibilityStudy).toMatchObject({
+      sections: {
+        GENERAL: { location: "Riyadh" },
+        MARKET: { scope: "REGIONAL" },
+        FINANCIAL: { initialInvestment: 100000 },
+        TIMELINE: { durationMonths: 12 },
+      },
+      version: 1,
+    });
+
     const persistedRisk = await page.request.post("/api/projects", {
       headers: { origin, "Content-Type": "application/json" },
       data: {
@@ -219,6 +325,27 @@ test.describe.serial("projects section acceptance", () => {
     expect(report.status()).toBe(200);
     expect(report.headers()["content-type"]).toContain("application/pdf");
 
+    await page.goto(`/projects/feasibility/pro/result?project=${projectId}`, {
+      waitUntil: "networkidle",
+    });
+    await expect(page.locator(".professional-feasibility")).toHaveAttribute(
+      "data-project-professional-flow",
+      "true",
+    );
+    await expect(page.locator(".pfs-score")).toContainText("100%");
+    await expect(
+      page.getByRole("link", { name: "Create final report" }),
+    ).toBeVisible();
+    await page.goto(`/projects/feasibility/pro/report?project=${projectId}`, {
+      waitUntil: "networkidle",
+    });
+    await expect(page.locator(".pfs-report-paper")).toContainText(
+      "E2E Project",
+    );
+    await expect(
+      page.getByRole("link", { name: "Download PDF" }),
+    ).toHaveAttribute("href", `/api/projects/${projectId}/report`);
+
     for (const route of [
       "/projects/analysis",
       "/projects/feasibility",
@@ -294,11 +421,16 @@ test.describe.serial("projects section acceptance", () => {
     expect(intelligence.status()).toBe(200);
     expect((await intelligence.json()).result.location).toMatchObject({ latitude: 24.7136, longitude: 46.6753 });
 
-    await page.goto("/projects/start/roadmap", { waitUntil: "networkidle" });
+    await page.goto(`/projects/analysis/map?project=${projectId}`, {
+      waitUntil: "networkidle",
+    });
     const projectCard = page.locator(".project-list-item").filter({ hasText: "E2E Project" });
     const openProject = projectCard.getByRole("button", { name: "Open" });
     if (await openProject.count()) await openProject.click();
     await expect(page.locator(".project-map__canvas")).toBeVisible();
+    await page.goto(`/projects/start/roadmap?project=${projectId}`, {
+      waitUntil: "networkidle",
+    });
     await expect(page.locator(".project-evidence-library")).toContainText("market-evidence.txt");
 
     await page.setViewportSize({ width: 390, height: 844 });

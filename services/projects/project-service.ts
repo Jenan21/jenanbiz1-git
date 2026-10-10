@@ -373,6 +373,73 @@ export async function saveProjectFinancialPlan(
   });
 }
 
+export async function saveProjectFeasibilityStudySection(
+  projectId: string,
+  input: {
+    section: "GENERAL" | "MARKET" | "MARKETING" | "TECHNICAL" | "FINANCIAL" | "SWOT" | "TIMELINE";
+    data: Record<string, unknown>;
+  },
+  userId: string,
+) {
+  return db.$transaction(async (transaction) => {
+    const project = await transaction.project.findFirst({
+      where: {
+        id: projectId,
+        ...projectAccessWhere(userId, [
+          ProjectMemberRole.OWNER,
+          ProjectMemberRole.EDITOR,
+        ]),
+      },
+      select: { feasibilityStudy: true, id: true },
+    });
+    if (!project) throw new Error("Project not found");
+
+    const currentStudy: Prisma.InputJsonObject = project.feasibilityStudy
+      ? JSON.parse(JSON.stringify(project.feasibilityStudy))
+      : {};
+    const currentSections =
+      currentStudy.sections &&
+      typeof currentStudy.sections === "object" &&
+      !Array.isArray(currentStudy.sections)
+        ? currentStudy.sections
+        : {};
+    const sectionData: Prisma.InputJsonObject = JSON.parse(
+      JSON.stringify(input.data),
+    );
+    const updatedAt = new Date();
+    const feasibilityStudy: Prisma.InputJsonObject = {
+      version: 1,
+      sections: {
+        ...currentSections,
+        [input.section]: sectionData,
+      },
+      updatedAt: updatedAt.toISOString(),
+    };
+    const updated = await transaction.project.update({
+      where: { id: projectId },
+      data: { feasibilityStudy, feasibilityStudyUpdatedAt: updatedAt },
+      select: {
+        feasibilityStudy: true,
+        feasibilityStudyUpdatedAt: true,
+        id: true,
+      },
+    });
+    await transaction.auditLog.create({
+      data: {
+        actorId: userId,
+        action: "project.feasibility_section.saved",
+        entityType: "Project",
+        entityId: projectId,
+        metadata: {
+          fields: Object.keys(input.data).sort(),
+          section: input.section,
+        },
+      },
+    });
+    return updated;
+  });
+}
+
 export async function createProjectRisk(
   projectId: string,
   input: { category: string; title: string; likelihood: number; impact: number; mitigation: string; ownerLabel: string; reviewAt?: Date },

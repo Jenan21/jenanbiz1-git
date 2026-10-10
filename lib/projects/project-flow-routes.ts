@@ -58,6 +58,19 @@ export const projectFlowDefinitions: readonly ProjectFlowDefinition[] = [
   flow("feasibility", "pro/report", ["تقرير الدراسة الاحترافية", "Professional study report"], "report", "report"),
 ];
 
+const professionalMarketingFlow: ProjectFlowDefinition = flow(
+  "feasibility",
+  "pro/marketing",
+  ["الخطة التسويقية", "Marketing plan"],
+  "wizard",
+  "feasibility",
+);
+
 export function findProjectFlow(route: string) {
-  return projectFlowDefinitions.find((item) => item.route === route);
+  return (
+    projectFlowDefinitions.find((item) => item.route === route) ??
+    (route === professionalMarketingFlow.route
+      ? professionalMarketingFlow
+      : undefined)
+  );
 }
