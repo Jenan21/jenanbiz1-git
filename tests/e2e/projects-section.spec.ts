@@ -314,6 +314,77 @@ test.describe.serial("projects section acceptance", () => {
       expect(completed.status(), `${phaseType} completion`).toBe(200);
     }
 
+    const launchProjectName = `E2E launch project ${Date.now()}`;
+    const invalidLaunchTimeline = await page.request.post("/api/projects", {
+      headers: { origin, "Content-Type": "application/json" },
+      data: {
+        action: "saveProjectLaunchPlan",
+        projectId,
+        payload: {
+          section: "TIMELINE",
+          data: {
+            startDate: "2026-10-01",
+            targetLaunchDate: "2027-03-31",
+            milestones: [{ type: "LAUNCH", startDate: "2027-03-01", endDate: "2027-03-31", status: "NOT_STARTED" }],
+          },
+        },
+      },
+    });
+    expect(invalidLaunchTimeline.status()).toBe(400);
+    const launchSections = [
+      {
+        section: "BASICS",
+        data: {
+          projectName: launchProjectName,
+          idea: "A documented production launch used for end-to-end acceptance.",
+          entityType: "LLC",
+          sector: "Technology",
+          city: "Riyadh",
+          targetAudience: "Regional business customers",
+          initialCapital: 100000,
+          durationMonths: 12,
+          teamSize: 6,
+        },
+      },
+      {
+        section: "BUDGET",
+        data: {
+          totalBudget: 100000,
+          contingencyPercent: 10,
+          expectedMonthlyRevenue: 50000,
+          expectedMonthlyOperatingCosts: 20000,
+          allocations: [
+            { category: "FOUNDATION", amount: 20000 },
+            { category: "EQUIPMENT", amount: 30000 },
+            { category: "PEOPLE", amount: 30000 },
+            { category: "CONTINGENCY", amount: 10000 },
+          ],
+        },
+      },
+      {
+        section: "TIMELINE",
+        data: {
+          startDate: "2026-10-01",
+          targetLaunchDate: "2027-03-31",
+          milestones: [
+            { type: "LICENSES", startDate: "2026-10-01", endDate: "2026-10-31", status: "COMPLETED" },
+            { type: "SETUP", startDate: "2026-11-01", endDate: "2026-11-30", status: "IN_PROGRESS" },
+            { type: "VENDORS", startDate: "2026-12-01", endDate: "2026-12-31", status: "NOT_STARTED" },
+            { type: "TEAM", startDate: "2027-01-01", endDate: "2027-01-31", status: "NOT_STARTED" },
+            { type: "PILOT", startDate: "2027-02-01", endDate: "2027-02-28", status: "NOT_STARTED" },
+            { type: "LAUNCH", startDate: "2027-03-01", endDate: "2027-03-31", status: "NOT_STARTED" },
+          ],
+        },
+      },
+    ];
+    for (const payload of launchSections) {
+      const savedLaunchSection = await page.request.post("/api/projects", {
+        headers: { origin, "Content-Type": "application/json" },
+        data: { action: "saveProjectLaunchPlan", projectId, payload },
+      });
+      expect(savedLaunchSection.status(), `${payload.section} launch section`).toBe(200);
+    }
+
     const started = await page.request.post("/api/projects", {
       headers: { origin, "Content-Type": "application/json" },
       data: { action: "start", projectId },
@@ -372,9 +443,7 @@ test.describe.serial("projects section acceptance", () => {
     await page.goto(`/projects/feasibility/pro/report?project=${projectId}`, {
       waitUntil: "networkidle",
     });
-    await expect(page.locator(".pfs-report-paper")).toContainText(
-      "E2E Project",
-    );
+    await expect(page.locator(".pfs-report-paper")).toContainText(launchProjectName);
     await expect(
       page.getByRole("link", { name: "Download PDF" }),
     ).toHaveAttribute("href", `/api/projects/${projectId}/report`);
@@ -403,13 +472,8 @@ test.describe.serial("projects section acceptance", () => {
           page.locator(".project-feasibility-dashboard__choices > article"),
         ).toHaveCount(2);
       } else if (route === "/projects/start") {
-        await expect(page.locator(".project-start-dashboard")).toHaveAttribute(
-          "data-project-start-source",
-          "USER_INPUT_REQUIRED",
-        );
-        await expect(
-          page.locator(".project-start-dashboard__form"),
-        ).toBeVisible();
+        await expect(page.locator(".project-start-workspace")).toHaveAttribute("data-project-start-route", "/projects/start");
+        await expect(page.locator(".psw-dashboard")).toBeVisible();
       } else if (route === "/projects/evaluation") {
         await expect(
           page.locator(".project-evaluation-dashboard"),
@@ -491,14 +555,15 @@ test.describe.serial("projects section acceptance", () => {
     await page.goto(`/projects/start/roadmap?project=${projectId}`, {
       waitUntil: "networkidle",
     });
-    await expect(page.locator(".project-evidence-library")).toContainText("market-evidence.txt");
+    await expect(page.locator(".project-start-workspace")).toHaveAttribute("data-project-start-route", "/projects/start/roadmap");
+    await expect(page.locator(".psw-gantt")).toBeVisible();
 
     await page.setViewportSize({ width: 390, height: 844 });
     await page.goto("/projects/start/roadmap", { waitUntil: "networkidle" });
-    await expect(page.locator(".projects-workspace")).toBeVisible();
+    await expect(page.locator(".project-start-workspace")).toBeVisible();
     const mobileLayout = await page.evaluate(() => {
       const viewportWidth = document.documentElement.clientWidth;
-      const selectors = [".project-create-form", ".project-workflow__steps", ".project-evidence-list", ".project-evidence-library", ".project-actions"];
+      const selectors = [".psw-navigation", ".psw-project-selector", ".psw-page", ".psw-timeline-form", ".psw-timeline-layout"];
       const overflows = selectors.flatMap((selector) =>
         [...document.querySelectorAll<HTMLElement>(selector)]
           .map((element) => ({ selector, rect: element.getBoundingClientRect() }))

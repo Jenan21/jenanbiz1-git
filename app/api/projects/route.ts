@@ -28,6 +28,7 @@ import {
   runProjectAnalysis,
   saveProjectAnalysisInput,
 } from "@/services/projects/project-analysis";
+import { saveProjectLaunchPlanSection } from "@/services/projects/project-launch";
 
 const projectStatuses = ["DRAFT", "ANALYSIS", "FEASIBILITY", "EVALUATION", "APPROVED", "IN_PROGRESS", "ON_HOLD", "COMPLETED", "REJECTED", "ARCHIVED"] as const;
 const phaseTypes = ["ANALYSIS", "FEASIBILITY", "EVALUATION", "PLANNING", "EXECUTION", "REVIEW", "COMPLETION"] as const;
@@ -59,6 +60,100 @@ const projectAnalysisInput = z.object({
     .enum(["UNDER_100K", "BETWEEN_100K_500K", "BETWEEN_500K_1M", "ABOVE_1M"])
     .optional(),
 });
+const projectLaunchPayload = z.discriminatedUnion("section", [
+  z.object({
+    section: z.literal("BASICS"),
+    data: z.object({
+      projectName: z.string().trim().min(2).max(160),
+      idea: z.string().trim().min(10).max(4000),
+      entityType: z.enum(["LLC", "SOLE_PROPRIETORSHIP", "JOINT_STOCK", "NONPROFIT", "OTHER"]),
+      sector: z.string().trim().min(2).max(120),
+      city: z.string().trim().min(2).max(160),
+      targetAudience: z.string().trim().min(2).max(500),
+      initialCapital: z.number().finite().positive().max(1_000_000_000_000),
+      durationMonths: z.number().int().min(1).max(120),
+      teamSize: z.number().int().min(1).max(10000),
+    }),
+  }),
+  z.object({
+    section: z.literal("BUDGET"),
+    data: z.object({
+      totalBudget: z.number().finite().positive().max(1_000_000_000_000),
+      contingencyPercent: z.number().finite().min(0).max(100),
+      expectedMonthlyRevenue: z.number().finite().min(0).max(1_000_000_000_000).optional(),
+      expectedMonthlyOperatingCosts: z.number().finite().min(0).max(1_000_000_000_000).optional(),
+      allocations: z.array(z.object({
+        category: z.enum(["FOUNDATION", "EQUIPMENT", "MARKETING", "PEOPLE", "SYSTEMS", "CONTINGENCY"]),
+        amount: z.number().finite().min(0).max(1_000_000_000_000),
+      })).min(1).max(6),
+    }).superRefine((data, context) => {
+      if (new Set(data.allocations.map((item) => item.category)).size !== data.allocations.length) {
+        context.addIssue({ code: "custom", message: "Budget categories must be unique", path: ["allocations"] });
+      }
+      if (data.allocations.reduce((sum, item) => sum + item.amount, 0) > data.totalBudget) {
+        context.addIssue({ code: "custom", message: "Budget allocations exceed the total", path: ["allocations"] });
+      }
+    }),
+  }),
+  z.object({
+    section: z.literal("TEAM"),
+    data: z.object({
+      roles: z.array(z.object({
+        roleName: z.string().trim().min(2).max(160),
+        responsibilities: z.string().trim().min(3).max(1000),
+        requiredCount: z.number().int().min(1).max(100),
+      })).min(1).max(30),
+    }).superRefine((data, context) => {
+      if (new Set(data.roles.map((role) => role.roleName.toLocaleLowerCase())).size !== data.roles.length) {
+        context.addIssue({ code: "custom", message: "Launch role names must be unique", path: ["roles"] });
+      }
+    }),
+  }),
+  z.object({
+    section: z.literal("TIMELINE"),
+    data: z.object({
+      startDate: z.string().date(),
+      targetLaunchDate: z.string().date(),
+      milestones: z.array(z.object({
+        type: z.enum(["LICENSES", "SETUP", "VENDORS", "TEAM", "PILOT", "LAUNCH"]),
+        startDate: z.string().date(),
+        endDate: z.string().date(),
+        status: z.enum(["NOT_STARTED", "IN_PROGRESS", "COMPLETED", "BLOCKED"]),
+      })).length(6),
+    }).superRefine((data, context) => {
+      if (data.targetLaunchDate <= data.startDate) {
+        context.addIssue({ code: "custom", message: "Launch date must follow the start date", path: ["targetLaunchDate"] });
+      }
+      if (new Set(data.milestones.map((milestone) => milestone.type)).size !== data.milestones.length) {
+        context.addIssue({ code: "custom", message: "Launch milestone types must be unique", path: ["milestones"] });
+      }
+      data.milestones.forEach((milestone, index) => {
+        if (milestone.endDate < milestone.startDate) {
+          context.addIssue({ code: "custom", message: "Milestone end date must follow its start date", path: ["milestones", index, "endDate"] });
+        }
+        if (milestone.startDate < data.startDate || milestone.endDate > data.targetLaunchDate) {
+          context.addIssue({ code: "custom", message: "Milestone dates must stay within the launch timeline", path: ["milestones", index] });
+        }
+      });
+    }),
+  }),
+  z.object({
+    section: z.literal("TASKS"),
+    data: z.object({
+      tasks: z.array(z.object({
+        id: z.string().uuid(),
+        title: z.string().trim().min(2).max(240),
+        status: z.enum(["TODO", "IN_PROGRESS", "DONE", "BLOCKED"]),
+        dueDate: z.string().date().optional(),
+        assigneeUserId: z.string().cuid().optional(),
+      })).max(100),
+    }).superRefine((data, context) => {
+      if (new Set(data.tasks.map((task) => task.id)).size !== data.tasks.length) {
+        context.addIssue({ code: "custom", message: "Launch task identifiers must be unique", path: ["tasks"] });
+      }
+    }),
+  }),
+]);
 const feasibilityStudyPayload = z.discriminatedUnion("section", [
   z.object({
     section: z.literal("GENERAL"),
@@ -136,6 +231,7 @@ function actionRateLimit(action: (typeof commandSchema)["_output"]["action"]): P
   if (action === "calculateFeasibility") return "financial";
   if (action === "saveFeasibilityStudy") return "assessment";
   if (action === "saveProjectAnalysis") return "assessment";
+  if (action === "saveProjectLaunchPlan") return "phase";
   if (action === "runProjectAnalysis") return "intelligence";
   if (action === "searchIntelligence") return "intelligence";
   if (action === "createRisk" || action === "updateRiskStatus" || action === "calculateRisk") return "risk";
@@ -209,6 +305,11 @@ const commandSchema = z.discriminatedUnion("action", [
   z.object({
     action: z.literal("runProjectAnalysis"),
     projectId: z.string().cuid(),
+  }),
+  z.object({
+    action: z.literal("saveProjectLaunchPlan"),
+    projectId: z.string().cuid(),
+    payload: projectLaunchPayload,
   }),
   z.object({ action: z.literal("recordDecision"), projectId: z.string().cuid(), verdict: z.enum(decisionVerdicts), rationale: z.string().trim().min(10).max(4000) }),
   z.object({ action: z.literal("createRisk"), projectId: z.string().cuid(), category: z.string().trim().min(2).max(120), title: z.string().trim().min(3).max(300), likelihood: z.number().int().min(1).max(5), impact: z.number().int().min(1).max(5), mitigation: z.string().trim().min(3).max(4000), ownerLabel: z.string().trim().min(2).max(160), reviewAt: z.string().datetime().optional() }),
@@ -305,6 +406,8 @@ export async function POST(request: NextRequest) {
                 )
             : input.action === "runProjectAnalysis"
               ? await runProjectAnalysis(input.projectId, user.id)
+            : input.action === "saveProjectLaunchPlan"
+              ? await saveProjectLaunchPlanSection(input.projectId, input.payload, user.id)
             : input.action === "recordDecision"
               ? await recordProjectDecision(input.projectId, input, user.id)
               : input.action === "createRisk"

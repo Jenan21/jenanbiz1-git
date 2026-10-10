@@ -3095,6 +3095,8 @@ model Project {
   analysisStudyUpdatedAt    DateTime?
   feasibilityStudy          Json?
   feasibilityStudyUpdatedAt DateTime?
+  launchPlan                Json?
+  launchPlanUpdatedAt       DateTime?
   marketListings        MarketListing[]
   createdAt             DateTime                      @default(now())
   updatedAt             DateTime                      @updatedAt

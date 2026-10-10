@@ -196,6 +196,42 @@ export async function createProjectReport(projectId: string, userId: string, int
     addText(`Delivery duration: ${jsonText(timeline?.durationMonths)} months`);
     addText(`Key milestones: ${jsonText(timeline?.milestones)}`);
   }
+  const launchPlan = jsonRecord(project.launchPlan);
+  const launchSections = jsonRecord(launchPlan?.sections);
+  if (launchSections) {
+    const basics = jsonRecord(launchSections.BASICS);
+    const budget = jsonRecord(launchSections.BUDGET);
+    const team = jsonRecord(launchSections.TEAM);
+    const timeline = jsonRecord(launchSections.TIMELINE);
+    const tasks = jsonRecord(launchSections.TASKS);
+    const allocations = Array.isArray(budget?.allocations) ? budget.allocations : [];
+    const milestones = Array.isArray(timeline?.milestones) ? timeline.milestones : [];
+    const taskItems = Array.isArray(tasks?.tasks) ? tasks.tasks : [];
+    y -= 10;
+    addText("Project launch plan", 14, true);
+    addKeyValueTable([
+      ["Entity type", jsonText(basics?.entityType)],
+      ["Launch city", jsonText(basics?.city)],
+      ["Target audience", jsonText(basics?.targetAudience)],
+      ["Initial capital", jsonText(basics?.initialCapital)],
+      ["Delivery duration", `${jsonText(basics?.durationMonths)} months`],
+      ["Planned team size", jsonText(basics?.teamSize)],
+      ["Budget total", jsonText(budget?.totalBudget)],
+      ["Contingency percent", `${jsonText(budget?.contingencyPercent)}%`],
+      ["Plan start date", jsonText(timeline?.startDate)],
+      ["Target launch date", jsonText(timeline?.targetLaunchDate)],
+      ["Role requirements", String(Array.isArray(team?.roles) ? team.roles.length : 0)],
+      ["Launch tasks", String(taskItems.length)],
+    ]);
+    for (const allocation of allocations) {
+      const item = jsonRecord(allocation);
+      addText(`Budget allocation: ${jsonText(item?.category)} | ${jsonText(item?.amount)}`);
+    }
+    for (const milestone of milestones) {
+      const item = jsonRecord(milestone);
+      addText(`Milestone: ${jsonText(item?.type)} | ${jsonText(item?.startDate)} - ${jsonText(item?.endDate)} | ${jsonText(item?.status)}`);
+    }
+  }
   y -= 10;
   addText("Project lifecycle", 14, true);
   for (const phase of project.phases) addText(`${phase.sequence}. ${phase.title} - ${phase.status}`);

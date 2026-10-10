@@ -19,6 +19,7 @@ import {
   updateProjectVendorStatus,
 } from "@/services/projects/project-service";
 import { saveProjectAnalysisInput } from "@/services/projects/project-analysis";
+import { saveProjectLaunchPlanSection } from "@/services/projects/project-launch";
 
 const suffix = crypto.randomUUID().slice(0, 8);
 let userId: string | undefined;
@@ -239,6 +240,69 @@ describe("projects domain", () => {
     await updateProjectPhase(project.id, "EVALUATION", "COMPLETED", user.id, "Approved by documented evidence");
     await updateProjectPhase(project.id, "PLANNING", "ACTIVE", user.id);
     await updateProjectPhase(project.id, "PLANNING", "COMPLETED", user.id, "Delivery plan approved");
+
+    await expect(startProject(project.id, user.id)).rejects.toThrow("Complete the project launch plan before starting: BASICS, BUDGET, TIMELINE");
+    await saveProjectLaunchPlanSection(project.id, {
+      section: "BASICS",
+      data: {
+        projectName: `Controlled launch ${suffix}`,
+        idea: "A documented cold-chain marketplace for regional operators.",
+        entityType: "LLC",
+        sector: "Logistics",
+        city: "Riyadh",
+        targetAudience: "Regional logistics operators",
+        initialCapital: 500000,
+        durationMonths: 12,
+        teamSize: 8,
+      },
+    }, user.id);
+    await saveProjectLaunchPlanSection(project.id, {
+      section: "BUDGET",
+      data: {
+        totalBudget: 500000,
+        contingencyPercent: 10,
+        expectedMonthlyRevenue: 100000,
+        expectedMonthlyOperatingCosts: 55000,
+        allocations: [
+          { category: "FOUNDATION", amount: 75000 },
+          { category: "EQUIPMENT", amount: 180000 },
+          { category: "PEOPLE", amount: 145000 },
+          { category: "CONTINGENCY", amount: 50000 },
+        ],
+      },
+    }, editor.id);
+    await saveProjectLaunchPlanSection(project.id, {
+      section: "TIMELINE",
+      data: {
+        startDate: "2026-10-01",
+        targetLaunchDate: "2027-03-31",
+        milestones: [
+          { type: "LICENSES", startDate: "2026-10-01", endDate: "2026-10-31", status: "COMPLETED" },
+          { type: "SETUP", startDate: "2026-11-01", endDate: "2026-11-30", status: "IN_PROGRESS" },
+          { type: "VENDORS", startDate: "2026-12-01", endDate: "2026-12-31", status: "NOT_STARTED" },
+          { type: "TEAM", startDate: "2027-01-01", endDate: "2027-01-31", status: "NOT_STARTED" },
+          { type: "PILOT", startDate: "2027-02-01", endDate: "2027-02-28", status: "NOT_STARTED" },
+          { type: "LAUNCH", startDate: "2027-03-01", endDate: "2027-03-31", status: "NOT_STARTED" },
+        ],
+      },
+    }, user.id);
+    await expect(saveProjectLaunchPlanSection(project.id, { section: "TASKS", data: { tasks: [] } }, reviewer.id)).rejects.toThrow("Project not found");
+    await expect(saveProjectLaunchPlanSection(project.id, { section: "TASKS", data: { tasks: [] } }, outsider.id)).rejects.toThrow("Project not found");
+    const launchDraft = await db.project.findUniqueOrThrow({
+      where: { id: project.id },
+      select: { launchPlan: true, launchPlanUpdatedAt: true, name: true },
+    });
+    expect(launchDraft.launchPlanUpdatedAt).not.toBeNull();
+    expect(launchDraft.name).toBe(`Controlled launch ${suffix}`);
+    expect(launchDraft.launchPlan).toMatchObject({
+      sections: {
+        BASICS: { city: "Riyadh", entityType: "LLC" },
+        BUDGET: { totalBudget: 500000 },
+        TIMELINE: { targetLaunchDate: "2027-03-31" },
+      },
+      version: 1,
+    });
+    expect(await db.auditLog.count({ where: { action: "project.launch_section.saved", entityId: project.id } })).toBe(3);
 
     await expect(startProject(project.id, editor.id)).rejects.toThrow("Project not found");
     const started = await startProject(project.id, user.id);

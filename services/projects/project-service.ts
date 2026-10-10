@@ -13,6 +13,7 @@ import {
   Prisma,
 } from "@/generated/prisma/client";
 import { db } from "@/lib/db";
+import { getProjectLaunchPlanReadiness } from "@/services/projects/project-launch";
 import { assessProjectQuality } from "@/services/projects/project-quality";
 
 const phasePlan: Array<{ type: ProjectPhaseType; title: string; sequence: number }> = [
@@ -601,7 +602,7 @@ export async function startProject(projectId: string, userId: string) {
   return db.$transaction(async (transaction) => {
     const project = await transaction.project.findFirst({
       where: { id: projectId, ...projectAccessWhere(userId, [ProjectMemberRole.OWNER]) },
-      include: { phases: { orderBy: { sequence: "asc" } }, assessments: true, decisions: { orderBy: { createdAt: "desc" }, take: 1 }, financialPlans: { orderBy: { version: "desc" }, take: 1 }, risks: true },
+      include: { phases: { orderBy: { sequence: "asc" } }, assessments: true, decisions: { orderBy: { createdAt: "desc" }, take: 1 }, financialPlans: { orderBy: { version: "desc" }, take: 1 }, risks: true, complianceItems: true },
     });
     if (!project) throw new Error("Project not found");
     if (project.status === ProjectStatus.IN_PROGRESS) return project;
@@ -614,6 +615,16 @@ export async function startProject(projectId: string, userId: string) {
     }
     if (!project.financialPlans[0]) {
       throw new Error("A saved financial plan is required before starting");
+    }
+    const launchReadiness = getProjectLaunchPlanReadiness(project.launchPlan);
+    if (!launchReadiness.ready) {
+      throw new Error(`Complete the project launch plan before starting: ${launchReadiness.missing.join(", ")}`);
+    }
+    const unresolvedCompliance = project.complianceItems.find(
+      (item) => item.status !== ProjectComplianceStatus.APPROVED && item.status !== ProjectComplianceStatus.NOT_APPLICABLE,
+    );
+    if (unresolvedCompliance) {
+      throw new Error("Resolve required licenses and procedures before starting");
     }
     const openHighRisk = project.risks.find((risk) => risk.score >= 15 && risk.status === ProjectRiskStatus.OPEN);
     if (openHighRisk) {

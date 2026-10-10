@@ -5,6 +5,7 @@ import { ProjectsWorkspace } from "@/components/projects/projects-workspace";
 import { ProjectFlowNavigation } from "@/components/projects/project-flow-navigation";
 import { ProfessionalFeasibilityWorkspace } from "@/components/projects/professional-feasibility-workspace";
 import { ProjectAnalysisWorkspace } from "@/components/projects/project-analysis-workspace";
+import { ProjectStartWorkspace } from "@/components/projects/project-start-workspace";
 import type { ProjectFlowGroup, ProjectFocus } from "@/lib/projects/project-flow-routes";
 
 type BilingualCopy = readonly [string, string];
@@ -39,6 +40,10 @@ export async function ProjectsLiveServicePage({ title, description, focus = "wor
         userLabel={userLabel}
       />
     );
+  }
+
+  if (route.startsWith("/projects/start/")) {
+    return <ProjectStartWorkspace locale={locale} route={route} userLabel={userLabel} />;
   }
 
   return (
