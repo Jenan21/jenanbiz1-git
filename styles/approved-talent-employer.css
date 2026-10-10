@@ -1,0 +1,1181 @@
+.approved-talent-employer {
+  --employer-cyan: #32e7ee;
+  --employer-blue: #138bd4;
+  --employer-emerald: #2bd8a8;
+  --employer-gold: #e6bf62;
+  min-height: 100dvh;
+  overflow-x: hidden;
+  color: #edfaff;
+  background:
+    radial-gradient(circle at 15% 10%, rgba(0, 151, 210, .12), transparent 28rem),
+    radial-gradient(circle at 90% 75%, rgba(0, 210, 190, .07), transparent 34rem),
+    #020b15;
+  font-family: "Alexandria Variable", "Segoe UI", sans-serif;
+}
+
+.approved-talent-employer *,
+.approved-talent-employer *::before,
+.approved-talent-employer *::after {
+  box-sizing: border-box;
+}
+
+.approved-talent-employer a {
+  color: inherit;
+  text-decoration: none;
+}
+
+.approved-talent-employer > .talent-flow--employer {
+  width: 100%;
+  max-width: none;
+  min-height: 100dvh;
+  display: grid;
+  grid-template-columns: 225px minmax(0, 1fr);
+  align-content: start;
+  gap: 8px;
+  padding: 0 7px 18px 0;
+  direction: ltr;
+}
+
+[dir="ltr"] .approved-talent-employer > .talent-flow--employer {
+  padding-inline: 7px 0;
+}
+
+.approved-talent-employer .talent-flow--employer > :not(.talent-employer-sidebar) {
+  grid-column: 2;
+  direction: rtl;
+}
+
+[dir="ltr"] .approved-talent-employer .talent-flow--employer > :not(.talent-employer-sidebar) {
+  direction: ltr;
+}
+
+.talent-employer-sidebar {
+  position: relative;
+  grid-column: 1;
+  grid-row: 1 / span 50;
+  min-height: 100dvh;
+  display: grid;
+  grid-template-rows: auto auto 1fr auto;
+  align-content: start;
+  gap: 12px;
+  padding: 22px 13px 15px;
+  border-inline-end: 1px solid rgba(24, 186, 218, .37);
+  background:
+    linear-gradient(180deg, rgba(2, 27, 47, .98), rgba(1, 17, 31, .95)),
+    url("/assets/global-city-night.jpg") center bottom / cover no-repeat;
+  box-shadow: 12px 0 40px rgba(0, 0, 0, .24);
+  direction: rtl;
+}
+
+.talent-employer-sidebar__brand {
+  display: grid;
+  justify-items: center;
+  gap: 3px;
+  padding-bottom: 14px;
+  border-bottom: 1px solid rgba(30, 177, 207, .18);
+  text-align: center;
+}
+
+.talent-employer-sidebar__brand strong {
+  font-family: Georgia, serif;
+  font-size: 1.35rem;
+}
+
+.talent-employer-sidebar__brand strong span,
+.talent-employer-sidebar__brand small {
+  color: var(--employer-cyan);
+}
+
+.talent-employer-sidebar__brand small {
+  font-size: .5rem;
+}
+
+.talent-employer-sidebar__identity {
+  display: grid;
+  grid-template-columns: 39px minmax(0, 1fr);
+  align-items: center;
+  gap: 9px;
+  padding: 9px;
+  border: 1px solid rgba(27, 178, 208, .25);
+  border-radius: 7px;
+  background: rgba(3, 48, 72, .47);
+}
+
+.talent-employer-sidebar__identity > span {
+  width: 37px;
+  height: 37px;
+  display: grid;
+  place-items: center;
+  border: 1px solid rgba(52, 221, 232, .37);
+  border-radius: 50%;
+  color: var(--employer-cyan);
+  background: rgba(5, 97, 128, .2);
+}
+
+.talent-employer-sidebar__identity strong,
+.talent-employer-sidebar__identity small {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.talent-employer-sidebar__identity strong {
+  font-size: .62rem;
+}
+
+.talent-employer-sidebar__identity small {
+  margin-top: 3px;
+  color: #8dafba;
+  font-size: .48rem;
+}
+
+.talent-employer-sidebar nav {
+  display: grid;
+  align-content: start;
+  gap: 4px;
+}
+
+.talent-employer-sidebar nav a {
+  min-height: 39px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 0 11px;
+  border: 1px solid transparent;
+  border-radius: 6px;
+  color: #a8c0c9;
+  font-size: .59rem;
+}
+
+.talent-employer-sidebar nav a:hover,
+.talent-employer-sidebar nav a.is-active {
+  border-color: rgba(44, 216, 230, .49);
+  color: #fff;
+  background: linear-gradient(90deg, rgba(5, 128, 169, .37), rgba(4, 63, 93, .18));
+  box-shadow: inset 0 0 18px rgba(28, 211, 228, .06);
+}
+
+.talent-employer-sidebar nav a .icon {
+  width: 16px;
+  height: 16px;
+}
+
+.talent-employer-sidebar nav a.is-active .icon {
+  color: var(--employer-cyan);
+}
+
+.talent-employer-sidebar__back {
+  min-height: 38px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 0 10px;
+  border-top: 1px solid rgba(24, 159, 190, .21);
+  color: #91adb7;
+  font-size: .55rem;
+}
+
+.approved-talent-employer .talent-flow__hero {
+  position: relative;
+  min-height: 145px;
+  overflow: hidden;
+  padding: 24px 3%;
+  border: 1px solid rgba(20, 173, 208, .4);
+  border-radius: 0 0 9px 9px;
+  background:
+    linear-gradient(90deg, rgba(1, 13, 25, .94), rgba(2, 46, 71, .34), rgba(1, 18, 33, .9)),
+    url("/assets/global-city-night.jpg") center 42% / cover no-repeat;
+  box-shadow: 0 14px 35px rgba(0, 0, 0, .25), inset 0 -2px rgba(38, 213, 226, .12);
+}
+
+.approved-talent-employer .talent-flow__hero-copy {
+  max-width: 720px;
+  position: relative;
+  z-index: 2;
+}
+
+.approved-talent-employer .talent-flow__hero-copy > span {
+  color: #42e2ec;
+  font-size: .52rem;
+  letter-spacing: .15em;
+}
+
+.approved-talent-employer .talent-flow__hero h1 {
+  margin: 8px 0;
+  color: #eafcff;
+  font-size: clamp(1.8rem, 3vw, 3.3rem);
+  line-height: 1.05;
+}
+
+.approved-talent-employer .talent-flow__hero-copy p {
+  max-width: 650px;
+  margin: 0;
+  color: #b7d0d7;
+  font-size: .72rem;
+  line-height: 1.8;
+}
+
+.approved-talent-employer .talent-flow__hero-network,
+.approved-talent-employer .talent-flow__promise {
+  display: none;
+}
+
+.approved-talent-employer .talent-flow__message {
+  margin: 0;
+  padding: 10px 14px;
+  border: 1px solid rgba(44, 219, 227, .42);
+  border-radius: 7px;
+  color: #dffcff;
+  background: rgba(4, 75, 97, .6);
+  font-size: .64rem;
+}
+
+.approved-talent-employer .talent-flow__signals {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.approved-talent-employer .talent-flow__signals article,
+.talent-employer-stat-strip article {
+  min-height: 88px;
+  padding: 14px;
+  border: 1px solid rgba(25, 176, 207, .3);
+  border-radius: 8px;
+  background: linear-gradient(145deg, rgba(4, 49, 75, .83), rgba(2, 24, 42, .93));
+}
+
+.approved-talent-employer .talent-flow__signals article span {
+  color: #2cdae6;
+  font-size: .55rem;
+}
+
+.approved-talent-employer .talent-flow__signals article strong {
+  color: #f2feff;
+  font-size: 1.35rem;
+}
+
+.approved-talent-employer .talent-flow__signals article small {
+  color: #8fb1bc;
+  font-size: .55rem;
+}
+
+.approved-talent-employer .talent-flow__entry {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.approved-talent-employer .talent-flow__entry > a {
+  min-height: 115px;
+  display: grid;
+  grid-template-columns: 38px minmax(0, 1fr) 18px;
+  align-items: center;
+  gap: 10px;
+  padding: 15px;
+  border: 1px solid rgba(25, 171, 202, .3);
+  border-radius: 8px;
+  background: linear-gradient(145deg, rgba(4, 47, 72, .86), rgba(2, 24, 42, .94));
+}
+
+.approved-talent-employer .talent-flow__entry > a:hover {
+  border-color: rgba(49, 222, 232, .62);
+  transform: translateY(-2px);
+}
+
+.approved-talent-employer .talent-flow__entry > a > .icon:first-child {
+  width: 36px;
+  height: 36px;
+  padding: 8px;
+  border: 1px solid rgba(48, 220, 231, .34);
+  border-radius: 8px;
+  color: var(--employer-cyan);
+  background: rgba(5, 94, 126, .2);
+}
+
+.approved-talent-employer .talent-flow__entry h2,
+.approved-talent-employer .talent-flow__entry p {
+  margin: 0;
+}
+
+.approved-talent-employer .talent-flow__entry h2 {
+  font-size: .74rem;
+}
+
+.approved-talent-employer .talent-flow__entry p {
+  margin-top: 5px;
+  color: #8facb7;
+  font-size: .53rem;
+  line-height: 1.65;
+}
+
+.talent-employer-stat-strip {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.talent-employer-stat-strip article {
+  display: grid;
+  grid-template-columns: 42px auto;
+  grid-template-rows: auto auto;
+  align-items: center;
+  column-gap: 10px;
+}
+
+.talent-employer-stat-strip article .icon {
+  grid-row: 1 / span 2;
+  width: 38px;
+  height: 38px;
+  padding: 8px;
+  border: 1px solid rgba(45, 216, 229, .35);
+  border-radius: 8px;
+  color: var(--employer-cyan);
+  background: rgba(5, 92, 124, .2);
+}
+
+.talent-employer-stat-strip strong {
+  align-self: end;
+  font-size: 1.3rem;
+}
+
+.talent-employer-stat-strip span {
+  align-self: start;
+  color: #91b0ba;
+  font-size: .55rem;
+}
+
+.talent-employer-panel {
+  overflow: hidden;
+  border: 1px solid rgba(24, 170, 201, .32);
+  border-radius: 9px;
+  background: rgba(2, 24, 41, .87);
+}
+
+.talent-employer-panel > header,
+.talent-shortlist-manager > form > header,
+.talent-employer-interviews > form > header,
+.talent-employer-support > form > header,
+.talent-employer-settings > header {
+  min-height: 64px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 15px;
+  padding: 12px 17px;
+  border-bottom: 1px solid rgba(24, 161, 191, .22);
+  background: linear-gradient(90deg, rgba(5, 70, 98, .28), rgba(2, 25, 43, .65));
+}
+
+.talent-employer-panel > header span,
+.talent-shortlist-manager > form > header span,
+.talent-employer-interviews > form > header span,
+.talent-employer-support > form > header span,
+.talent-employer-settings > header span {
+  color: #36dce7;
+  font-size: .5rem;
+  letter-spacing: .13em;
+}
+
+.talent-employer-panel > header h2,
+.talent-shortlist-manager > form > header h2,
+.talent-employer-interviews > form > header h2,
+.talent-employer-support > form > header h2,
+.talent-employer-settings > header h2 {
+  margin: 4px 0 0;
+  font-size: .95rem;
+}
+
+.talent-employer-panel > header > strong {
+  min-width: 40px;
+  height: 34px;
+  display: grid;
+  place-items: center;
+  border: 1px solid rgba(42, 214, 227, .34);
+  border-radius: 7px;
+  color: #36dfe8;
+  background: rgba(5, 95, 126, .18);
+}
+
+.talent-employer-job-list > article,
+.talent-employer-request-list > article {
+  min-height: 78px;
+  display: grid;
+  align-items: center;
+  gap: 12px;
+  padding: 11px 15px;
+  border-bottom: 1px solid rgba(21, 143, 172, .17);
+}
+
+.talent-employer-job-list > article {
+  grid-template-columns: minmax(100px, auto) minmax(230px, 1fr) 75px minmax(100px, auto) minmax(160px, auto);
+}
+
+.talent-employer-request-list > article {
+  grid-template-columns: 46px minmax(220px, 1fr) 60px auto minmax(170px, auto);
+}
+
+.talent-employer-job-list h3,
+.talent-employer-job-list p,
+.talent-employer-request-list h3,
+.talent-employer-request-list p {
+  margin: 0;
+}
+
+.talent-employer-job-list h3,
+.talent-employer-request-list h3 {
+  font-size: .72rem;
+}
+
+.talent-employer-job-list p,
+.talent-employer-job-list small,
+.talent-employer-request-list p,
+.talent-employer-request-list small {
+  color: #8eabb6;
+  font-size: .53rem;
+}
+
+.talent-employer-job-list p,
+.talent-employer-request-list p {
+  margin: 4px 0;
+}
+
+.talent-employer-avatar {
+  width: 42px;
+  height: 42px;
+  display: grid;
+  place-items: center;
+  border: 1px solid rgba(41, 210, 224, .35);
+  border-radius: 50%;
+  color: #36dce7;
+  background: rgba(5, 83, 111, .24);
+}
+
+.talent-employer-actions {
+  display: flex;
+  justify-content: end;
+  gap: 5px;
+}
+
+.talent-employer-actions a,
+.talent-employer-actions button {
+  min-height: 32px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0 10px;
+  border: 1px solid rgba(31, 190, 214, .4);
+  border-radius: 5px;
+  color: #39dce7;
+  background: rgba(3, 42, 64, .72);
+  font: inherit;
+  font-size: .53rem;
+}
+
+.approved-talent-employer .talent-post-form,
+.talent-shortlist-manager > form,
+.talent-employer-interviews > form,
+.talent-employer-company > form,
+.talent-employer-settings,
+.talent-employer-support > form {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+  padding: 16px;
+  border: 1px solid rgba(24, 169, 199, .32);
+  border-radius: 9px;
+  background: rgba(2, 25, 43, .87);
+}
+
+.approved-talent-employer .talent-post-form > header,
+.approved-talent-employer .talent-post-form > textarea,
+.approved-talent-employer .talent-post-form > button,
+.talent-shortlist-manager > form > header,
+.talent-shortlist-manager > form > textarea,
+.talent-shortlist-manager > form > button,
+.talent-employer-interviews > form > header,
+.talent-employer-interviews > form > textarea,
+.talent-employer-interviews > form > button,
+.talent-employer-support > form > header,
+.talent-employer-support > form > textarea,
+.talent-employer-support > form > button,
+.talent-employer-settings > header,
+.talent-employer-settings > button {
+  grid-column: 1 / -1;
+}
+
+.approved-talent-employer input,
+.approved-talent-employer select,
+.approved-talent-employer textarea {
+  width: 100%;
+  min-height: 42px;
+  padding: 9px 11px;
+  border: 1px solid rgba(25, 155, 185, .34);
+  border-radius: 6px;
+  outline: 0;
+  color: #eaf9fc;
+  background: rgba(1, 17, 31, .91);
+  font: inherit;
+  font-size: .62rem;
+}
+
+.approved-talent-employer textarea {
+  min-height: 95px;
+  resize: vertical;
+}
+
+.approved-talent-employer input:focus,
+.approved-talent-employer select:focus,
+.approved-talent-employer textarea:focus {
+  border-color: rgba(44, 217, 229, .7);
+  box-shadow: 0 0 0 3px rgba(31, 201, 220, .08);
+}
+
+.talent-shortlist-manager,
+.talent-employer-interviews,
+.talent-employer-support {
+  display: grid;
+  grid-template-columns: minmax(280px, .42fr) minmax(0, 1fr);
+  gap: 8px;
+}
+
+.talent-shortlist-manager > form,
+.talent-employer-interviews > form,
+.talent-employer-support > form {
+  align-content: start;
+  grid-template-columns: 1fr;
+}
+
+.talent-shortlist-manager > form > *,
+.talent-employer-interviews > form > *,
+.talent-employer-support > form > * {
+  grid-column: 1;
+}
+
+.talent-shortlist-manager > div {
+  display: grid;
+  align-content: start;
+  gap: 8px;
+}
+
+.talent-shortlist-manager > div > article {
+  overflow: hidden;
+  border: 1px solid rgba(24, 165, 195, .31);
+  border-radius: 8px;
+  background: rgba(2, 25, 43, .83);
+}
+
+.talent-shortlist-manager article > header,
+.talent-shortlist-manager article > footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 12px 15px;
+}
+
+.talent-shortlist-manager article > header {
+  border-bottom: 1px solid rgba(22, 150, 180, .19);
+}
+
+.talent-shortlist-manager article > footer {
+  border-top: 1px solid rgba(22, 150, 180, .19);
+}
+
+.talent-shortlist-manager h3,
+.talent-shortlist-manager p {
+  margin: 0;
+}
+
+.talent-shortlist-manager p,
+.talent-shortlist-manager small {
+  color: #8faeb9;
+  font-size: .54rem;
+}
+
+.talent-shortlist-manager article > section > div {
+  min-height: 58px;
+  display: grid;
+  grid-template-columns: 40px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 9px;
+  padding: 8px 13px;
+  border-bottom: 1px solid rgba(22, 139, 168, .14);
+}
+
+.talent-shortlist-manager article button,
+.talent-shortlist-manager article footer a {
+  min-height: 31px;
+  padding: 0 9px;
+  border: 1px solid rgba(30, 184, 209, .37);
+  border-radius: 5px;
+  color: #38dbe7;
+  background: rgba(3, 41, 64, .7);
+  font: inherit;
+  font-size: .52rem;
+}
+
+.talent-shortlist-add {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 6px;
+  margin-top: 9px;
+}
+
+.talent-shortlist-add select,
+.talent-shortlist-add button {
+  min-height: 34px;
+}
+
+.talent-shortlist-add button {
+  border: 1px solid rgba(34, 199, 219, .42);
+  border-radius: 5px;
+  color: #40e0ea;
+  background: rgba(4, 50, 73, .75);
+  font: inherit;
+  font-size: .54rem;
+}
+
+.talent-hiring-pipeline {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(220px, 1fr));
+  gap: 8px;
+  overflow-x: auto;
+  padding-bottom: 6px;
+}
+
+.talent-hiring-pipeline > section {
+  min-height: 440px;
+  padding: 8px;
+  border: 1px solid rgba(24, 166, 197, .3);
+  border-radius: 8px;
+  background: rgba(2, 25, 43, .8);
+}
+
+.talent-hiring-pipeline section > header {
+  min-height: 45px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 7px 8px 12px;
+  border-bottom: 1px solid rgba(24, 150, 180, .2);
+}
+
+.talent-hiring-pipeline h2 {
+  margin: 0;
+  font-size: .7rem;
+}
+
+.talent-hiring-pipeline section > article {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 7px;
+  margin-top: 8px;
+  padding: 11px;
+  border: 1px solid rgba(24, 156, 185, .24);
+  border-radius: 7px;
+  background: rgba(4, 44, 65, .66);
+}
+
+.talent-hiring-pipeline article strong,
+.talent-hiring-pipeline article small {
+  display: block;
+}
+
+.talent-hiring-pipeline article small,
+.talent-hiring-pipeline section > p {
+  color: #8faab4;
+  font-size: .5rem;
+}
+
+.talent-hiring-pipeline article > span {
+  color: #3ee0ea;
+  font-size: .62rem;
+}
+
+.talent-hiring-pipeline article > a,
+.talent-hiring-pipeline article > button {
+  min-height: 28px;
+  display: grid;
+  place-items: center;
+  border: 1px solid rgba(31, 185, 209, .36);
+  border-radius: 5px;
+  color: #39dce7;
+  background: rgba(3, 39, 60, .7);
+  font: inherit;
+  font-size: .5rem;
+}
+
+.talent-employer-company {
+  display: grid;
+  gap: 8px;
+}
+
+.talent-employer-company > header {
+  min-height: 115px;
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 18px;
+  border: 1px solid rgba(29, 183, 213, .36);
+  border-radius: 9px;
+  background: linear-gradient(135deg, rgba(4, 62, 89, .75), rgba(2, 23, 41, .93));
+}
+
+.talent-employer-company > header > span {
+  width: 68px;
+  height: 68px;
+  display: grid;
+  place-items: center;
+  border: 1px solid rgba(46, 220, 231, .4);
+  border-radius: 14px;
+  color: #3fe1eb;
+  background: rgba(5, 92, 123, .22);
+}
+
+.talent-employer-company > header > div {
+  flex: 1;
+}
+
+.talent-employer-company h2,
+.talent-employer-company p {
+  margin: 0;
+}
+
+.talent-employer-company header small {
+  color: #39dce8;
+  font-size: .52rem;
+}
+
+.talent-employer-company p {
+  margin-top: 6px;
+  color: #9bb8c2;
+  font-size: .62rem;
+}
+
+.talent-employer-company > header > a {
+  min-height: 36px;
+  display: inline-flex;
+  align-items: center;
+  padding: 0 12px;
+  border: 1px solid rgba(35, 204, 221, .42);
+  border-radius: 6px;
+  color: #3edfe9;
+  background: rgba(4, 47, 70, .76);
+  font-size: .58rem;
+}
+
+.talent-employer-company > form label,
+.talent-employer-settings > label {
+  display: grid;
+  gap: 5px;
+  color: #a9c2ca;
+  font-size: .57rem;
+}
+
+.talent-employer-company__description {
+  grid-column: 1 / -1;
+}
+
+.talent-employer-settings {
+  max-width: 850px;
+}
+
+.talent-employer-settings > header p {
+  margin: 5px 0 0;
+  color: #91aeb8;
+  font-size: .58rem;
+}
+
+.talent-employer-toggle {
+  grid-column: 1 / -1;
+  display: flex !important;
+  align-items: center;
+  grid-template-columns: auto 1fr;
+  padding: 12px;
+  border: 1px solid rgba(24, 154, 184, .25);
+  border-radius: 7px;
+}
+
+.talent-employer-toggle input {
+  width: 17px;
+  min-height: 17px;
+}
+
+.talent-employer-ticket-list > article {
+  min-height: 76px;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 15px;
+  border-bottom: 1px solid rgba(22, 143, 171, .16);
+}
+
+.talent-employer-ticket-list h3,
+.talent-employer-ticket-list p {
+  margin: 0;
+}
+
+.talent-employer-ticket-list p,
+.talent-employer-ticket-list small {
+  color: #8faeb8;
+  font-size: .54rem;
+}
+
+.talent-employer-ticket-list p {
+  margin: 5px 0;
+}
+
+.approved-talent-employer .talent-profile-grid,
+.approved-talent-employer .talent-job-grid {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.approved-talent-employer .talent-profile-grid > article,
+.approved-talent-employer .talent-job-grid > article,
+.approved-talent-employer .talent-candidate-detail,
+.approved-talent-employer .talent-report {
+  border-color: rgba(24, 169, 200, .31);
+  border-radius: 8px;
+  background: linear-gradient(145deg, rgba(4, 43, 66, .92), rgba(2, 23, 40, .95));
+}
+
+.approved-talent-employer .talent-message-center {
+  min-height: 560px;
+}
+
+.talent-employer-stat-strip--dashboard {
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+}
+
+.talent-employer-dashboard-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1.7fr) minmax(310px, .8fr);
+  gap: 8px;
+}
+
+.talent-employer-dashboard-candidates > header p {
+  margin: 4px 0 0;
+  color: #8fb5cf;
+}
+
+.talent-employer-dashboard-search {
+  display: grid;
+  grid-template-columns: 28px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 10px;
+  margin: 8px 12px;
+  padding: 10px 12px;
+  border: 1px solid rgba(0, 217, 255, .34);
+  border-radius: 7px;
+  background: linear-gradient(90deg, rgba(0, 133, 204, .18), rgba(0, 20, 39, .76));
+  color: #8fb5cf;
+}
+
+.talent-employer-dashboard-search svg {
+  color: #00e7ff;
+}
+
+.talent-employer-dashboard-search strong {
+  display: grid;
+  min-width: 30px;
+  height: 26px;
+  place-items: center;
+  border: 1px solid rgba(0, 229, 255, .36);
+  border-radius: 6px;
+  color: #fff;
+}
+
+.talent-employer-dashboard-candidate-list {
+  padding: 0 12px 12px;
+}
+
+.talent-employer-dashboard-candidate-list > article {
+  display: grid;
+  grid-template-columns: 38px minmax(140px, 1fr) minmax(180px, 1.2fr) auto;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 2px;
+  border-bottom: 1px solid rgba(65, 174, 215, .18);
+}
+
+.talent-employer-dashboard-candidate-list h3,
+.talent-employer-dashboard-candidate-list p {
+  margin: 0;
+}
+
+.talent-employer-dashboard-candidate-list p,
+.talent-employer-dashboard-candidate-list small {
+  color: #8fb5cf;
+}
+
+.talent-employer-dashboard-candidate-list > article > a {
+  padding: 7px 9px;
+  border: 1px solid rgba(0, 226, 255, .44);
+  border-radius: 6px;
+  color: #00e5ff;
+  white-space: nowrap;
+}
+
+.talent-employer-dashboard-aside {
+  display: grid;
+  align-content: start;
+  gap: 8px;
+}
+
+.talent-employer-dashboard-aside > .talent-employer-panel > .button {
+  margin: 0 12px 12px;
+}
+
+.talent-employer-dashboard-jobs {
+  padding: 0 12px 12px;
+}
+
+.talent-employer-dashboard-jobs > article {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 9px 0;
+  border-bottom: 1px solid rgba(65, 174, 215, .18);
+}
+
+.talent-employer-dashboard-jobs > article > div {
+  display: grid;
+  gap: 4px;
+}
+
+.talent-employer-dashboard-jobs > article > span {
+  display: grid;
+  min-width: 52px;
+  text-align: center;
+  color: #00e5ff;
+  font-size: 1.08rem;
+  font-weight: 900;
+}
+
+.talent-employer-dashboard-jobs small {
+  color: #8fb5cf;
+  font-size: .52rem;
+}
+
+.talent-employer-dashboard-pipeline {
+  padding-bottom: 10px;
+}
+
+.talent-employer-dashboard-pipeline > div {
+  display: grid;
+  grid-template-columns: 105px minmax(70px, 1fr) 22px;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 12px;
+}
+
+.talent-employer-dashboard-pipeline > div > span:nth-child(2) {
+  height: 5px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: rgba(92, 159, 194, .18);
+}
+
+.talent-employer-dashboard-pipeline i {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: linear-gradient(90deg, #118bff, #00e5ff);
+}
+
+@media (max-width: 1180px) {
+  .approved-talent-employer > .talent-flow--employer {
+    grid-template-columns: 195px minmax(0, 1fr);
+  }
+
+  .approved-talent-employer .talent-flow__entry,
+  .approved-talent-employer .talent-profile-grid,
+  .approved-talent-employer .talent-job-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .talent-employer-job-list > article {
+    grid-template-columns: minmax(90px, auto) minmax(190px, 1fr) 65px minmax(150px, auto);
+  }
+
+  .talent-employer-job-list > article > small {
+    display: none;
+  }
+
+  .talent-employer-stat-strip--dashboard {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  .talent-employer-dashboard-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 900px) {
+  .approved-talent-employer > .talent-flow--employer {
+    grid-template-columns: 1fr;
+    padding: 0 8px 16px;
+  }
+
+  .approved-talent-employer .talent-flow--employer > :not(.talent-employer-sidebar),
+  .approved-talent-employer .talent-flow--employer > .talent-employer-sidebar {
+    grid-column: 1;
+  }
+
+  .talent-employer-sidebar {
+    grid-row: auto;
+    min-height: 0;
+    grid-template-columns: auto minmax(0, 1fr) auto;
+    grid-template-rows: auto;
+    align-items: center;
+    padding: 9px;
+    border-inline-end: 0;
+    border-bottom: 1px solid rgba(24, 180, 211, .35);
+    background: rgba(2, 23, 40, .98);
+  }
+
+  .talent-employer-sidebar__brand {
+    justify-items: start;
+    padding: 0 8px;
+    border: 0;
+  }
+
+  .talent-employer-sidebar__brand strong {
+    font-size: 1rem;
+  }
+
+  .talent-employer-sidebar__identity {
+    display: none;
+  }
+
+  .talent-employer-sidebar nav {
+    display: flex;
+    overflow-x: auto;
+  }
+
+  .talent-employer-sidebar nav a {
+    flex: 0 0 auto;
+  }
+
+  .talent-employer-sidebar__back {
+    border: 0;
+  }
+
+  .talent-shortlist-manager,
+  .talent-employer-interviews,
+  .talent-employer-support {
+    grid-template-columns: 1fr;
+  }
+
+  .talent-employer-job-list > article,
+  .talent-employer-request-list > article {
+    grid-template-columns: 45px minmax(0, 1fr) auto;
+  }
+
+  .talent-employer-job-list > article > div:first-child {
+    grid-column: 1;
+  }
+
+  .talent-employer-actions {
+    grid-column: 1 / -1;
+  }
+
+  .talent-employer-dashboard-candidate-list > article {
+    grid-template-columns: 38px minmax(150px, 1fr) minmax(180px, 1fr) auto;
+  }
+}
+
+@media (max-width: 700px) {
+  .approved-talent-employer .talent-flow__signals,
+  .talent-employer-stat-strip {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .approved-talent-employer .talent-flow__entry,
+  .approved-talent-employer .talent-profile-grid,
+  .approved-talent-employer .talent-job-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .approved-talent-employer .talent-post-form,
+  .talent-employer-company > form,
+  .talent-employer-settings {
+    grid-template-columns: 1fr;
+  }
+
+  .approved-talent-employer .talent-post-form > *,
+  .talent-employer-company > form > *,
+  .talent-employer-settings > * {
+    grid-column: 1;
+  }
+
+  .talent-employer-company > header {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .talent-hiring-pipeline {
+    grid-template-columns: repeat(4, minmax(250px, 1fr));
+  }
+
+  .talent-employer-dashboard-candidate-list > article {
+    grid-template-columns: 38px minmax(0, 1fr) auto;
+  }
+
+  .talent-employer-dashboard-candidate-list .talent-flow__skills {
+    grid-column: 2 / -1;
+  }
+}
+
+@media (max-width: 430px) {
+  .talent-employer-sidebar {
+    grid-template-columns: 1fr;
+  }
+
+  .talent-employer-sidebar__brand,
+  .talent-employer-sidebar__back {
+    display: none;
+  }
+
+  .approved-talent-employer .talent-flow__signals article,
+  .talent-employer-stat-strip article {
+    min-height: 74px;
+    padding: 10px;
+  }
+
+  .talent-employer-job-list > article,
+  .talent-employer-request-list > article {
+    grid-template-columns: 40px minmax(0, 1fr);
+  }
+
+  .talent-employer-job-list > article > .talent-flow__status,
+  .talent-employer-request-list > article > .talent-flow__status {
+    grid-column: 2;
+    justify-self: start;
+  }
+
+  .talent-employer-actions {
+    flex-wrap: wrap;
+  }
+
+  .talent-employer-actions > * {
+    flex: 1;
+  }
+
+  .talent-employer-dashboard-candidate-list > article {
+    grid-template-columns: 36px minmax(0, 1fr);
+  }
+
+  .talent-employer-dashboard-candidate-list > article > a,
+  .talent-employer-dashboard-candidate-list .talent-flow__skills {
+    grid-column: 1 / -1;
+  }
+
+  .talent-employer-dashboard-pipeline > div {
+    grid-template-columns: 92px minmax(40px, 1fr) 18px;
+  }
+}

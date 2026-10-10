@@ -19,18 +19,30 @@ import {
   withdrawJobApplication,
 } from "@/services/talent/job-service";
 import { createStudioDocument } from "@/services/studio/studio-document-service";
+import {
+  addTalentShortlistMember,
+  createTalentShortlist,
+  createTalentSupportTicket,
+  deleteTalentShortlist,
+  listEmployerTalentResources,
+  removeTalentShortlistMember,
+  saveTalentCompanyProfile,
+  saveTalentHiringSettings,
+} from "@/services/talent/employer-service";
 import { sendTalentMessage } from "@/services/talent/talent-message-service";
 
 const suffix = crypto.randomUUID().slice(0, 8);
 let ownerId: string | undefined;
 let applicantId: string | undefined;
 let outsiderId: string | undefined;
+let organizationId: string | undefined;
 const jobIds: string[] = [];
 const applicationIds: string[] = [];
 
 afterAll(async () => {
   if (applicationIds.length) await db.jobApplication.deleteMany({ where: { id: { in: applicationIds } } });
   if (jobIds.length) await db.jobPosting.deleteMany({ where: { id: { in: jobIds } } });
+  if (organizationId) await db.organization.delete({ where: { id: organizationId } });
   if (applicantId) await db.notification.deleteMany({ where: { userId: applicantId } });
   if (applicantId) await db.user.delete({ where: { id: applicantId } });
   if (outsiderId) await db.user.delete({ where: { id: outsiderId } });
@@ -46,6 +58,14 @@ describe("talent domain", () => {
     ownerId = owner.id;
     applicantId = applicant.id;
     outsiderId = outsider.id;
+    const organization = await db.organization.create({
+      data: {
+        name: `Talent organization ${suffix}`,
+        slug: `talent-organization-${suffix}`,
+        members: { create: { userId: owner.id, status: "ACTIVE", isOwner: true, joinedAt: new Date() } },
+      },
+    });
+    organizationId = organization.id;
 
     const weak = await createJobPosting({ description: "Short but valid role description.", title: `Weak role ${suffix}`, workMode: "REMOTE" }, owner.id);
     jobIds.push(weak.id);
@@ -65,6 +85,7 @@ describe("talent domain", () => {
       title: `AI growth lead ${suffix}`,
       workMode: "HYBRID",
       questions: [{ prompt: "Describe one measurable growth experiment you led.", required: true }],
+      organizationId: organization.id,
     }, owner.id);
     jobIds.push(strong.id);
     expect(strong.qualityScore).toBeGreaterThanOrEqual(80);
@@ -81,11 +102,25 @@ describe("talent domain", () => {
     expect(await listSavedJobs(applicant.id)).toHaveLength(0);
 
     const cv = await createStudioDocument({ kind: "CV", title: "Applicant CV", content: { name: "Talent applicant", role: "AI growth lead" } }, applicant.id);
-    await saveTalentProfile({ headline: "AI growth operator", summary: "I build measurable growth systems across research, sales operations, automation, and reporting.", countryCode: "SA", city: "Riyadh", yearsExperience: 6, skills: "market research, sales operations, ai, reporting", desiredWorkModes: ["HYBRID", "REMOTE"], availability: "Within 30 days", cvDocumentId: cv.id, isDiscoverable: true }, applicant.id);
+    const talentProfile = await saveTalentProfile({ headline: "AI growth operator", summary: "I build measurable growth systems across research, sales operations, automation, and reporting.", countryCode: "SA", city: "Riyadh", yearsExperience: 6, skills: "market research, sales operations, ai, reporting", desiredWorkModes: ["HYBRID", "REMOTE"], availability: "Within 30 days", cvDocumentId: cv.id, isDiscoverable: true }, applicant.id);
     const discoverable = await listDiscoverableTalent(owner.id, "growth");
     expect(discoverable.some((profile) => profile.headline === "AI growth operator")).toBe(true);
     expect(Object.prototype.hasOwnProperty.call(discoverable[0] ?? {}, "email")).toBe(false);
     expect((await listTalentMatches(applicant.id)).candidateMatches[0]?.score).toBeGreaterThanOrEqual(80);
+
+    const shortlist = await createTalentShortlist({ name: "Priority candidates", description: "Candidates approved for structured review.", organizationId: organization.id }, owner.id);
+    await addTalentShortlistMember(shortlist.id, talentProfile.id, owner.id);
+    expect((await listEmployerTalentResources(owner.id)).shortlists[0]?.members[0]?.candidateProfile.id).toBe(talentProfile.id);
+    await removeTalentShortlistMember(shortlist.id, talentProfile.id, owner.id);
+    await deleteTalentShortlist(shortlist.id, owner.id);
+    expect((await listEmployerTalentResources(owner.id)).shortlists).toHaveLength(0);
+
+    const company = await saveTalentCompanyProfile({ organizationId: organization.id, description: "A measurable growth and responsible automation company.", industry: "Technology", website: "https://example.test", countryCode: "SA", city: "Riyadh", employeeRange: "50-100" }, owner.id);
+    expect(company.description).toContain("responsible automation");
+    const settings = await saveTalentHiringSettings(organization.id, { defaultWorkMode: "HYBRID", interviewDuration: 45, notificationsEnabled: true }, owner.id);
+    expect(settings.hiringSettings).toMatchObject({ defaultWorkMode: "HYBRID", interviewDuration: 45 });
+    await createTalentSupportTicket({ category: "HIRING", subject: "Interview workflow help", description: "We need help reviewing the documented interview workflow for this role." }, owner.id);
+    expect((await listEmployerTalentResources(owner.id)).supportTickets[0]?.status).toBe("OPEN");
 
     await expect(applyToJob(strong.id, "Owner cannot apply", owner.id)).rejects.toThrow("own job");
     await expect(applyToJob(strong.id, "Consent is required for a linked CV.", applicant.id, { cvDocumentId: cv.id })).rejects.toThrow("consent");

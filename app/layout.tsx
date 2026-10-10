@@ -31,6 +31,7 @@ import "@/styles/software-erp.css";
 import "@/styles/talent-flow.css";
 import "@/styles/approved-job-seeker.css";
 import "@/styles/approved-job-seeker-flows.css";
+import "@/styles/approved-talent-employer.css";
 import "@/styles/marketing-flow.css";
 import "@/styles/robotics-flow.css";
 

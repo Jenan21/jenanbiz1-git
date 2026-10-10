@@ -407,6 +407,12 @@ enum TalentInterviewStatus {
   CANCELLED
 }
 
+enum TalentSupportStatus {
+  OPEN
+  IN_PROGRESS
+  CLOSED
+}
+
 enum MarketingCampaignStatus {
   DRAFT
   ACTIVE
@@ -848,6 +854,8 @@ model User {
   savedTalentJobs            TalentSavedJob[]
   sentTalentMessages         TalentMessage[]             @relation("TalentMessageSender")
   createdTalentInterviews    TalentInterview[]            @relation("TalentInterviewCreator")
+  ownedTalentShortlists      TalentShortlist[]            @relation("TalentShortlistOwner")
+  talentSupportTickets       TalentSupportTicket[]
   talentProfile              TalentProfile?
   marketingCampaigns         MarketingCampaign[]         @relation("MarketingCampaignCreator")
   payments                   Payment[]                   @relation("PaymentPayer")
@@ -898,6 +906,13 @@ model Organization {
   id                 String                @id @default(cuid())
   name               String
   slug               String                @unique
+  description        String?
+  industry           String?
+  website            String?
+  countryCode        String?
+  city               String?
+  employeeRange      String?
+  hiringSettings     Json?
   members            OrganizationMember[]
   roles              Role[]
   subscriptions      Subscription[]
@@ -907,6 +922,7 @@ model Organization {
   projects           Project[]
   marketListings     MarketListing[]
   jobPostings        JobPosting[]
+  talentShortlists   TalentShortlist[]
   marketingCampaigns MarketingCampaign[]
   businessPrograms   OrganizationProgram[]
   financialEntries   FinancialEntry[]
@@ -3463,6 +3479,7 @@ model TalentProfile {
   isDiscoverable   Boolean         @default(false)
   user             User            @relation(fields: [userId], references: [id], onDelete: Cascade)
   cvDocument       StudioDocument? @relation("TalentProfileCv", fields: [cvDocumentId], references: [id], onDelete: SetNull)
+  shortlistEntries TalentShortlistMember[]
   createdAt        DateTime        @default(now())
   updatedAt        DateTime        @updatedAt
 
@@ -3541,6 +3558,48 @@ model TalentInterview {
   @@index([applicationId, scheduledAt])
   @@index([createdById, status])
   @@index([scheduledAt, status])
+}
+
+model TalentShortlist {
+  id             String                    @id @default(cuid())
+  ownerId        String
+  organizationId String?
+  name           String
+  description    String?
+  owner          User                      @relation("TalentShortlistOwner", fields: [ownerId], references: [id], onDelete: Cascade)
+  organization   Organization?             @relation(fields: [organizationId], references: [id], onDelete: SetNull)
+  members        TalentShortlistMember[]
+  createdAt      DateTime                  @default(now())
+  updatedAt      DateTime                  @updatedAt
+
+  @@index([ownerId, updatedAt])
+  @@index([organizationId])
+}
+
+model TalentShortlistMember {
+  id                 String          @id @default(cuid())
+  shortlistId        String
+  candidateProfileId String
+  shortlist          TalentShortlist @relation(fields: [shortlistId], references: [id], onDelete: Cascade)
+  candidateProfile   TalentProfile   @relation(fields: [candidateProfileId], references: [id], onDelete: Cascade)
+  createdAt          DateTime        @default(now())
+
+  @@unique([shortlistId, candidateProfileId])
+  @@index([candidateProfileId])
+}
+
+model TalentSupportTicket {
+  id          String              @id @default(cuid())
+  userId      String
+  category    String
+  subject     String
+  description String
+  status      TalentSupportStatus @default(OPEN)
+  user        User                @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt   DateTime            @default(now())
+  updatedAt   DateTime            @updatedAt
+
+  @@index([userId, status, updatedAt])
 }
 
 model JobApplicationAnswer {

@@ -101,6 +101,8 @@ Required responsive checks: 2560x1440, 1920x1080, 1440x900, 1366x768, 1280x800, 
 
 - Job seeker: jobs, detail, apply, profile, CV, and application status.
 - Employer: dashboard, create job, applicants, candidate detail, matching, pipeline, and reports.
+- The current baseline covers the complete approved job-seeker and employer route libraries, including saved jobs, application detail, interviews, messages, company profiles, employment requests, shortlists, hiring settings, and support. Employer shortlists, company data, hiring preferences, interviews, and support tickets use persisted records and ownership checks; discoverable profiles remain consent-scoped.
+- Acceptance must validate the loaded interface rather than the initial loading shell, exercise the persisted end-to-end hiring flow, and check every employer route at the required desktop, laptop, tablet, and mobile widths without horizontal page overflow.
 - Include talent search and matching. Never promise guaranteed employment.
 
 ### Marketing

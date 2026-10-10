@@ -13,7 +13,22 @@ export async function requireSoftwareMembership(organizationId: string, userId: 
 export async function listSoftwareOrganizations(userId: string) {
   return db.organizationMember.findMany({
     where: { userId, status: OrganizationMemberStatus.ACTIVE },
-    select: { isOwner: true, organization: { select: { id: true, name: true } } },
+    select: {
+      isOwner: true,
+      organization: {
+        select: {
+          id: true,
+          name: true,
+          description: true,
+          industry: true,
+          website: true,
+          countryCode: true,
+          city: true,
+          employeeRange: true,
+          hiringSettings: true,
+        },
+      },
+    },
     orderBy: { createdAt: "asc" },
   });
 }

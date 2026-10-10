@@ -3,7 +3,19 @@ import { db } from "@/lib/db";
 
 const postingInclude = {
   createdBy: { include: { profile: true } },
-  organization: { select: { id: true, name: true } },
+  organization: {
+    select: {
+      id: true,
+      name: true,
+      description: true,
+      industry: true,
+      website: true,
+      countryCode: true,
+      city: true,
+      employeeRange: true,
+      hiringSettings: true,
+    },
+  },
   applications: { select: { applicantId: true, matchScore: true, status: true } },
   questions: { orderBy: { sequence: "asc" as const } },
 } satisfies Prisma.JobPostingInclude;
@@ -250,7 +262,7 @@ export async function listDiscoverableTalent(userId: string, query?: string) {
 export async function listMyJobApplications(userId: string) {
   return db.jobApplication.findMany({
     where: { applicantId: userId },
-    include: { jobPosting: { include: { organization: { select: { id: true, name: true } }, createdBy: { include: { profile: true } } } }, cvDocument: { select: { id: true, title: true, currentVersion: true } }, answers: { orderBy: { createdAt: "asc" } }, interviews: { orderBy: { scheduledAt: "desc" } }, messages: { include: { sender: { select: { profile: { select: { displayName: true } } } } }, orderBy: { createdAt: "asc" } } },
+    include: { jobPosting: { include: { organization: true, createdBy: { include: { profile: true } } } }, cvDocument: { select: { id: true, title: true, currentVersion: true } }, answers: { orderBy: { createdAt: "asc" } }, interviews: { orderBy: { scheduledAt: "desc" } }, messages: { include: { sender: { select: { profile: { select: { displayName: true } } } } }, orderBy: { createdAt: "asc" } } },
     orderBy: { updatedAt: "desc" },
   });
 }
@@ -349,7 +361,7 @@ export async function updateTalentInterviewStatus(
 export async function listTalentMatches(userId: string) {
   const [profile, postings, candidates] = await Promise.all([
     db.talentProfile.findUnique({ where: { userId } }),
-    db.jobPosting.findMany({ where: { status: JobPostingStatus.PUBLISHED }, include: { organization: { select: { name: true } }, createdBy: { include: { profile: true } } }, orderBy: { qualityScore: "desc" }, take: 100 }),
+    db.jobPosting.findMany({ where: { status: JobPostingStatus.PUBLISHED }, include: { organization: true, createdBy: { include: { profile: true } } }, orderBy: { qualityScore: "desc" }, take: 100 }),
     db.talentProfile.findMany({ where: { isDiscoverable: true, userId: { not: userId } }, select: { id: true, userId: true, headline: true, summary: true, city: true, countryCode: true, yearsExperience: true, skills: true, availability: true, user: { select: { profile: { select: { displayName: true } } } } }, take: 100 }),
   ]);
   const candidateMatches = profile ? postings.filter((posting) => posting.createdById !== userId).map((posting) => ({ posting, ...scoreApplicationMatch(posting, undefined, profile) })).sort((left, right) => right.score - left.score) : [];

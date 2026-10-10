@@ -98,6 +98,18 @@ const routeDescriptions: Record<TalentFlowRoute["id"], [string, string]> = {
     "انشر وصفاً واضحاً بمهارات وموقع ونطاق مالي واقعي.",
     "Publish a clear role with skills, location, and a realistic salary range.",
   ],
+  "employer-jobs": [
+    "أدر إعلاناتك المنشورة والمسودات وحالات الإغلاق من سجل حقيقي.",
+    "Manage published jobs, drafts, and closures from persisted records.",
+  ],
+  "employer-requests": [
+    "راجع جميع طلبات التوظيف الواردة وفرزها حسب الوظيفة والحالة.",
+    "Review every received application and filter by job and status.",
+  ],
+  "employer-shortlists": [
+    "نظّم المرشحين القابلين للاكتشاف في قوائم محفوظة.",
+    "Organize discoverable candidates into persisted shortlists.",
+  ],
   "employer-applicants": [
     "راجع الطلبات وانقلها بين مراحل موثقة دون وعود توظيف.",
     "Review applications and move them through documented stages without employment guarantees.",
@@ -105,6 +117,30 @@ const routeDescriptions: Record<TalentFlowRoute["id"], [string, string]> = {
   candidate: [
     "ملف المرشح الذي وافق على مشاركته مع صاحب الإعلان.",
     "The candidate profile explicitly shared with the posting owner.",
+  ],
+  "employer-interviews": [
+    "جدول المقابلات الحقيقية وأدر حالاتها ومعلومات الانضمام.",
+    "Schedule real interviews and manage status and joining details.",
+  ],
+  "employer-messages": [
+    "تواصل مع المتقدمين داخل طلبات التوظيف المصرح بها.",
+    "Communicate with applicants inside authorized hiring requests.",
+  ],
+  "employer-pipeline": [
+    "تابع انتقال الطلبات بين التقديم والمراجعة والقرار النهائي.",
+    "Track applications from submission through review and final decision.",
+  ],
+  "employer-company": [
+    "حدّث الملف العام للشركة الذي يظهر للباحثين عن وظيفة.",
+    "Maintain the public company profile shown to job seekers.",
+  ],
+  "employer-settings": [
+    "اضبط تفضيلات التوظيف وسير العمل دون تغيير صلاحيات المنصة.",
+    "Configure hiring preferences without changing platform permissions.",
+  ],
+  "employer-support": [
+    "أرسل طلب دعم موثقًا وتابع حالته من حسابك.",
+    "Submit a documented support request and track its status.",
   ],
   search: [
     "ابحث فقط في الملفات التي اختار أصحابها الظهور العام.",
@@ -172,6 +208,8 @@ const statusLabels: Record<string, [string, string]> = {
   CANCELLED: ["ملغاة", "Cancelled"],
   VIDEO: ["اتصال مرئي", "Video"],
   PHONE: ["اتصال هاتفي", "Phone"],
+  OPEN: ["مفتوحة", "Open"],
+  IN_PROGRESS: ["قيد المعالجة", "In progress"],
   SUBMITTED: ["تم التقديم", "Submitted"],
   UNDER_REVIEW: ["قيد المراجعة", "Under review"],
   WITHDRAWN: ["مسحوب", "Withdrawn"],
@@ -208,17 +246,20 @@ export function TalentFlowWorkspace({
   locale,
   organizationId,
   route,
+  userLabel,
 }: {
   applicationId?: string;
   jobId?: string;
   locale: Locale;
   organizationId?: string;
   route: TalentFlowRoute;
+  userLabel?: string;
 }) {
   const ar = locale === "ar";
   const audience =
     route.id.startsWith("employer") ||
     route.id === "candidate" ||
+    route.id === "search" ||
     route.id === "reports"
       ? "EMPLOYER"
       : "CANDIDATE";
@@ -354,7 +395,7 @@ export function TalentFlowWorkspace({
   const selectedApplication =
     data?.applications.find(
       (application) => application.id === applicationId,
-    ) ?? data?.applications[0];
+    ) ?? (!applicationId ? data?.applications[0] : undefined);
   const selectedOwnApplication =
     data?.ownApplications.find(
       (application) => application.id === applicationId,
@@ -408,6 +449,17 @@ export function TalentFlowWorkspace({
     selectedOwnApplication ??
     data?.ownApplications.find((application) => application.messages.length) ??
     data?.ownApplications[0];
+  const ownedOrganization = data?.organizations.find((membership) => membership.isOwner)?.organization;
+  const shortlists = data?.employerResources?.shortlists ?? [];
+  const supportTickets = data?.employerResources?.supportTickets ?? [];
+  const employerInterviews =
+    data?.applications.flatMap((application) =>
+      application.interviews.map((interview) => ({ application, interview })),
+    ) ?? [];
+  const employerConversation =
+    selectedApplication ??
+    data?.applications.find((application) => application.messages.length) ??
+    data?.applications[0];
   const profile = data?.talentProfile.profile;
   const profileCompletion = profile
     ? Math.round(
@@ -507,6 +559,84 @@ export function TalentFlowWorkspace({
       form.reset();
   }
 
+  async function submitShortlist(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    const form = event.currentTarget;
+    const values = new FormData(form);
+    if (await runCommand({
+      action: "createShortlist",
+      name: formValue(values, "name"),
+      description: optional(values, "description"),
+      organizationId: optional(values, "organizationId"),
+    }, ["تم إنشاء القائمة المختصرة.", "Shortlist created."])) form.reset();
+  }
+
+  async function submitShortlistMember(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    const values = new FormData(event.currentTarget);
+    await runCommand({
+      action: "addShortlistMember",
+      shortlistId: formValue(values, "shortlistId"),
+      candidateProfileId: formValue(values, "candidateProfileId"),
+    }, ["تمت إضافة المرشح إلى القائمة.", "Candidate added to shortlist."]);
+  }
+
+  async function submitCompanyProfile(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    const form = event.currentTarget;
+    const values = new FormData(form);
+    await runCommand({
+      action: "saveCompanyProfile",
+      organizationId: formValue(values, "organizationId"),
+      description: optional(values, "description"),
+      industry: optional(values, "industry"),
+      website: optional(values, "website"),
+      countryCode: optional(values, "countryCode"),
+      city: optional(values, "city"),
+      employeeRange: optional(values, "employeeRange"),
+    }, ["تم حفظ ملف الشركة.", "Company profile saved."]);
+  }
+
+  async function submitHiringSettings(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    const form = event.currentTarget;
+    const values = new FormData(form);
+    await runCommand({
+      action: "saveHiringSettings",
+      organizationId: formValue(values, "organizationId"),
+      defaultWorkMode: optional(values, "defaultWorkMode"),
+      interviewDuration: Number(formValue(values, "interviewDuration") || 30),
+      notificationsEnabled: values.get("notificationsEnabled") === "on",
+    }, ["تم حفظ إعدادات التوظيف.", "Hiring settings saved."]);
+  }
+
+  async function submitSupportTicket(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    const form = event.currentTarget;
+    const values = new FormData(form);
+    if (await runCommand({
+      action: "createSupportTicket",
+      category: formValue(values, "category"),
+      subject: formValue(values, "subject"),
+      description: formValue(values, "description"),
+    }, ["تم إرسال طلب الدعم.", "Support request submitted."])) form.reset();
+  }
+
+  async function submitInterview(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    const form = event.currentTarget;
+    const values = new FormData(form);
+    if (await runCommand({
+      action: "scheduleInterview",
+      applicationId: formValue(values, "applicationId"),
+      scheduledAt: new Date(formValue(values, "scheduledAt")).toISOString(),
+      durationMinutes: Number(formValue(values, "durationMinutes") || 30),
+      mode: formValue(values, "mode"),
+      location: optional(values, "location"),
+      notes: optional(values, "notes"),
+    }, ["تمت جدولة المقابلة وإشعار المرشح.", "Interview scheduled and candidate notified."])) form.reset();
+  }
+
   async function submitApplication(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     if (!selectedJob) return;
@@ -597,7 +727,31 @@ export function TalentFlowWorkspace({
             {ar ? "فرص أفضل لمستقبل أوسع" : "Better opportunities for a broader future"}
           </blockquote>
         </aside>
-      ) : null}
+      ) : (
+        <aside className="talent-employer-sidebar">
+          <Link className="talent-employer-sidebar__brand" href="/dashboard">
+            <strong>Jenan <span>PRO</span></strong>
+            <small>{ar ? "مركز الأعمال الذكي" : "Intelligent Business Center"}</small>
+          </Link>
+          <div className="talent-employer-sidebar__identity">
+            <span><Icon name="building" /></span>
+            <div><strong>{data.organizations.find((item) => item.isOwner)?.organization.name ?? userLabel ?? (ar ? "حساب صاحب العمل" : "Employer account")}</strong><small>{ar ? "مساحة التوظيف" : "Hiring workspace"}</small></div>
+          </div>
+          <nav aria-label={ar ? "مساحة الباحث عن مرشح" : "Employer hiring workspace"}>
+            <Link className={route.id === "employer" ? "is-active" : undefined} href="/talent/employer"><Icon name="dashboard" />{ar ? "الرئيسية" : "Overview"}</Link>
+            <Link className={["employer-post", "employer-jobs"].includes(route.id) ? "is-active" : undefined} href="/talent/employer/jobs"><Icon name="briefcase" />{ar ? "الوظائف" : "Jobs"}</Link>
+            <Link className={["employer-requests", "employer-applicants", "candidate"].includes(route.id) ? "is-active" : undefined} href="/talent/employer/requests"><Icon name="people" />{ar ? "طلبات التوظيف" : "Applications"}</Link>
+            <Link className={["search", "employer-shortlists"].includes(route.id) ? "is-active" : undefined} href="/talent/employer/search"><Icon name="search" />{ar ? "البحث عن مرشحين" : "Candidate search"}</Link>
+            <Link className={route.id === "employer-interviews" ? "is-active" : undefined} href="/talent/employer/interviews"><Icon name="activity" />{ar ? "المقابلات" : "Interviews"}</Link>
+            <Link className={route.id === "employer-messages" ? "is-active" : undefined} href="/talent/employer/messages"><Icon name="mail" />{ar ? "الرسائل" : "Messages"}</Link>
+            <Link className={route.id === "employer-pipeline" ? "is-active" : undefined} href="/talent/employer/pipeline"><Icon name="trend" />{ar ? "مراحل التوظيف" : "Pipeline"}</Link>
+            <Link className={["employer-company", "employer-settings"].includes(route.id) ? "is-active" : undefined} href="/talent/employer/company"><Icon name="building" />{ar ? "ملف الشركة" : "Company"}</Link>
+            <Link className={route.id === "reports" ? "is-active" : undefined} href="/talent/employer/reports"><Icon name="barChart" />{ar ? "التقارير" : "Reports"}</Link>
+            <Link className={route.id === "employer-support" ? "is-active" : undefined} href="/talent/employer/support"><Icon name="shield" />{ar ? "الدعم والمساعدة" : "Support"}</Link>
+          </nav>
+          <Link className="talent-employer-sidebar__back" href="/dashboard"><Icon name="arrow" />{ar ? "العودة للرئيسية" : "Back to home"}</Link>
+        </aside>
+      )}
       <header className="talent-flow__hero">
         <div className="talent-flow__hero-copy">
           <span>TALENT · {route.id.toUpperCase().replaceAll("-", " ")}</span>
@@ -1185,8 +1339,8 @@ export function TalentFlowWorkspace({
             </header>
             <nav><a href="#company-overview">{ar ? "نظرة عامة" : "Overview"}</a><a href="#company-jobs">{ar ? "الوظائف" : "Jobs"}</a><a href="#company-locations">{ar ? "المواقع" : "Locations"}</a></nav>
             <div className="talent-company-profile__content" id="company-overview">
-              <article><h3>{ar ? "نبذة عن الشركة" : "About the company"}</h3><p>{ar ? "لم تضف الشركة وصفًا عامًا منشورًا بعد. لن تُعرض معلومات تجريبية بدلًا منه." : "The organization has not published a public description yet. Sample information is not substituted."}</p></article>
-              <article id="company-locations"><h3>{ar ? "المواقع المتاحة" : "Available locations"}</h3><div className="talent-flow__skills">{[...new Set(companyJobs.map((posting) => [posting.city, posting.countryCode].filter(Boolean).join(", ")).filter(Boolean))].map((location) => <span key={location}>{location}</span>)}</div>{!companyJobs.some((posting) => posting.city || posting.countryCode) ? <p>{ar ? "لم تُنشر مواقع بعد." : "No locations have been published."}</p> : null}</article>
+              <article><h3>{ar ? "نبذة عن الشركة" : "About the company"}</h3><p>{selectedCompany.description ?? (ar ? "لم تضف الشركة وصفًا عامًا منشورًا بعد. لن تُعرض معلومات تجريبية بدلًا منه." : "The organization has not published a public description yet. Sample information is not substituted.")}</p><div className="talent-flow__skills">{selectedCompany.industry ? <span>{selectedCompany.industry}</span> : null}{selectedCompany.employeeRange ? <span>{selectedCompany.employeeRange}</span> : null}</div>{selectedCompany.website ? <a href={selectedCompany.website} rel="noreferrer" target="_blank">{ar ? "زيارة الموقع الرسمي" : "Visit official website"}</a> : null}</article>
+              <article id="company-locations"><h3>{ar ? "المواقع المتاحة" : "Available locations"}</h3><div className="talent-flow__skills">{[...new Set([[selectedCompany.city, selectedCompany.countryCode].filter(Boolean).join(", "), ...companyJobs.map((posting) => [posting.city, posting.countryCode].filter(Boolean).join(", "))].filter(Boolean))].map((location) => <span key={location}>{location}</span>)}</div>{!selectedCompany.city && !selectedCompany.countryCode && !companyJobs.some((posting) => posting.city || posting.countryCode) ? <p>{ar ? "لم تُنشر مواقع بعد." : "No locations have been published."}</p> : null}</article>
             </div>
             <section className="talent-seeker-list" id="company-jobs">
               <header><div><span>{ar ? "فرص الشركة" : "OPEN ROLES"}</span><h2>{ar ? "الوظائف المتاحة" : "Available jobs"}</h2></div><strong>{companyJobs.length}</strong></header>
@@ -1612,145 +1766,258 @@ export function TalentFlowWorkspace({
 
       {route.id === "employer" ? (
         <>
-          <section className="talent-flow__signals">
-            <article>
-              <span>01</span>
-              <strong>{ownedPostings.length}</strong>
-              <small>{ar ? "إعلانات" : "Postings"}</small>
-            </article>
-            <article>
-              <span>02</span>
-              <strong>{data.applications.length}</strong>
-              <small>{ar ? "متقدمون" : "Applicants"}</small>
-            </article>
-            <article>
-              <span>03</span>
-              <strong>
-                {
-                  data.applications.filter(
-                    (application) => application.status === "UNDER_REVIEW",
-                  ).length
-                }
-              </strong>
-              <small>{ar ? "قيد المراجعة" : "Under review"}</small>
-            </article>
-            <article>
-              <span>04</span>
-              <strong>
-                {
-                  data.applications.filter(
-                    (application) => application.status === "ACCEPTED",
-                  ).length
-                }
-              </strong>
-              <small>{ar ? "انتقلوا للمرحلة التالية" : "Advanced"}</small>
-            </article>
-          </section>
-          <section className="talent-flow__entry">
-            <Link href="/talent/employer/post">
-              <Icon name="plus" />
-              <div>
-                <h2>{ar ? "نشر وظيفة" : "Post a job"}</h2>
-                <p>
-                  {ar
-                    ? "وصف واضح مع بوابة جودة قبل النشر."
-                    : "A clear description with a quality gate before publishing."}
-                </p>
-              </div>
-              <Icon name="arrow" />
-            </Link>
-            <Link href="/talent/employer/applicants">
-              <Icon name="people" />
-              <div>
-                <h2>{ar ? "إدارة المتقدمين" : "Manage applicants"}</h2>
-                <p>
-                  {ar
-                    ? "مراحل وملاحظات ومطابقة مفسّرة."
-                    : "Stages, notes, and explainable matching."}
-                </p>
-              </div>
-              <Icon name="arrow" />
-            </Link>
-            <Link href="/talent/search">
-              <Icon name="search" />
-              <div>
-                <h2>{ar ? "البحث عن مرشحين" : "Search talent"}</h2>
-                <p>
-                  {ar
-                    ? "اكتشف الملفات التي وافق أصحابها على الظهور."
-                    : "Discover profiles whose owners opted into visibility."}
-                </p>
-              </div>
-              <Icon name="arrow" />
-            </Link>
-            <Link href="/talent/reports">
-              <Icon name="barChart" />
-              <div>
-                <h2>{ar ? "أدوات وتقارير التوظيف" : "Hiring tools and reports"}</h2>
-                <p>
-                  {ar
-                    ? "راقب مراحل المرشحين وصدّر تقريرًا موثوقًا."
-                    : "Monitor candidate stages and export a reliable report."}
-                </p>
-              </div>
-              <Icon name="arrow" />
-            </Link>
-          </section>
-          <section className="talent-job-grid">
-            {ownedPostings.map((posting) => (
-              <article key={posting.id}>
-                <header>
-                  <Status locale={locale} value={posting.status} />
-                  <span>{posting.qualityScore}/100</span>
-                </header>
-                <h2>{posting.title}</h2>
-                <p>{posting.description}</p>
-                <div className="talent-card-actions">
-                  {posting.status === "DRAFT" ? (
-                    <button
-                      disabled={busy}
-                      onClick={() =>
-                        void runCommand(
-                          {
-                            action: "updateStatus",
-                            jobPostingId: posting.id,
-                            status: "PUBLISHED",
-                          },
-                          ["تم نشر الإعلان.", "Posting published."],
-                        )
-                      }
-                      type="button"
-                    >
-                      {ar ? "نشر" : "Publish"}
-                    </button>
-                  ) : null}
-                  {posting.status === "PUBLISHED" ? (
-                    <button
-                      disabled={busy}
-                      onClick={() =>
-                        void runCommand(
-                          {
-                            action: "updateStatus",
-                            jobPostingId: posting.id,
-                            status: "CLOSED",
-                          },
-                          ["تم إغلاق الإعلان.", "Posting closed."],
-                        )
-                      }
-                      type="button"
-                    >
-                      {ar ? "إغلاق" : "Close"}
-                    </button>
-                  ) : null}
-                  <Link href={`/talent/jobs/${posting.id}`}>
-                    {ar ? "عرض" : "View"}
-                  </Link>
-                </div>
+          <section className="talent-employer-stat-strip talent-employer-stat-strip--dashboard">
+            {([
+              ["briefcase", ownedPostings.length, ar ? "إجمالي الوظائف" : "total jobs"],
+              ["check", ownedPostings.filter((posting) => posting.status === "PUBLISHED").length, ar ? "وظائف منشورة" : "published"],
+              ["people", data.applications.length, ar ? "طلبات التوظيف" : "applications"],
+              ["search", data.talent.length, ar ? "ملفات قابلة للاكتشاف" : "discoverable profiles"],
+              ["activity", employerInterviews.filter(({ interview }) => interview.status === "SCHEDULED").length, ar ? "مقابلات مجدولة" : "scheduled interviews"],
+              ["trend", data.applications.filter((application) => application.status === "ACCEPTED").length, ar ? "انتقلوا للمرحلة التالية" : "advanced"],
+            ] as const).map(([icon, value, label]) => (
+              <article key={label}>
+                <Icon name={icon} />
+                <strong>{value}</strong>
+                <span>{label}</span>
               </article>
             ))}
           </section>
-          {!ownedPostings.length ? <EmptyState locale={locale} /> : null}
+          <section className="talent-employer-dashboard-grid">
+            <section className="talent-employer-panel talent-employer-dashboard-candidates">
+              <header>
+                <div>
+                  <span>{ar ? "البحث الذكي" : "TALENT DISCOVERY"}</span>
+                  <h2>{ar ? "البحث عن مرشحين" : "Find candidates"}</h2>
+                  <p>{ar ? "ملفات وافق أصحابها على الظهور لأصحاب العمل." : "Profiles whose owners explicitly opted into employer discovery."}</p>
+                </div>
+                <Link className="button button--primary" href="/talent/employer/search"><Icon name="search" />{ar ? "بحث متقدم" : "Advanced search"}</Link>
+              </header>
+              <Link className="talent-employer-dashboard-search" href="/talent/employer/search">
+                <Icon name="search" />
+                <span>{ar ? "ابحث بالمسمى أو المهارة أو المدينة..." : "Search by title, skill, or city..."}</span>
+                <strong>{data.talent.length}</strong>
+              </Link>
+              <div className="talent-employer-dashboard-candidate-list">
+                {data.talent.slice(0, 5).map((candidate) => (
+                  <article key={candidate.id}>
+                    <span className="talent-employer-avatar"><Icon name="user" /></span>
+                    <div>
+                      <h3>{candidate.user.profile?.displayName ?? candidate.headline}</h3>
+                      <p>{candidate.headline}</p>
+                      <small>{[candidate.city, candidate.countryCode, `${candidate.yearsExperience} ${ar ? "سنوات خبرة" : "years"}`].filter(Boolean).join(" · ")}</small>
+                    </div>
+                    <div className="talent-flow__skills">{(candidate.skills ?? []).slice(0, 3).map((skill) => <span key={skill}>{skill}</span>)}</div>
+                    <Link href="/talent/employer/search">{ar ? "عرض الملف" : "View profile"}</Link>
+                  </article>
+                ))}
+                {!data.talent.length ? <EmptyState locale={locale} message={ar ? "لا توجد ملفات قابلة للاكتشاف وفق موافقة أصحابها." : "No consented discoverable profiles are currently available."} /> : null}
+              </div>
+            </section>
+            <aside className="talent-employer-dashboard-aside">
+              <section className="talent-employer-panel">
+                <header>
+                  <div><span>{ar ? "الوظائف" : "JOB MANAGEMENT"}</span><h2>{ar ? "إدارة الوظائف" : "Manage jobs"}</h2></div>
+                  <Link href="/talent/employer/jobs">{ar ? "عرض الكل" : "View all"}<Icon name="arrow" /></Link>
+                </header>
+                <div className="talent-employer-dashboard-jobs">
+                  {ownedPostings.slice(0, 4).map((posting) => (
+                    <article key={posting.id}>
+                      <div><Status locale={locale} value={posting.status} /><strong>{posting.title}</strong><small>{posting.qualityScore}/100 {ar ? "جودة" : "quality"}</small></div>
+                      <span>{data.applications.filter((application) => application.jobPosting.id === posting.id).length}<small>{ar ? "متقدم" : "applicants"}</small></span>
+                    </article>
+                  ))}
+                  {!ownedPostings.length ? <EmptyState locale={locale} message={ar ? "لم تنشئ وظائف بعد." : "No job postings have been created."} /> : null}
+                </div>
+                <Link className="button button--primary" href="/talent/employer/jobs/new"><Icon name="plus" />{ar ? "إضافة وظيفة جديدة" : "Add a new job"}</Link>
+              </section>
+              <section className="talent-employer-panel talent-employer-dashboard-pipeline">
+                <header><div><span>{ar ? "المراحل" : "HIRING PIPELINE"}</span><h2>{ar ? "حالة الطلبات" : "Application stages"}</h2></div><Link href="/talent/employer/pipeline">{ar ? "التفاصيل" : "Details"}<Icon name="arrow" /></Link></header>
+                {["SUBMITTED", "UNDER_REVIEW", "ACCEPTED", "REJECTED"].map((status) => {
+                  const count = data.applications.filter((application) => application.status === status).length;
+                  const percentage = data.applications.length ? Math.round((count / data.applications.length) * 100) : 0;
+                  return <div key={status}><Status locale={locale} value={status} /><span><i style={{ width: `${percentage}%` }} /></span><strong>{count}</strong></div>;
+                })}
+              </section>
+            </aside>
+          </section>
         </>
+      ) : null}
+
+      {route.id === "employer-jobs" ? (
+        <>
+          <section className="talent-employer-stat-strip">
+            <article><Icon name="briefcase" /><strong>{ownedPostings.length}</strong><span>{ar ? "إجمالي الوظائف" : "total jobs"}</span></article>
+            <article><Icon name="check" /><strong>{ownedPostings.filter((posting) => posting.status === "PUBLISHED").length}</strong><span>{ar ? "منشورة" : "published"}</span></article>
+            <article><Icon name="activity" /><strong>{ownedPostings.filter((posting) => posting.status === "DRAFT").length}</strong><span>{ar ? "مسودات" : "drafts"}</span></article>
+            <article><Icon name="people" /><strong>{data.applications.length}</strong><span>{ar ? "متقدمون" : "applicants"}</span></article>
+          </section>
+          <section className="talent-employer-panel">
+            <header><div><span>{ar ? "سجل الوظائف" : "JOB REGISTER"}</span><h2>{ar ? "إدارة الوظائف" : "Manage jobs"}</h2></div><Link className="button button--primary" href="/talent/employer/jobs/new"><Icon name="plus" />{ar ? "إضافة وظيفة" : "Add job"}</Link></header>
+            <div className="talent-employer-job-list">
+              {ownedPostings.map((posting) => {
+                const applicationCount = data.applications.filter((application) => application.jobPosting.id === posting.id).length;
+                return (
+                  <article key={posting.id}>
+                    <div><Status locale={locale} value={posting.status} /><small>{posting.qualityScore}/100 {ar ? "جودة" : "quality"}</small></div>
+                    <div><h3>{posting.title}</h3><p>{[posting.department, posting.city, posting.countryCode].filter(Boolean).join(" · ") || (ar ? "الموقع والقسم غير محددين" : "Location and department unavailable")}</p></div>
+                    <div><strong>{applicationCount}</strong><small>{ar ? "متقدم" : "applicants"}</small></div>
+                    <small>{formatDate(posting.updatedAt, locale)}</small>
+                    <div className="talent-employer-actions">
+                      <Link href={`/talent/jobs/${posting.id}`}>{ar ? "عرض" : "View"}</Link>
+                      {posting.status === "DRAFT" ? <button disabled={busy} onClick={() => void runCommand({ action: "updateStatus", jobPostingId: posting.id, status: "PUBLISHED" }, ["تم نشر الإعلان.", "Posting published."])} type="button">{ar ? "نشر" : "Publish"}</button> : null}
+                      {posting.status === "PUBLISHED" ? <button disabled={busy} onClick={() => void runCommand({ action: "updateStatus", jobPostingId: posting.id, status: "CLOSED" }, ["تم إغلاق الإعلان.", "Posting closed."])} type="button">{ar ? "إغلاق" : "Close"}</button> : null}
+                    </div>
+                  </article>
+                );
+              })}
+              {!ownedPostings.length ? <EmptyState locale={locale} message={ar ? "لم تنشئ أي إعلان وظيفي بعد." : "You have not created any job postings yet."} /> : null}
+            </div>
+          </section>
+        </>
+      ) : null}
+
+      {route.id === "employer-requests" ? (
+        <>
+          <TalentApplicantFilters filters={applicantFilters} locale={locale} postings={ownedPostings} resultCount={visibleApplicants.length} setFilters={setApplicantFilters} />
+          <section className="talent-employer-panel">
+            <header><div><span>{ar ? "جميع الطلبات" : "ALL REQUESTS"}</span><h2>{ar ? "طلبات التوظيف الواردة" : "Received applications"}</h2></div><strong>{visibleApplicants.length}</strong></header>
+            <div className="talent-employer-request-list">
+              {visibleApplicants.map((application) => (
+                <article key={application.id}>
+                  <span className="talent-employer-avatar"><Icon name="user" /></span>
+                  <div><h3>{application.applicant.profile?.displayName ?? application.applicant.email}</h3><p>{application.jobPosting.title}</p><small>{formatDate(application.createdAt, locale)}</small></div>
+                  <strong>{application.matchScore}%</strong>
+                  <Status locale={locale} value={application.status} />
+                  <div className="talent-employer-actions"><Link href={`/talent/employer/candidates/${application.id}`}>{ar ? "عرض الطلب" : "View application"}</Link>{application.status === "SUBMITTED" ? <button disabled={busy} onClick={() => void runCommand({ action: "updateApplicationStatus", applicationId: application.id, status: "UNDER_REVIEW" }, ["بدأت مراجعة الطلب.", "Application moved to review."])} type="button">{ar ? "بدء المراجعة" : "Start review"}</button> : null}</div>
+                </article>
+              ))}
+              {!visibleApplicants.length ? <EmptyState locale={locale} /> : null}
+            </div>
+          </section>
+        </>
+      ) : null}
+
+      {route.id === "employer-shortlists" ? (
+        <section className="talent-shortlist-manager">
+          <form onSubmit={submitShortlist}>
+            <header><div><span>{ar ? "تنظيم المرشحين" : "CANDIDATE ORGANIZATION"}</span><h2>{ar ? "إنشاء قائمة مختصرة" : "Create shortlist"}</h2></div></header>
+            <input minLength={2} name="name" placeholder={ar ? "اسم القائمة" : "Shortlist name"} required />
+            <textarea maxLength={500} name="description" placeholder={ar ? "وصف القائمة" : "Shortlist description"} />
+            <select aria-label={ar ? "المنظمة" : "Organization"} name="organizationId"><option value="">{ar ? "قائمة شخصية" : "Personal shortlist"}</option>{data.organizations.filter((item) => item.isOwner).map((item) => <option key={item.organization.id} value={item.organization.id}>{item.organization.name}</option>)}</select>
+            <button className="button button--primary" disabled={busy} type="submit"><Icon name="plus" />{ar ? "إنشاء القائمة" : "Create shortlist"}</button>
+          </form>
+          <div>
+            {shortlists.map((shortlist) => (
+              <article key={shortlist.id}>
+                <header><div><h3>{shortlist.name}</h3><p>{shortlist.description ?? (ar ? "دون وصف" : "No description")}</p><small>{shortlist.organization?.name ?? (ar ? "قائمة شخصية" : "Personal shortlist")}</small></div><div><strong>{shortlist.members.length}</strong><small>{ar ? "مرشح" : "candidates"}</small></div></header>
+                <section>
+                  {shortlist.members.map((member) => <div key={member.id}><span className="talent-employer-avatar"><Icon name="user" /></span><div><strong>{member.candidateProfile.user.profile?.displayName ?? member.candidateProfile.headline}</strong><small>{member.candidateProfile.headline} · {member.candidateProfile.yearsExperience} {ar ? "سنوات" : "years"}</small></div><button disabled={busy} onClick={() => void runCommand({ action: "removeShortlistMember", shortlistId: shortlist.id, candidateProfileId: member.candidateProfileId }, ["تمت إزالة المرشح من القائمة.", "Candidate removed from shortlist."])} type="button">{ar ? "إزالة" : "Remove"}</button></div>)}
+                  {!shortlist.members.length ? <p>{ar ? "لا يوجد مرشحون في هذه القائمة بعد." : "This shortlist has no candidates yet."}</p> : null}
+                </section>
+                <footer><Link href="/talent/employer/search">{ar ? "إضافة مرشحين من البحث" : "Add candidates from search"}</Link><button disabled={busy} onClick={() => void runCommand({ action: "deleteShortlist", shortlistId: shortlist.id }, ["تم حذف القائمة.", "Shortlist deleted."])} type="button">{ar ? "حذف القائمة" : "Delete shortlist"}</button></footer>
+              </article>
+            ))}
+            {!shortlists.length ? <EmptyState locale={locale} message={ar ? "لم تنشئ قوائم مختصرة بعد." : "You have not created any shortlists yet."} /> : null}
+          </div>
+        </section>
+      ) : null}
+
+      {route.id === "employer-interviews" ? (
+        <section className="talent-employer-interviews">
+          <form onSubmit={submitInterview}>
+            <header><div><span>{ar ? "جدولة جديدة" : "NEW SCHEDULE"}</span><h2>{ar ? "جدولة مقابلة" : "Schedule interview"}</h2></div></header>
+            <select aria-label={ar ? "طلب التوظيف" : "Job application"} name="applicationId" required>
+              <option value="">{ar ? "اختر مرشحًا" : "Select candidate"}</option>
+              {data.applications.filter((application) => ["UNDER_REVIEW", "ACCEPTED"].includes(application.status)).map((application) => <option key={application.id} value={application.id}>{application.applicant.profile?.displayName ?? application.applicant.email} · {application.jobPosting.title}</option>)}
+            </select>
+            <input aria-label={ar ? "موعد المقابلة" : "Interview date"} name="scheduledAt" required type="datetime-local" />
+            <select aria-label={ar ? "نوع المقابلة" : "Interview mode"} name="mode"><option value="VIDEO">{ar ? "اتصال مرئي" : "Video"}</option><option value="PHONE">{ar ? "اتصال هاتفي" : "Phone"}</option><option value="ON_SITE">{ar ? "حضوري" : "On site"}</option></select>
+            <input max="240" min="15" name="durationMinutes" type="number" defaultValue="30" />
+            <input name="location" placeholder={ar ? "رابط الاجتماع أو الموقع" : "Meeting URL or location"} />
+            <textarea name="notes" placeholder={ar ? "ملاحظات التحضير" : "Preparation notes"} />
+            <button className="button button--primary" disabled={busy} type="submit">{ar ? "تأكيد الموعد وإشعار المرشح" : "Confirm and notify candidate"}</button>
+          </form>
+          <section className="talent-employer-panel">
+            <header><div><span>{ar ? "جدول المقابلات" : "INTERVIEW SCHEDULE"}</span><h2>{ar ? "المقابلات" : "Interviews"}</h2></div><strong>{employerInterviews.length}</strong></header>
+            <div className="talent-employer-request-list">
+              {employerInterviews.map(({ application, interview }) => <article key={interview.id}><span className="talent-employer-avatar"><Icon name="people" /></span><div><h3>{application.applicant.profile?.displayName ?? application.applicant.email}</h3><p>{application.jobPosting.title}</p><small>{new Intl.DateTimeFormat(ar ? "ar-SA" : "en-GB", { dateStyle: "medium", timeStyle: "short" }).format(new Date(interview.scheduledAt))}</small></div><Status locale={locale} value={interview.mode} /><Status locale={locale} value={interview.status} /><div className="talent-employer-actions">{interview.status === "SCHEDULED" ? <><button disabled={busy} onClick={() => void runCommand({ action: "updateInterviewStatus", interviewId: interview.id, status: "COMPLETED" }, ["تم إكمال المقابلة.", "Interview completed."])} type="button">{ar ? "إكمال" : "Complete"}</button><button disabled={busy} onClick={() => void runCommand({ action: "updateInterviewStatus", interviewId: interview.id, status: "CANCELLED" }, ["تم إلغاء المقابلة.", "Interview cancelled."])} type="button">{ar ? "إلغاء" : "Cancel"}</button></> : null}</div></article>)}
+              {!employerInterviews.length ? <EmptyState locale={locale} message={ar ? "لا توجد مقابلات مجدولة." : "No interviews are scheduled."} /> : null}
+            </div>
+          </section>
+        </section>
+      ) : null}
+
+      {route.id === "employer-messages" ? (
+        <section className="talent-message-center talent-message-center--employer">
+          <aside>
+            <header><h2>{ar ? "محادثات المرشحين" : "Candidate conversations"}</h2><strong>{data.applications.length}</strong></header>
+            {data.applications.map((application) => <Link className={employerConversation?.id === application.id ? "is-active" : undefined} href={`/talent/employer/messages?application=${application.id}`} key={application.id}><span><Icon name="user" /></span><div><strong>{application.applicant.profile?.displayName ?? application.applicant.email}</strong><small>{application.messages.at(-1)?.body ?? application.jobPosting.title}</small></div></Link>)}
+          </aside>
+          <div>
+            {employerConversation ? <><header><div><h2>{employerConversation.applicant.profile?.displayName ?? employerConversation.applicant.email}</h2><p>{employerConversation.jobPosting.title}</p></div><Link href={`/talent/employer/candidates/${employerConversation.id}`}>{ar ? "ملف المرشح" : "Candidate profile"}</Link></header><TalentConversation applicationId={employerConversation.id} busy={busy} closed={["REJECTED", "WITHDRAWN"].includes(employerConversation.status)} currentUserId={data.viewerId} locale={locale} messages={employerConversation.messages} runCommand={runCommand} /></> : <EmptyState locale={locale} message={ar ? "لا توجد طلبات لفتح محادثة." : "No applications are available for a conversation."} />}
+          </div>
+        </section>
+      ) : null}
+
+      {route.id === "employer-pipeline" ? (
+        <section className="talent-hiring-pipeline">
+          {[
+            ["SUBMITTED", ar ? "طلبات جديدة" : "New applications"],
+            ["UNDER_REVIEW", ar ? "قيد المراجعة" : "Under review"],
+            ["ACCEPTED", ar ? "المرحلة التالية" : "Advanced"],
+            ["REJECTED", ar ? "غير مناسبة" : "Rejected"],
+          ].map(([status, label]) => {
+            const applications = data.applications.filter((application) => application.status === status);
+            return <section key={status}><header><h2>{label}</h2><strong>{applications.length}</strong></header>{applications.map((application) => <article key={application.id}><div><strong>{application.applicant.profile?.displayName ?? application.applicant.email}</strong><small>{application.jobPosting.title}</small></div><span>{application.matchScore}%</span><Link href={`/talent/employer/candidates/${application.id}`}>{ar ? "فتح" : "Open"}</Link>{status === "SUBMITTED" ? <button disabled={busy} onClick={() => void runCommand({ action: "updateApplicationStatus", applicationId: application.id, status: "UNDER_REVIEW" }, ["بدأت مراجعة الطلب.", "Application moved to review."])} type="button">{ar ? "مراجعة" : "Review"}</button> : null}</article>)}{!applications.length ? <p>{ar ? "لا توجد طلبات." : "No applications."}</p> : null}</section>;
+          })}
+        </section>
+      ) : null}
+
+      {route.id === "employer-company" ? (
+        ownedOrganization ? (
+          <section className="talent-employer-company">
+            <header><span><Icon name="building" /></span><div><small>{ar ? "الملف العام" : "PUBLIC PROFILE"}</small><h2>{ownedOrganization.name}</h2><p>{ar ? "هذه البيانات تظهر للباحثين عن وظيفة في ملف الشركة." : "These details appear to job seekers on the public company profile."}</p></div><Link href={`/talent/companies/${ownedOrganization.id}`}>{ar ? "معاينة الملف العام" : "Preview public profile"}</Link></header>
+            <form key={JSON.stringify(ownedOrganization)} onSubmit={submitCompanyProfile}>
+              <input name="organizationId" type="hidden" value={ownedOrganization.id} />
+              <label>{ar ? "القطاع" : "Industry"}<input defaultValue={ownedOrganization.industry ?? ""} name="industry" /></label>
+              <label>{ar ? "الموقع الإلكتروني" : "Website"}<input defaultValue={ownedOrganization.website ?? ""} name="website" type="url" /></label>
+              <label>{ar ? "الدولة" : "Country"}<input defaultValue={ownedOrganization.countryCode ?? ""} maxLength={2} name="countryCode" /></label>
+              <label>{ar ? "المدينة" : "City"}<input defaultValue={ownedOrganization.city ?? ""} name="city" /></label>
+              <label>{ar ? "حجم الشركة" : "Company size"}<input defaultValue={ownedOrganization.employeeRange ?? ""} name="employeeRange" placeholder={ar ? "مثال: 50–100 موظف" : "Example: 50–100 employees"} /></label>
+              <label className="talent-employer-company__description">{ar ? "نبذة عن الشركة" : "Company description"}<textarea defaultValue={ownedOrganization.description ?? ""} maxLength={4000} name="description" /></label>
+              <button className="button button--primary" disabled={busy} type="submit">{ar ? "حفظ الملف" : "Save profile"}</button>
+            </form>
+          </section>
+        ) : <EmptyState locale={locale} message={ar ? "يتطلب ملف الشركة ملكية منظمة نشطة." : "A public company profile requires active organization ownership."} />
+      ) : null}
+
+      {route.id === "employer-settings" ? (
+        ownedOrganization ? (
+          <form className="talent-employer-settings" key={JSON.stringify(ownedOrganization.hiringSettings)} onSubmit={submitHiringSettings}>
+            <input name="organizationId" type="hidden" value={ownedOrganization.id} />
+            <header><div><span>{ar ? "تفضيلات التوظيف" : "HIRING PREFERENCES"}</span><h2>{ar ? "إعدادات التوظيف" : "Hiring settings"}</h2><p>{ar ? "إعدادات تشغيلية للوظائف والمقابلات، ولا تغيّر صلاحيات المؤسسة." : "Operational job and interview preferences; organization permissions are unchanged."}</p></div></header>
+            <label>{ar ? "نمط العمل الافتراضي" : "Default work mode"}<select defaultValue={ownedOrganization.hiringSettings?.defaultWorkMode ?? "ON_SITE"} name="defaultWorkMode"><option value="ON_SITE">{ar ? "حضوري" : "On site"}</option><option value="HYBRID">{ar ? "هجين" : "Hybrid"}</option><option value="REMOTE">{ar ? "عن بُعد" : "Remote"}</option></select></label>
+            <label>{ar ? "مدة المقابلة الافتراضية بالدقائق" : "Default interview duration"}<input defaultValue={ownedOrganization.hiringSettings?.interviewDuration ?? 30} max="240" min="15" name="interviewDuration" type="number" /></label>
+            <label className="talent-employer-toggle"><input defaultChecked={ownedOrganization.hiringSettings?.notificationsEnabled ?? true} name="notificationsEnabled" type="checkbox" />{ar ? "تفعيل إشعارات تحديثات التوظيف" : "Enable hiring update notifications"}</label>
+            <button className="button button--primary" disabled={busy} type="submit">{ar ? "حفظ الإعدادات" : "Save settings"}</button>
+          </form>
+        ) : <EmptyState locale={locale} message={ar ? "يتطلب تعديل الإعدادات ملكية منظمة نشطة." : "Editing settings requires active organization ownership."} />
+      ) : null}
+
+      {route.id === "employer-support" ? (
+        <section className="talent-employer-support">
+          <form onSubmit={submitSupportTicket}>
+            <header><div><span>{ar ? "طلب مساعدة" : "REQUEST HELP"}</span><h2>{ar ? "تذكرة دعم جديدة" : "New support ticket"}</h2></div></header>
+            <select aria-label={ar ? "فئة الدعم" : "Support category"} name="category"><option value="HIRING">{ar ? "التوظيف" : "Hiring"}</option><option value="TECHNICAL">{ar ? "مشكلة تقنية" : "Technical"}</option><option value="ACCOUNT">{ar ? "الحساب" : "Account"}</option><option value="BILLING">{ar ? "الفوترة" : "Billing"}</option><option value="OTHER">{ar ? "أخرى" : "Other"}</option></select>
+            <input minLength={3} name="subject" placeholder={ar ? "موضوع الطلب" : "Subject"} required />
+            <textarea minLength={20} name="description" placeholder={ar ? "اشرح المشكلة أو الطلب بالتفصيل" : "Describe the issue or request"} required />
+            <button className="button button--primary" disabled={busy} type="submit">{ar ? "إرسال الطلب" : "Submit request"}</button>
+          </form>
+          <section className="talent-employer-panel">
+            <header><div><span>{ar ? "سجل الدعم" : "SUPPORT HISTORY"}</span><h2>{ar ? "طلباتي" : "My requests"}</h2></div><strong>{supportTickets.length}</strong></header>
+            <div className="talent-employer-ticket-list">{supportTickets.map((ticket) => <article key={ticket.id}><div><h3>{ticket.subject}</h3><p>{ticket.description}</p><small>{ticket.category} · {formatDate(ticket.updatedAt, locale)}</small></div><Status locale={locale} value={ticket.status} /></article>)}{!supportTickets.length ? <EmptyState locale={locale} message={ar ? "لم ترسل أي طلبات دعم." : "You have not submitted support requests."} /> : null}</div>
+          </section>
+        </section>
       ) : null}
 
       {route.id === "employer-post" ? (
@@ -1917,6 +2184,17 @@ export function TalentFlowWorkspace({
                     .filter(Boolean)
                     .join(" · ")}
                 </small>
+                {shortlists.length ? (
+                  <form className="talent-shortlist-add" onSubmit={submitShortlistMember}>
+                    <input name="candidateProfileId" type="hidden" value={candidate.id} />
+                    <select aria-label={ar ? "القائمة المختصرة" : "Shortlist"} name="shortlistId">
+                      {shortlists.map((shortlist) => <option key={shortlist.id} value={shortlist.id}>{shortlist.name}</option>)}
+                    </select>
+                    <button disabled={busy} type="submit">{ar ? "إضافة للقائمة" : "Add to shortlist"}</button>
+                  </form>
+                ) : (
+                  <Link href="/talent/employer/shortlists">{ar ? "أنشئ قائمة مختصرة أولًا" : "Create a shortlist first"}</Link>
+                )}
               </article>
             ))}
           </section>
@@ -2138,7 +2416,7 @@ function ApplicantCard({
         ))}
       </div>
       <footer>
-        <Link href={`/talent/candidate/sample?application=${application.id}`}>
+        <Link href={`/talent/employer/candidates/${application.id}`}>
           {ar ? "عرض المرشح" : "View candidate"}
           <Icon name="arrow" />
         </Link>

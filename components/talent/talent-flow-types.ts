@@ -17,7 +17,17 @@ export type TalentPosting = {
   qualitySignals: Record<string, unknown> | null;
   workMode: "ON_SITE" | "HYBRID" | "REMOTE";
   status: "DRAFT" | "PUBLISHED" | "CLOSED" | "ARCHIVED";
-  organization: { id: string; name: string } | null;
+  organization: {
+    id: string;
+    name: string;
+    description: string | null;
+    industry: string | null;
+    website: string | null;
+    countryCode: string | null;
+    city: string | null;
+    employeeRange: string | null;
+    hiringSettings: { defaultWorkMode?: string; interviewDuration?: number; notificationsEnabled?: boolean } | null;
+  } | null;
   createdBy: { email: string; profile: { displayName: string | null } | null };
   applications: { applicantId: string; matchScore: number; status: string }[];
   questions: { id: string; prompt: string; required: boolean; sequence: number }[];
@@ -111,6 +121,40 @@ export type DiscoverableTalent = {
 
 export type CandidateMatch = { posting: TalentPosting; score: number; signals: { matchedSkills?: string[]; missingSkills?: string[] } };
 export type EmployerMatch = { postingId: string; postingTitle: string; candidate: DiscoverableTalent & { userId: string }; score: number; signals: { matchedSkills?: string[]; missingSkills?: string[] } };
+export type TalentOrganization = {
+  id: string;
+  name: string;
+  description: string | null;
+  industry: string | null;
+  website: string | null;
+  countryCode: string | null;
+  city: string | null;
+  employeeRange: string | null;
+  hiringSettings: { defaultWorkMode?: string; interviewDuration?: number; notificationsEnabled?: boolean } | null;
+};
+export type TalentShortlist = {
+  id: string;
+  name: string;
+  description: string | null;
+  organization: { id: string; name: string } | null;
+  members: {
+    id: string;
+    candidateProfileId: string;
+    createdAt: string;
+    candidateProfile: DiscoverableTalent;
+  }[];
+  createdAt: string;
+  updatedAt: string;
+};
+export type TalentSupportTicket = {
+  id: string;
+  category: string;
+  subject: string;
+  description: string;
+  status: "OPEN" | "IN_PROGRESS" | "CLOSED";
+  createdAt: string;
+  updatedAt: string;
+};
 
 export type TalentPayload = {
   success: boolean;
@@ -123,5 +167,6 @@ export type TalentPayload = {
   talentProfile: { profile: TalentProfileRecord | null; cvDocuments: TalentCv[] };
   talent: DiscoverableTalent[];
   matches: { candidateMatches: CandidateMatch[]; employerMatches: EmployerMatch[] };
-  organizations: { isOwner: boolean; organization: { id: string; name: string } }[];
+  organizations: { isOwner: boolean; organization: TalentOrganization }[];
+  employerResources: { shortlists: TalentShortlist[]; supportTickets: TalentSupportTicket[] };
 };
