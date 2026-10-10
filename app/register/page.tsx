@@ -15,7 +15,7 @@ export default async function RegisterPage() {
       modules={catalog.modules.filter((module) => module.id !== "dashboard")}
       labels={{
         name: ar ? "الاسم الكامل" : "Full name",
-        countryCode: ar ? "رمز الدولة" : "Country code",
+        countryCode: ar ? "الدولة" : "Country",
         email: ar ? "البريد الإلكتروني" : "Email address",
         password: ar ? "كلمة المرور" : "Password",
         submit: ar ? "إنشاء حساب" : "Create account",

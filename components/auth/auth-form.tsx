@@ -268,6 +268,8 @@ export function AuthForm({ mode, locale, labels }: AuthFormProps) {
             autoComplete="name"
             placeholder={labels.name}
             required
+            minLength={2}
+            maxLength={80}
             disabled={loading}
             icon={<Icon name="user" />}
           />
@@ -292,6 +294,10 @@ export function AuthForm({ mode, locale, labels }: AuthFormProps) {
             type="password"
             autoComplete="new-password"
             placeholder={labels.password}
+            passwordToggleLabels={{
+              hide: locale === "ar" ? "إخفاء كلمة المرور" : "Hide password",
+              show: locale === "ar" ? "إظهار كلمة المرور" : "Show password",
+            }}
             required
             minLength={12}
             maxLength={128}
@@ -306,6 +312,10 @@ export function AuthForm({ mode, locale, labels }: AuthFormProps) {
             placeholder={
               locale === "ar" ? "تأكيد كلمة المرور" : "Confirm password"
             }
+            passwordToggleLabels={{
+              hide: locale === "ar" ? "إخفاء كلمة المرور" : "Hide password",
+              show: locale === "ar" ? "إظهار كلمة المرور" : "Show password",
+            }}
             required
             minLength={12}
             maxLength={128}
@@ -409,6 +419,10 @@ export function AuthForm({ mode, locale, labels }: AuthFormProps) {
             name="password"
             type="password"
             autoComplete="current-password"
+            passwordToggleLabels={{
+              hide: locale === "ar" ? "إخفاء كلمة المرور" : "Hide password",
+              show: locale === "ar" ? "إظهار كلمة المرور" : "Show password",
+            }}
             required
             minLength={1}
             maxLength={128}
