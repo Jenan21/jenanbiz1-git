@@ -43,7 +43,17 @@ function usePreviewUrl(file: File | null) {
   return url;
 }
 
-export function StudioPdfWorkspace({ editor, locale }: { editor: boolean; locale: Locale }) {
+export function StudioPdfWorkspace({
+  editor,
+  editorHref = "/studio/pdf/editor",
+  initialTool,
+  locale,
+}: {
+  editor: boolean;
+  editorHref?: string;
+  initialTool?: string;
+  locale: Locale;
+}) {
   const ar = locale === "ar";
   const [pdfs, setPdfs] = useState<File[]>([]);
   const [splitFile, setSplitFile] = useState<File | null>(null);
@@ -65,7 +75,7 @@ export function StudioPdfWorkspace({ editor, locale }: { editor: boolean; locale
 
   useEffect(() => {
     if (!editor) return;
-    const tool = new URLSearchParams(globalThis.location.search).get("tool");
+    const tool = initialTool ?? new URLSearchParams(globalThis.location.search).get("tool");
     if (!tool || !pdfTools.some(([id]) => id === tool)) return;
     const update = requestAnimationFrame(() => {
       setRequestedTool(tool);
@@ -73,7 +83,7 @@ export function StudioPdfWorkspace({ editor, locale }: { editor: boolean; locale
       globalThis.document.querySelector<HTMLElement>(`[data-pdf-tool="${tool}"]`)?.scrollIntoView({ behavior: "smooth", block: "center" });
     });
     return () => cancelAnimationFrame(update);
-  }, [editor]);
+  }, [editor, initialTool]);
 
   function moveMergeFile(index: number, direction: -1 | 1) {
     setPdfs((current) => {
@@ -185,7 +195,7 @@ export function StudioPdfWorkspace({ editor, locale }: { editor: boolean; locale
             <p>{ar ? "اختر العملية ثم نفّذها داخل المحرر. لا يُحفظ محتوى الملفات في سجل المنصة." : "Choose an operation, then run it in the editor. File contents are never retained in platform history."}</p>
             <div className="studio-tool-picker__grid">
               {pdfTools.map(([id, arabic, english, supported]) => supported ? (
-                <Link href={`/studio/pdf/editor?tool=${id}`} className="studio-tool-card" key={id}>
+                <Link href={`${editorHref}?tool=${id}`} className="studio-tool-card" key={id}>
                   <Icon name="activity" /><strong>{ar ? arabic : english}</strong><small>{ar ? "متاح الآن" : "Available now"}</small><Icon name="arrow" />
                 </Link>
               ) : (
@@ -210,7 +220,7 @@ export function StudioPdfWorkspace({ editor, locale }: { editor: boolean; locale
             <section className="studio-pdf-catalog__action">
               <header><span>ACTION</span><h2>{ar ? "ابدأ المعالجة" : "Start processing"}</h2></header>
               <p>{ar ? "جميع العمليات متاحة من مساحة تنفيذ موحدة وآمنة." : "All operations are available in one secure execution workspace."}</p>
-              <Link className="button button--primary" href="/studio/pdf/editor"><Icon name="arrow" />{ar ? "اختيار أداة" : "Choose a tool"}</Link>
+              <Link className="button button--primary" href={editorHref}><Icon name="arrow" />{ar ? "اختيار أداة" : "Choose a tool"}</Link>
             </section>
           </aside>
         </div>

@@ -1,6 +1,6 @@
-import { SoftwareRoutePage } from "@/components/software/software-route-page";
-import { SOFTWARE_FLOW_ROUTES } from "@/lib/software/software-routes";
+import { SoftwareExperiencePage } from "@/components/software/software-experience-page";
+import { SOFTWARE_EXPERIENCE_ROUTES } from "@/lib/software/software-experience-routes";
 
 export default function Page() {
-  return <SoftwareRoutePage route={SOFTWARE_FLOW_ROUTES[0]} />;
+  return <SoftwareExperiencePage route={SOFTWARE_EXPERIENCE_ROUTES[0]} />;
 }

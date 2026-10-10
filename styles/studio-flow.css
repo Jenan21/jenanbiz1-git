@@ -951,6 +951,14 @@
   background: var(--deep);
 }
 
+.studio-pdf-editor .studio-file-field input,
+.studio-editor .studio-import input {
+  width: 1px;
+  min-height: 1px;
+  padding: 0;
+  border: 0;
+}
+
 .studio-pdf-editor input:focus,
 .studio-editor input:focus,
 .studio-editor textarea:focus,

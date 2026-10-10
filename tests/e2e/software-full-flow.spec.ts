@@ -1,5 +1,8 @@
 import { expect, test } from "@playwright/test";
-
+import { Document, Packer, Paragraph } from "docx";
+import ExcelJS from "exceljs";
+import { PDFDocument, StandardFonts } from "pdf-lib";
+import { SOFTWARE_EXPERIENCE_ROUTES } from "@/lib/software/software-experience-routes";
 import { SOFTWARE_FLOW_ROUTES } from "@/lib/software/software-routes";
 import { cleanE2EIdentities, createE2ESession, seedE2EUser } from "./identity-fixture";
 import { e2eIdentity } from "./test-identities";
@@ -10,6 +13,14 @@ const acceptanceViewports = [
   { width: 1366, height: 768 }, { width: 1280, height: 800 }, { width: 1024, height: 1366 },
   { width: 820, height: 1180 }, { width: 430, height: 932 }, { width: 390, height: 844 }, { width: 360, height: 800 },
 ] as const;
+
+async function createPdf(label: string) {
+  const document = await PDFDocument.create();
+  const page = document.addPage([420, 240]);
+  const font = await document.embedFont(StandardFonts.Helvetica);
+  page.drawText(label, { x: 40, y: 130, font, size: 18 });
+  return Buffer.from(await document.save());
+}
 
 test.describe.serial("Jenan Software full flow", () => {
   test.setTimeout(300_000);
@@ -23,12 +34,63 @@ test.describe.serial("Jenan Software full flow", () => {
     await cleanE2EIdentities();
   });
 
-  test("completes sales and payroll workflows and renders all 24 routes", async ({ context, page }) => {
+  test("completes tools, design, sales, and payroll workflows and renders every route", async ({ context, page }) => {
     const sessionToken = await createE2ESession(e2eIdentity.user.email);
     await context.addCookies([
       { name: "jenan_session", value: sessionToken, url: origin, httpOnly: true, sameSite: "Lax" },
       { name: "locale", value: "en", url: origin },
     ]);
+
+    for (const route of SOFTWARE_EXPERIENCE_ROUTES) {
+      const response = await page.goto(route.route, { waitUntil: "domcontentloaded" });
+      expect(response?.status(), route.route).toBe(200);
+      if (route.kind === "design-editor") await expect(page.locator(".studio-flow")).toHaveAttribute("data-studio-route", route.route);
+      else await expect(page.locator("[data-software-route]")).toHaveAttribute("data-software-route", route.route);
+      const layout = await page.evaluate(() => ({ scrollWidth: document.documentElement.scrollWidth, viewportWidth: document.documentElement.clientWidth }));
+      expect(layout.scrollWidth, route.route).toBeLessThanOrEqual(layout.viewportWidth + 1);
+    }
+
+    const png = Buffer.from("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII=", "base64");
+    const imageConversion = await page.request.post("/api/software/documents", {
+      headers: { origin },
+      multipart: { action: "imagesToPdf", files: { name: "verified.png", mimeType: "image/png", buffer: png }, orientation: "landscape", pageSize: "LETTER" },
+    });
+    expect(imageConversion.status()).toBe(200);
+    expect(imageConversion.headers()["content-type"]).toContain("application/pdf");
+
+    const docx = await Packer.toBuffer(new Document({ sections: [{ children: [new Paragraph("Verified software conversion")] }] }));
+    const wordConversion = await page.request.post("/api/software/documents", {
+      headers: { origin },
+      multipart: { action: "docxToPdf", files: { name: "verified.docx", mimeType: "application/vnd.openxmlformats-officedocument.wordprocessingml.document", buffer: docx } },
+    });
+    expect(wordConversion.status()).toBe(200);
+    expect(wordConversion.headers()["content-type"]).toContain("application/pdf");
+
+    const sourcePdf = await createPdf("Verified PDF extraction");
+    const pdfToWord = await page.request.post("/api/software/documents", {
+      headers: { origin },
+      multipart: { action: "pdfToDocx", files: { name: "verified.pdf", mimeType: "application/pdf", buffer: sourcePdf } },
+    });
+    expect(pdfToWord.status()).toBe(200);
+    expect(pdfToWord.headers()["content-type"]).toContain("wordprocessingml.document");
+
+    const pdfToExcel = await page.request.post("/api/software/documents", {
+      headers: { origin },
+      multipart: { action: "pdfToXlsx", files: { name: "verified.pdf", mimeType: "application/pdf", buffer: sourcePdf } },
+    });
+    expect(pdfToExcel.status()).toBe(200);
+    expect(pdfToExcel.headers()["content-type"]).toContain("spreadsheetml.sheet");
+
+    const sourceWorkbook = new ExcelJS.Workbook();
+    sourceWorkbook.addWorksheet("Verified").addRow(["Metric", "Value"]);
+    const xlsx = Buffer.from(await sourceWorkbook.xlsx.writeBuffer());
+    const excelToPdf = await page.request.post("/api/software/documents", {
+      headers: { origin },
+      multipart: { action: "xlsxToPdf", files: { name: "verified.xlsx", mimeType: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", buffer: xlsx } },
+    });
+    expect(excelToPdf.status()).toBe(200);
+    expect(excelToPdf.headers()["content-type"]).toContain("application/pdf");
+
     const organizationResponse = await page.request.post("/api/software/operations", { headers: { origin }, data: { action: "createOrganization", name: "E2E Software Company" } });
     expect(organizationResponse.status()).toBe(201);
 
@@ -174,13 +236,23 @@ test.describe.serial("Jenan Software full flow", () => {
       expect(layout.scrollWidth, route.route).toBeLessThanOrEqual(layout.viewportWidth + 1);
     }
 
-    for (const viewport of acceptanceViewports) {
+  });
+
+  for (const [label, viewports] of [["desktop", acceptanceViewports.slice(0, 5)], ["compact", acceptanceViewports.slice(5)]] as const) {
+    test(`keeps approved and operational software routes responsive on ${label} viewports`, async ({ context, page }) => {
+      const sessionToken = await createE2ESession(e2eIdentity.user.email);
+      await context.addCookies([
+        { name: "jenan_session", value: sessionToken, url: origin, httpOnly: true, sameSite: "Lax" },
+        { name: "locale", value: "en", url: origin },
+      ]);
+      for (const viewport of viewports) {
       await page.setViewportSize(viewport);
-      for (const route of ["/software", "/software/sales/invoices", "/software/accounting", "/software/inventory", "/software/crm", "/software/projects", "/software/pos", "/software/purchases", "/software/company", "/software/hr/payroll", "/software/reports"]) {
+      for (const route of ["/software", "/software/files", "/software/files/images-to-pdf", "/software/files/word-to-pdf", "/software/design", "/software/design/cv", "/software/business", "/software/sales/invoices", "/software/accounting", "/software/inventory", "/software/crm", "/software/projects", "/software/pos", "/software/purchases", "/software/company", "/software/hr/payroll", "/software/reports"]) {
         expect((await page.goto(route, { waitUntil: "domcontentloaded" }))?.status()).toBe(200);
         const layout = await page.evaluate(() => ({ scrollWidth: document.documentElement.scrollWidth, viewportWidth: document.documentElement.clientWidth }));
         expect(layout.scrollWidth, `${route} at ${viewport.width}x${viewport.height}`).toBeLessThanOrEqual(layout.viewportWidth + 1);
       }
-    }
-  });
+      }
+    });
+  }
 });

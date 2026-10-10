@@ -19,6 +19,7 @@ import "@/styles/project-start-workflow.css";
 import "@/styles/project-evaluation-dashboard.css";
 import "@/styles/programs-stage.css";
 import "@/styles/software-stage.css";
+import "@/styles/software-experience.css";
 import "@/styles/growth-stage.css";
 import "@/styles/account-module-stage.css";
 import "@/styles/admin-stage.css";

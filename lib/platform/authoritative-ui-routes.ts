@@ -5,6 +5,7 @@ import { MARKETING_FLOW_ROUTES } from "@/lib/marketing/marketing-routes";
 import { projectFlowDefinitions } from "@/lib/projects/project-flow-routes";
 import { REPORT_DEFINITIONS } from "@/lib/reports/report-routes";
 import { ROBOTICS_FLOW_ROUTES } from "@/lib/robotics/robotics-routes";
+import { SOFTWARE_EXPERIENCE_ROUTES } from "@/lib/software/software-experience-routes";
 import { SOFTWARE_FLOW_ROUTES } from "@/lib/software/software-routes";
 import { STUDIO_FLOW_ROUTES } from "@/lib/studio/studio-routes";
 import { TALENT_FLOW_ROUTES } from "@/lib/talent/talent-routes";
@@ -33,6 +34,7 @@ export const AUTHORITATIVE_UI_ROUTES: readonly AuthoritativeUiRoute[] = [
   define("/market", "market"),
   ...marketFlowDefinitions.map((route) => define(route.route, "market")),
   ...STUDIO_FLOW_ROUTES.map((route) => define(route.href, "studio")),
+  ...SOFTWARE_EXPERIENCE_ROUTES.map((route) => define(route.route, "software")),
   ...SOFTWARE_FLOW_ROUTES.map((route) => define(route.route, "software")),
   ...TALENT_FLOW_ROUTES.map((route) => define(route.route, "talent")),
   ...MARKETING_FLOW_ROUTES.map((route) => define(route.route, "marketing")),

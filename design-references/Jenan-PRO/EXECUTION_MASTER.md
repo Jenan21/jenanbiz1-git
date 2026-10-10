@@ -107,6 +107,9 @@ Required responsive checks: 2560x1440, 1920x1080, 1440x900, 1366x768, 1280x800, 
 - Sales includes customers, quotations, sales orders, invoices, receipts, products, returns, discounts, taxes, and reports.
 - HR includes employees, profiles, attendance, leave, payroll, performance, and reports.
 - Do not leave these as card-only shells.
+- The six files in `APPROVED_SOFTWARE_REFERENCES/` are the approved visual and route authorities for the Software portal, File Tools dashboard, Images-to-PDF workspace, conversion center, Design Studio dashboard, and CV/letterhead editor.
+- `/software` is the unified Software portal; `/software/files/*` provides private session-based document processing, `/software/design/*` reuses the persisted Studio document/version engine, and `/software/business` preserves the full operational ERP dashboard.
+- File conversion must disclose fidelity limits and must never claim an exact size reduction or formatting result before processing. Source file contents remain transient; only auditable operation metadata is persisted.
 
 ### Talent and Jobs
 

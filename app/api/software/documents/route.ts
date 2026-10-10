@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
-import { deletePdfPages, extractPdfPages, imagesToPdf, mergePdfs, numberPdfPages, optimizePdf, redactPdf, reorderPdfPages, rotatePdfPages, splitPdf, watermarkPdf } from "@/packages/pdf-engine/src";
+import { Document, Packer, Paragraph } from "docx";
+import ExcelJS from "exceljs";
+import { deletePdfPages, extractPdfPages, extractPdfText, imagesToPdf, mergePdfs, numberPdfPages, optimizePdf, redactPdf, reorderPdfPages, rotatePdfPages, splitPdf, textToPdf, watermarkPdf } from "@/packages/pdf-engine/src";
 import { parseDocx } from "@/packages/docs-engine/src";
 import { parseXlsx } from "@/packages/sheets-engine/src";
 import { getCurrentUser } from "@/lib/auth/session";
@@ -112,9 +114,52 @@ export async function POST(request: NextRequest) {
     if (action === "imagesToPdf") {
       const imageTypes = bytes.map(imageMimeType);
       if (imageTypes.some((type) => !type)) return NextResponse.json({ success: false, message: "Only valid PNG or JPEG images can be converted" }, { status: 400 });
-      const output = await imagesToPdf(bytes.map((value, index) => ({ bytes: value, mimeType: imageTypes[index]! })));
+      const pageSize = String(form.get("pageSize") ?? "A4");
+      const orientation = String(form.get("orientation") ?? "auto");
+      if (!["A4", "LETTER", "ORIGINAL"].includes(pageSize) || !["auto", "portrait", "landscape"].includes(orientation)) return NextResponse.json({ success: false, message: "Invalid PDF output settings" }, { status: 400 });
+      const output = await imagesToPdf(bytes.map((value, index) => ({ bytes: value, mimeType: imageTypes[index]! })), { pageSize: pageSize as "A4" | "LETTER" | "ORIGINAL", orientation: orientation as "auto" | "landscape" | "portrait" });
       await recordToolRun({ action, fileCount: files.length, metadata: { outputBytes: output.byteLength }, userId: user.id });
       return pdfResponse(output, "jenan-images.pdf");
+    }
+    if (action === "docxToPdf") {
+      if (files.length !== 1 || !hasZipSignature(bytes[0])) return NextResponse.json({ success: false, message: "Provide one valid DOCX file" }, { status: 400 });
+      const parsed = await parseDocx(bytes[0]);
+      if (!parsed.text) return NextResponse.json({ success: false, message: "The DOCX file has no extractable text" }, { status: 422 });
+      const output = await textToPdf(parsed.text, files[0].name.replace(/\.docx$/i, ""));
+      await recordToolRun({ action, fileCount: 1, metadata: { outputBytes: output.byteLength, paragraphCount: parsed.paragraphCount }, userId: user.id });
+      return pdfResponse(output, "jenan-word.pdf");
+    }
+    if (action === "pdfToDocx") {
+      if (files.length !== 1 || !hasPdfSignature(bytes[0])) return NextResponse.json({ success: false, message: "Provide one valid PDF file" }, { status: 400 });
+      const pages = await extractPdfText(bytes[0]);
+      if (!pages.some(Boolean)) return NextResponse.json({ success: false, message: "The PDF has no extractable text" }, { status: 422 });
+      const document = new Document({ sections: [{ children: pages.flatMap((page, index) => [new Paragraph({ text: page }), ...(index < pages.length - 1 ? [new Paragraph({ pageBreakBefore: true })] : [])]) }] });
+      const output = await Packer.toBuffer(document);
+      await recordToolRun({ action, fileCount: 1, metadata: { outputBytes: output.byteLength, pages: pages.length }, userId: user.id });
+      return binaryResponse(output, "application/vnd.openxmlformats-officedocument.wordprocessingml.document", "jenan-pdf-text.docx");
+    }
+    if (action === "xlsxToPdf") {
+      if (files.length !== 1 || !hasZipSignature(bytes[0])) return NextResponse.json({ success: false, message: "Provide one valid XLSX file" }, { status: 400 });
+      const workbook = await parseXlsx(bytes[0], 200);
+      const text = workbook.sheets.map((sheet) => [`[${sheet.name}]`, ...sheet.previewRows.map((row) => row.join(" | "))].join("\n")).join("\n\n");
+      if (!text.trim()) return NextResponse.json({ success: false, message: "The workbook has no readable cells" }, { status: 422 });
+      const output = await textToPdf(text, files[0].name.replace(/\.xlsx$/i, ""));
+      await recordToolRun({ action, fileCount: 1, metadata: { outputBytes: output.byteLength, sheets: workbook.sheets.length }, userId: user.id });
+      return pdfResponse(output, "jenan-excel.pdf");
+    }
+    if (action === "pdfToXlsx") {
+      if (files.length !== 1 || !hasPdfSignature(bytes[0])) return NextResponse.json({ success: false, message: "Provide one valid PDF file" }, { status: 400 });
+      const pages = await extractPdfText(bytes[0]);
+      if (!pages.some(Boolean)) return NextResponse.json({ success: false, message: "The PDF has no extractable text" }, { status: 422 });
+      const workbook = new ExcelJS.Workbook();
+      const sheet = workbook.addWorksheet("Extracted text");
+      sheet.addRow(["Page", "Extracted text"]);
+      pages.forEach((page, index) => sheet.addRow([index + 1, page]));
+      sheet.getColumn(1).width = 12;
+      sheet.getColumn(2).width = 100;
+      const output = await workbook.xlsx.writeBuffer();
+      await recordToolRun({ action, fileCount: 1, metadata: { outputBytes: output.byteLength, pages: pages.length }, userId: user.id });
+      return binaryResponse(new Uint8Array(output), "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", "jenan-pdf-text.xlsx");
     }
     return NextResponse.json({ success: false, message: "Unknown document action" }, { status: 400 });
   } catch {
@@ -132,6 +177,10 @@ function parsePages(value: FormDataEntryValue | null) {
 }
 
 function pdfResponse(output: Uint8Array, fileName: string) {
+  return binaryResponse(output, "application/pdf", fileName);
+}
+
+function binaryResponse(output: Uint8Array, contentType: string, fileName: string) {
   const body = output.buffer.slice(output.byteOffset, output.byteOffset + output.byteLength) as ArrayBuffer;
-  return new NextResponse(body, { headers: { "content-type": "application/pdf", "content-disposition": `attachment; filename=${fileName}`, "cache-control": "no-store" } });
+  return new NextResponse(body, { headers: { "content-type": contentType, "content-disposition": `attachment; filename=${fileName}`, "cache-control": "no-store" } });
 }

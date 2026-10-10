@@ -56,7 +56,23 @@ function formatDate(value: string, locale: Locale) {
   return new Intl.DateTimeFormat(locale === "ar" ? "ar-SA" : "en-GB", { dateStyle: "medium", timeStyle: "short" }).format(new Date(value));
 }
 
-export function StudioWorkspace({ initialDocumentId, locale, routeId }: { initialDocumentId?: string; locale: Locale; routeId: StudioRouteId }) {
+export function StudioWorkspace({
+  historyHref = "/studio/history",
+  initialDocumentId,
+  kindRoutes = STUDIO_KIND_ROUTES,
+  locale,
+  routeHref,
+  routeId,
+  showNav = true,
+}: {
+  historyHref?: string;
+  initialDocumentId?: string;
+  kindRoutes?: Record<StudioDocumentKind, string>;
+  locale: Locale;
+  routeHref?: string;
+  routeId: StudioRouteId;
+  showNav?: boolean;
+}) {
   const ar = locale === "ar";
   const kind = STUDIO_ROUTE_KINDS[routeId];
   const [documents, setDocuments] = useState<StudioDocumentRecord[]>([]);
@@ -150,10 +166,10 @@ export function StudioWorkspace({ initialDocumentId, locale, routeId }: { initia
   const versionCount = documents.reduce((total, document) => total + document.versions.length, 0);
 
   return (
-    <section className="studio-flow" data-studio-output={supportedOutputs[routeId]} data-studio-route={STUDIO_FLOW_ROUTES.find((item) => item.id === routeId)?.href ?? "/studio"} data-studio-source={routeId === "pdf" || routeId === "pdf-editor" ? "LOCAL_PROCESSING" : "PERSISTED_DOCUMENTS"} data-studio-tool={routeId}>
-      <nav className="studio-flow__nav" aria-label={ar ? "مسارات الأدوات" : "Tools routes"}>
+    <section className="studio-flow" data-studio-output={supportedOutputs[routeId]} data-studio-route={routeHref ?? STUDIO_FLOW_ROUTES.find((item) => item.id === routeId)?.href ?? "/studio"} data-studio-source={routeId === "pdf" || routeId === "pdf-editor" ? "LOCAL_PROCESSING" : "PERSISTED_DOCUMENTS"} data-studio-tool={routeId}>
+      {showNav ? <nav className="studio-flow__nav" aria-label={ar ? "مسارات الأدوات" : "Tools routes"}>
         {STUDIO_FLOW_ROUTES.map((route, index) => <Link aria-current={route.id === routeId ? "page" : undefined} className={route.id === routeId ? "is-active" : ""} href={route.href} key={route.id}><span>{String(index + 1).padStart(2, "0")}</span>{pick(route.label, locale)}</Link>)}
-      </nav>
+      </nav> : null}
 
       <header className="studio-flow__header">
         <div><span>{copy.eyebrow}</span><h1>{pick(copy.title, locale)}</h1><p>{pick(copy.description, locale)}</p></div>
@@ -169,7 +185,7 @@ export function StudioWorkspace({ initialDocumentId, locale, routeId }: { initia
           <article><Icon name="shield" /><strong>{activity.filter((entry) => entry.action.startsWith("software.documents.")).length}</strong><span>{ar ? "عمليات ملفات مسجّلة" : "Logged file actions"}</span></article>
         </section>
         <section className="studio-dashboard-grid">{toolCards.map(([id, href, label, arabic, english, icon]) => <Link href={href} key={id}><span><Icon name={icon} /></span><div><small>JENAN PRO</small><h2>{label}</h2><p>{ar ? arabic : english}</p></div><Icon name="arrow" /></Link>)}</section>
-        <section className="studio-recent"><header><div><span>RECENT</span><h2>{ar ? "آخر المشاريع" : "Recent projects"}</h2></div><Link href="/studio/history">{ar ? "فتح السجل" : "Open history"}<Icon name="arrow" /></Link></header>{documents.length ? <div>{documents.slice(0, 5).map((document) => <Link href={`${STUDIO_KIND_ROUTES[document.kind]}?document=${document.id}`} key={document.id}><span>{document.kind}</span><strong>{document.title}</strong><small>v{document.currentVersion} · {formatDate(document.updatedAt, locale)}</small></Link>)}</div> : <p>{ar ? "لا توجد مشاريع محفوظة بعد. افتح أداة وابدأ أول مشروع." : "No saved projects yet. Open a tool to start your first project."}</p>}</section>
+        <section className="studio-recent"><header><div><span>RECENT</span><h2>{ar ? "آخر المشاريع" : "Recent projects"}</h2></div><Link href={historyHref}>{ar ? "فتح السجل" : "Open history"}<Icon name="arrow" /></Link></header>{documents.length ? <div>{documents.slice(0, 5).map((document) => <Link href={`${kindRoutes[document.kind]}?document=${document.id}`} key={document.id}><span>{document.kind}</span><strong>{document.title}</strong><small>v{document.currentVersion} · {formatDate(document.updatedAt, locale)}</small></Link>)}</div> : <p>{ar ? "لا توجد مشاريع محفوظة بعد. افتح أداة وابدأ أول مشروع." : "No saved projects yet. Open a tool to start your first project."}</p>}</section>
       </> : null}
 
       {!loading && (routeId === "pdf" || routeId === "pdf-editor") ? <StudioPdfWorkspace editor={routeId === "pdf-editor"} locale={locale} /> : null}
@@ -177,14 +193,14 @@ export function StudioWorkspace({ initialDocumentId, locale, routeId }: { initia
       {!loading && kind ? <>
         <div className="studio-document-strip">
           <label>{ar ? "المشروع المفتوح" : "Open project"}<select onChange={(event) => { const document = documents.find((item) => item.id === event.target.value); if (document) openDocument(document); else newDocument(kind); }} value={selectedId ?? "new"}><option value="new">{ar ? "مشروع جديد" : "New project"}</option>{documentsForKind.map((document) => <option key={document.id} value={document.id}>{document.title} · v{document.currentVersion}</option>)}</select></label>
-          <Link href="/studio/history"><Icon name="activity" />{ar ? "الإصدارات" : "Versions"}</Link>
+          <Link href={historyHref}><Icon name="activity" />{ar ? "الإصدارات" : "Versions"}</Link>
         </div>
         <StudioDocumentEditor busy={busy} content={content} currentVersion={selected?.currentVersion} kind={kind} locale={locale} message={message} onChange={setContent} onNew={() => newDocument(kind)} onSave={saveDocument} onTitleChange={setTitle} title={title} />
       </> : null}
 
       {!loading && routeId === "history" ? <section className="studio-history">
         {message ? <p className="studio-message" role="status">{message}</p> : null}
-        <div className="studio-history__documents"><header><span>FILES</span><h2>{ar ? "المشاريع والإصدارات" : "Projects and versions"}</h2></header>{documents.length ? documents.map((document) => <article key={document.id}><div><span>{document.kind}</span><h3>{document.title}</h3><p>v{document.currentVersion} · {formatDate(document.updatedAt, locale)}</p></div><Link href={`${STUDIO_KIND_ROUTES[document.kind]}?document=${document.id}`}>{ar ? "فتح" : "Open"}<Icon name="arrow" /></Link><details><summary>{ar ? `${document.versions.length} إصدارات` : `${document.versions.length} versions`}</summary><div>{document.versions.map((version) => <button disabled={busy || version.version === document.currentVersion} key={version.id} onClick={() => restore(document.id, version.version)} type="button"><span>v{version.version}</span><small>{formatDate(version.createdAt, locale)}</small><strong>{version.version === document.currentVersion ? (ar ? "الحالي" : "Current") : (ar ? "استعادة كإصدار جديد" : "Restore as new")}</strong></button>)}</div></details></article>) : <p>{ar ? "لا توجد مشاريع محفوظة." : "No saved projects."}</p>}</div>
+        <div className="studio-history__documents"><header><span>FILES</span><h2>{ar ? "المشاريع والإصدارات" : "Projects and versions"}</h2></header>{documents.length ? documents.map((document) => <article key={document.id}><div><span>{document.kind}</span><h3>{document.title}</h3><p>v{document.currentVersion} · {formatDate(document.updatedAt, locale)}</p></div><Link href={`${kindRoutes[document.kind]}?document=${document.id}`}>{ar ? "فتح" : "Open"}<Icon name="arrow" /></Link><details><summary>{ar ? `${document.versions.length} إصدارات` : `${document.versions.length} versions`}</summary><div>{document.versions.map((version) => <button disabled={busy || version.version === document.currentVersion} key={version.id} onClick={() => restore(document.id, version.version)} type="button"><span>v{version.version}</span><small>{formatDate(version.createdAt, locale)}</small><strong>{version.version === document.currentVersion ? (ar ? "الحالي" : "Current") : (ar ? "استعادة كإصدار جديد" : "Restore as new")}</strong></button>)}</div></details></article>) : <p>{ar ? "لا توجد مشاريع محفوظة." : "No saved projects."}</p>}</div>
         <aside className="studio-history__activity"><header><span>ACTIVITY</span><h2>{ar ? "عمليات المعالجة" : "Processing activity"}</h2></header>{activity.length ? activity.map((entry) => <article key={entry.id}><Icon name={entry.action.includes("restored") ? "activity" : "check"} /><div><strong>{entry.action.replace("software.documents.", "PDF / ").replace("studio.document.", "Document / ")}</strong><small>{formatDate(entry.createdAt, locale)}</small></div></article>) : <p>{ar ? "لا يوجد نشاط مسجّل." : "No recorded activity."}</p>}</aside>
       </section> : null}
     </section>

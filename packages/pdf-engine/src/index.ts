@@ -112,14 +112,18 @@ export async function optimizePdf(input: PdfBytes) {
   return optimized.byteLength < source.byteLength ? optimized : source;
 }
 
-export async function imagesToPdf(inputs: Array<{ bytes: PdfBytes; mimeType: "image/jpeg" | "image/png" }>) {
+export async function imagesToPdf(
+  inputs: Array<{ bytes: PdfBytes; mimeType: "image/jpeg" | "image/png" }>,
+  options: { orientation?: "auto" | "landscape" | "portrait"; pageSize?: "A4" | "LETTER" | "ORIGINAL" } = {},
+) {
   if (!inputs.length) throw new Error("At least one image is required");
   const document = await PDFDocument.create();
   for (const input of inputs) {
     const image = input.mimeType === "image/png" ? await document.embedPng(toUint8Array(input.bytes)) : await document.embedJpg(toUint8Array(input.bytes));
     const dimensions = image.scale(1);
-    const maxWidth = 595;
-    const maxHeight = 842;
+    const sourceSize = options.pageSize === "LETTER" ? [612, 792] : options.pageSize === "ORIGINAL" ? [dimensions.width, dimensions.height] : [595, 842];
+    const landscape = options.orientation === "landscape" || (options.orientation !== "portrait" && options.orientation !== "auto" ? false : options.orientation === "auto" && dimensions.width > dimensions.height);
+    const [maxWidth, maxHeight] = landscape && sourceSize[0] < sourceSize[1] ? [sourceSize[1], sourceSize[0]] : sourceSize;
     const scale = Math.min(maxWidth / dimensions.width, maxHeight / dimensions.height, 1);
     const width = dimensions.width * scale;
     const height = dimensions.height * scale;
@@ -127,6 +131,98 @@ export async function imagesToPdf(inputs: Array<{ bytes: PdfBytes; mimeType: "im
     page.drawImage(image, { x: (maxWidth - width) / 2, y: (maxHeight - height) / 2, width, height });
   }
   return document.save();
+}
+
+export async function extractPdfText(input: PdfBytes) {
+  const source = toUint8Array(input);
+  const loadingTask = getDocument({ data: Uint8Array.from(source), useSystemFonts: true });
+  const document = await loadingTask.promise;
+  try {
+    const pages: string[] = [];
+    for (let pageNumber = 1; pageNumber <= document.numPages; pageNumber += 1) {
+      const page = await document.getPage(pageNumber);
+      const content = await page.getTextContent();
+      const text = content.items
+        .map((item) => "str" in item ? item.str : "")
+        .filter(Boolean)
+        .join(" ")
+        .replace(/\s+/g, " ")
+        .trim();
+      pages.push(text);
+    }
+    return pages;
+  } finally {
+    await loadingTask.destroy();
+  }
+}
+
+export async function textToPdf(text: string, title = "Jenan PRO document") {
+  const document = await PDFDocument.create();
+  const pageWidth = 595;
+  const pageHeight = 842;
+  const scale = 2;
+  const padding = 54;
+  const fontSize = 15;
+  const lineHeight = 23;
+  const lines: string[] = [];
+  for (const paragraph of text.replace(/\r/g, "").split("\n")) {
+    const words = paragraph.trim().split(/\s+/).filter(Boolean);
+    if (!words.length) {
+      lines.push("");
+      continue;
+    }
+    let line = "";
+    const measureCanvas = createCanvas(1, 1);
+    const measureContext = measureCanvas.getContext("2d");
+    measureContext.font = `${fontSize * scale}px Arial`;
+    for (const word of words) {
+      const candidate = line ? `${line} ${word}` : word;
+      if (measureContext.measureText(candidate).width > (pageWidth - padding * 2) * scale && line) {
+        lines.push(line);
+        line = word;
+      } else {
+        line = candidate;
+      }
+    }
+    lines.push(line);
+  }
+  const linesPerPage = Math.max(1, Math.floor((pageHeight - padding * 2 - 34) / lineHeight));
+  const chunks = Array.from({ length: Math.max(1, Math.ceil(lines.length / linesPerPage)) }, (_, index) => lines.slice(index * linesPerPage, (index + 1) * linesPerPage));
+  for (const chunk of chunks) {
+    if (!/[\u0600-\u06ff]/.test(`${title}${chunk.join("")}`)) {
+      const font = await document.embedFont(StandardFonts.Helvetica);
+      const bold = await document.embedFont(StandardFonts.HelveticaBold);
+      const page = document.addPage([pageWidth, pageHeight]);
+      page.drawText(title.slice(0, 80), { x: padding, y: pageHeight - padding, font: bold, size: 18, color: rgb(0.04, 0.12, 0.2) });
+      chunk.forEach((line, index) => {
+        if (line) page.drawText(line, { x: padding, y: pageHeight - padding - 38 - index * lineHeight, font, size: fontSize, color: rgb(0.04, 0.12, 0.2) });
+      });
+      continue;
+    }
+    const canvas = createCanvas(pageWidth * scale, pageHeight * scale);
+    const context = canvas.getContext("2d");
+    context.fillStyle = "#ffffff";
+    context.fillRect(0, 0, canvas.width, canvas.height);
+    context.fillStyle = "#0b1f33";
+    context.font = `bold ${18 * scale}px Arial`;
+    context.fillText(title.slice(0, 80), padding * scale, padding * scale);
+    context.font = `${fontSize * scale}px Arial`;
+    chunk.forEach((line, index) => {
+      const y = (padding + 38 + index * lineHeight) * scale;
+      const rtl = /[\u0600-\u06ff]/.test(line);
+      if (rtl) {
+        context.textAlign = "right";
+        context.fillText(line, (pageWidth - padding) * scale, y);
+      } else {
+        context.textAlign = "left";
+        context.fillText(line, padding * scale, y);
+      }
+    });
+    const image = await document.embedPng(canvas.toBuffer("image/png"));
+    const page = document.addPage([pageWidth, pageHeight]);
+    page.drawImage(image, { height: pageHeight, width: pageWidth, x: 0, y: 0 });
+  }
+  return document.save({ addDefaultPage: false, useObjectStreams: true });
 }
 
 export async function watermarkPdf(input: PdfBytes, watermark: string) {
@@ -195,5 +291,5 @@ export async function redactPdf(input: PdfBytes, redactions: Array<{ height: num
   }
 }
 
-const pdfEngine = { deletePdfPages, extractPdfPages, imagesToPdf, mergePdfs, numberPdfPages, optimizePdf, redactPdf, reorderPdfPages, rotatePdfPages, splitPdf, watermarkPdf };
+const pdfEngine = { deletePdfPages, extractPdfPages, extractPdfText, imagesToPdf, mergePdfs, numberPdfPages, optimizePdf, redactPdf, reorderPdfPages, rotatePdfPages, splitPdf, textToPdf, watermarkPdf };
 export default pdfEngine;

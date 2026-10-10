@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { PDFDocument, StandardFonts } from "pdf-lib";
 import { getDocument } from "pdfjs-dist/legacy/build/pdf.mjs";
-import { deletePdfPages, extractPdfPages, imagesToPdf, mergePdfs, numberPdfPages, optimizePdf, redactPdf, reorderPdfPages, rotatePdfPages, splitPdf, watermarkPdf } from "@/packages/pdf-engine/src";
+import { deletePdfPages, extractPdfPages, extractPdfText, imagesToPdf, mergePdfs, numberPdfPages, optimizePdf, redactPdf, reorderPdfPages, rotatePdfPages, splitPdf, textToPdf, watermarkPdf } from "@/packages/pdf-engine/src";
 
 async function makePdf(pageCount: number): Promise<Uint8Array> {
   const doc = await PDFDocument.create();
@@ -71,5 +71,19 @@ describe("pdf-engine", () => {
     } finally {
       await loadingTask.destroy();
     }
+  });
+
+  it("renders text as PDF and extracts the generated text", async () => {
+    const output = await textToPdf("Verified software conversion output", "Jenan PRO");
+    const document = await PDFDocument.load(output);
+    expect(document.getPageCount()).toBe(1);
+    expect((await extractPdfText(output)).join(" ")).toContain("Verified software conversion output");
+  });
+
+  it("honors image PDF page size and orientation settings", async () => {
+    const png = Uint8Array.from(Buffer.from("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII=", "base64"));
+    const output = await imagesToPdf([{ bytes: png, mimeType: "image/png" }], { orientation: "landscape", pageSize: "LETTER" });
+    const document = await PDFDocument.load(output);
+    expect(document.getPage(0).getWidth()).toBeGreaterThan(document.getPage(0).getHeight());
   });
 });

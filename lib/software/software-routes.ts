@@ -1,5 +1,5 @@
 export const SOFTWARE_FLOW_ROUTES = [
-  { id: "dashboard", route: "/software", section: "core", title: ["Jenan Software", "Jenan Software"] },
+  { id: "dashboard", route: "/software/business", section: "core", title: ["Jenan Software", "Jenan Software"] },
   { id: "sales", route: "/software/sales", section: "sales", title: ["Jenan Sales", "Jenan Sales"] },
   { id: "sales-customers", route: "/software/sales/customers", section: "sales", title: ["العملاء", "Customers"] },
   { id: "sales-quotes", route: "/software/sales/quotes", section: "sales", title: ["عروض الأسعار", "Quotes"] },
