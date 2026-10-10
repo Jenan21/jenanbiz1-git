@@ -178,4 +178,6 @@ Current delivery target is a strong, stable 60-70% baseline for each complete se
 9. Preserve the same approved version in the repository and local desktop project copy.
 10. Report pages, routes, functionality, QA results, approximate visual match, remaining differences, checks, commit, archive status, and blockers.
 
+This acceptance and closure policy applies to every platform section without exception. After the gate passes, the section commit is pushed, and local and remote hashes match, record the section as an accepted, closed baseline and continue to the next section. Later product requests may raise visual fidelity, performance, accessibility, efficiency, or add features as focused versioned improvements; those future opportunities do not make the accepted baseline incomplete and must not trigger an unrequested rebuild. Reopen a closed section only for a verified regression or an explicit new product decision.
+
 Recommended implementation order: Auth/Register, Home, User Dashboard, Projects, Academy, Jenan Market, Tools, Jenan Software, Talent/Jobs, Marketing, user-facing Robotics, Admin, Robot Factory, Robot Academy, Robot Organization, Mission Control, Intelligence Center, Models/Tools, Revenue & Costs, Observability, and Reports.

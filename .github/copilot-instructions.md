@@ -35,3 +35,5 @@
 - Preserve design archives and extracted references for later 80%, 90%, and 100% refinement.
 - Keep changes focused and reuse shared headers, navigation, buttons, inputs, cards, tables, charts, report actions, dialogs, empty states, loaders, and error states.
 - After each section, report implemented pages/routes, tested behavior, functional/responsive/visual results, remaining differences, checks, commit hash, repository/local-save status, and real blockers.
+- This closure rule applies to every section without exception: once the delivery gate passes, the commit is pushed, and the local and remote hashes match, treat that section as an accepted, closed baseline.
+- Later explicit requests may improve visual fidelity, performance, accessibility, efficiency, or add capabilities without invalidating the earlier closure. Apply them as focused, versioned refinements; do not reopen or rebuild a closed section by default unless fixing a verified regression or implementing an explicit product decision.
