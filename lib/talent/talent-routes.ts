@@ -1,9 +1,9 @@
 export const TALENT_FLOW_ROUTES = [
-  { id: "dashboard", route: "/talent", title: ["الوظائف والمواهب", "Jobs and talent"] },
-  { id: "jobs", route: "/talent/jobs", title: ["البحث عن وظائف", "Find jobs"] },
+  { id: "dashboard", route: "/talent", title: ["التوظيف الذكي", "Smart employment"] },
+  { id: "jobs", route: "/talent/jobs", title: ["الوظائف والطلبات", "Jobs and applications"] },
   { id: "job-detail", route: "/talent/job/sample", title: ["تفاصيل الوظيفة", "Job details"] },
   { id: "apply", route: "/talent/apply/sample", title: ["التقديم على وظيفة", "Apply for a job"] },
-  { id: "profile", route: "/talent/profile", title: ["ملف الباحث عن عمل", "Job seeker profile"] },
+  { id: "profile", route: "/talent/profile", title: ["الملف المهني", "Professional profile"] },
   { id: "employer", route: "/talent/employer", title: ["لوحة صاحب العمل", "Employer dashboard"] },
   { id: "employer-post", route: "/talent/employer/post", title: ["نشر وظيفة", "Post a job"] },
   { id: "employer-applicants", route: "/talent/employer/applicants", title: ["إدارة المتقدمين", "Manage applicants"] },

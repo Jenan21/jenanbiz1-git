@@ -15,7 +15,6 @@ import "@/styles/project-feasibility-dashboard.css";
 import "@/styles/project-start-dashboard.css";
 import "@/styles/project-evaluation-dashboard.css";
 import "@/styles/programs-stage.css";
-import "@/styles/talent-stage.css";
 import "@/styles/software-stage.css";
 import "@/styles/growth-stage.css";
 import "@/styles/account-module-stage.css";
@@ -30,6 +29,7 @@ import "@/styles/market-flow.css";
 import "@/styles/studio-flow.css";
 import "@/styles/software-erp.css";
 import "@/styles/talent-flow.css";
+import "@/styles/approved-job-seeker.css";
 import "@/styles/marketing-flow.css";
 import "@/styles/robotics-flow.css";
 

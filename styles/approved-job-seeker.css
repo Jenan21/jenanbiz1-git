@@ -1,0 +1,1634 @@
+.approved-job-seeker {
+  --talent-cyan: #28e8f4;
+  --talent-blue: #147edf;
+  --talent-emerald: #20e0b5;
+  --talent-gold: #e9c95d;
+  min-height: 100dvh;
+  overflow-x: hidden;
+  color: #edfaff;
+  background:
+    radial-gradient(circle at 8% 12%, rgba(0, 174, 233, .13), transparent 28rem),
+    radial-gradient(circle at 88% 72%, rgba(6, 214, 206, .08), transparent 32rem),
+    #020b16;
+  font-family: "Alexandria Variable", "Segoe UI", sans-serif;
+}
+
+.approved-job-seeker *,
+.approved-job-seeker *::before,
+.approved-job-seeker *::after {
+  box-sizing: border-box;
+}
+
+.approved-job-seeker a {
+  color: inherit;
+  text-decoration: none;
+}
+
+.approved-job-seeker .icon {
+  width: 18px;
+  height: 18px;
+}
+
+.approved-job-seeker > .talent-flow {
+  position: relative;
+  width: 100%;
+  max-width: none;
+  gap: 8px;
+  padding: 8px 1.15% 18px;
+}
+
+.approved-job-seeker .talent-flow__promise {
+  display: none;
+}
+
+.talent-flow--dashboard {
+  min-height: 100dvh;
+  grid-template-columns: 200px minmax(0, 1fr);
+  align-content: start;
+  padding: 0 6px 8px 0 !important;
+  background:
+    linear-gradient(90deg, rgba(0, 13, 27, .95), transparent 28%),
+    #020b16;
+  direction: ltr;
+}
+
+[dir="ltr"] .talent-flow--dashboard {
+  padding: 0 0 8px 6px !important;
+}
+
+.talent-flow--dashboard > :not(.talent-seeker-sidebar) {
+  grid-column: 2;
+  direction: rtl;
+}
+
+.talent-seeker-sidebar {
+  position: relative;
+  grid-column: 1;
+  grid-row: 1 / span 7;
+  min-height: 100dvh;
+  display: grid;
+  grid-template-rows: auto auto auto 1fr;
+  align-content: start;
+  gap: 16px;
+  overflow: hidden;
+  padding: 28px 16px 22px;
+  border-inline-end: 1px solid rgba(20, 191, 226, .44);
+  background:
+    linear-gradient(180deg, rgba(2, 22, 39, .95), rgba(1, 19, 34, .88)),
+    url("/assets/global-city-night.jpg") 19% bottom / auto 55% no-repeat;
+  box-shadow: inset -18px 0 42px rgba(0, 161, 219, .055), 10px 0 42px rgba(0, 0, 0, .18);
+  direction: rtl;
+}
+
+.talent-seeker-sidebar::after {
+  content: "";
+  position: absolute;
+  inset: 47% 0 0;
+  background: linear-gradient(180deg, rgba(1, 17, 30, .2), rgba(2, 22, 38, .64));
+  pointer-events: none;
+}
+
+.talent-seeker-sidebar > * {
+  position: relative;
+  z-index: 1;
+}
+
+.talent-seeker-sidebar__brand {
+  display: grid;
+  justify-items: center;
+  gap: 4px;
+  padding-bottom: 18px;
+  border-bottom: 1px solid rgba(31, 170, 201, .17);
+  text-align: center;
+}
+
+.talent-seeker-sidebar__brand strong {
+  color: #f7fcff;
+  font-family: Georgia, serif;
+  font-size: 1.42rem;
+  letter-spacing: .02em;
+}
+
+.talent-seeker-sidebar__brand strong::after {
+  content: "PRO";
+  margin-inline-start: 5px;
+  color: var(--talent-cyan);
+}
+
+.talent-seeker-sidebar__brand strong {
+  font-size: 0;
+}
+
+.talent-seeker-sidebar__brand strong::before {
+  content: "Jenan";
+  color: #f7fcff;
+  font-size: 1.42rem;
+}
+
+.talent-seeker-sidebar__brand strong::after {
+  font-size: 1.42rem;
+}
+
+.talent-seeker-sidebar__brand small {
+  color: var(--talent-cyan);
+  font-size: .53rem;
+}
+
+.talent-seeker-sidebar nav {
+  display: grid;
+  gap: 7px;
+}
+
+.talent-seeker-sidebar nav a {
+  min-height: 45px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 0 14px;
+  border: 1px solid transparent;
+  border-radius: 8px;
+  color: #bdced5;
+  font-size: .71rem;
+}
+
+.talent-seeker-sidebar nav a .icon {
+  color: #dcebf0;
+}
+
+.talent-seeker-sidebar nav a:hover,
+.talent-seeker-sidebar nav a.is-active {
+  border-color: rgba(32, 219, 241, .7);
+  color: #fff;
+  background: linear-gradient(90deg, rgba(0, 156, 218, .42), rgba(0, 91, 150, .18));
+  box-shadow: 0 0 20px rgba(11, 199, 235, .16), inset 0 0 18px rgba(18, 216, 240, .08);
+}
+
+.talent-seeker-sidebar nav a.is-active .icon {
+  color: var(--talent-cyan);
+}
+
+.talent-seeker-sidebar__back {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 15px 10px;
+  border-top: 1px solid rgba(27, 167, 198, .2);
+  color: #98b5c0;
+  font-size: .62rem;
+}
+
+.talent-seeker-sidebar__back .icon {
+  width: 14px;
+  color: var(--talent-cyan);
+}
+
+.talent-seeker-sidebar blockquote {
+  align-self: end;
+  margin: 0;
+  padding: 0 14px 8px;
+  color: #e8f8fd;
+  font-size: .9rem;
+  line-height: 1.9;
+  text-align: start;
+  text-shadow: 0 3px 14px #000;
+}
+
+.talent-seeker-sidebar blockquote::before {
+  content: "“";
+  display: block;
+  color: #2ac8f0;
+  font-size: 2.4rem;
+  line-height: .8;
+}
+
+.talent-seeker-back {
+  position: absolute;
+  inset-block-start: 15px;
+  inset-inline-start: 2%;
+  z-index: 8;
+  min-height: 37px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 0 12px;
+  border: 1px solid rgba(29, 185, 218, .48);
+  border-radius: 7px;
+  color: #d7eaf0;
+  background: rgba(2, 27, 46, .84);
+  font-size: .63rem;
+  backdrop-filter: blur(10px);
+}
+
+.approved-job-seeker .talent-flow__hero {
+  position: relative;
+  isolation: isolate;
+  min-height: 188px;
+  grid-template-columns: minmax(300px, .9fr) minmax(320px, 1.1fr);
+  align-items: center;
+  gap: 18px;
+  overflow: hidden;
+  padding: 26px 3.3%;
+  border: 1px solid rgba(18, 175, 213, .43);
+  border-radius: 0 0 7px 7px;
+  background:
+    linear-gradient(90deg, rgba(1, 10, 22, .95), rgba(0, 33, 59, .36) 38%, rgba(0, 27, 48, .15) 68%, rgba(0, 13, 26, .88)),
+    url("/assets/global-city-night.jpg") center 48% / cover no-repeat;
+  box-shadow: inset 0 -2px rgba(20, 219, 237, .18), 0 15px 38px rgba(0, 0, 0, .28);
+  direction: ltr;
+}
+
+.approved-job-seeker .talent-flow__hero::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  background: linear-gradient(180deg, rgba(0, 23, 43, .08), rgba(0, 9, 18, .42));
+}
+
+.approved-job-seeker .talent-flow__hero-copy {
+  position: relative;
+  z-index: 3;
+  grid-column: 2;
+  max-width: 610px;
+  justify-self: end;
+  text-align: start;
+  text-shadow: 0 4px 18px rgba(0, 0, 0, .82);
+  direction: rtl;
+}
+
+.approved-job-seeker .talent-flow__hero-copy > span {
+  display: none;
+}
+
+.approved-job-seeker .talent-flow__hero h1 {
+  margin: 0 0 8px;
+  color: #5ce8fa;
+  font-size: clamp(2.35rem, 4.2vw, 4.3rem);
+  line-height: 1.05;
+  letter-spacing: -.04em;
+}
+
+.approved-job-seeker .talent-flow__hero-copy p {
+  max-width: 590px;
+  margin: 0;
+  color: #eff8fb;
+  font-size: .88rem;
+  line-height: 1.85;
+}
+
+.approved-job-seeker .talent-flow__hero-network {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  opacity: .2;
+  pointer-events: none;
+}
+
+.approved-job-seeker .talent-flow__hero-network > span,
+.approved-job-seeker .talent-flow__hero-network > i {
+  display: none;
+}
+
+.talent-seeker-hero-card {
+  position: relative;
+  z-index: 4;
+  grid-column: 1;
+  grid-row: 1;
+  width: min(100%, 440px);
+  min-height: 126px;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 105px;
+  gap: 9px;
+  justify-self: start;
+  padding: 12px;
+  border: 1px solid rgba(104, 208, 252, .58);
+  border-radius: 8px;
+  background: linear-gradient(145deg, rgba(13, 77, 121, .67), rgba(2, 32, 56, .78));
+  box-shadow: 0 14px 36px rgba(0, 0, 0, .34), inset 0 0 30px rgba(61, 190, 244, .08);
+  backdrop-filter: blur(12px);
+  direction: rtl;
+}
+
+.talent-seeker-hero-card__identity {
+  display: grid;
+  grid-template-columns: 44px minmax(0, 1fr);
+  align-content: center;
+  gap: 3px 9px;
+}
+
+.talent-seeker-hero-card__identity > span {
+  grid-row: span 2;
+  display: grid;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  border: 1px solid rgba(35, 229, 242, .5);
+  border-radius: 50%;
+  color: var(--talent-cyan);
+  background: rgba(1, 29, 51, .75);
+}
+
+.talent-seeker-hero-card__identity strong {
+  align-self: end;
+  overflow: hidden;
+  font-size: .67rem;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.talent-seeker-hero-card__identity small {
+  align-self: start;
+  color: #a9c4cf;
+  font-size: .48rem;
+}
+
+.talent-seeker-hero-card__match {
+  grid-row: span 2;
+  display: grid;
+  place-items: center;
+  align-content: center;
+  border: 1px solid rgba(30, 215, 236, .33);
+  border-radius: 7px;
+  background: radial-gradient(circle, rgba(18, 223, 237, .18), rgba(1, 27, 47, .42));
+}
+
+.talent-seeker-hero-card__match strong {
+  color: #eafdff;
+  font-size: 1.55rem;
+}
+
+.talent-seeker-hero-card__match small {
+  color: #9bb8c3;
+  font-size: .45rem;
+}
+
+.talent-seeker-hero-card__alerts {
+  grid-column: 1;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+}
+
+.talent-seeker-hero-card__alerts span {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  padding: 5px 7px;
+  border: 1px solid rgba(29, 185, 220, .3);
+  border-radius: 4px;
+  color: #cbe0e7;
+  background: rgba(1, 25, 43, .55);
+  font-size: .43rem;
+}
+
+.talent-seeker-hero-card__alerts .icon {
+  width: 11px;
+  height: 11px;
+  color: var(--talent-cyan);
+}
+
+.talent-flow--dashboard .talent-flow__entry {
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 6px;
+}
+
+.talent-flow--dashboard .talent-flow__entry > a,
+.talent-flow--dashboard .talent-flow__entry > button {
+  position: relative;
+  min-width: 0;
+  min-height: 135px;
+  display: grid;
+  grid-template-columns: 48px minmax(0, 1fr);
+  align-items: center;
+  align-content: center;
+  gap: 9px;
+  overflow: hidden;
+  padding: 15px;
+  border: 1px solid rgba(17, 155, 201, .5);
+  border-radius: 7px;
+  color: #edfaff;
+  text-align: start;
+  background:
+    radial-gradient(circle at 20% 0, rgba(33, 144, 239, .17), transparent 45%),
+    linear-gradient(145deg, rgba(3, 39, 64, .98), rgba(1, 23, 41, .98));
+  box-shadow: 0 12px 27px rgba(0, 0, 0, .22), inset 0 0 24px rgba(15, 191, 226, .04);
+}
+
+.talent-flow--dashboard .talent-flow__entry > a:hover {
+  transform: translateY(-2px);
+  border-color: rgba(35, 226, 243, .78);
+  box-shadow: 0 16px 34px rgba(10, 189, 225, .14);
+}
+
+.talent-flow--dashboard .talent-flow__entry > a::after,
+.talent-flow--dashboard .talent-flow__entry > button::after {
+  content: "";
+  position: absolute;
+  inset: auto 0 0;
+  height: 2px;
+  background: linear-gradient(90deg, transparent, var(--talent-cyan), transparent);
+}
+
+.talent-flow--dashboard .talent-flow__entry > a > .icon:first-child,
+.talent-flow--dashboard .talent-flow__entry > button > .icon:first-child {
+  width: 48px;
+  height: 48px;
+  padding: 10px;
+  border: 1px solid rgba(29, 219, 237, .48);
+  border-radius: 9px;
+  color: var(--talent-cyan);
+  background: linear-gradient(145deg, rgba(16, 144, 226, .31), rgba(2, 35, 58, .58));
+  box-shadow: 0 0 20px rgba(18, 194, 230, .12);
+}
+
+.talent-flow--dashboard .talent-flow__entry > a:nth-child(2) > .icon:first-child {
+  color: #79a5ff;
+}
+
+.talent-flow--dashboard .talent-flow__entry > a:nth-child(4) > .icon:first-child {
+  color: var(--talent-emerald);
+}
+
+.talent-flow--dashboard .talent-flow__entry h2,
+.talent-flow--dashboard .talent-flow__entry p {
+  margin: 0;
+}
+
+.talent-flow--dashboard .talent-flow__entry h2 {
+  font-size: .71rem;
+}
+
+.talent-flow--dashboard .talent-flow__entry p {
+  margin-top: 4px;
+  color: #a8bec7;
+  font-size: .49rem;
+  line-height: 1.65;
+}
+
+.talent-flow--dashboard .talent-flow__entry > a > .icon:last-child {
+  position: absolute;
+  inset-inline-end: 12px;
+  inset-block-end: 11px;
+  width: 15px;
+  color: var(--talent-cyan);
+}
+
+.talent-flow--dashboard .talent-flow__entry > button:disabled {
+  cursor: not-allowed;
+  opacity: .74;
+}
+
+.talent-flow--dashboard .talent-flow__entry > button small {
+  position: absolute;
+  inset-inline-end: 11px;
+  inset-block-end: 10px;
+  color: #78949f;
+  font-size: .42rem;
+}
+
+.talent-seeker-search-launcher {
+  min-height: 54px;
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 13px;
+  border: 1px solid rgba(19, 172, 211, .42);
+  border-radius: 7px;
+  background: linear-gradient(145deg, rgba(2, 37, 60, .96), rgba(2, 23, 40, .96));
+}
+
+.talent-seeker-search-launcher > .icon {
+  color: var(--talent-cyan);
+}
+
+.talent-seeker-search-launcher span {
+  color: #9fb5bf;
+  font-size: .61rem;
+}
+
+.talent-seeker-search-launcher strong {
+  min-height: 38px;
+  display: flex;
+  align-items: center;
+  padding: 0 20px;
+  border-radius: 6px;
+  color: #00212a;
+  background: linear-gradient(90deg, #22def1, #55ecf7);
+  font-size: .65rem;
+}
+
+.approved-job-seeker .talent-flow__signals {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 6px;
+}
+
+.approved-job-seeker .talent-flow__signals article {
+  min-height: 88px;
+  padding: 13px 15px;
+  border-color: rgba(19, 151, 192, .43);
+  border-radius: 7px;
+  background: linear-gradient(145deg, rgba(3, 36, 58, .96), rgba(2, 21, 37, .96));
+}
+
+.approved-job-seeker .talent-flow__signals article > span {
+  display: grid;
+  place-items: center;
+  width: 35px;
+  height: 35px;
+  border: 1px solid rgba(30, 218, 235, .35);
+  border-radius: 7px;
+  color: var(--talent-cyan);
+  background: rgba(10, 171, 207, .09);
+}
+
+.approved-job-seeker .talent-flow__signals strong {
+  font-size: 1.42rem;
+}
+
+.approved-job-seeker .talent-flow__signals small {
+  color: #9db4bd;
+  font-size: .55rem;
+}
+
+.talent-seeker-overview-grid {
+  min-width: 0;
+  display: grid;
+  grid-template-columns: minmax(220px, .72fr) minmax(360px, 1.55fr) minmax(255px, .86fr);
+  gap: 7px;
+}
+
+.talent-seeker-overview-grid > article {
+  min-width: 0;
+  min-height: 245px;
+  display: grid;
+  align-content: start;
+  gap: 9px;
+  padding: 13px;
+  border: 1px solid rgba(18, 151, 192, .42);
+  border-radius: 7px;
+  background: linear-gradient(145deg, rgba(3, 36, 59, .98), rgba(1, 20, 36, .98));
+  box-shadow: 0 13px 28px rgba(0, 0, 0, .18);
+}
+
+.talent-seeker-overview-grid h2,
+.talent-seeker-overview-grid h3,
+.talent-seeker-overview-grid p {
+  margin: 0;
+}
+
+.talent-seeker-overview-grid__profile > header {
+  display: grid;
+  grid-template-columns: 74px minmax(0, 1fr);
+  align-items: center;
+  gap: 9px;
+}
+
+.talent-seeker-overview-grid__profile > header > div {
+  display: grid;
+  place-items: center;
+  align-content: center;
+  width: 70px;
+  height: 70px;
+  border: 6px solid rgba(27, 217, 239, .62);
+  border-radius: 50%;
+  box-shadow: 0 0 18px rgba(19, 210, 236, .2), inset 0 0 13px rgba(20, 204, 230, .17);
+}
+
+.talent-seeker-overview-grid__profile > header span {
+  font-size: 1rem;
+  font-weight: 850;
+}
+
+.talent-seeker-overview-grid__profile > header small {
+  color: #94adb7;
+  font-size: .42rem;
+}
+
+.talent-seeker-overview-grid__profile > header h2 {
+  font-size: .77rem;
+}
+
+.talent-seeker-overview-grid__profile ul {
+  display: grid;
+  gap: 4px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.talent-seeker-overview-grid__profile li {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  color: #8099a4;
+  font-size: .54rem;
+}
+
+.talent-seeker-overview-grid__profile li .icon {
+  width: 14px;
+  height: 14px;
+  padding: 2px;
+  border: 1px solid rgba(29, 161, 197, .4);
+  border-radius: 50%;
+}
+
+.talent-seeker-overview-grid__profile li.is-complete {
+  color: #d4e8ed;
+}
+
+.talent-seeker-overview-grid__profile li.is-complete .icon {
+  border-color: rgba(31, 224, 180, .55);
+  color: var(--talent-emerald);
+}
+
+.talent-seeker-overview-grid__profile > a {
+  min-height: 35px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  margin-top: auto;
+  border-radius: 5px;
+  color: #00232b;
+  background: linear-gradient(90deg, #28def0, #5aecf5);
+  font-size: .56rem;
+  font-weight: 780;
+}
+
+.talent-seeker-overview-grid__profile > a .icon {
+  width: 13px;
+}
+
+.talent-seeker-overview-grid__matches > header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding-bottom: 7px;
+  border-bottom: 1px solid rgba(24, 150, 183, .22);
+}
+
+.talent-seeker-overview-grid__matches > header span {
+  color: #91aab4;
+  font-size: .45rem;
+}
+
+.talent-seeker-overview-grid__matches > header h2 {
+  margin-top: 2px;
+  font-size: .75rem;
+}
+
+.talent-seeker-overview-grid__matches > header > a {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  color: var(--talent-cyan);
+  font-size: .48rem;
+}
+
+.talent-seeker-overview-grid__matches > header > a .icon {
+  width: 12px;
+}
+
+.talent-seeker-overview-grid__matches > section {
+  display: grid;
+  grid-template-columns: 55px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 9px;
+  padding: 8px;
+  border: 1px solid rgba(21, 134, 170, .25);
+  border-radius: 5px;
+  background: rgba(1, 25, 43, .68);
+}
+
+.talent-seeker-overview-grid__matches > section > strong {
+  display: grid;
+  place-items: center;
+  width: 48px;
+  height: 48px;
+  border: 4px solid rgba(29, 222, 236, .58);
+  border-radius: 50%;
+  color: #eefeff;
+  font-size: .7rem;
+}
+
+.talent-seeker-overview-grid__matches > section h3 {
+  font-size: .64rem;
+}
+
+.talent-seeker-overview-grid__matches > section p,
+.talent-seeker-overview-grid__matches > section small {
+  color: #8fa8b2;
+  font-size: .45rem;
+}
+
+.talent-seeker-overview-grid__matches > section > a {
+  min-height: 31px;
+  display: flex;
+  align-items: center;
+  padding: 0 11px;
+  border-radius: 4px;
+  color: #00242a;
+  background: var(--talent-cyan);
+  font-size: .48rem;
+  font-weight: 760;
+}
+
+.talent-seeker-overview-grid__activity > header {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+}
+
+.talent-seeker-overview-grid__activity > header .icon {
+  color: var(--talent-cyan);
+}
+
+.talent-seeker-overview-grid__activity > header h2 {
+  font-size: .7rem;
+}
+
+.talent-seeker-overview-grid__activity > div {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 5px;
+}
+
+.talent-seeker-overview-grid__activity > div > span {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: center;
+  gap: 6px;
+  padding: 7px;
+  border: 1px solid rgba(23, 143, 178, .26);
+  border-radius: 5px;
+  background: rgba(1, 25, 43, .65);
+}
+
+.talent-seeker-overview-grid__activity > div > span > strong {
+  color: var(--talent-cyan);
+  font-size: .92rem;
+}
+
+.talent-seeker-overview-grid__activity > div .talent-flow__status {
+  padding: 0;
+  border: 0;
+  font-size: .45rem;
+}
+
+.talent-seeker-overview-grid__activity > a {
+  min-width: 0;
+  display: grid;
+  grid-template-columns: 31px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 7px;
+  padding: 7px 0;
+  border-top: 1px solid rgba(24, 142, 175, .2);
+}
+
+.talent-seeker-overview-grid__activity > a > span {
+  display: grid;
+  place-items: center;
+  width: 29px;
+  height: 29px;
+  border-radius: 5px;
+  color: var(--talent-cyan);
+  background: rgba(9, 159, 199, .11);
+}
+
+.talent-seeker-overview-grid__activity > a > div {
+  min-width: 0;
+  display: grid;
+}
+
+.talent-seeker-overview-grid__activity > a strong {
+  overflow: hidden;
+  font-size: .55rem;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.talent-seeker-overview-grid__activity > a small,
+.talent-seeker-overview-grid__activity > p {
+  margin: 0;
+  color: #8ea7b1;
+  font-size: .44rem;
+}
+
+.talent-seeker-overview-grid__activity > a > .icon {
+  width: 12px;
+  color: var(--talent-cyan);
+}
+
+.approved-job-seeker .talent-flow__message {
+  border-color: rgba(23, 190, 219, .45);
+  border-radius: 6px;
+  color: #d7f8fb;
+  background: rgba(5, 91, 113, .2);
+  font-size: .67rem;
+}
+
+.talent-flow--jobs,
+.talent-flow--profile {
+  grid-template-columns: minmax(285px, .74fr) minmax(0, 2fr);
+  align-items: start;
+  padding-top: 0 !important;
+}
+
+.talent-flow--jobs > .talent-flow__hero,
+.talent-flow--profile > .talent-flow__hero,
+.talent-flow--jobs > .talent-flow__message,
+.talent-flow--profile > .talent-flow__message,
+.talent-flow--profile > .talent-profile-steps,
+.talent-flow--profile > .talent-profile {
+  grid-column: 1 / -1;
+}
+
+.talent-flow--jobs .talent-flow__hero,
+.talent-flow--profile .talent-flow__hero {
+  min-height: 160px;
+}
+
+.talent-flow--jobs .talent-flow__hero-copy,
+.talent-flow--profile .talent-flow__hero-copy {
+  grid-column: 2;
+}
+
+.talent-flow--jobs .talent-flow__filters {
+  grid-column: 1 / -1;
+  min-height: 64px;
+  border-color: rgba(20, 177, 214, .43);
+  border-radius: 7px;
+  background: rgba(2, 30, 49, .96);
+}
+
+.talent-flow--jobs .talent-job-grid {
+  grid-column: 2;
+  grid-template-columns: 1fr;
+  gap: 7px;
+}
+
+.talent-flow--jobs .talent-job-grid > article {
+  position: relative;
+  min-height: 165px;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-content: center;
+  gap: 8px 15px;
+  overflow: hidden;
+  padding: 16px 145px 16px 18px;
+  border-color: rgba(17, 146, 190, .43);
+  border-radius: 7px;
+  background:
+    linear-gradient(135deg, rgba(3, 39, 64, .98), rgba(1, 22, 39, .98));
+  box-shadow: 0 12px 28px rgba(0, 0, 0, .18);
+}
+
+[dir="ltr"] .talent-flow--jobs .talent-job-grid > article {
+  padding: 16px 18px 16px 145px;
+}
+
+.talent-flow--jobs .talent-job-grid > article::before {
+  content: "";
+  position: absolute;
+  inset-block: 10px;
+  inset-inline-start: 10px;
+  width: 118px;
+  border: 1px solid rgba(41, 187, 227, .37);
+  border-radius: 7px;
+  background:
+    linear-gradient(180deg, rgba(4, 32, 51, .04), rgba(0, 22, 39, .45)),
+    url("/assets/global-city-night.jpg") center / cover no-repeat;
+}
+
+.talent-flow--jobs .talent-job-grid > article:hover {
+  border-color: rgba(31, 223, 240, .72);
+  box-shadow: 0 16px 36px rgba(7, 187, 221, .11);
+}
+
+.talent-flow--jobs .talent-job-grid > article > header {
+  grid-column: 1 / -1;
+}
+
+.talent-flow--jobs .talent-job-grid h2 {
+  grid-column: 1;
+  font-size: .9rem;
+}
+
+.talent-flow--jobs .talent-job-grid p {
+  grid-column: 1 / -1;
+  max-width: 750px;
+  font-size: .62rem;
+  line-height: 1.65;
+}
+
+.talent-flow--jobs .talent-job-grid .talent-flow__skills,
+.talent-flow--jobs .talent-job-grid > article > small {
+  grid-column: 1;
+}
+
+.talent-flow--jobs .talent-job-grid > article > strong {
+  grid-column: 2;
+  color: var(--talent-gold);
+  font-size: .66rem;
+}
+
+.talent-flow--jobs .talent-job-grid > article > a {
+  grid-column: 2;
+  grid-row: 4 / span 2;
+  align-self: center;
+  min-width: 105px;
+  justify-content: center;
+  border-radius: 6px;
+  color: #00212a;
+  background: linear-gradient(90deg, #24deee, #64edf6);
+  font-size: .62rem;
+}
+
+.talent-flow--jobs .talent-job-grid > article > a .icon {
+  width: 14px;
+}
+
+.approved-job-seeker .talent-flow__skills span {
+  padding: 4px 8px;
+  border-radius: 999px;
+  background: rgba(11, 163, 204, .1);
+  font-size: .53rem;
+}
+
+.talent-flow--jobs .talent-job-applications {
+  grid-column: 1;
+  grid-row: 3 / span 3;
+  position: sticky;
+  top: 8px;
+  display: grid;
+  gap: 8px;
+  padding: 13px;
+  border: 1px solid rgba(20, 166, 203, .43);
+  border-radius: 7px;
+  background: linear-gradient(145deg, rgba(3, 36, 58, .98), rgba(1, 21, 37, .98));
+}
+
+.talent-job-applications > header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding-bottom: 9px;
+  border-bottom: 1px solid rgba(23, 164, 199, .24);
+}
+
+.talent-job-applications > header div {
+  display: grid;
+  gap: 2px;
+}
+
+.talent-job-applications > header span {
+  color: var(--talent-cyan);
+  font-size: .45rem;
+  letter-spacing: .07em;
+}
+
+.talent-job-applications > header h2 {
+  margin: 0;
+  font-size: .82rem;
+}
+
+.talent-job-applications > header > strong {
+  display: grid;
+  place-items: center;
+  width: 38px;
+  height: 38px;
+  border: 1px solid rgba(27, 220, 237, .44);
+  border-radius: 50%;
+  color: var(--talent-cyan);
+  font-size: .72rem;
+}
+
+.talent-job-applications > div {
+  display: grid;
+  gap: 6px;
+}
+
+.talent-job-applications > div > article {
+  min-width: 0;
+  display: grid;
+  grid-template-columns: 50px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 8px;
+  padding: 9px;
+  border: 1px solid rgba(22, 134, 171, .28);
+  border-radius: 6px;
+  background: rgba(1, 24, 42, .76);
+}
+
+.talent-job-applications > div > article h3,
+.talent-job-applications > div > article p {
+  margin: 0;
+}
+
+.talent-job-applications > div > article h3 {
+  overflow: hidden;
+  font-size: .62rem;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.talent-job-applications > div > article p,
+.talent-job-applications > div > article small {
+  color: #8fa9b4;
+  font-size: .47rem;
+}
+
+.talent-job-applications > div > article > a {
+  grid-column: 2 / -1;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  color: var(--talent-cyan);
+  font-size: .5rem;
+}
+
+.talent-job-applications__score {
+  display: grid;
+  justify-items: center;
+  grid-row: span 2;
+}
+
+.talent-job-applications__score strong {
+  color: var(--talent-emerald);
+  font-size: .82rem;
+}
+
+.talent-job-applications__score small {
+  color: #8fa9b4;
+  font-size: .42rem;
+}
+
+.talent-job-applications__interviews,
+.talent-job-applications__saved {
+  display: grid;
+  gap: 7px;
+  padding: 11px;
+  border: 1px solid rgba(23, 153, 189, .3);
+  border-radius: 6px;
+  background: rgba(1, 24, 42, .67);
+}
+
+.talent-job-applications__interviews > header,
+.talent-job-applications__saved > header {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+}
+
+.talent-job-applications__interviews h3,
+.talent-job-applications__saved h3 {
+  margin: 0;
+  font-size: .66rem;
+}
+
+.talent-job-applications__interviews .icon,
+.talent-job-applications__saved .icon {
+  color: var(--talent-cyan);
+}
+
+.talent-job-applications__interviews article {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding-top: 7px;
+  border-top: 1px solid rgba(24, 147, 180, .19);
+}
+
+.talent-job-applications__interviews article > div {
+  display: grid;
+  gap: 2px;
+}
+
+.talent-job-applications__interviews article strong {
+  font-size: .57rem;
+}
+
+.talent-job-applications__interviews article small,
+.talent-job-applications__interviews > p,
+.talent-job-applications__saved p {
+  margin: 0;
+  color: #91aab5;
+  font-size: .48rem;
+  line-height: 1.65;
+}
+
+.talent-job-applications__interviews article a {
+  flex: 0 0 auto;
+  color: var(--talent-cyan);
+  font-size: .49rem;
+}
+
+.talent-job-applications__saved button {
+  min-height: 31px;
+  border: 1px solid rgba(23, 155, 190, .25);
+  border-radius: 5px;
+  color: #71909c;
+  background: rgba(2, 29, 46, .72);
+  font-size: .48rem;
+}
+
+.talent-profile-steps {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 0;
+  margin: 0;
+  padding: 8px 14px;
+  border: 1px solid rgba(20, 169, 206, .4);
+  border-radius: 7px;
+  list-style: none;
+  background: rgba(2, 31, 50, .96);
+}
+
+.talent-profile-steps li {
+  position: relative;
+  display: grid;
+  grid-template-columns: 34px minmax(0, 1fr);
+  align-items: center;
+  gap: 8px;
+  color: #9cb2bc;
+  font-size: .57rem;
+}
+
+.talent-profile-steps li:not(:last-child)::after {
+  content: "";
+  position: absolute;
+  inset-inline: calc(34px + 52%) -8%;
+  inset-block-start: 50%;
+  height: 1px;
+  background: rgba(24, 160, 193, .35);
+}
+
+.talent-profile-steps li > span {
+  position: relative;
+  z-index: 1;
+  display: grid;
+  place-items: center;
+  width: 34px;
+  height: 34px;
+  border: 1px solid rgba(20, 161, 197, .45);
+  border-radius: 50%;
+  background: #07304a;
+}
+
+.talent-profile-steps li.is-active {
+  color: #f0fcff;
+}
+
+.talent-profile-steps li.is-active > span {
+  color: #001d25;
+  background: var(--talent-cyan);
+  box-shadow: 0 0 18px rgba(29, 227, 241, .45);
+}
+
+.talent-flow--profile .talent-profile {
+  grid-template-columns: 300px minmax(0, 1fr);
+  gap: 8px;
+}
+
+.talent-profile__summary {
+  grid-column: 1;
+  min-width: 0;
+  display: grid;
+  justify-items: center;
+  align-content: start;
+  gap: 9px;
+  padding: 20px 16px;
+  border: 1px solid rgba(21, 174, 210, .43);
+  border-radius: 7px;
+  text-align: center;
+  background:
+    radial-gradient(circle at 50% 0, rgba(19, 206, 232, .14), transparent 12rem),
+    linear-gradient(145deg, rgba(3, 38, 61, .98), rgba(1, 21, 37, .98));
+}
+
+.talent-profile__avatar {
+  display: grid;
+  place-items: center;
+  width: 76px;
+  height: 76px;
+  border: 1px solid rgba(30, 224, 240, .6);
+  border-radius: 50%;
+  color: var(--talent-cyan);
+  background: radial-gradient(circle, rgba(19, 205, 230, .22), rgba(2, 28, 47, .94));
+  box-shadow: 0 0 0 7px rgba(20, 213, 232, .05), 0 0 28px rgba(13, 192, 220, .17);
+}
+
+.talent-profile__avatar .icon {
+  width: 36px;
+  height: 36px;
+}
+
+.talent-profile__summary > span {
+  color: #9cb4be;
+  font-size: .56rem;
+}
+
+.talent-profile__summary > strong {
+  color: var(--talent-cyan);
+  font-size: 1.62rem;
+}
+
+.talent-profile__summary > i {
+  width: 100%;
+  height: 7px;
+  display: block;
+  overflow: hidden;
+  border-radius: 999px;
+  background: rgba(84, 117, 129, .23);
+}
+
+.talent-profile__summary > i::after {
+  content: "";
+  width: var(--talent-profile-progress);
+  height: 100%;
+  display: block;
+  border-radius: inherit;
+  background: linear-gradient(90deg, var(--talent-blue), var(--talent-cyan), var(--talent-emerald));
+  box-shadow: 0 0 14px rgba(21, 224, 238, .45);
+}
+
+.talent-profile__summary h2,
+.talent-profile__summary p {
+  margin: 0;
+}
+
+.talent-profile__summary h2 {
+  font-size: .78rem;
+  line-height: 1.6;
+}
+
+.talent-profile__summary p {
+  color: #93abb5;
+  font-size: .56rem;
+  line-height: 1.72;
+}
+
+.talent-profile__summary-signals {
+  width: 100%;
+  display: grid;
+  gap: 6px;
+}
+
+.talent-profile__summary-signals span {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  min-height: 36px;
+  padding: 7px 9px;
+  border: 1px solid rgba(20, 142, 177, .28);
+  border-radius: 5px;
+  color: #c0d2d9;
+  text-align: start;
+  background: rgba(1, 23, 40, .68);
+  font-size: .52rem;
+}
+
+.talent-profile__summary-signals .icon {
+  color: var(--talent-cyan);
+}
+
+.talent-flow--profile .talent-profile__form {
+  grid-column: 2;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  padding: 17px;
+  border-color: rgba(21, 171, 207, .43);
+  border-radius: 7px;
+  background: linear-gradient(145deg, rgba(3, 37, 59, .98), rgba(1, 21, 37, .98));
+}
+
+.talent-flow--profile .talent-profile__form input,
+.talent-flow--profile .talent-profile__form select,
+.talent-flow--profile .talent-profile__form textarea {
+  border-color: rgba(20, 152, 190, .42);
+  border-radius: 5px;
+  color: #eaf8fc;
+  background: rgba(1, 23, 40, .88);
+}
+
+.talent-flow--profile .talent-profile__form textarea {
+  min-height: 78px;
+  grid-column: auto;
+}
+
+.talent-flow--profile .talent-profile__form > header {
+  grid-column: 1 / -1;
+  padding-bottom: 10px;
+  border-bottom: 1px solid rgba(23, 154, 188, .22);
+}
+
+.talent-flow--profile .talent-profile__form > header h2 {
+  margin: 0 0 5px;
+  color: #dff9fc;
+}
+
+.talent-flow--profile .talent-profile__form > header p {
+  margin: 0;
+  font-size: .6rem;
+}
+
+.talent-flow--profile .talent-profile__applications {
+  grid-column: 1 / -1;
+  position: static;
+  display: none;
+  border-color: rgba(20, 165, 201, .38);
+  border-radius: 7px;
+  background: rgba(2, 29, 48, .96);
+}
+
+.approved-job-seeker .talent-job-detail,
+.approved-job-seeker .talent-apply__form,
+.approved-job-seeker .talent-application-state,
+.approved-job-seeker .talent-match-layout > section {
+  border-color: rgba(20, 169, 204, .42);
+  border-radius: 7px;
+  background: linear-gradient(145deg, rgba(3, 37, 59, .98), rgba(1, 21, 37, .98));
+}
+
+@media (max-width: 1180px) {
+  .talent-flow--dashboard {
+    grid-template-columns: 180px minmax(0, 1fr);
+  }
+
+  .talent-flow--dashboard .talent-flow__entry {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  .approved-job-seeker .talent-flow__hero {
+    grid-template-columns: minmax(270px, .88fr) minmax(300px, 1.12fr);
+  }
+
+  .talent-flow--jobs {
+    grid-template-columns: minmax(280px, .8fr) minmax(0, 1.6fr);
+  }
+
+  .talent-seeker-overview-grid {
+    grid-template-columns: minmax(210px, .72fr) minmax(340px, 1.4fr);
+  }
+
+  .talent-seeker-overview-grid__activity {
+    grid-column: 1 / -1;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .talent-seeker-overview-grid__activity > header,
+  .talent-seeker-overview-grid__activity > div {
+    grid-column: 1;
+  }
+
+  .talent-seeker-overview-grid__activity > a,
+  .talent-seeker-overview-grid__activity > p {
+    grid-column: 2;
+  }
+}
+
+@media (max-width: 900px) {
+  .talent-flow--dashboard {
+    grid-template-columns: 1fr;
+    padding: 0 7px 10px !important;
+  }
+
+  .talent-flow--dashboard > :not(.talent-seeker-sidebar) {
+    grid-column: 1;
+  }
+
+  .talent-seeker-sidebar {
+    grid-column: 1;
+    grid-row: auto;
+    min-height: 0;
+    grid-template-columns: auto minmax(0, 1fr) auto;
+    grid-template-rows: auto;
+    align-items: center;
+    padding: 10px;
+    border-inline-end: 0;
+    border-bottom: 1px solid rgba(20, 191, 226, .38);
+    background: rgba(2, 23, 40, .98);
+  }
+
+  .talent-seeker-sidebar__brand {
+    justify-items: start;
+    padding: 0 10px;
+    border: 0;
+  }
+
+  .talent-seeker-sidebar__brand strong::before,
+  .talent-seeker-sidebar__brand strong::after {
+    font-size: 1.05rem;
+  }
+
+  .talent-seeker-sidebar nav {
+    display: flex;
+    justify-content: center;
+    overflow-x: auto;
+  }
+
+  .talent-seeker-sidebar nav a {
+    flex: 0 0 auto;
+    min-height: 39px;
+    padding-inline: 10px;
+    font-size: .58rem;
+  }
+
+  .talent-seeker-sidebar__back {
+    padding: 8px;
+    border: 0;
+  }
+
+  .talent-seeker-sidebar blockquote {
+    display: none;
+  }
+
+  .talent-flow--jobs,
+  .talent-flow--profile {
+    grid-template-columns: 1fr;
+  }
+
+  .talent-flow--jobs > *,
+  .talent-flow--profile > *,
+  .talent-flow--jobs .talent-job-grid,
+  .talent-flow--jobs .talent-job-applications {
+    grid-column: 1 / -1;
+  }
+
+  .talent-flow--jobs .talent-job-applications {
+    grid-row: auto;
+    position: static;
+  }
+
+  .talent-flow--profile .talent-profile {
+    grid-template-columns: 1fr;
+  }
+
+  .talent-profile__summary,
+  .talent-flow--profile .talent-profile__form,
+  .talent-flow--profile .talent-profile__applications {
+    grid-column: 1;
+  }
+
+  .talent-flow--profile .talent-profile__form {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .talent-flow--profile .talent-profile__form > textarea {
+    grid-column: 1 / -1;
+  }
+
+  .talent-seeker-overview-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .talent-seeker-overview-grid__activity,
+  .talent-seeker-overview-grid__activity > header,
+  .talent-seeker-overview-grid__activity > div,
+  .talent-seeker-overview-grid__activity > a,
+  .talent-seeker-overview-grid__activity > p {
+    grid-column: 1;
+  }
+
+  .talent-profile__summary {
+    grid-template-columns: auto minmax(0, 1fr);
+    justify-items: start;
+    text-align: start;
+  }
+
+  .talent-profile__avatar {
+    grid-row: span 4;
+  }
+
+  .talent-profile__summary > i,
+  .talent-profile__summary-signals {
+    grid-column: 1 / -1;
+  }
+}
+
+@media (max-width: 700px) {
+  .approved-job-seeker > .talent-flow {
+    padding-inline: 7px;
+  }
+
+  .talent-seeker-sidebar {
+    grid-template-columns: 1fr;
+  }
+
+  .talent-seeker-sidebar__brand,
+  .talent-seeker-sidebar__back {
+    display: none;
+  }
+
+  .talent-seeker-sidebar nav {
+    justify-content: flex-start;
+  }
+
+  .approved-job-seeker .talent-flow__hero {
+    min-height: 310px;
+    grid-template-columns: 1fr;
+    align-content: end;
+    padding: 18px 15px;
+  }
+
+  .approved-job-seeker .talent-flow__hero-copy {
+    grid-column: 1;
+    align-self: end;
+  }
+
+  .approved-job-seeker .talent-flow__hero h1 {
+    font-size: 2.35rem;
+  }
+
+  .approved-job-seeker .talent-flow__hero-copy p {
+    font-size: .69rem;
+  }
+
+  .talent-seeker-hero-card {
+    position: absolute;
+    inset-inline: 14px;
+    inset-block-start: 18px;
+    width: auto;
+    min-height: 112px;
+  }
+
+  .talent-flow--dashboard .talent-flow__entry {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .approved-job-seeker .talent-flow__signals {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .talent-profile-steps {
+    grid-template-columns: repeat(5, 75px);
+    overflow-x: auto;
+  }
+
+  .talent-flow--jobs .talent-job-grid > article {
+    padding: 125px 14px 14px;
+  }
+
+  [dir="ltr"] .talent-flow--jobs .talent-job-grid > article {
+    padding: 125px 14px 14px;
+  }
+
+  .talent-flow--jobs .talent-job-grid > article::before {
+    inset: 10px 10px auto;
+    width: auto;
+    height: 102px;
+  }
+}
+
+@media (max-width: 430px) {
+  .talent-flow--dashboard .talent-flow__entry {
+    grid-template-columns: 1fr;
+  }
+
+  .talent-flow--dashboard .talent-flow__entry > a,
+  .talent-flow--dashboard .talent-flow__entry > button {
+    min-height: 108px;
+  }
+
+  .talent-seeker-search-launcher {
+    grid-template-columns: auto minmax(0, 1fr);
+  }
+
+  .talent-seeker-search-launcher strong {
+    grid-column: 1 / -1;
+    justify-content: center;
+  }
+
+  .talent-seeker-hero-card {
+    grid-template-columns: minmax(0, 1fr) 78px;
+  }
+
+  .talent-seeker-hero-card__match strong {
+    font-size: 1.15rem;
+  }
+
+  .approved-job-seeker .talent-flow__signals {
+    grid-template-columns: 1fr;
+  }
+
+  .talent-profile__summary {
+    grid-template-columns: 1fr;
+    justify-items: center;
+    text-align: center;
+  }
+
+  .talent-profile__avatar {
+    grid-row: auto;
+  }
+
+  .talent-flow--profile .talent-profile__form {
+    grid-template-columns: 1fr;
+  }
+
+  .talent-flow--profile .talent-profile__form > * {
+    grid-column: 1;
+  }
+}

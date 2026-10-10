@@ -30,6 +30,8 @@ For the projects section home, `APPROVED_PROJECTS_REFERENCE/projects-home.png` i
 
 The four project subsection references under `APPROVED_PROJECT_SUBSECTION_REFERENCES/` are canonical for their section entry routes: `project-analysis.png` for `/projects/analysis`, `project-feasibility.png` for `/projects/feasibility`, `project-start.png` for `/projects/start`, and `project-evaluation.png` for `/projects/evaluation`. Implement and review them one at a time. Their sample scores, forecasts, budgets, maps, and recommendations are composition references only; production results must be calculated from submitted or persisted project data.
 
+For the job-seeker experience, the three images under `APPROVED_TALENT_REFERENCES/` are the only canonical visual sources: `job-seeker-dashboard.png` for `/talent`, `job-seeker-profile.png` for `/talent/profile`, and `job-seeker-jobs-applications.png` for `/talent/jobs`. They supersede every older job-seeker dashboard, profile, jobs, applications, pre-entry, and alternate candidate in the extracted archives. The archives remain immutable historical material and must not be used to override these approved images. Use the approved Jenan PRO wordmark rather than the lotus symbol shown in the visual references. Sample employers, jobs, match scores, interview dates, saved jobs, profile details, and counts are composition references only; production must use persisted account records or explicit empty and unavailable states.
+
 Legacy `Jenan BIZ` or `جنان بيز` names are visual-history references only. New UI uses `Jenan PRO` and `جنان برو` exclusively.
 
 ## Permanent Product Decisions
