@@ -7,7 +7,7 @@ const origin =
   `http://127.0.0.1:${process.env.PLAYWRIGHT_PORT ?? "3101"}`;
 
 test.describe.serial("projects section acceptance", () => {
-  test.setTimeout(90_000);
+  test.setTimeout(150_000);
 
   test.beforeAll(async () => {
     await cleanE2EIdentities();
@@ -325,6 +325,39 @@ test.describe.serial("projects section acceptance", () => {
     expect(report.status()).toBe(200);
     expect(report.headers()["content-type"]).toContain("application/pdf");
 
+    const arabicProject = await page.request.post("/api/projects", {
+      headers: { origin, "Content-Type": "application/json" },
+      data: {
+        action: "create",
+        name: "\u0645\u0634\u0631\u0648\u0639 \u062a\u062d\u0644\u064a\u0644 \u0639\u0631\u0628\u064a",
+        description:
+          "\u0648\u0635\u0641 \u0645\u0634\u0631\u0648\u0639 \u0639\u0631\u0628\u064a \u0645\u0648\u062b\u0642",
+        sector: "Technology",
+        countryCode: "SA",
+      },
+    });
+    expect(arabicProject.status()).toBe(201);
+    const arabicProjectId = (await arabicProject.json()).result.id as string;
+    const arabicAnalysis = await page.request.post("/api/projects", {
+      headers: { origin, "Content-Type": "application/json" },
+      data: {
+        action: "saveProjectAnalysis",
+        projectId: arabicProjectId,
+        input: {
+          idea: "\u0645\u0646\u0635\u0629 \u0631\u0642\u0645\u064a\u0629 \u0644\u062a\u0648\u0635\u064a\u0644 \u0627\u0644\u0645\u0646\u062a\u062c\u0627\u062a \u0627\u0644\u0635\u062d\u064a\u0629",
+          city: "Riyadh",
+          targetAudience: "CONSUMERS",
+        },
+      },
+    });
+    expect(arabicAnalysis.status()).toBe(200);
+    const arabicReport = await page.request.get(
+      `/api/projects/${arabicProjectId}/report`,
+    );
+    expect(arabicReport.status()).toBe(200);
+    expect(arabicReport.headers()["content-type"]).toContain("application/pdf");
+    expect((await arabicReport.body()).byteLength).toBeGreaterThan(100_000);
+
     await page.goto(`/projects/feasibility/pro/result?project=${projectId}`, {
       waitUntil: "networkidle",
     });
@@ -396,14 +429,44 @@ test.describe.serial("projects section acceptance", () => {
       .fill("Verified E2E analysis entry");
     await page.getByLabel("Sector *").selectOption("Technology");
     await page.getByLabel("City *").selectOption("Riyadh");
-    await page.getByLabel("Target audience *").selectOption("Businesses");
+    await page.getByLabel("Target audience *").selectOption("BUSINESSES");
     await Promise.all([
       page.waitForURL(/\/projects\/analysis\/progress\?project=/),
       page.getByRole("button", { name: "Start analysis" }).click(),
     ]);
-    await expect(page.locator(".projects-workspace")).toHaveAttribute(
-      "data-project-route",
+    await expect(page.locator(".project-analysis-workspace")).toHaveAttribute(
+      "data-analysis-route",
       "/projects/analysis/progress",
+    );
+    const analysisProjectUrl = new URL(page.url());
+    const analysisProjectId = analysisProjectUrl.searchParams.get("project");
+    expect(analysisProjectId).toBeTruthy();
+    await expect(page.getByRole("heading", { name: "Project analysis complete" })).toBeVisible({
+      timeout: 45_000,
+    });
+    await page.goto(`/projects/analysis/details?project=${analysisProjectId}`, {
+      waitUntil: "networkidle",
+    });
+    await expect(page.locator("[data-testid='analysis-details']")).toBeVisible();
+    await page.goto(`/projects/analysis/result?project=${analysisProjectId}`, {
+      waitUntil: "networkidle",
+    });
+    await expect(page.locator("[data-testid='analysis-result']")).toContainText(
+      "Evidence complete",
+    );
+    await page.goto(`/projects/analysis/report?project=${analysisProjectId}`, {
+      waitUntil: "networkidle",
+    });
+    await expect(page.locator("[data-testid='analysis-report']")).toContainText(
+      "Verified E2E analysis entry",
+    );
+    await page.goto(`/projects/analysis/print?project=${analysisProjectId}`, {
+      waitUntil: "networkidle",
+    });
+    await expect(page.locator("[data-testid='analysis-export']")).toBeVisible();
+    await expect(page.getByRole("link", { name: "Download PDF" })).toHaveAttribute(
+      "href",
+      `/api/projects/${analysisProjectId}/report`,
     );
 
     const intelligence = await page.request.post("/api/projects", {
@@ -424,10 +487,7 @@ test.describe.serial("projects section acceptance", () => {
     await page.goto(`/projects/analysis/map?project=${projectId}`, {
       waitUntil: "networkidle",
     });
-    const projectCard = page.locator(".project-list-item").filter({ hasText: "E2E Project" });
-    const openProject = projectCard.getByRole("button", { name: "Open" });
-    if (await openProject.count()) await openProject.click();
-    await expect(page.locator(".project-map__canvas")).toBeVisible();
+    await expect(page.locator(".pa-evidence-map")).toBeVisible();
     await page.goto(`/projects/start/roadmap?project=${projectId}`, {
       waitUntil: "networkidle",
     });

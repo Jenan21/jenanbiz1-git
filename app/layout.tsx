@@ -11,6 +11,7 @@ import "@/styles/market-stage.css";
 import "@/styles/projects-stage.css";
 import "@/styles/projects-dashboard.css";
 import "@/styles/project-analysis-dashboard.css";
+import "@/styles/project-analysis-workflow.css";
 import "@/styles/project-feasibility-dashboard.css";
 import "@/styles/project-professional-feasibility.css";
 import "@/styles/project-start-dashboard.css";

@@ -18,6 +18,7 @@ import {
   updateProjectPhase,
   updateProjectVendorStatus,
 } from "@/services/projects/project-service";
+import { saveProjectAnalysisInput } from "@/services/projects/project-analysis";
 
 const suffix = crypto.randomUUID().slice(0, 8);
 let userId: string | undefined;
@@ -73,6 +74,69 @@ describe("projects domain", () => {
     expect(project.phases).toHaveLength(7);
     expect(project.assessments).toHaveLength(6);
     expect(project.phases[0]?.status).toBe("ACTIVE");
+
+    await saveProjectAnalysisInput(
+      project.id,
+      {
+        idea: "A documented cold-chain marketplace for regional operators.",
+        city: "Riyadh",
+        targetAudience: "BUSINESSES",
+        budgetRange: "BETWEEN_100K_500K",
+      },
+      user.id,
+    );
+    await saveProjectAnalysisInput(
+      project.id,
+      {
+        idea: "An editor-reviewed cold-chain marketplace for regional operators.",
+        city: "Riyadh",
+        targetAudience: "BUSINESSES",
+      },
+      editor.id,
+    );
+    await expect(
+      saveProjectAnalysisInput(
+        project.id,
+        {
+          idea: "A reviewer must not modify the structured analysis input.",
+          city: "Riyadh",
+          targetAudience: "BUSINESSES",
+        },
+        reviewer.id,
+      ),
+    ).rejects.toThrow("Project not found");
+    await expect(
+      saveProjectAnalysisInput(
+        project.id,
+        {
+          idea: "An outsider must not modify the structured analysis input.",
+          city: "Riyadh",
+          targetAudience: "BUSINESSES",
+        },
+        outsider.id,
+      ),
+    ).rejects.toThrow("Project not found");
+    const analysisDraft = await db.project.findUniqueOrThrow({
+      where: { id: project.id },
+      select: { analysisStudy: true, analysisStudyUpdatedAt: true },
+    });
+    expect(analysisDraft.analysisStudyUpdatedAt).not.toBeNull();
+    expect(analysisDraft.analysisStudy).toMatchObject({
+      status: "PENDING",
+      input: {
+        city: "Riyadh",
+        targetAudience: "BUSINESSES",
+      },
+      version: 1,
+    });
+    expect(
+      await db.auditLog.count({
+        where: {
+          action: "project.analysis_input.saved",
+          entityId: project.id,
+        },
+      }),
+    ).toBe(2);
 
     await saveProjectFeasibilityStudySection(
       project.id,

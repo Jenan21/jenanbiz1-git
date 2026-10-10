@@ -1,5 +1,6 @@
 import { readFile } from "node:fs/promises";
 import path from "node:path";
+import fontkit from "@pdf-lib/fontkit";
 import { PDFDocument, StandardFonts, rgb } from "pdf-lib";
 import { getUserProject } from "@/services/projects/project-service";
 import { assessProjectQuality } from "@/services/projects/project-quality";
@@ -32,22 +33,64 @@ export async function createProjectReport(projectId: string, userId: string, int
     : undefined;
   const reportIntelligence = intelligence ?? savedIntelligence;
   const pdf = await PDFDocument.create();
+  pdf.registerFontkit(fontkit);
   const font = await pdf.embedFont(StandardFonts.Helvetica);
   const bold = await pdf.embedFont(StandardFonts.HelveticaBold);
+  const fontsPath = path.join(process.cwd(), "public", "assets", "fonts");
+  const arabicFont = await pdf.embedFont(
+    await readFile(path.join(fontsPath, "Alexandria-VariableFont_wght.ttf")),
+  );
   const logoPath = path.join(process.cwd(), "public", "assets", "jenan-pro-logo.jpg");
   const logo = await pdf.embedJpg(await readFile(logoPath));
   let page = pdf.addPage([595, 842]);
   let y = 790;
   const margin = 42;
   const contentWidth = 511;
+  const hasArabic = (value: string) => /[\u0600-\u06ff\u0750-\u077f\u08a0-\u08ff]/.test(value);
+  const textFont = (value: string, isBold: boolean) =>
+    hasArabic(value) ? arabicFont : isBold ? bold : font;
+  const textWidth = (value: string, size: number, isBold: boolean) =>
+    value
+      .split(/\s+/)
+      .filter(Boolean)
+      .reduce((width, word, index) => {
+        const spacing = index ? font.widthOfTextAtSize(" ", size) : 0;
+        return width + spacing + textFont(word, isBold).widthOfTextAtSize(word, size);
+      }, 0);
+  const drawRichText = (
+    value: string,
+    x: number,
+    baseline: number,
+    size: number,
+    isBold: boolean,
+  ) => {
+    const logicalWords = value.split(/\s+/).filter(Boolean);
+    const words =
+      hasArabic(value) && !/[A-Za-z]/.test(value)
+        ? [...logicalWords].reverse()
+        : logicalWords;
+    let cursor = x;
+    for (const word of words) {
+      const activeFont = textFont(word, isBold);
+      page.drawText(word, {
+        x: cursor,
+        y: baseline,
+        size,
+        font: activeFont,
+        color: rgb(0.05, 0.13, 0.25),
+      });
+      cursor +=
+        activeFont.widthOfTextAtSize(word, size) +
+        font.widthOfTextAtSize(" ", size);
+    }
+  };
   const addText = (value: string, size = 11, isBold = false) => {
-    const activeFont = isBold ? bold : font;
     const words = value.split(/\s+/).filter(Boolean);
     const lines: string[] = [];
     let line = "";
     for (const word of words) {
       const next = line ? `${line} ${word}` : word;
-      if (line && activeFont.widthOfTextAtSize(next, size) > contentWidth) {
+      if (line && textWidth(next, size, isBold) > contentWidth) {
         lines.push(line);
         line = word;
       } else {
@@ -60,7 +103,7 @@ export async function createProjectReport(projectId: string, userId: string, int
         page = pdf.addPage([595, 842]);
         y = 790;
       }
-      page.drawText(text, { x: margin, y, size, font: activeFont, color: rgb(0.05, 0.13, 0.25) });
+      drawRichText(text, margin, y, size, isBold);
       y -= size + 9;
     }
   };
@@ -72,7 +115,7 @@ export async function createProjectReport(projectId: string, userId: string, int
       }
       page.drawRectangle({ x: margin, y: y - 7, width: contentWidth, height: 25, color: rgb(0.96, 0.98, 1) });
       page.drawText(label, { x: margin + 8, y, size: 10, font: bold, color: rgb(0.05, 0.13, 0.25) });
-      page.drawText(value.slice(0, 56), { x: margin + 175, y, size: 10, font, color: rgb(0.16, 0.24, 0.34) });
+      drawRichText(value.slice(0, 56), margin + 175, y, 10, false);
       y -= 29;
     }
   };
@@ -92,6 +135,29 @@ export async function createProjectReport(projectId: string, userId: string, int
     ["Current phase", formatValue(project.currentPhase)],
   ]);
   addText(`Description: ${formatValue(project.description)}`);
+  const analysisStudy = jsonRecord(project.analysisStudy);
+  const analysisInput = jsonRecord(analysisStudy?.input);
+  const analysisResult = jsonRecord(analysisStudy?.result);
+  if (analysisInput || analysisResult) {
+    y -= 10;
+    addText("Project analysis", 14, true);
+    addKeyValueTable([
+      ["Analysis status", jsonText(analysisStudy?.status)],
+      ["City", jsonText(analysisInput?.city)],
+      ["Target audience", jsonText(analysisInput?.targetAudience)],
+      ["Budget range", jsonText(analysisInput?.budgetRange)],
+      ["Evidence completeness", `${jsonText(analysisResult?.evidenceCompleteness)}%`],
+      ["Competition level", jsonText(analysisResult?.competitionLevel)],
+      ["Observed competitors", jsonText(analysisResult?.competitorCount)],
+      ["Purchasing power level", jsonText(analysisResult?.purchasingPowerLevel)],
+      ["Data risk level", jsonText(analysisResult?.dataRiskLevel)],
+      ["Source records", jsonText(analysisResult?.sourceCount)],
+      ["Recorded limitations", jsonText(analysisResult?.limitationCount)],
+    ]);
+    addText(`Project idea: ${jsonText(analysisInput?.idea)}`);
+    addText(`Recommendations: ${jsonText(analysisResult?.recommendations)}`);
+    addText("Analysis evidence completeness is not a probability of project success.");
+  }
   const feasibilityStudy = jsonRecord(project.feasibilityStudy);
   const feasibilitySections = jsonRecord(feasibilityStudy?.sections);
   if (feasibilitySections) {

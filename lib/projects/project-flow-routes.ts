@@ -65,12 +65,22 @@ const professionalMarketingFlow: ProjectFlowDefinition = flow(
   "wizard",
   "feasibility",
 );
+const analysisPrintFlow: ProjectFlowDefinition = flow(
+  "analysis",
+  "print",
+  ["طباعة وتصدير تحليل المشروع", "Print and export project analysis"],
+  "report",
+  "report",
+);
+
+const supplementalProjectFlows = [
+  professionalMarketingFlow,
+  analysisPrintFlow,
+] as const;
 
 export function findProjectFlow(route: string) {
   return (
     projectFlowDefinitions.find((item) => item.route === route) ??
-    (route === professionalMarketingFlow.route
-      ? professionalMarketingFlow
-      : undefined)
+    supplementalProjectFlows.find((item) => item.route === route)
   );
 }

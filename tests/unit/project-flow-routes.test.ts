@@ -15,6 +15,7 @@ describe("project flow route contract", () => {
     expect(new Set(projectFlowDefinitions.map((item) => item.route)).size).toBe(projectFlowDefinitions.length);
     expect(findProjectFlow("/projects/analysis/result")?.focus).toBe("assessment");
     expect(findProjectFlow("/projects/feasibility/pro/marketing")?.kind).toBe("wizard");
+    expect(findProjectFlow("/projects/analysis/print")?.focus).toBe("report");
     expect(findProjectFlow("/projects/not-real")).toBeUndefined();
   });
 });

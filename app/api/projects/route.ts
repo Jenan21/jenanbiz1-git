@@ -24,6 +24,10 @@ import { assessProjectQuality } from "@/services/projects/project-quality";
 import { saveProjectIntelligenceSnapshot, searchProjectIntelligence } from "@/services/projects/project-intelligence";
 import { db } from "@/lib/db";
 import { checkProjectRateLimit, type ProjectRateLimitAction } from "@/lib/rate-limit/project-rate-limit";
+import {
+  runProjectAnalysis,
+  saveProjectAnalysisInput,
+} from "@/services/projects/project-analysis";
 
 const projectStatuses = ["DRAFT", "ANALYSIS", "FEASIBILITY", "EVALUATION", "APPROVED", "IN_PROGRESS", "ON_HOLD", "COMPLETED", "REJECTED", "ARCHIVED"] as const;
 const phaseTypes = ["ANALYSIS", "FEASIBILITY", "EVALUATION", "PLANNING", "EXECUTION", "REVIEW", "COMPLETION"] as const;
@@ -46,6 +50,14 @@ const financialInputs = z.object({
   annualDiscountRate: z.number().finite().min(0).max(100).optional(),
   annualInflationRate: z.number().finite().min(0).max(100).optional(),
   taxRate: z.number().finite().min(0).max(100).optional(),
+});
+const projectAnalysisInput = z.object({
+  idea: z.string().trim().min(10).max(4000),
+  city: z.string().trim().min(2).max(160),
+  targetAudience: z.enum(["CONSUMERS", "BUSINESSES", "YOUTH", "FAMILIES"]),
+  budgetRange: z
+    .enum(["UNDER_100K", "BETWEEN_100K_500K", "BETWEEN_500K_1M", "ABOVE_1M"])
+    .optional(),
 });
 const feasibilityStudyPayload = z.discriminatedUnion("section", [
   z.object({
@@ -123,6 +135,8 @@ function actionRateLimit(action: (typeof commandSchema)["_output"]["action"]): P
   if (action === "recordAssessment") return "assessment";
   if (action === "calculateFeasibility") return "financial";
   if (action === "saveFeasibilityStudy") return "assessment";
+  if (action === "saveProjectAnalysis") return "assessment";
+  if (action === "runProjectAnalysis") return "intelligence";
   if (action === "searchIntelligence") return "intelligence";
   if (action === "createRisk" || action === "updateRiskStatus" || action === "calculateRisk") return "risk";
   if (action === "recordDecision") return "decision";
@@ -186,6 +200,15 @@ const commandSchema = z.discriminatedUnion("action", [
     action: z.literal("saveFeasibilityStudy"),
     projectId: z.string().cuid(),
     payload: feasibilityStudyPayload,
+  }),
+  z.object({
+    action: z.literal("saveProjectAnalysis"),
+    projectId: z.string().cuid(),
+    input: projectAnalysisInput,
+  }),
+  z.object({
+    action: z.literal("runProjectAnalysis"),
+    projectId: z.string().cuid(),
   }),
   z.object({ action: z.literal("recordDecision"), projectId: z.string().cuid(), verdict: z.enum(decisionVerdicts), rationale: z.string().trim().min(10).max(4000) }),
   z.object({ action: z.literal("createRisk"), projectId: z.string().cuid(), category: z.string().trim().min(2).max(120), title: z.string().trim().min(3).max(300), likelihood: z.number().int().min(1).max(5), impact: z.number().int().min(1).max(5), mitigation: z.string().trim().min(3).max(4000), ownerLabel: z.string().trim().min(2).max(160), reviewAt: z.string().datetime().optional() }),
@@ -274,6 +297,14 @@ export async function POST(request: NextRequest) {
                   input.payload,
                   user.id,
                 )
+            : input.action === "saveProjectAnalysis"
+              ? await saveProjectAnalysisInput(
+                  input.projectId,
+                  input.input,
+                  user.id,
+                )
+            : input.action === "runProjectAnalysis"
+              ? await runProjectAnalysis(input.projectId, user.id)
             : input.action === "recordDecision"
               ? await recordProjectDecision(input.projectId, input, user.id)
               : input.action === "createRisk"

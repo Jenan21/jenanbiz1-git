@@ -3091,6 +3091,8 @@ model Project {
   vendors               ProjectVendor[]
   evidenceFiles         FileAsset[]                   @relation("ProjectEvidenceFiles")
   intelligenceSnapshots ProjectIntelligenceSnapshot[]
+  analysisStudy             Json?
+  analysisStudyUpdatedAt    DateTime?
   feasibilityStudy          Json?
   feasibilityStudyUpdatedAt DateTime?
   marketListings        MarketListing[]
