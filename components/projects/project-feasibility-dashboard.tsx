@@ -65,7 +65,7 @@ export function ProjectFeasibilityDashboard({
       data-project-feasibility-source="USER_INPUT_REQUIRED"
       dir={ar ? "rtl" : "ltr"}
     >
-      <ProjectsCommandHeader active="feasibility" locale={locale} userLabel={userLabel} />
+      <ProjectsCommandHeader active="feasibility" compact locale={locale} userLabel={userLabel} />
 
       <section className="project-feasibility-dashboard__hero">
         <div className="project-feasibility-dashboard__hero-copy">

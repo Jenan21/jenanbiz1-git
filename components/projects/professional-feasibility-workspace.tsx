@@ -1238,7 +1238,7 @@ export function ProfessionalFeasibilityWorkspace({
       data-project-route={route}
       dir={ar ? "rtl" : "ltr"}
     >
-      <ProjectsCommandHeader active="feasibility" locale={locale} userLabel={userLabel} />
+      <ProjectsCommandHeader active="feasibility" compact locale={locale} userLabel={userLabel} />
       <header className="pfs-wizard-header">
         <div className="pfs-wizard-title">
           <span><Icon name="pieChart" /></span>
