@@ -54,11 +54,6 @@ export function CanonicalAuthAccessPage({
     const panel = panelRef.current;
     const previousFocus = document.activeElement as HTMLElement | null;
     const previousOverflow = document.body.style.overflow;
-    const focusTimer = window.setTimeout(() => {
-      panel
-        ?.querySelector<HTMLElement>("input:not([disabled]), select:not([disabled])")
-        ?.focus({ preventScroll: true });
-    }, 0);
 
     function handleKeyDown(event: KeyboardEvent) {
       if (event.key === "Escape") {
@@ -84,7 +79,6 @@ export function CanonicalAuthAccessPage({
     document.body.style.overflow = "hidden";
     window.addEventListener("keydown", handleKeyDown);
     return () => {
-      window.clearTimeout(focusTimer);
       window.removeEventListener("keydown", handleKeyDown);
       document.body.style.overflow = previousOverflow;
       previousFocus?.focus({ preventScroll: true });

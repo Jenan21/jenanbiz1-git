@@ -126,11 +126,11 @@ body:has(.access-page) nextjs-portal {
 .access-page__form-panel {
   position: fixed;
   z-index: 21;
-  top: 53.2%;
+  top: 50%;
   left: 50%;
-  width: min(620px, calc(100vw - 32px));
-  height: min(628px, calc(100dvh - 32px));
-  padding: 26px 36px 20px;
+  width: min(462px, 100vw);
+  height: min(725px, 100dvh);
+  padding: 24px 29px 20px;
   overflow-x: hidden;
   overflow-y: auto;
   border: 1px solid rgba(89, 243, 255, 0.72);
@@ -208,26 +208,27 @@ body:has(.access-page) nextjs-portal {
 
 .access-page__panel-close {
   position: absolute;
-  top: 18px;
-  right: 18px;
+  top: 15px;
+  right: 15px;
   z-index: 4;
   display: grid;
   place-items: center;
-  width: 42px;
-  height: 42px;
+  width: 40px;
+  height: 40px;
   padding: 0;
   border: 1px solid rgba(89, 243, 255, 0.64);
-  border-radius: 50%;
+  border-radius: 11px;
   color: #effdff;
   background: rgba(2, 22, 35, 0.76);
   box-shadow: 0 0 24px rgba(31, 231, 255, 0.15), inset 0 1px rgba(255, 255, 255, 0.14);
   cursor: pointer;
+  transform: rotate(6deg);
   transition: color 160ms ease, border-color 160ms ease, box-shadow 160ms ease, transform 160ms ease;
 }
 
 [dir="rtl"] .access-page__panel-close {
   right: auto;
-  left: 18px;
+  left: 15px;
 }
 
 .access-page__panel-close .icon {
@@ -240,7 +241,7 @@ body:has(.access-page) nextjs-portal {
   border-color: var(--auth-gold);
   color: #fff6d6;
   box-shadow: 0 0 28px rgba(240, 200, 91, 0.24);
-  transform: rotate(5deg);
+  transform: rotate(0);
 }
 
 .access-page__panel-brand,
@@ -256,7 +257,7 @@ body:has(.access-page) nextjs-portal {
 
 .access-page[data-mode="login"] .access-page__form-panel .auth-form,
 .access-page[data-mode="login"] .access-page__alternate {
-  width: min(100%, 420px);
+  width: min(100%, 404px);
   margin-inline: auto;
 }
 
@@ -265,7 +266,7 @@ body:has(.access-page) nextjs-portal {
   align-items: center;
   justify-content: center;
   gap: 13px;
-  margin: 0 auto 17px;
+  margin: 0 auto 20px;
   direction: ltr;
 }
 
@@ -352,6 +353,53 @@ body:has(.access-page) nextjs-portal {
   line-height: 1.22;
   letter-spacing: 0;
   text-align: center;
+}
+
+.access-page[data-mode="login"] .access-page__panel-brand {
+  transform: translate(-2px, 2px);
+}
+
+.access-page[data-mode="login"] .access-page__panel-brand strong {
+  font-size: 1.3rem;
+}
+
+.access-page[data-mode="login"] .access-page__form-panel h1 {
+  margin-top: 11px;
+  margin-bottom: 8px;
+  font-size: 2.62rem;
+}
+
+.access-page[data-mode="login"] .access-page__form-panel > p {
+  margin-bottom: 26px;
+}
+
+.access-page[data-mode="login"] .access-page__form-panel .field {
+  gap: 3px;
+}
+
+.access-page[data-mode="login"] .access-page__form-panel .field__label {
+  font-weight: 500;
+}
+
+.access-page[data-mode="login"] .access-page__form-panel .field__control {
+  height: 48px;
+}
+
+.access-page[data-mode="login"] .auth-form__options {
+  margin-bottom: 8px;
+  transform: translateY(4px);
+}
+
+.access-page[data-mode="login"] .auth-form__options .text-button {
+  font-weight: 600;
+}
+
+.access-page[data-mode="login"] .auth-form__submit {
+  transform: translateY(-1px);
+}
+
+.access-page[data-mode="login"] .access-page__alternate {
+  margin-top: 10px;
 }
 
 .access-page__form-panel h1::first-letter {
@@ -541,6 +589,10 @@ body:has(.access-page) nextjs-portal {
   transform: rotate(180deg);
 }
 
+[dir="rtl"] .access-page__alternate a {
+  flex-direction: row-reverse;
+}
+
 .access-page .auth-country__control {
   position: relative;
   display: block;
@@ -657,9 +709,9 @@ body:has(.access-page) nextjs-portal {
 }
 
 .access-page[data-mode="register"] .access-page__form-panel {
-  top: 51.2%;
-  width: min(532px, calc(100vw - 32px));
-  height: min(665px, calc(100dvh - 32px));
+  top: 50%;
+  width: min(462px, 100vw);
+  height: min(725px, 100dvh);
   padding: 19px 28px 17px;
   background:
     linear-gradient(180deg, rgba(8, 16, 24, 0.5), rgba(8, 10, 18, 0.76)),
@@ -689,7 +741,7 @@ body:has(.access-page) nextjs-portal {
 
 .access-page[data-mode="register"] .access-page__form-panel .auth-form,
 .access-page[data-mode="register"] .access-page__alternate {
-  width: min(100%, 384px);
+  width: min(100%, 404px);
   margin-inline: auto;
 }
 
@@ -729,7 +781,7 @@ body:has(.access-page) nextjs-portal {
 
 .access-page[data-mode="register"] .form-note {
   order: 7;
-  margin-top: 17px;
+  margin-top: 3px;
 }
 
 .access-page[data-mode="register"] .auth-error {
@@ -754,7 +806,7 @@ body:has(.access-page) nextjs-portal {
   display: grid;
   grid-template-columns: 1fr;
   justify-items: start;
-  gap: 6px;
+  gap: 4px;
   margin-top: 12px;
   direction: rtl;
 }
@@ -769,14 +821,33 @@ body:has(.access-page) nextjs-portal {
 
 .access-page__form-panel .auth-form__terms-details {
   position: relative;
+  width: 100%;
   color: var(--auth-cyan);
   font-size: 0.56rem;
   direction: rtl;
 }
 
 .access-page__form-panel .auth-form__terms-details summary {
+  display: flex;
+  align-items: center;
+  min-height: 29px;
+  padding: 0 8px;
+  list-style: none;
+  color: #d0e1e5;
+  background: rgba(3, 16, 25, 0.58);
   cursor: pointer;
   white-space: nowrap;
+}
+
+.access-page__form-panel .auth-form__terms-details summary::-webkit-details-marker {
+  display: none;
+}
+
+.access-page__form-panel .auth-form__terms-details summary::before {
+  content: "◆";
+  margin-inline-end: 6px;
+  color: var(--auth-gold);
+  font-size: 0.36rem;
 }
 
 .access-page__form-panel .auth-form__terms-details p {
@@ -793,7 +864,7 @@ body:has(.access-page) nextjs-portal {
 
 .access-page[data-mode="register"] .access-page__alternate {
   gap: 5px;
-  margin-top: 8px;
+  margin-top: 3px;
 }
 
 .access-page[data-mode="register"] .access-page__alternate a {
@@ -857,8 +928,8 @@ body:has(.access-page) nextjs-portal {
 @media (max-width: 700px) {
   .access-page__form-panel {
     top: 50%;
-    width: min(620px, 100vw);
-    height: 100dvh;
+    width: min(462px, 100vw);
+    height: min(725px, 100dvh);
     padding: 24px 28px 20px;
     border-radius: 15px;
     background:
@@ -935,8 +1006,8 @@ body:has(.access-page) nextjs-portal {
 
   .access-page[data-mode="register"] .access-page__form-panel {
     top: 50%;
-    width: min(532px, 100vw);
-    height: 100dvh;
+    width: min(462px, 100vw);
+    height: min(725px, 100dvh);
     padding: 23px 18px 14px;
   }
 
@@ -972,7 +1043,7 @@ body:has(.access-page) nextjs-portal {
   }
 
   .access-page[data-mode="register"] .access-page__alternate {
-    margin-top: 0;
+    margin-top: 3px;
   }
 
 }

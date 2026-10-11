@@ -269,43 +269,17 @@ for (const locale of ["ar", "en"] as const) {
           expect(layout.panel.bottom).toBeLessThanOrEqual(
             layout.viewportHeight + 1,
           );
-          if (
-            viewport.name === "1440x900" &&
-            (route.screen === "login" || route.screen === "register")
-          ) {
+          if (route.screen === "login" || route.screen === "register") {
+            const expectedWidth = Math.min(462, viewport.width);
+            const expectedHeight = Math.min(725, viewport.height);
             expect(Math.round(layout.panel.left)).toBe(
-              route.screen === "register" ? 454 : 410,
+              Math.round((viewport.width - expectedWidth) / 2),
             );
             expect(Math.round(layout.panel.top)).toBe(
-              route.screen === "register" ? 128 : 165,
+              Math.round((viewport.height - expectedHeight) / 2),
             );
-            expect(Math.round(layout.panel.width)).toBe(
-              route.screen === "register" ? 532 : 620,
-            );
-            expect(Math.round(layout.panel.height)).toBe(
-              route.screen === "register" ? 665 : 628,
-            );
-          }
-          if (viewport.name === "1365x768" && route.screen === "login") {
-            expect(Math.round(layout.panel.left)).toBe(373);
-            expect(Math.round(layout.panel.top)).toBe(95);
-            expect(Math.round(layout.panel.width)).toBe(620);
-            expect(Math.round(layout.panel.height)).toBe(628);
-          }
-          if (viewport.name === "1024x768" && route.screen === "register") {
-            expect(Math.round(layout.panel.left)).toBe(246);
-            expect(Math.round(layout.panel.top)).toBe(61);
-            expect(Math.round(layout.panel.width)).toBe(532);
-            expect(Math.round(layout.panel.height)).toBe(665);
-          }
-          if (
-            viewport.name === "462x725" &&
-            (route.screen === "login" || route.screen === "register")
-          ) {
-            expect(Math.round(layout.panel.left)).toBe(0);
-            expect(Math.round(layout.panel.top)).toBe(0);
-            expect(Math.round(layout.panel.width)).toBe(462);
-            expect(Math.round(layout.panel.height)).toBe(725);
+            expect(Math.round(layout.panel.width)).toBe(expectedWidth);
+            expect(Math.round(layout.panel.height)).toBe(expectedHeight);
           }
         }
       }
