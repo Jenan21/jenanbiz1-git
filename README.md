@@ -125,6 +125,8 @@ The application uses Redis for atomic, distributed auth rate limits when `REDIS_
 
 Vercel cannot run the Docker Compose Redis or backup services. For Vercel, configure a managed Redis-compatible `REDIS_URL`, link a private Vercel Blob store, set `METRICS_TOKEN`, and use an external monitor to call `/api/health/ready`. Persisted user files use private Blob storage on Vercel and local disk in development. Supabase Free does not replace a tested backup and restore policy; export backups to independently retained storage before production use.
 
+Set both `SITE_ACCESS_USERNAME` and `SITE_ACCESS_PASSWORD` to protect a private preview with HTTP Basic authentication. The protection fails closed when only one value is configured. Readiness and liveness endpoints remain public so external monitors can verify the deployment.
+
 The Vercel deployment must not be promoted until a managed Redis integration is connected and has supplied `REDIS_URL` to the Production environment. The repository's scheduled readiness workflow intentionally fails when `/api/health/ready` is not healthy; it does not replace an independently retained PostgreSQL backup or a restore drill.
 
 The `postgres-backup` service writes a compressed PostgreSQL dump immediately after startup and then on `BACKUP_INTERVAL_SECONDS` (default: daily). It retains backups for `BACKUP_RETENTION_DAYS` (default: 14), and its healthcheck fails when the latest successful backup is stale. Restore drills must be performed against a separate database before treating a deployment as production-ready.
