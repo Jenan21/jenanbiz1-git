@@ -123,7 +123,7 @@ docker compose up -d --build
 
 The application uses Redis for atomic, distributed auth rate limits when `REDIS_URL` is configured. `GET /api/health/live` checks process liveness; `GET /api/health/ready` checks PostgreSQL and the configured rate-limit provider. `GET /api/metrics` requires `Authorization: Bearer $METRICS_TOKEN` and returns current record and dependency state for a monitoring collector.
 
-Vercel cannot run the Docker Compose Redis or backup services. For Vercel, configure a managed Redis-compatible `REDIS_URL`, set `METRICS_TOKEN`, and use an external monitor to call `/api/health/ready`. Supabase Free does not replace a tested backup and restore policy; export backups to independently retained storage before production use.
+Vercel cannot run the Docker Compose Redis or backup services. For Vercel, configure a managed Redis-compatible `REDIS_URL`, link a private Vercel Blob store, set `METRICS_TOKEN`, and use an external monitor to call `/api/health/ready`. Persisted user files use private Blob storage on Vercel and local disk in development. Supabase Free does not replace a tested backup and restore policy; export backups to independently retained storage before production use.
 
 The Vercel deployment must not be promoted until a managed Redis integration is connected and has supplied `REDIS_URL` to the Production environment. The repository's scheduled readiness workflow intentionally fails when `/api/health/ready` is not healthy; it does not replace an independently retained PostgreSQL backup or a restore drill.
 

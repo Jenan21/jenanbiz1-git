@@ -1,6 +1,6 @@
 import { createHash, randomUUID } from "node:crypto";
 import { db } from "@/lib/db";
-import { localDocumentStorage } from "@/lib/storage/local-document-storage";
+import { documentStorage } from "@/lib/storage/document-storage";
 
 const maxFileBytes = 10 * 1024 * 1024;
 const allowedMimeTypes = new Set([
@@ -64,7 +64,7 @@ export async function uploadUserFile(userId: string, file: File, projectId?: str
     if (!listing) throw new FileAssetError("Market listing not found");
   }
   const storageKey = `users/${userId}/${randomUUID()}`;
-  await localDocumentStorage.upload(storageKey, bytes, file.type);
+  await documentStorage.upload(storageKey, bytes, file.type);
   try {
     const asset = await db.fileAsset.create({
       data: {
@@ -90,7 +90,7 @@ export async function uploadUserFile(userId: string, file: File, projectId?: str
     });
     return serializeFileAsset(asset);
   } catch (error) {
-    await localDocumentStorage.delete(storageKey);
+    await documentStorage.delete(storageKey);
     throw error;
   }
 }
@@ -149,7 +149,7 @@ export async function downloadUserFile(userId: string, fileId: string) {
   const asset = await findUserDownloadFile(userId, fileId);
   if (!asset) return null;
   try {
-    return { asset, bytes: await localDocumentStorage.download(asset.storageKey) };
+    return { asset, bytes: await documentStorage.download(asset.storageKey) };
   } catch {
     throw new FileAssetError("The stored file is unavailable");
   }
@@ -159,7 +159,7 @@ export async function deleteUserFile(userId: string, fileId: string) {
   const asset = await findUserManagedFile(userId, fileId);
   if (!asset) return false;
   await db.fileAsset.delete({ where: { id: asset.id } });
-  await localDocumentStorage.delete(asset.storageKey);
+  await documentStorage.delete(asset.storageKey);
   await db.auditLog.create({
     data: {
       actorId: userId,

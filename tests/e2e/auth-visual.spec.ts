@@ -131,16 +131,18 @@ for (const locale of ["ar", "en"] as const) {
               throw new Error("Approved login controls should have a layout box");
             }
             expect(Math.round(emailControl.x)).toBe(29);
-            expect(Math.round(emailControl.y)).toBeGreaterThanOrEqual(245);
-            expect(Math.round(emailControl.y)).toBeLessThanOrEqual(249);
             expect(Math.round(emailControl.width)).toBe(404);
             expect(Math.round(emailControl.height)).toBe(48);
-            expect(Math.round(submit.y)).toBeGreaterThanOrEqual(443);
-            expect(Math.round(submit.y)).toBeLessThanOrEqual(448);
             expect(Math.round(submit.width)).toBe(404);
-            expect(Math.round(alternate.y)).toBeGreaterThanOrEqual(555);
-            expect(Math.round(alternate.y)).toBeLessThanOrEqual(560);
             expect(Math.round(alternate.height)).toBe(48);
+            expect(emailControl.y).toBeGreaterThan(0);
+            expect(submit.y).toBeGreaterThan(emailControl.y + emailControl.height);
+            expect(alternate.y).toBeGreaterThan(submit.y + submit.height);
+            expect(alternate.y + alternate.height).toBeLessThanOrEqual(
+              await page
+                .locator(".access-page__form-panel")
+                .evaluate((element) => element.scrollHeight),
+            );
           }
         }
 

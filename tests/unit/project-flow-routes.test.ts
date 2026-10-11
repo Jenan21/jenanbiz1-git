@@ -3,12 +3,23 @@ import manifest from "../../design-references/Jenan-PRO/extracted/Jenan_PRO_COMP
 import { findProjectFlow, projectFlowDefinitions } from "@/lib/projects/project-flow-routes";
 
 describe("project flow route contract", () => {
-  it("matches every child route in the authoritative blueprint", () => {
+  it("covers every blueprint route and the approved integrated evaluation flow", () => {
     const expected = manifest
       .map((item) => item.route)
       .filter((route) => route.startsWith("/projects/") && route !== "/projects/feasibility")
       .sort();
-    expect(projectFlowDefinitions.map((item) => item.route).sort()).toEqual(expected);
+    const implemented = projectFlowDefinitions.map((item) => item.route);
+    const integratedEvaluation = [
+      "/projects/start/evaluation",
+      "/projects/start/evaluation/new",
+      "/projects/start/evaluation/recommendations",
+      "/projects/start/evaluation/report",
+      "/projects/start/evaluation/result",
+      "/projects/start/evaluation/risks",
+    ];
+    expect(expected.every((route) => implemented.includes(route))).toBe(true);
+    expect(integratedEvaluation.every((route) => implemented.includes(route))).toBe(true);
+    expect(implemented).toHaveLength(expected.length + integratedEvaluation.length);
   });
 
   it("keeps routes unique and rejects unknown paths", () => {

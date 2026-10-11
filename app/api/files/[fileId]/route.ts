@@ -16,7 +16,7 @@ export async function GET(_request: NextRequest, { params }: { params: Promise<{
   try {
     const result = await downloadUserFile(user.id, fileId);
     if (!result) return NextResponse.json({ message: "File not found" }, { status: 404 });
-    return new NextResponse(result.bytes, {
+    return new NextResponse(Buffer.from(result.bytes), {
       headers: {
         "cache-control": "private, no-store",
         "content-disposition": `attachment; filename="${attachmentName(result.asset.fileName)}"`,

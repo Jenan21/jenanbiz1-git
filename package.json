@@ -72,6 +72,7 @@
     "@prisma/adapter-pg": "7.9.1",
     "@prisma/client": "7.9.1",
     "@svg-maps/world": "^2.0.0",
+    "@vercel/blob": "^2.8.1",
     "docx": "^9.8.0",
     "exceljs": "^4.4.0",
     "fast-formula-parser": "^1.0.19",
@@ -122,6 +123,6 @@
     "Samsung >= 23"
   ],
   "engines": {
-    "node": ">=20.9.0"
+    "node": "24.x"
   }
 }

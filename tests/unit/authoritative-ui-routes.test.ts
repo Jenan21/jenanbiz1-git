@@ -25,7 +25,7 @@ function readActiveCatalogRoutes() {
 }
 
 describe("authoritative Jenan PRO UI routes", () => {
-  it("matches the 152 active references with canonical Auth routes", () => {
+  it("covers every active reference plus approved product expansions", () => {
     const catalogRoutes = readActiveCatalogRoutes();
     const canonicalCatalogRoutes = catalogRoutes.map((path) =>
       path === "/auth/login"
@@ -35,15 +35,18 @@ describe("authoritative Jenan PRO UI routes", () => {
           : path,
     );
     const implementedRoutes = AUTHORITATIVE_UI_ROUTES.map((route) => route.path);
+    const implementedRouteSet = new Set(implementedRoutes);
+    const missingCatalogRoutes = canonicalCatalogRoutes.filter((path) => !implementedRouteSet.has(path));
 
     expect(catalogRoutes).toHaveLength(152);
-    expect(implementedRoutes).toHaveLength(152);
-    expect(new Set(implementedRoutes).size).toBe(152);
-    expect([...implementedRoutes].sort()).toEqual(
-      [...canonicalCatalogRoutes].sort(),
-    );
+    expect(implementedRouteSet.size).toBe(implementedRoutes.length);
+    expect(missingCatalogRoutes).toEqual([]);
+    expect(implementedRoutes.length).toBeGreaterThan(canonicalCatalogRoutes.length);
     expect(implementedRoutes).not.toContain("/auth/login");
     expect(implementedRoutes).not.toContain("/auth/register");
+    expect(implementedRoutes).toContain("/user/interface");
+    expect(implementedRoutes).toContain("/projects/start/evaluation");
+    expect(implementedRoutes).toContain("/software/files/images-to-pdf");
   });
 
   it("never includes the permanently removed Funding section", () => {

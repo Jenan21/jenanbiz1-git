@@ -22,6 +22,15 @@ const legacyAdminPaths = [
   "/admin/ai", "/admin/agents", "/admin/audit", "/admin/health", "/admin/reports",
 ] as const;
 
+const legacyTalentPaths = [
+  "/talent/job/sample",
+  "/talent/apply/sample",
+  "/talent/employer/post",
+  "/talent/candidate/sample",
+  "/talent/search",
+  "/talent/reports",
+] as const;
+
 export const AUTHORITATIVE_UI_ROUTES: readonly AuthoritativeUiRoute[] = [
   ...["/auth", "/login", "/register", "/auth/forgot", "/user/onboarding"].map((path) => define(path, "auth")),
   define("/home", "home"),
@@ -37,6 +46,7 @@ export const AUTHORITATIVE_UI_ROUTES: readonly AuthoritativeUiRoute[] = [
   ...SOFTWARE_EXPERIENCE_ROUTES.map((route) => define(route.route, "software")),
   ...SOFTWARE_FLOW_ROUTES.map((route) => define(route.route, "software")),
   ...TALENT_FLOW_ROUTES.map((route) => define(route.route, "talent")),
+  ...legacyTalentPaths.map((path) => define(path, "talent")),
   ...MARKETING_FLOW_ROUTES.map((route) => define(route.route, "marketing")),
   ...ROBOTICS_FLOW_ROUTES.map((route) => define(route.route, "robotics")),
   ...legacyAdminPaths.map((path) => define(path, "admin")),

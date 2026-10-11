@@ -168,7 +168,7 @@ test.describe.serial("real authentication and server-side RBAC", () => {
     await page.getByLabel("Remember me").check();
     await Promise.all([
       page.waitForURL(/\/dashboard$/),
-      page.getByRole("button", { name: "Sign in", exact: true }).click(),
+      page.locator(".auth-form__submit").click(),
     ]);
     const remembered = await queryE2E<{ expiresAt: Date }>(
       'SELECT MAX(s."expiresAt") AS "expiresAt" FROM "Session" s JOIN "User" u ON u.id = s."userId" WHERE u.email = $1',
