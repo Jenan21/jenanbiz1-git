@@ -84,6 +84,19 @@
   padding: 0 8px;
   font-size: 0.54rem;
 }
+.project-command-header.is-flow {
+  grid-template-columns: 230px minmax(0, 1fr) auto;
+  min-height: 52px;
+}
+.project-command-header.is-flow .project-command-header__brand strong {
+  font-size: 1.25rem;
+}
+.project-command-header.is-flow .project-command-header__brand small {
+  font-size: 0.4rem;
+}
+.project-command-header.is-flow > nav {
+  visibility: hidden;
+}
 .project-command-subnav {
   display: flex;
   align-items: stretch;
@@ -117,6 +130,9 @@
 .project-command-subnav .icon {
   color: #0ee5ed;
 }
+.project-command-subnav.is-flow {
+  display: none;
+}
 .project-analysis-dashboard {
   min-height: 100dvh;
   overflow-x: hidden;
@@ -141,7 +157,7 @@
   position: relative;
   display: grid;
   grid-template-columns: 30% 50% 20%;
-  height: 198px;
+  height: 214px;
   overflow: hidden;
   border-bottom: 1px solid rgba(14, 195, 232, 0.4);
   background:

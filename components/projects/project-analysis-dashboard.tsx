@@ -157,7 +157,7 @@ export function ProjectAnalysisDashboard({
       data-project-analysis-source="USER_INPUT_REQUIRED"
       dir={ar ? "rtl" : "ltr"}
     >
-      <ProjectsCommandHeader active="analysis" locale={locale} userLabel={userLabel} />
+      <ProjectsCommandHeader active="analysis" compact locale={locale} userLabel={userLabel} />
 
       <section className="project-analysis-dashboard__hero">
         <div className="project-analysis-dashboard__hero-copy">

@@ -526,23 +526,54 @@ function ProgressScreen({
     {
       complete: completed,
       current: false,
-      title: t(ar, "اشتقاق النتائج والتوصيات", "Deriving results and recommendations"),
+      title: t(ar, "تقدير المخاطر والفرص", "Assessing risks and opportunities"),
+      note: t(ar, "قراءة القيود ومستوى اكتمال الأدلة", "Reviewing limitations and evidence coverage"),
+    },
+    {
+      complete: completed,
+      current: false,
+      title: t(ar, "توليد التوصيات", "Generating recommendations"),
       note: t(ar, "قواعد حتمية دون أرقام سوق افتراضية", "Deterministic rules without invented market figures"),
+    },
+  ];
+  const result = study.result;
+  const currentStep = steps.find((step) => step.current) ?? steps.at(-1)!;
+  const indicators = [
+    {
+      icon: "wallet" as IconName,
+      title: t(ar, "سجلات بيانات السوق", "Market data records"),
+      value: result ? String(result.sourceCount) : "—",
+      note: t(ar, "مصادر موثقة مرتبطة بالتحليل", "Verified sources linked to the analysis"),
+    },
+    {
+      icon: "people" as IconName,
+      title: t(ar, "المنافسون الذين تم تحليلهم", "Analyzed competitors"),
+      value: result?.competitorCount === null || result?.competitorCount === undefined ? "—" : String(result.competitorCount),
+      note: t(ar, "من نطاق البحث المتاح", "From the available search radius"),
+    },
+    {
+      icon: "trend" as IconName,
+      title: t(ar, "إشارات النمو المكتشفة", "Detected growth signals"),
+      value: "—",
+      note: t(ar, "تظهر عند توفر سلسلة زمنية موثقة", "Appears when a verified time series is available"),
+    },
+    {
+      icon: "shield" as IconName,
+      title: t(ar, "تنبيهات المخاطر", "Risk alerts"),
+      value: result ? levelLabel(result.dataRiskLevel, ar, false) : "—",
+      note: t(ar, "مستوى مخاطر البيانات الحالية", "Current data-risk level"),
     },
   ];
   return (
     <section className="pa-page pa-progress-page" data-testid="analysis-progress">
-      <header className="pa-page-heading is-centered">
+      <header className="pa-progress-hero">
         <div>
           <span><Icon name="activity" />{t(ar, "المرحلة الثانية", "Stage two")}</span>
-          <h1>{completed ? t(ar, "اكتمل تحليل المشروع", "Project analysis complete") : failed ? t(ar, "تعذر إكمال التحليل", "Analysis could not be completed") : t(ar, "جارٍ تحليل مشروعك", "Analyzing your project")}</h1>
-          <p>{completed ? t(ar, "حُفظت النتائج والمصادر والقيود ويمكنك الانتقال إلى التفاصيل.", "Results, sources, and limitations are saved and ready for review.") : failed ? study.error ?? t(ar, "حدث خطأ أثناء التحليل.", "An error occurred during analysis.") : t(ar, "نجمع البيانات الفعلية ونحوّلها إلى مؤشرات قابلة للمراجعة.", "We are collecting actual data and converting it into reviewable indicators.")}</p>
+          <h1>{completed ? t(ar, "اكتمل تحليل المشروع", "Project analysis complete") : failed ? t(ar, "تعذر إكمال التحليل", "Analysis could not be completed") : t(ar, "جاري تحليل المشروع", "Project analysis in progress")}</h1>
+          <h2>{t(ar, "يراجع النظام السوق والمنافسين والطلب والمخاطر", "The system is reviewing market, competition, demand, and risk")}</h2>
+          <p>{completed ? t(ar, "حُفظت النتائج والمصادر والقيود ويمكنك الانتقال إلى التفاصيل.", "Results, sources, and limitations are saved and ready for review.") : failed ? study.error ?? t(ar, "حدث خطأ أثناء التحليل.", "An error occurred during analysis.") : t(ar, "تتم معالجة المصادر الفعلية لإنتاج مؤشرات قابلة للمراجعة وتوصيات قابلة للتنفيذ.", "Actual sources are being processed into reviewable indicators and actionable recommendations.")}</p>
         </div>
       </header>
-      <div className={`pa-progress-orbit ${completed ? "is-complete" : failed ? "is-failed" : ""}`}>
-        <div><Icon name={completed ? "check" : failed ? "x" : "brain"} /><strong>{progress}%</strong><small>{completed ? t(ar, "مكتمل", "Complete") : failed ? t(ar, "متوقف", "Stopped") : t(ar, "قيد التنفيذ", "In progress")}</small></div>
-      </div>
-      <div className="pa-progress-track"><span style={{ width: `${progress}%` }} /></div>
       <div className="pa-progress-steps">
         {steps.map((step, index) => (
           <article className={step.complete ? "is-complete" : step.current ? "is-current" : ""} key={step.title}>
@@ -550,6 +581,48 @@ function ProgressScreen({
             <div><strong>{step.title}</strong><small>{step.note}</small></div>
           </article>
         ))}
+      </div>
+      <div className="pa-progress-dashboard">
+        <div className="pa-progress-indicators">
+          {indicators.map((indicator) => (
+            <article key={indicator.title}>
+              <Icon name={indicator.icon} />
+              <div>
+                <small>{indicator.title}</small>
+                <strong>{indicator.value}</strong>
+                <span>{indicator.note}</span>
+              </div>
+            </article>
+          ))}
+        </div>
+        <div className={`pa-progress-orbit ${completed ? "is-complete" : failed ? "is-failed" : ""}`}>
+          <div><Icon name={completed ? "check" : failed ? "x" : "brain"} /><strong>{progress}%</strong><small>{completed ? t(ar, "مكتمل", "Complete") : failed ? t(ar, "متوقف", "Stopped") : t(ar, "جاري التحليل", "Analyzing")}</small></div>
+        </div>
+        <div className="pa-progress-findings">
+          <h2><Icon name="sparkles" />{t(ar, "أبرز النتائج الأولية", "Key preliminary findings")}</h2>
+          {steps.slice(0, 4).map((step, index) => (
+            <span className={step.complete ? "is-complete" : step.current ? "is-current" : ""} key={step.title}>
+              <Icon name={index === 3 ? "shield" : index === 1 ? "people" : "trend"} />
+              <i><b>{step.title}</b><small>{step.note}</small></i>
+            </span>
+          ))}
+        </div>
+        <div className="pa-progress-log">
+          <h2>{t(ar, "سجل نشاط التحليل المباشر", "Live analysis activity")}</h2>
+          {steps.map((step, index) => (
+            <span className={step.complete ? "is-complete" : step.current ? "is-current" : ""} key={step.title}>
+              <b>{String(index + 1).padStart(2, "0")}</b>
+              <Icon name={step.complete ? "check" : "activity"} />
+              <small>{step.title}</small>
+            </span>
+          ))}
+        </div>
+        <div className="pa-progress-now">
+          <h2><Icon name="activity" />{t(ar, "ما الذي يحدث الآن", "What is happening now")}</h2>
+          <strong>{currentStep.title}</strong>
+          <p>{currentStep.note}</p>
+          <div className="pa-progress-track"><span style={{ width: `${progress}%` }} /></div>
+        </div>
       </div>
       <div className="pa-progress-actions">
         {completed ? <Link className="pa-primary-button" href={`/projects/analysis/details?project=${projectId}`}><Icon name="barChart" />{t(ar, "عرض التفاصيل", "View details")}</Link> : null}
@@ -983,7 +1056,7 @@ export function ProjectAnalysisWorkspace({
 
   return (
     <main className="project-analysis-workspace" data-analysis-route={route} dir={ar ? "rtl" : "ltr"}>
-      <ProjectsCommandHeader active="analysis" locale={locale} userLabel={userLabel} />
+      <ProjectsCommandHeader active="analysis" compact locale={locale} userLabel={userLabel} />
       {loading ? <div className="pa-loading"><Icon name="activity" />{t(ar, "جارٍ تحميل مساحة التحليل...", "Loading analysis workspace...")}</div> : projects.length === 0 ? <div className="pa-empty-state is-page"><Icon name="sparkles" /><h1>{t(ar, "ابدأ بأول تحليل مشروع", "Start your first project analysis")}</h1><p>{t(ar, "أدخل فكرة المشروع لإنشاء سجل تحليل حقيقي.", "Enter a project idea to create a real analysis record.")}</p><Link className="pa-primary-button" href="/projects/analysis">{t(ar, "البدء الآن", "Start now")}</Link></div> : selected ? <><ProjectToolbar ar={ar} onProjectChange={changeProject} projects={projects} selectedId={selectedId} /><StageNavigation active={activeStage} ar={ar} projectId={selected.id} />{message ? <p className="pa-global-message" role="alert">{message}</p> : null}{screen}</> : null}
     </main>
   );

@@ -38,10 +38,12 @@ function pick(value: Copy, locale: Locale) {
 
 export function ProjectsCommandHeader({
   active,
+  compact = false,
   locale,
   userLabel,
 }: {
   active: ProjectSection;
+  compact?: boolean;
   locale: Locale;
   userLabel: string;
 }) {
@@ -49,7 +51,7 @@ export function ProjectsCommandHeader({
 
   return (
     <>
-      <header className="project-command-header">
+      <header className={`project-command-header${compact ? " is-flow" : ""}`}>
         <Link className="project-command-header__brand" href="/dashboard">
           <strong>Jenan <b>PRO</b></strong>
           <small>{ar ? "مركز الأعمال الذكي" : "Intelligent Business Center"}</small>
@@ -78,7 +80,7 @@ export function ProjectsCommandHeader({
           <LogoutButton label={ar ? "خروج" : "Logout"} />
         </div>
       </header>
-      <nav className="project-command-subnav" aria-label={ar ? "خدمات المشاريع" : "Project services"}>
+      <nav className={`project-command-subnav${compact ? " is-flow" : ""}`} aria-label={ar ? "خدمات المشاريع" : "Project services"}>
         <Link href="/projects">{ar ? "المشاريع" : "Projects"} <Icon name="chevron" /></Link>
         {sections.map((section) => (
           <Link className={active === section.id ? "is-active" : undefined} href={section.href} key={section.id}>
