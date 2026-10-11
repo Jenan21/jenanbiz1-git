@@ -19,6 +19,7 @@ The two panel references are `462×725` and combine with the canonical homepage 
 - The surrounding public interface remains visible behind each centered translucent overlay.
 - Closing an authentication overlay returns to `/`.
 - Registration must show an IP-derived country flag and allow manual country selection.
+- On desktop, the sign-in panel uses the approved expanded `620×628` composition with the email, phone-soon, and Apple-soon method strip, while registration uses `532×725` so every required control remains visible. Compact screens recompose the same design within the `462×725` reference frame.
 - Production has one public interface, one Auth flow, one Auth component, and one Auth stylesheet. Compatibility aliases must reuse the same implementation.
 
 ## Integrity

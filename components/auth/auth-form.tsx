@@ -165,8 +165,22 @@ export function AuthForm({ mode, locale, labels }: AuthFormProps) {
   const searchParams = useSearchParams();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const ar = locale === "ar";
   const resetSucceeded =
     mode === "login" && searchParams.get("reset") === "success";
+  const methodCopy = ar
+    ? {
+        title: "طريقة تسجيل الدخول",
+        email: "البريد الإلكتروني",
+        phone: "الهاتف (قريبًا)",
+        apple: "Apple (قريبًا)",
+      }
+    : {
+        title: "Sign-in method",
+        email: "Email",
+        phone: "Phone OTP (soon)",
+        apple: "Apple (soon)",
+      };
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -344,6 +358,30 @@ export function AuthForm({ mode, locale, labels }: AuthFormProps) {
         </div>
       ) : (
         <>
+          <div
+            className="auth-methods"
+            role="group"
+            aria-label={methodCopy.title}
+          >
+            <span className="auth-method auth-method--active">
+              <Icon name="mail" />
+              {methodCopy.email}
+            </span>
+            <span
+              className="auth-method auth-method--disabled"
+              aria-disabled="true"
+            >
+              <Icon name="shield" />
+              {methodCopy.phone}
+            </span>
+            <span
+              className="auth-method auth-method--disabled"
+              aria-disabled="true"
+            >
+              <Icon name="sparkles" />
+              {methodCopy.apple}
+            </span>
+          </div>
           {resetSucceeded ? (
             <p className="auth-success" role="status">
               <Icon name="check" />

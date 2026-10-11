@@ -128,9 +128,9 @@ body:has(.access-page) nextjs-portal {
   z-index: 21;
   top: 50%;
   left: 50%;
-  width: min(462px, 100vw);
-  height: min(725px, 100dvh);
-  padding: 24px 29px 20px;
+  width: min(620px, calc(100vw - 32px));
+  height: min(628px, calc(100dvh - 32px));
+  padding: 26px 36px 20px;
   overflow-x: hidden;
   overflow-y: auto;
   border: 1px solid rgba(89, 243, 255, 0.72);
@@ -257,7 +257,7 @@ body:has(.access-page) nextjs-portal {
 
 .access-page[data-mode="login"] .access-page__form-panel .auth-form,
 .access-page[data-mode="login"] .access-page__alternate {
-  width: min(100%, 404px);
+  width: min(100%, 420px);
   margin-inline: auto;
 }
 
@@ -356,50 +356,50 @@ body:has(.access-page) nextjs-portal {
 }
 
 .access-page[data-mode="login"] .access-page__panel-brand {
-  transform: translate(-2px, 2px);
+  transform: none;
 }
 
 .access-page[data-mode="login"] .access-page__panel-brand strong {
-  font-size: 1.3rem;
+  font-size: 1.35rem;
 }
 
 .access-page[data-mode="login"] .access-page__form-panel h1 {
-  margin-top: 11px;
-  margin-bottom: 8px;
-  font-size: 2.62rem;
+  margin-top: 13px;
+  margin-bottom: 5px;
+  font-size: clamp(1.8rem, 2.5vw, 2.3rem);
 }
 
 .access-page[data-mode="login"] .access-page__form-panel > p {
-  margin-bottom: 26px;
+  margin-bottom: 24px;
 }
 
 .access-page[data-mode="login"] .access-page__form-panel .field {
-  gap: 3px;
+  gap: 7px;
 }
 
 .access-page[data-mode="login"] .access-page__form-panel .field__label {
-  font-weight: 500;
+  font-weight: 650;
 }
 
 .access-page[data-mode="login"] .access-page__form-panel .field__control {
-  height: 48px;
+  height: 50px;
 }
 
 .access-page[data-mode="login"] .auth-form__options {
-  margin-bottom: 8px;
-  transform: translateY(4px);
+  margin-bottom: 4px;
+  transform: none;
 }
 
 .access-page[data-mode="login"] .auth-form__options .text-button {
-  font-weight: 600;
+  font-weight: 700;
 }
 
 .access-page[data-mode="login"] .auth-form__submit {
-  transform: translateY(-1px);
+  transform: none;
 }
 
 .access-page[data-mode="login"] .access-page__alternate {
-  margin-top: 10px;
+  margin-top: 12px;
 }
 
 .access-page__form-panel h1::first-letter {
@@ -710,8 +710,8 @@ body:has(.access-page) nextjs-portal {
 
 .access-page[data-mode="register"] .access-page__form-panel {
   top: 50%;
-  width: min(462px, 100vw);
-  height: min(725px, 100dvh);
+  width: min(532px, calc(100vw - 32px));
+  height: min(725px, calc(100dvh - 32px));
   padding: 19px 28px 17px;
   background:
     linear-gradient(180deg, rgba(8, 16, 24, 0.5), rgba(8, 10, 18, 0.76)),

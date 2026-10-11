@@ -145,7 +145,7 @@ test.describe.serial("real authentication and server-side RBAC", () => {
       page.waitForURL(/\/auth$/),
       page.getByRole("button", { name: "Logout", exact: true }).click(),
     ]);
-    await page.getByRole("link", { name: "Recover access" }).click();
+    await page.getByRole("link", { name: "Forgot password?" }).click();
     await expect(page).toHaveURL(/\/auth\/forgot$/);
     await page.getByLabel("Email address").fill(canonicalFlowEmail);
     await page.getByRole("button", { name: "Send verification code" }).click();

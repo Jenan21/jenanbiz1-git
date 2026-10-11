@@ -270,8 +270,15 @@ for (const locale of ["ar", "en"] as const) {
             layout.viewportHeight + 1,
           );
           if (route.screen === "login" || route.screen === "register") {
-            const expectedWidth = Math.min(462, viewport.width);
-            const expectedHeight = Math.min(725, viewport.height);
+            const compact = viewport.width <= 700;
+            const expectedWidth = Math.min(
+              compact ? 462 : route.screen === "register" ? 532 : 620,
+              compact ? viewport.width : viewport.width - 32,
+            );
+            const expectedHeight = Math.min(
+              compact ? 725 : route.screen === "register" ? 725 : 628,
+              compact ? viewport.height : viewport.height - 32,
+            );
             expect(Math.round(layout.panel.left)).toBe(
               Math.round((viewport.width - expectedWidth) / 2),
             );
