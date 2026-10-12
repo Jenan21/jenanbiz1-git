@@ -3,11 +3,11 @@
 ## Authority
 
 - Treat `design-references/Jenan-PRO/EXECUTION_MASTER.md` and the three archives under `design-references/Jenan-PRO/` as the authoritative implementation references.
-- For the homepage, the only visual authority is `design-references/Jenan-PRO/APPROVED_HOME_REFERENCE/homepage.png`. It supersedes all older Home, landing, pre-entry, experimental, and alternate candidates.
+- For the homepage, the visual authority for the scene is `design-references/Jenan-PRO/APPROVED_HOME_REFERENCE/homepage.png`, and the final decisions in `APPROVED_HOME_REFERENCE/README.md` override it where they remove or replace elements. It supersedes all older Home, landing, pre-entry, experimental, and alternate candidates.
 - The canonical homepage is frozen after acceptance. Change it only to fix a verified regression or to implement a new explicit product decision.
-- For authentication panels, the only visual authorities are `design-references/Jenan-PRO/APPROVED_AUTH_REFERENCES/login.png` and `register.png`. They supersede Auth `reference.html`, `spec.txt`, and alternate/legacy candidates.
+- For authentication panels, the only visual authorities are `design-references/Jenan-PRO/APPROVED_AUTH_REFERENCES/login-1672x941.png` and `register-1448x1086.png`. They supersede Auth `reference.html`, `spec.txt`, and alternate/legacy candidates.
 - Keep exactly one production public interface, Auth flow, Auth component, and Auth stylesheet. `/` is pre-entry, `/auth` and `/login` are sign-in, and `/register` is account creation; compatibility aliases must reuse the same implementation.
-- The large left-side platform title shown in the historical pre-entry source is an intentionally removed element. Keep the approved Jenan PRO logo, but never restore a large repeated platform name there.
+- The pre-login page keeps its approved decisions: no large platform title, no top navigation/search/bell, no news/statistics/distribution strip, no lower trust-icon row, and no large circular auth entries. Never restore them. The bottom area is the service panels (one static panel every 7 seconds); the Auth entries are two small rectangular buttons under the globe.
 - The archives complement one another. Follow the newest detailed Jenan PRO page reference first, then its `reference.html`, `spec.txt`, and general blueprint.
 - Use legacy Jenan BIZ material only for visual direction. All new visible identity must read `Jenan PRO` or `جنان برو`.
 

@@ -60,7 +60,7 @@ test.describe
           "dir",
           locale === "ar" ? "rtl" : "ltr",
         );
-        await expect(page.locator(".access-page__form-panel")).toBeVisible();
+        await expect(page.locator("#access-panel")).toBeVisible();
         await expect(page.locator(".access-page")).toHaveAttribute(
           "data-auth-route",
           "/auth/forgot",
@@ -152,24 +152,24 @@ test.describe
       "data-auth-screen",
       "login",
     );
-    await expect(page.locator(".access-page__form-panel")).toBeVisible();
+    await expect(page.locator("#access-panel")).toBeVisible();
     await expect(page.locator('input[name="email"]')).toBeVisible();
     await page.locator(".access-page__panel-close").click();
     await expect(page).toHaveURL(/\/$/);
-    await expect(page.locator(".access-page__form-panel")).toHaveCount(0);
+    await expect(page.locator("#access-panel")).toHaveCount(0);
     await expect(
-      page.locator('.global-home__account[href="/auth"]'),
+      page.locator('.global-home__access a[href="/login"]'),
     ).toBeVisible();
     await expect(
-      page.locator('.global-home__button[href="/register"]'),
+      page.locator('.global-home__access a[href="/register"]'),
     ).toBeVisible();
-    await page.locator('.global-home__button[href="/register"]').click();
+    await page.locator('.global-home__access a[href="/register"]').click();
     await expect(page).toHaveURL(/\/register$/);
-    await expect(page.locator(".access-page__form-panel")).toBeVisible();
+    await expect(page.locator("#access-panel")).toBeVisible();
     await expect(page.locator('input[name="name"]')).toBeVisible();
     await page.locator(".access-page__panel-close").click();
     await expect(page).toHaveURL(/\/$/);
-    await expect(page.locator(".access-page__form-panel")).toHaveCount(0);
+    await expect(page.locator("#access-panel")).toHaveCount(0);
   });
 
   test("360x800 keeps extended registration and recovery states usable", async ({
@@ -190,11 +190,11 @@ test.describe
     await expect(page.getByLabel("رمز الدولة")).toBeVisible();
     await page.getByLabel("رمز الدولة").selectOption("SA");
     await expect(page.getByLabel("تأكيد كلمة المرور")).toBeVisible();
-    await page.getByText("عرض شروط الاستخدام", { exact: true }).click();
-    await expect(page.locator(".auth-form__terms-details p")).toBeVisible();
+    await page.getByRole("button", { name: "\u0627\u0644\u0634\u0631\u0648\u0637 \u0648\u0627\u0644\u0623\u062d\u0643\u0627\u0645" }).click();
+    await expect(page.locator("#auth-terms-body")).toBeVisible();
     const registrationLayout = await page.evaluate(() => {
       const panel = document
-        .querySelector<HTMLElement>(".access-page__form-panel")!
+        .querySelector<HTMLElement>("#access-panel")!
         .getBoundingClientRect();
       return {
         left: panel.left,

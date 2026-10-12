@@ -105,7 +105,7 @@ test.describe.serial("real authentication and server-side RBAC", () => {
     await expect(page).toHaveURL(/\/$/);
     await Promise.all([
       page.waitForURL(/\/register$/),
-      page.locator('.global-home__hero-actions a[href="/register"]').click(),
+      page.locator('.global-home__access a[href="/register"]').click(),
     ]);
 
     await page.getByLabel("Full name").fill("Canonical Auth User");
@@ -115,13 +115,13 @@ test.describe.serial("real authentication and server-side RBAC", () => {
       .getByLabel("Password", { exact: true })
       .fill(canonicalFlowPassword);
     await page.getByLabel("Confirm password").fill(canonicalFlowPassword);
-    await page.getByText("View terms of use", { exact: true }).click();
+    await page.getByRole("button", { name: "terms and conditions" }).click();
     await expect(
       page.getByText("I agree to provide accurate information", {
         exact: false,
       }),
     ).toBeVisible();
-    await page.getByLabel("I accept the terms and conditions").check();
+    await page.getByLabel("I accept the terms and conditions").check({ force: true });
     await Promise.all([
       page.waitForURL(/\/user\/onboarding$/),
       page.getByRole("button", { name: "Create account", exact: true }).click(),
@@ -161,14 +161,14 @@ test.describe.serial("real authentication and server-side RBAC", () => {
       "Your password was updated",
     );
 
-    await page.getByLabel("Email address").fill(canonicalFlowEmail);
+    await page.getByLabel("Username or email").fill(canonicalFlowEmail);
     await page
       .getByLabel("Password", { exact: true })
       .fill(canonicalFlowReplacement);
-    await page.getByLabel("Remember me").check();
+    await page.getByLabel("Remember me").check({ force: true });
     await Promise.all([
       page.waitForURL(/\/dashboard$/),
-      page.locator(".auth-form__submit").click(),
+      page.locator(".auth-primary").click(),
     ]);
     const remembered = await queryE2E<{ expiresAt: Date }>(
       'SELECT MAX(s."expiresAt") AS "expiresAt" FROM "Session" s JOIN "User" u ON u.id = s."userId" WHERE u.email = $1',

@@ -156,7 +156,7 @@ export async function getPlatformAdminSummary(): Promise<AdminSummary> {
   ];
 
   const growthChannels = [
-    { label: "روابط JenanBIZ النشطة", value: String(activeSocialLinks), detail: "قنوات اجتماعية مهيأة" },
+    { label: "روابط Jenan PRO النشطة", value: String(activeSocialLinks), detail: "قنوات اجتماعية مهيأة" },
     { label: "عضويات المجتمع", value: String(activeCommunityGrants), detail: "منح وصول نشطة" },
     { label: "حملات تسويق نشطة", value: String(activeCampaigns), detail: "من سجل الحملات" },
     { label: "إدراجات وفرص منشورة", value: String(publishedListings + publishedJobPostings), detail: "السوق والمواهب" },

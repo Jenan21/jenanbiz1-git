@@ -101,152 +101,62 @@ for (const locale of ["ar", "en"] as const) {
             ? "PASSWORD_RECOVERY_SERVICE"
             : "CANONICAL_PUBLIC_SCENE",
         );
-        await expect(page.locator(".global-home__hero")).toBeVisible();
-        await expect(page.locator(".global-home__hero-visual")).toBeVisible();
-        await expect(page.locator(".access-page__form-panel")).toBeVisible();
+        await expect(page.locator(".canonical-auth__background .global-home__stage")).toHaveCount(1);
+        await expect(page.locator(".canonical-auth__background .gateway-world-map")).toHaveCount(1);
+        await expect(page.locator("#access-panel")).toBeVisible();
+        await expect(page.locator("#access-page-title")).toBeVisible();
 
         if (route.screen === "login") {
-          await expect(page.locator(".access-page__form-panel")).toBeVisible();
           await expect(page.locator('input[name="email"]')).toBeVisible();
           await expect(page.locator('input[name="password"]')).toBeVisible();
-          await expect(page.locator('input[name="remember"]')).toBeVisible();
-          await expect(
-            page.locator(".access-page__form-panel .form-note"),
-          ).toBeVisible();
-          await expect(
-            page.locator('.access-page__form-panel a[href="/auth/forgot"]'),
-          ).toBeVisible();
-          if (viewport.name === "462x725") {
-            const emailControl = await page
-              .locator(".access-page__form-panel .field__control")
-              .first()
-              .boundingBox();
-            const submit = await page
-              .locator(".access-page__form-panel .auth-form__submit")
-              .boundingBox();
-            const alternate = await page
-              .locator('.access-page__alternate a[href="/register"]')
-              .boundingBox();
-            if (!emailControl || !submit || !alternate) {
-              throw new Error("Approved login controls should have a layout box");
-            }
-            expect(Math.round(emailControl.x)).toBe(29);
-            expect(Math.round(emailControl.width)).toBe(404);
-            expect(Math.round(emailControl.height)).toBe(48);
-            expect(Math.round(submit.width)).toBe(404);
-            expect(Math.round(alternate.height)).toBe(48);
-            expect(emailControl.y).toBeGreaterThan(0);
-            expect(submit.y).toBeGreaterThan(emailControl.y + emailControl.height);
-            expect(alternate.y).toBeGreaterThan(submit.y + submit.height);
-            expect(alternate.y + alternate.height).toBeLessThanOrEqual(
-              await page
-                .locator(".access-page__form-panel")
-                .evaluate((element) => element.scrollHeight),
-            );
-          }
+          await expect(page.locator('input[name="remember"]')).toBeAttached();
+          await expect(page.locator('#access-panel a[href="/auth/forgot"]')).toBeVisible();
+          await expect(page.locator('#access-panel a[href="/register"]')).toBeVisible();
+          await expect(page.locator(".auth-field")).toHaveCount(2);
         }
 
         if (route.screen === "register") {
-          await expect(page.locator(".access-page__form-panel")).toBeVisible();
-          for (const name of [
-            "name",
-            "email",
-            "countryCode",
-            "password",
-            "confirmPassword",
-            "terms",
-          ]) {
-            await expect(page.locator(`[name="${name}"]`)).toBeVisible();
+          for (const name of ["name", "email", "countryCode", "phone", "password", "confirmPassword", "terms"]) {
+            await expect(page.locator(`[name="${name}"]`)).toBeAttached();
           }
+          await expect(page.locator(".auth-field")).toHaveCount(5);
           const country = page.locator('select[name="countryCode"]');
           await expect(country).toHaveValue("SA");
-          await expect(page.locator(".auth-country__flag")).toHaveText("🇸🇦");
-          await expect(page.locator(".auth-country__selected strong")).toHaveText(
-            locale === "ar" ? "السعودية" : "Saudi Arabia",
-          );
-          await expect(page.locator(".auth-country__source i")).toHaveAttribute(
-            "data-source",
-            "network",
-          );
+          await expect(page.locator(".auth-country b")).toHaveText("SA");
           await country.selectOption("US");
-          await expect(page.locator(".auth-country__flag")).toHaveText("🇺🇸");
-          await expect(page.locator(".auth-country__selected strong")).toHaveText(
-            locale === "ar" ? "الولايات المتحدة" : "United States",
-          );
-          await expect(page.locator(".auth-country__source i")).toHaveAttribute(
-            "data-source",
-            "manual",
-          );
+          await expect(page.locator(".auth-country b")).toHaveText("US");
+          await expect(page.locator('#access-panel a[href="/auth"]')).toBeVisible();
         }
 
         if (route.screen === "forgot") {
-          await expect(page.locator(".access-page__form-panel")).toBeVisible();
-          await expect(
-            page.locator('.access-page__form-panel input[type="email"]'),
-          ).toBeVisible();
-          await expect(
-            page.locator('.access-page__form-panel form button[type="submit"]'),
-          ).toBeVisible();
-          await expect(
-            page.locator('.access-page__form-panel a[href="/auth"]'),
-          ).toHaveCount(1);
+          await expect(page.locator('#access-panel input[type="email"]')).toBeVisible();
+          await expect(page.locator('#access-panel form button[type="submit"]')).toBeVisible();
+          await expect(page.locator('#access-panel a[href="/auth"]')).toHaveCount(1);
         }
 
         const layout = await page.evaluate(() => {
-          const visible = Array.from(
-            document.querySelectorAll<HTMLElement>(
-              ".access-page__form-panel",
-            ),
-          ).filter((element) => element.checkVisibility());
-          const panelRoot = document.querySelector<HTMLElement>(
-            ".access-page__form-panel",
-          );
-          const panel = document
-            .querySelector<HTMLElement>(".access-page__form-panel")
-            ?.getBoundingClientRect();
+          const panel = document.querySelector<HTMLElement>("#access-panel")!.getBoundingClientRect();
+          const panelRoot = document.querySelector<HTMLElement>("#access-panel");
           const resources = performance
             .getEntriesByType("resource")
             .map((entry) => decodeURIComponent(entry.name));
           return {
-            clippedButtons: Array.from(
-              panelRoot?.querySelectorAll<HTMLElement>("button,a") ?? [],
-            )
+            clippedButtons: Array.from(panelRoot?.querySelectorAll<HTMLElement>("button,a") ?? [])
               .filter((element) => element.checkVisibility())
-              .some(
-                (element) => element.scrollWidth > element.clientWidth + 1,
-              ),
-            cityBackground: getComputedStyle(
-              document.querySelector<HTMLElement>(".global-home__hero")!,
-              "::before",
-            ).backgroundImage,
-            visualMapCount: document.querySelectorAll(
-              ".global-home__hero-visual .gateway-world-map",
-            ).length,
-            offscreen: visible.some((element) => {
-              const bounds = element.getBoundingClientRect();
-              return (
-                bounds.left < -1 ||
-                bounds.right > document.documentElement.clientWidth + 1
-              );
-            }),
-            panel: panel
-              ? {
-                  bottom: panel.bottom,
-                  height: panel.height,
-                  left: panel.left,
-                  right: panel.right,
-                  top: panel.top,
-                  width: panel.width,
-                }
-              : null,
+              .some((element) => element.scrollWidth > element.clientWidth + 1),
+            panel: {
+              bottom: panel.bottom,
+              height: panel.height,
+              left: panel.left,
+              right: panel.right,
+              top: panel.top,
+              width: panel.width,
+            },
             referenceLoaded: resources.some((resource) =>
-              /APPROVED_AUTH_REFERENCES|home_layout_REFERENCE_ONLY|login_candidate/.test(
-                resource,
-              ),
+              /APPROVED_AUTH_REFERENCES|login\.png|register\.png|popup_card/.test(resource),
             ),
             visibleDevPortal:
-              document.querySelector<HTMLElement>("nextjs-portal")
-                ?.checkVisibility() ?? false,
+              document.querySelector<HTMLElement>("nextjs-portal")?.checkVisibility() ?? false,
             scrollWidth: document.documentElement.scrollWidth,
             viewportHeight: document.documentElement.clientHeight,
             viewportWidth: document.documentElement.clientWidth,
@@ -254,41 +164,16 @@ for (const locale of ["ar", "en"] as const) {
         });
 
         expect(layout.scrollWidth).toBeLessThanOrEqual(layout.viewportWidth + 1);
-        expect(layout.offscreen).toBe(false);
         expect(layout.clippedButtons).toBe(false);
         expect(layout.referenceLoaded).toBe(false);
         expect(layout.visibleDevPortal).toBe(false);
-        expect(layout.cityBackground).toContain("global-city-night.jpg");
-        expect(layout.visualMapCount).toBe(1);
-        if (layout.panel) {
-          expect(layout.panel.left).toBeGreaterThanOrEqual(-1);
-          expect(layout.panel.right).toBeLessThanOrEqual(
-            layout.viewportWidth + 1,
-          );
-          expect(layout.panel.top).toBeGreaterThanOrEqual(-1);
-          expect(layout.panel.bottom).toBeLessThanOrEqual(
-            layout.viewportHeight + 1,
-          );
-          if (route.screen === "login" || route.screen === "register") {
-            const compact = viewport.width <= 700;
-            const expectedWidth = Math.min(
-              compact ? 462 : route.screen === "register" ? 532 : 620,
-              compact ? viewport.width : viewport.width - 32,
-            );
-            const expectedHeight = Math.min(
-              compact ? 725 : route.screen === "register" ? 725 : 628,
-              compact ? viewport.height : viewport.height - 32,
-            );
-            expect(Math.round(layout.panel.left)).toBe(
-              Math.round((viewport.width - expectedWidth) / 2),
-            );
-            expect(Math.round(layout.panel.top)).toBe(
-              Math.round((viewport.height - expectedHeight) / 2),
-            );
-            expect(Math.round(layout.panel.width)).toBe(expectedWidth);
-            expect(Math.round(layout.panel.height)).toBe(expectedHeight);
-          }
-        }
+        expect(layout.panel.left).toBeGreaterThanOrEqual(-1);
+        expect(layout.panel.right).toBeLessThanOrEqual(layout.viewportWidth + 1);
+        expect(layout.panel.top).toBeGreaterThanOrEqual(-1);
+        expect(layout.panel.bottom).toBeLessThanOrEqual(layout.viewportHeight + 1);
+        // the approved cards keep their proportions at every screen size
+        const ratio = route.screen === "register" ? 752 / 938 : 758 / 766;
+        expect(layout.panel.width / layout.panel.height).toBeCloseTo(ratio, 1);
       }
 
       if (

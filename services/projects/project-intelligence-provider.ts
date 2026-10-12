@@ -26,7 +26,7 @@ export class RetryingHttpProjectIntelligenceProvider implements ProjectIntellige
       try {
         const response = await this.fetcher(url, {
           signal: controller.signal,
-          headers: { accept: "application/json", "user-agent": "JenanBIZ-project-intelligence/1.0" },
+          headers: { accept: "application/json", "user-agent": "JenanPRO-project-intelligence/1.0" },
           cache: "no-store",
         });
         if (!response.ok) throw new Error(`External provider returned ${response.status}`);

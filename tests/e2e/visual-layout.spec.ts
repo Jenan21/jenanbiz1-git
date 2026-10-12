@@ -33,23 +33,17 @@ for (const path of ["/login", "/register"] as const) {
       locale === "ar" ? "rtl" : "ltr",
     );
     await expect(page.locator(".access-page")).toBeVisible();
-    await expect(page.locator(".global-home__brand")).toBeInViewport();
-    await expect(page.locator(".access-page__form-panel")).toBeInViewport();
-    await expect(page.locator(".access-page__form-panel form")).toBeVisible();
-    await expect(page.locator(".access-page__alternate a")).toHaveAttribute(
+    await expect(page.locator("#access-panel")).toBeInViewport();
+    await expect(page.locator("#access-panel form")).toBeVisible();
+    await expect(page.locator(".access-page__alt-link")).toHaveAttribute(
       "href",
       path === "/login" ? "/register" : "/auth",
     );
-    await expect(page.locator(".gateway-world-map__activity > g")).toHaveCount(2);
-    const activityRadii = await page
-      .locator(".gateway-world-map__activity-ring")
-      .evaluateAll((rings) => rings.map((ring) => Number(ring.getAttribute("r"))));
-    expect(activityRadii[0]).toBeGreaterThan(activityRadii[1]);
     const initialLayout = await page.evaluate(() => {
       const viewportHeight = document.documentElement.clientHeight;
       const selectors = [
-        ".access-page__form-panel",
-        ".access-page__form-panel form",
+        "#access-panel",
+        "#access-panel form",
       ];
       return selectors.flatMap((selector) =>
         [...document.querySelectorAll<HTMLElement>(selector)]
@@ -64,7 +58,7 @@ for (const path of ["/login", "/register"] as const) {
       const viewportWidth = document.documentElement.clientWidth;
       const selectors = [
         "form",
-        ".access-page__form-panel",
+        "#access-panel",
       ];
       const violations = selectors.flatMap((selector) =>
         [...document.querySelectorAll<HTMLElement>(selector)]
@@ -91,23 +85,10 @@ for (const path of ["/login", "/register"] as const) {
     expect(layout.scrollWidth).toBeLessThanOrEqual(layout.viewportWidth);
     expect(layout.violations).toEqual([]);
 
-    if (testInfo.project.metadata.viewportKind !== "tablet" &&
-        testInfo.project.metadata.viewportKind !== "mobile") {
-      const composition = await page.evaluate(() => {
-        const hero = document.querySelector<HTMLElement>(".global-home__hero");
-        return {
-          cityAsset: hero
-            ? getComputedStyle(hero, "::before").backgroundImage
-            : "",
-        };
-      });
-      expect(composition.cityAsset).toContain("global-city-night.jpg");
-    }
-
     if (path === "/login") {
       const password = page.locator('input[name="password"]');
       await expect(password).toHaveAttribute("type", "password");
-      await page.locator(".field:has(input[name='password']) .field__action").click();
+      await page.locator(".auth-field__toggle").click();
       await expect(password).toHaveAttribute("type", "text");
     } else {
       await expect(page.locator('input[name="name"]')).toBeVisible();
@@ -115,13 +96,13 @@ for (const path of ["/login", "/register"] as const) {
       await page.locator('input[name="name"]').fill("Visual Test User");
       await page.locator('input[name="email"]').fill("visual@example.test");
       await expect(page.locator('input[name="confirmPassword"]')).toBeVisible();
-      await expect(page.locator('input[name="terms"]')).toBeVisible();
+      await expect(page.locator('input[name="terms"]')).toBeAttached();
       await page.locator('select[name="countryCode"]').selectOption("SA");
       await page.locator('input[name="password"]').fill("Correct-Horse-2026!");
       await page.locator('input[name="confirmPassword"]').fill("Different-Horse-2026!");
-      await page.locator('input[name="terms"]').check();
-      await page.locator(".auth-form__step:not([hidden]) .auth-form__submit").click();
-      await expect(page.locator(".auth-error")).toContainText(
+      await page.locator('input[name="terms"]').check({ force: true });
+      await page.locator(".auth-primary").click();
+      await expect(page.locator(".auth-hint")).toContainText(
         locale === "ar"
           ? "كلمتا المرور غير متطابقتين"
           : "Passwords do not match",

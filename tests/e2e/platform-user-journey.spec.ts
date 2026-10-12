@@ -64,19 +64,18 @@ test.describe.serial("real Jenan Pro user journey", () => {
     await page.goto("/register");
     await page.getByLabel("Full name").fill(e2eIdentity.user.displayName);
     await page.getByLabel("Email address").fill(e2eIdentity.user.email);
-    await page.getByRole("button", { name: "Continue", exact: true }).click();
     await page.getByLabel("Country code").selectOption("SA");
     await page
       .getByLabel("Password", { exact: true })
       .fill(e2eIdentity.user.password);
     await page.getByLabel("Confirm password").fill(e2eIdentity.user.password);
-    await page.getByLabel("I accept the terms and conditions").check();
+    await page.getByLabel("I accept the terms and conditions").check({ force: true });
     await Promise.all([
       page.waitForURL(/\/user\/onboarding$/),
       page.locator(".auth-form button[type=submit]").click(),
     ]);
     await page.getByLabel("Account type").selectOption("ORGANIZATION");
-    await page.getByLabel("Country code").selectOption("SA");
+    await page.getByLabel("Country code").fill("SA");
     await page.getByLabel("City").fill("Riyadh");
     await page.getByLabel("Projects").check();
     await page.getByLabel("Market", { exact: true }).check();
@@ -128,7 +127,7 @@ test.describe.serial("real Jenan Pro user journey", () => {
       "Your password was updated",
     );
 
-    await page.getByLabel("Email address").fill(e2eIdentity.user.email);
+    await page.getByLabel("Username or email").fill(e2eIdentity.user.email);
     await page
       .getByLabel("Password", { exact: true })
       .fill(replacementPassword);

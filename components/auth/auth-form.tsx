@@ -1,12 +1,30 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useRef, useState, type FormEvent } from "react";
+import {
+  useEffect,
+  useRef,
+  useState,
+  type FormEvent,
+  type ReactNode,
+} from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import countries from "world-countries";
-import { Button } from "@/components/ui/button";
-import { Icon } from "@/components/ui/icons";
-import { Input } from "@/components/ui/input";
+import {
+  AuthAlertIcon,
+  AuthCheckIcon,
+  AuthChevronIcon,
+  AuthEyeIcon,
+  AuthEyeOffIcon,
+  AuthGlobeIcon,
+  AuthInfoIcon,
+  AuthLockIcon,
+  AuthLoginIcon,
+  AuthMailIcon,
+  AuthPhoneIcon,
+  AuthUserIcon,
+  AuthUserPlusIcon,
+} from "@/components/auth/auth-icons";
 import type { Locale } from "@/types/i18n";
 
 interface AuthFormProps {
@@ -26,11 +44,17 @@ interface AuthFormProps {
   };
 }
 
+function dialCodeOf(idd: { root: string; suffixes: string[] }) {
+  if (!idd.root) return "";
+  return idd.suffixes.length === 1 ? `${idd.root}${idd.suffixes[0]}` : idd.root;
+}
+
 const countryOptions = countries
   .filter((country) => country.cca2)
   .map((country) => ({
     ar: country.translations.ara?.common ?? country.name.common,
     code: country.cca2.toUpperCase(),
+    dial: dialCodeOf(country.idd),
     en: country.name.common,
   }));
 
@@ -43,34 +67,152 @@ const countriesByLocale = {
   ),
 };
 
-function countryFlag(countryCode: string) {
-  return String.fromCodePoint(
-    ...countryCode
-      .toUpperCase()
-      .split("")
-      .map((character) => 127397 + character.charCodeAt(0)),
+/** Builds the E.164 number the API expects from what the user typed. */
+function toE164(raw: string, dial: string) {
+  const compact = raw.replace(/[\s().-]/g, "");
+  if (!compact) return undefined;
+  if (compact.startsWith("+")) return compact;
+  if (compact.startsWith("00")) return `+${compact.slice(2)}`;
+  return `${dial}${compact.replace(/^0+/, "")}`;
+}
+
+function PasswordField({
+  autoComplete,
+  disabled,
+  icon,
+  label,
+  name,
+  placeholder,
+  showLabel,
+  hideLabel,
+  slot,
+  minLength,
+}: {
+  autoComplete: string;
+  disabled: boolean;
+  icon: ReactNode;
+  label: string;
+  name: string;
+  placeholder: string;
+  showLabel: string;
+  hideLabel: string;
+  slot: string;
+  minLength?: number;
+}) {
+  const [visible, setVisible] = useState(false);
+  return (
+    <div className="auth-field" data-slot={slot}>
+      <span className="auth-field__icon">{icon}</span>
+      <input
+        aria-label={label}
+        autoComplete={autoComplete}
+        className="auth-field__input"
+        disabled={disabled}
+        id={`auth-${name}`}
+        maxLength={128}
+        minLength={minLength}
+        name={name}
+        placeholder={placeholder}
+        required
+        type={visible ? "text" : "password"}
+      />
+      <button
+        type="button"
+        className="auth-field__toggle"
+        aria-label={visible ? hideLabel : showLabel}
+        aria-pressed={visible}
+        onClick={() => setVisible((value) => !value)}
+      >
+        {visible ? <AuthEyeOffIcon /> : <AuthEyeIcon />}
+      </button>
+    </div>
   );
 }
 
-function CountrySelector({
+function CheckBox({
+  children,
   disabled,
   label,
-  locale,
+  name,
+  required,
 }: {
+  children: ReactNode;
   disabled: boolean;
-  label: string;
-  locale: Locale;
+  label?: string;
+  name: string;
+  required?: boolean;
 }) {
-  const changedByUser = useRef(false);
-  const [countryCode, setCountryCode] = useState(locale === "ar" ? "SA" : "US");
-  const [source, setSource] = useState<"default" | "manual" | "network">(
-    "default",
+  return (
+    <label className="auth-check">
+      <input
+        aria-label={label}
+        disabled={disabled}
+        name={name}
+        required={required}
+        type="checkbox"
+      />
+      <span className="auth-check__box">
+        <AuthCheckIcon />
+      </span>
+      <span className="auth-check__text">{children}</span>
+    </label>
   );
+}
+
+export function AuthForm({ mode, locale, labels }: AuthFormProps) {
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [termsOpen, setTermsOpen] = useState(false);
+  const [countryCode, setCountryCode] = useState(locale === "ar" ? "SA" : "US");
+  const changedByUser = useRef(false);
+  const ar = locale === "ar";
+  const registering = mode === "register";
+  const resetSucceeded =
+    mode === "login" && searchParams.get("reset") === "success";
   const selectedCountry = countriesByLocale[locale].find(
     (country) => country.code === countryCode,
   );
+  const dial = selectedCountry?.dial || "+966";
+  const copy = ar
+    ? {
+        identifier: "اسم المستخدم أو البريد الإلكتروني",
+        confirm: "تأكيد كلمة المرور",
+        phone: "رقم الجوال",
+        phoneTag: "رمز الدولة / رقم الجوال",
+        terms: "الشروط والأحكام",
+        agree: "أوافق على",
+        termsBody:
+          "أتعهد باستخدام بيانات صحيحة، وحماية بيانات الدخول، وعدم إساءة استخدام خدمات المنصة أو بيانات الآخرين.",
+        show: "إظهار كلمة المرور",
+        hide: "إخفاء كلمة المرور",
+        mismatch: "كلمتا المرور غير متطابقتين.",
+        acceptTerms: "يجب الموافقة على الشروط والأحكام.",
+        badPhone: "رقم الجوال غير صالح. مثال: +966 50 123 4567",
+        emailOnly: "تسجيل الدخول متاح حاليًا بالبريد الإلكتروني فقط.",
+        resetDone: "تم تحديث كلمة المرور. يمكنك تسجيل الدخول الآن.",
+      }
+    : {
+        identifier: "Username or email",
+        confirm: "Confirm password",
+        phone: "Mobile number",
+        phoneTag: "Country code / mobile number",
+        terms: "terms and conditions",
+        agree: "I agree to the",
+        termsBody:
+          "I agree to provide accurate information, protect my access credentials, and avoid misuse of platform services or other users' data.",
+        show: "Show password",
+        hide: "Hide password",
+        mismatch: "Passwords do not match.",
+        acceptTerms: "You must accept the terms and conditions.",
+        badPhone: "Invalid mobile number. Example: +966 50 123 4567",
+        emailOnly: "Sign-in currently works with your email address only.",
+        resetDone: "Your password was updated. You can sign in now.",
+      };
 
   useEffect(() => {
+    if (!registering) return;
     const controller = new AbortController();
     async function detectCountry() {
       try {
@@ -78,10 +220,7 @@ function CountrySelector({
           cache: "no-store",
           signal: controller.signal,
         });
-        const payload = (await response.json()) as {
-          countryCode?: string;
-          source?: "default" | "network";
-        };
+        const payload = (await response.json()) as { countryCode?: string };
         if (
           response.ok &&
           payload.countryCode &&
@@ -91,135 +230,55 @@ function CountrySelector({
           !changedByUser.current
         ) {
           setCountryCode(payload.countryCode);
-          setSource(payload.source === "network" ? "network" : "default");
         }
-      } catch (error) {
-        if (!(error instanceof DOMException && error.name === "AbortError")) {
-          setSource("default");
-        }
+      } catch {
+        // Keep the default country when detection is unavailable.
       }
     }
     void detectCountry();
     return () => controller.abort();
-  }, []);
-
-  return (
-    <div className="field auth-country">
-      <label className="field__label" htmlFor="auth-country-code">
-        {label}
-      </label>
-      <div className="auth-country__control">
-        <span className="auth-country__selector">
-          <Icon name="chevron" />
-          <span className="auth-country__selected" aria-hidden="true">
-            <strong>{selectedCountry?.[locale]}</strong>
-            <small>
-              {locale === "ar"
-                ? "يمكنك تغيير الدولة"
-                : "You can change country"}
-            </small>
-          </span>
-          <span className="auth-country__flag" aria-hidden="true">
-            {countryFlag(countryCode)}
-          </span>
-          <select
-            id="auth-country-code"
-            aria-label={label}
-            disabled={disabled}
-            name="countryCode"
-            value={countryCode}
-            onChange={(event) => {
-              changedByUser.current = true;
-              setCountryCode(event.target.value);
-              setSource("manual");
-            }}
-          >
-            {countriesByLocale[locale].map((country) => (
-              <option key={country.code} value={country.code}>
-                {countryFlag(country.code)} {country[locale]}
-              </option>
-            ))}
-          </select>
-        </span>
-        <span className="auth-country__source" aria-live="polite">
-          <i data-source={source} />
-          {source === "network"
-            ? locale === "ar"
-              ? "تم التعرف عبر عنوان IP"
-              : "Detected from your IP"
-            : source === "manual"
-              ? locale === "ar"
-                ? "اختيارك اليدوي"
-                : "Your manual choice"
-              : locale === "ar"
-                ? "يمكنك تغيير الدولة"
-                : "You can change the country"}
-        </span>
-      </div>
-    </div>
-  );
-}
-
-export function AuthForm({ mode, locale, labels }: AuthFormProps) {
-  const router = useRouter();
-  const searchParams = useSearchParams();
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const ar = locale === "ar";
-  const resetSucceeded =
-    mode === "login" && searchParams.get("reset") === "success";
-  const methodCopy = ar
-    ? {
-        title: "طريقة تسجيل الدخول",
-        email: "البريد الإلكتروني",
-        phone: "الهاتف (قريبًا)",
-        apple: "Apple (قريبًا)",
-      }
-    : {
-        title: "Sign-in method",
-        email: "Email",
-        phone: "Phone OTP (soon)",
-        apple: "Apple (soon)",
-      };
+  }, [registering]);
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setError(null);
     const form = new FormData(event.currentTarget);
-    if (mode === "register") {
+    const phone = registering
+      ? toE164(String(form.get("phone") ?? ""), dial)
+      : undefined;
+    if (registering) {
       if (form.get("password") !== form.get("confirmPassword")) {
-        setError(
-          locale === "ar"
-            ? "كلمتا المرور غير متطابقتين."
-            : "Passwords do not match.",
-        );
+        setError(copy.mismatch);
+        return;
+      }
+      if (phone && !/^\+[1-9]\d{6,14}$/.test(phone)) {
+        setError(copy.badPhone);
         return;
       }
       if (form.get("terms") !== "on") {
-        setError(
-          locale === "ar"
-            ? "يجب الموافقة على الشروط والأحكام."
-            : "You must accept the terms and conditions.",
-        );
+        setError(copy.acceptTerms);
         return;
       }
+    } else if (!String(form.get("email") ?? "").includes("@")) {
+      setError(labels.errors.EMAIL_ONLY ?? copy.emailOnly);
+      return;
     }
     setLoading(true);
-    const payload =
-      mode === "register"
-        ? {
-            displayName: form.get("name"),
-            email: form.get("email"),
-            password: form.get("password"),
-            countryCode: form.get("countryCode"),
-            locale,
-            language: locale,
-          }
-        : {
-            email: form.get("email"),
-            password: form.get("password"),
-            remember: form.get("remember") === "on",
-          };
+    const payload = registering
+      ? {
+          displayName: form.get("name"),
+          email: form.get("email"),
+          password: form.get("password"),
+          countryCode: form.get("countryCode"),
+          ...(phone ? { phone } : {}),
+          locale,
+          language: locale,
+        }
+      : {
+          email: String(form.get("email") ?? "").trim(),
+          password: form.get("password"),
+          remember: form.get("remember") === "on",
+        };
     try {
       const response = await fetch(`/api/auth/${mode}`, {
         method: "POST",
@@ -235,12 +294,11 @@ export function AuthForm({ mode, locale, labels }: AuthFormProps) {
         return;
       }
       const requested = searchParams.get("next");
-      const destination =
-        mode === "register"
-          ? "/user/onboarding"
-          : requested?.startsWith("/") && !requested.startsWith("//")
-            ? requested
-            : "/dashboard";
+      const destination = registering
+        ? "/user/onboarding"
+        : requested?.startsWith("/") && !requested.startsWith("//")
+          ? requested
+          : "/dashboard";
       router.replace(destination);
       router.refresh();
     } catch {
@@ -249,202 +307,231 @@ export function AuthForm({ mode, locale, labels }: AuthFormProps) {
     }
   }
 
+  const primaryLabel = loading ? labels.loading : labels.submit;
+
+  if (!registering) {
+    return (
+      <form
+        id="auth-login-form"
+        className="auth-form"
+        onSubmit={handleSubmit}
+        aria-busy={loading}
+      >
+        <label
+          className="auth-label"
+          data-slot="user"
+          htmlFor="auth-login-identifier"
+        >
+          {copy.identifier}
+        </label>
+        <div className="auth-field" data-slot="user">
+          <span className="auth-field__icon">
+            <AuthUserIcon />
+          </span>
+          <input
+            autoComplete="username"
+            className="auth-field__input"
+            disabled={loading}
+            id="auth-login-identifier"
+            inputMode="email"
+            name="email"
+            placeholder={copy.identifier}
+            required
+            spellCheck={false}
+            type="text"
+          />
+        </div>
+        <label className="auth-label" data-slot="password" htmlFor="auth-password">
+          {labels.password}
+        </label>
+        <PasswordField
+          autoComplete="current-password"
+          disabled={loading}
+          hideLabel={copy.hide}
+          icon={<AuthLockIcon />}
+          label={labels.password}
+          name="password"
+          placeholder={labels.password}
+          showLabel={copy.show}
+          slot="password"
+        />
+        <div className="auth-options">
+          <CheckBox disabled={loading} name="remember">
+            {labels.remember}
+          </CheckBox>
+          <Link href="/auth/forgot" className="auth-options__forgot">
+            {labels.forgot}
+          </Link>
+        </div>
+        {error ? (
+          <p className="auth-status" data-state="error" role="alert">
+            <AuthAlertIcon />
+            {error}
+          </p>
+        ) : resetSucceeded ? (
+          <p className="auth-status" data-state="success" role="status">
+            <AuthCheckIcon />
+            {copy.resetDone}
+          </p>
+        ) : null}
+        <button
+          type="submit"
+          className="auth-primary"
+          disabled={loading}
+        >
+          <AuthLoginIcon />
+          <span>{primaryLabel}</span>
+        </button>
+      </form>
+    );
+  }
+
   return (
     <form
-      id={`auth-${mode}-form`}
+      id="auth-register-form"
       className="auth-form"
       onSubmit={handleSubmit}
       aria-busy={loading}
     >
-      {mode === "register" ? (
-        <div className="auth-form__step auth-form__step--all">
-          <Input
-            label={labels.name}
-            name="name"
-            autoComplete="name"
-            placeholder={labels.name}
-            required
+      <div className="auth-field" data-slot="name">
+        <span className="auth-field__icon">
+          <AuthUserIcon />
+        </span>
+        <input
+          aria-label={labels.name}
+          autoComplete="name"
+          className="auth-field__input"
+          disabled={loading}
+          id="auth-name"
+          name="name"
+          placeholder={labels.name}
+          required
+          type="text"
+        />
+      </div>
+      <div className="auth-field" data-slot="email">
+        <span className="auth-field__icon">
+          <AuthMailIcon />
+        </span>
+        <input
+          aria-label={labels.email}
+          autoComplete="email"
+          className="auth-field__input"
+          disabled={loading}
+          id="auth-email"
+          name="email"
+          placeholder={labels.email}
+          required
+          spellCheck={false}
+          type="email"
+        />
+      </div>
+      <div className="auth-field auth-field--phone" data-slot="phone">
+        <span className="auth-field__icon">
+          <AuthPhoneIcon />
+        </span>
+        <span className="auth-country">
+          <AuthGlobeIcon />
+          <b>{countryCode}</b>
+          <AuthChevronIcon />
+          <select
+            aria-label={labels.countryCode}
             disabled={loading}
-            icon={<Icon name="user" />}
-          />
-          <Input
-            label={labels.email}
-            name="email"
-            type="email"
-            autoComplete="email"
-            placeholder={labels.email}
-            required
-            disabled={loading}
-            icon={<Icon name="mail" />}
-          />
-          <CountrySelector
-            disabled={loading}
-            label={labels.countryCode}
-            locale={locale}
-          />
-          <Input
-            label={labels.password}
-            name="password"
-            type="password"
-            autoComplete="new-password"
-            placeholder={labels.password}
-            required
-            minLength={12}
-            maxLength={128}
-            disabled={loading}
-            icon={<Icon name="lock" />}
-          />
-          <Input
-            label={locale === "ar" ? "تأكيد كلمة المرور" : "Confirm password"}
-            name="confirmPassword"
-            type="password"
-            autoComplete="new-password"
-            placeholder={
-              locale === "ar" ? "تأكيد كلمة المرور" : "Confirm password"
-            }
-            required
-            minLength={12}
-            maxLength={128}
-            disabled={loading}
-            icon={<Icon name="lock" />}
-          />
-          <div className="auth-form__terms-field">
-            <label className="checkbox auth-form__terms">
-              <input
-                name="terms"
-                type="checkbox"
-                required
-                disabled={loading}
-                aria-label={
-                  locale === "ar"
-                    ? "أوافق على الشروط والأحكام"
-                    : "I accept the terms and conditions"
-                }
-              />
-              <span>
-                {locale === "ar"
-                  ? "أوافق على الشروط والأحكام"
-                  : "I agree to the terms and conditions"}
-              </span>
-            </label>
-            <details className="auth-form__terms-details">
-              <summary>
-                {locale === "ar" ? "عرض شروط الاستخدام" : "View terms of use"}
-              </summary>
-              <p>
-                {locale === "ar"
-                  ? "أتعهد باستخدام بيانات صحيحة، وحماية بيانات الدخول، وعدم إساءة استخدام خدمات المنصة أو بيانات الآخرين."
-                  : "I agree to provide accurate information, protect my access credentials, and avoid misuse of platform services or other users' data."}
-              </p>
-            </details>
-          </div>
-          <p className="form-note">
-            <Icon name="shield" />
-            {labels.note}
-          </p>
-          {error && (
-            <p className="auth-error" role="alert">
-              {error}
-            </p>
-          )}
-          <Button
-            type="submit"
-            className="auth-form__submit"
-            disabled={loading}
+            name="countryCode"
+            value={countryCode}
+            onChange={(event) => {
+              changedByUser.current = true;
+              setCountryCode(event.target.value);
+            }}
           >
-            {loading ? labels.loading : labels.submit}
-            <Icon name="arrow" />
-          </Button>
-        </div>
-      ) : (
-        <>
-          <div
-            className="auth-methods"
-            role="group"
-            aria-label={methodCopy.title}
-          >
-            <span className="auth-method auth-method--active">
-              <Icon name="mail" />
-              {methodCopy.email}
-            </span>
-            <span
-              className="auth-method auth-method--disabled"
-              aria-disabled="true"
-            >
-              <Icon name="shield" />
-              {methodCopy.phone}
-            </span>
-            <span
-              className="auth-method auth-method--disabled"
-              aria-disabled="true"
-            >
-              <Icon name="sparkles" />
-              {methodCopy.apple}
-            </span>
-          </div>
-          {resetSucceeded ? (
-            <p className="auth-success" role="status">
-              <Icon name="check" />
-              {locale === "ar"
-                ? "تم تحديث كلمة المرور. يمكنك تسجيل الدخول الآن."
-                : "Your password was updated. You can sign in now."}
-            </p>
-          ) : null}
-          <Input
-            label={labels.email}
-            name="email"
-            type="email"
-            autoComplete="email"
-            required
-            disabled={loading}
-            icon={<Icon name="mail" />}
-          />
-          <Input
-            label={labels.password}
-            name="password"
-            type="password"
-            autoComplete="current-password"
-            required
-            minLength={1}
-            maxLength={128}
-            disabled={loading}
-            icon={<Icon name="lock" />}
-          />
-        </>
-      )}
-      {mode === "login" && (
-        <div className="auth-form__options">
-          <label className="checkbox">
-            <input name="remember" type="checkbox" disabled={loading} />
-            <span>{labels.remember}</span>
-          </label>
-          <Link href="/auth/forgot" className="text-button">
-            {labels.forgot}
-          </Link>
-        </div>
-      )}
-      {mode === "login" && error && (
-        <p className="auth-error" role="alert">
-          <Icon name="x" />
+            {countriesByLocale[locale].map((country) => (
+              <option key={country.code} value={country.code}>
+                {country[locale]} {country.dial ? `(${country.dial})` : ""}
+              </option>
+            ))}
+          </select>
+        </span>
+        <input
+          aria-label={copy.phone}
+          autoComplete="tel"
+          className="auth-field__input"
+          dir="ltr"
+          disabled={loading}
+          id="auth-phone"
+          inputMode="tel"
+          name="phone"
+          placeholder={`${dial} 50 123 4567`}
+          type="tel"
+        />
+        <span className="auth-field__tag" aria-hidden="true">
+          {copy.phoneTag}
+        </span>
+      </div>
+      <PasswordField
+        autoComplete="new-password"
+        disabled={loading}
+        hideLabel={copy.hide}
+        icon={<AuthLockIcon />}
+        label={labels.password}
+        minLength={12}
+        name="password"
+        placeholder={labels.password}
+        showLabel={copy.show}
+        slot="password"
+      />
+      <PasswordField
+        autoComplete="new-password"
+        disabled={loading}
+        hideLabel={copy.hide}
+        icon={<AuthLockIcon />}
+        label={copy.confirm}
+        minLength={12}
+        name="confirmPassword"
+        placeholder={copy.confirm}
+        showLabel={copy.show}
+        slot="confirm"
+      />
+      {error ? (
+        <p className="auth-hint" data-state="error" role="alert">
+          <AuthAlertIcon />
           {error}
         </p>
+      ) : termsOpen ? (
+        <p className="auth-hint" data-state="terms" id="auth-terms-body">
+          {copy.termsBody}
+        </p>
+      ) : (
+        <p className="auth-hint">
+          <AuthInfoIcon />
+          {labels.note}
+        </p>
       )}
-      {mode === "login" && (
-        <>
-          <Button
-            type="submit"
-            className="auth-form__submit"
-            disabled={loading}
+      <div className="auth-terms">
+        <CheckBox
+          disabled={loading}
+          label={ar ? "أوافق على الشروط والأحكام" : "I accept the terms and conditions"}
+          name="terms"
+          required
+        >
+          {copy.agree}{" "}
+          <button
+            type="button"
+            aria-controls="auth-terms-body"
+            aria-expanded={termsOpen}
+            className="auth-terms__link"
+            onClick={(event) => {
+              event.preventDefault();
+              setTermsOpen((open) => !open);
+            }}
           >
-            {loading ? labels.loading : labels.submit}
-            <Icon name="arrow" />
-          </Button>
-          <p className="form-note">
-            <Icon name="shield" />
-            {labels.note}
-          </p>
-        </>
-      )}
+            {copy.terms}
+          </button>
+        </CheckBox>
+      </div>
+      <button type="submit" className="auth-primary" disabled={loading}>
+        <AuthUserPlusIcon />
+        <span>{primaryLabel}</span>
+      </button>
     </form>
   );
 }
