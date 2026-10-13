@@ -18,7 +18,9 @@ import {
   JenanLeafMark,
 } from "@/components/auth/auth-icons";
 import { PasswordRecoveryForm } from "@/components/auth/password-recovery-form";
+import { SocialAuth } from "@/components/auth/social-auth";
 import { GlobalCommandHome } from "@/components/home/global-command-home";
+import type { OAuthProviderId } from "@/lib/auth/oauth/shared";
 import type { PlatformModuleDefinition } from "@/lib/platform/catalog";
 import type { Locale } from "@/types/i18n";
 
@@ -28,13 +30,16 @@ interface CanonicalAuthAccessPageProps {
   modules: readonly PlatformModuleDefinition[];
   labels?: ComponentProps<typeof AuthForm>["labels"];
   recovery?: boolean;
+  /** Which social sign-in providers the server is configured for. */
+  oauth?: Record<OAuthProviderId, boolean>;
 }
 
-// Native card size of each approved reference, the scale at which the user saw it
-// on a 768px-tall screen, and how far the card sits below / beside the screen centre.
+// Native card width of each approved reference and the scale at which the user saw it on a
+// 768px-tall screen. The heights are the reference heights plus the row of Google / Apple buttons
+// (70px), and the cards sit centred (a small offset below / beside the screen centre).
 const CARD = {
-  login: { width: 758, height: 766, scale: 0.8163, down: 30.5, right: 3 },
-  register: { width: 752, height: 938, scale: 0.7072, down: 12, right: 0 },
+  login: { width: 758, height: 836, scale: 0.8163, down: 12, right: 3 },
+  register: { width: 752, height: 1008, scale: 0.7072, down: 2, right: 0 },
 } as const;
 const REFERENCE_SCREEN_HEIGHT = 768;
 
@@ -52,6 +57,7 @@ export function CanonicalAuthAccessPage({
   modules,
   labels,
   recovery = false,
+  oauth = { google: false, apple: false },
 }: CanonicalAuthAccessPageProps) {
   const ar = locale === "ar";
   const registering = mode === "register";
@@ -80,7 +86,11 @@ export function CanonicalAuthAccessPage({
         (window.innerWidth - 24) / (card.width * card.scale),
         3.2,
       );
-      const zoom = Math.max(fitted, 0.45) * card.scale;
+      // never let the card grow taller than the window, whatever the width allows
+      const zoom = Math.min(
+        Math.max(fitted, 0.45) * card.scale,
+        (window.innerHeight * 0.95) / card.height,
+      );
       target.style.setProperty("--auth-zoom", String(zoom));
       target.style.setProperty("--auth-slot-w", `${card.width * zoom}px`);
       target.style.setProperty("--auth-slot-h", `${card.height * zoom}px`);
@@ -207,7 +217,7 @@ export function CanonicalAuthAccessPage({
               <svg
                 className="access-card__arcs"
                 viewBox="0 0 758 766"
-                preserveAspectRatio="none"
+                preserveAspectRatio="xMinYMin meet"
               >
                 <defs>
                   <radialGradient id="access-planet-fill" cx="0.7" cy="0.2" r="0.9">
@@ -318,7 +328,20 @@ export function CanonicalAuthAccessPage({
             )}
             {!recovering ? (
               <div className="access-page__alternate">
-                <span className="access-page__or">{ar ? "أو" : "or"}</span>
+                <span className="access-page__or">
+                  {registering
+                    ? ar
+                      ? "أو التسجيل عبر"
+                      : "or sign up with"
+                    : ar
+                      ? "أو المتابعة عبر"
+                      : "or continue with"}
+                </span>
+                <SocialAuth
+                  locale={locale}
+                  entry={registering ? "register" : "login"}
+                  availability={oauth}
+                />
                 <Link
                   className="access-page__alt-link"
                   href={registering ? "/auth" : "/register"}

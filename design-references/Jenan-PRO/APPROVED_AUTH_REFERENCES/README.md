@@ -14,7 +14,8 @@ These two full-page images are the sole binding visual references for authentica
 - `/` is the canonical pre-entry interface, `/auth` and `/login` open the sign-in panel, `/register` opens the account-creation panel, and `/auth/forgot` reuses the same card for recovery. Onboarding inherits the same visual DNA.
 - The surrounding pre-login scene stays visible (dimmed) behind the panel.
 - Registration shows an IP-derived country code and allows manual selection; mobile number is optional and stored in E.164 form. Sign-in accepts the account email.
-- Do not add extra Auth methods. Production has one public interface, one Auth flow, one Auth component, and one Auth stylesheet (`styles/canonical-auth.css`); compatibility aliases reuse the same implementation.
+- Google and Apple are the only additional sign-in methods (explicit product decision), shown under an «أو المتابعة عبر / or continue with» divider at the bottom of the card; each button is disabled and marked «قريباً / Soon» until the provider's credentials are configured. Do not add other Auth methods.
+- Production has one public interface, one Auth flow, one Auth component, and one Auth stylesheet (`styles/canonical-auth.css`); compatibility aliases reuse the same implementation.
 - The globe and skyline inside the card are generated assets (`public/assets/jenan-auth-globe.webp`, `public/assets/jenan-auth-skyline.webp`), not copies of the reference.
 - Replace every visible legacy `Jenan BIZ` mark with `Jenan PRO` or `جنان برو`.
 

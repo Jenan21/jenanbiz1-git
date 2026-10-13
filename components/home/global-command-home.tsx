@@ -218,7 +218,7 @@ export function GlobalCommandHome({
           <cite>Jenan Pro</cite>
         </blockquote>
 
-        <CinematicServices locale={locale} modules={modules} />
+        <CinematicServices locale={locale} />
 
         <footer className="global-home__footer"><span className="global-home__footer-brand"><b>Jenan <em>Pro</em></b><small>Business Without Limits</small></span><nav><Link href="/benefits">{ar ? "الخصوصية" : "Privacy"}</Link><Link href="/pricing">{ar ? "الشروط والأحكام" : "Terms"}</Link><Link href="/login">{ar ? "تسجيل الدخول" : "Sign in"}</Link></nav><span>{ar ? "© 2026 منصة جنان برو. جميع الحقوق محفوظة." : "© 2026 Jenan Pro. All rights reserved."}</span></footer>
       </div>

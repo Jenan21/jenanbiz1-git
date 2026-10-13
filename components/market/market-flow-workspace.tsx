@@ -2,6 +2,7 @@
 
 import { FormEvent, useDeferredValue, useEffect, useEffectEvent, useState } from "react";
 import Link from "next/link";
+import type { ListingFilters } from "@/lib/market/listing-filters";
 import type { MarketFlowDefinition } from "@/lib/market/market-flow-routes";
 import type { Locale } from "@/types/i18n";
 
@@ -74,9 +75,11 @@ const flowLinks = [
 
 export function MarketFlowWorkspace({
   definition,
+  initialFilters,
   locale,
 }: {
   definition: MarketFlowDefinition;
+  initialFilters?: ListingFilters;
   locale: Locale;
 }) {
   const ar = locale === "ar";
@@ -89,7 +92,9 @@ export function MarketFlowWorkspace({
   const [selectedId, setSelectedId] = useState("");
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState("");
-  const [listingFilters, setListingFilters] = useState({ country: "", kind: "", query: "" });
+  const [listingFilters, setListingFilters] = useState<ListingFilters>(
+    initialFilters ?? { country: "", kind: "", query: "" },
+  );
   const [ndaChecked, setNdaChecked] = useState(false);
   const [viewing, setViewing] = useState({
     preferredAt: "",

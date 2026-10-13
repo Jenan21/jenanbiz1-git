@@ -1,4 +1,5 @@
 import { CanonicalAuthAccessPage } from "@/components/auth/canonical-auth-access-page";
+import { getOAuthAvailability } from "@/lib/auth/oauth/providers";
 import { getRequestDictionary } from "@/lib/i18n/server";
 import { readPlatformCatalog } from "@/lib/platform/catalog";
 
@@ -12,6 +13,7 @@ export default async function LoginPage() {
     <CanonicalAuthAccessPage
       locale={locale}
       mode="login"
+      oauth={getOAuthAvailability()}
       modules={catalog.modules.filter((module) => module.id !== "dashboard")}
       labels={{
         name: "",

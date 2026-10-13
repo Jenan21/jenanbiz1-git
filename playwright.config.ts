@@ -39,9 +39,21 @@ export default defineConfig({
       metadata: { appLocale: "ar" },
     },
     {
+      name: "home-panel-links",
+      testMatch: /home-panel-links\.spec\.ts/,
+      use: { viewport: { width: 1440, height: 900 }, locale: "en-US" },
+      metadata: { appLocale: "en" },
+    },
+    {
       name: "auth-visual-acceptance",
       testMatch: /auth-visual\.spec\.ts/,
       use: { viewport: { width: 1661, height: 947 }, locale: "ar-SA" },
+      metadata: { appLocale: "ar" },
+    },
+    {
+      name: "social-auth",
+      testMatch: /social-auth\.spec\.ts/,
+      use: { viewport: { width: 1365, height: 768 }, locale: "ar-SA" },
       metadata: { appLocale: "ar" },
     },
     {

@@ -43,7 +43,7 @@ Authenticated visual shells include Dashboard, Projects, Academy, Studio, Talent
 
 Arabic and English dictionaries are included. Locale resolution checks a `locale` cookie, then `Accept-Language`, defaulting to Arabic; the root layout applies matching `lang` and `dir` attributes. Locale-prefixed routing can be added after navigation requirements are finalized.
 
-Authentication uses PostgreSQL-backed users and sessions. Passwords are hashed with Argon2id, opaque session tokens are stored only as SHA-256 hashes, and the browser receives an HttpOnly/SameSite cookie. Register, login, and logout are exposed through same-origin API routes. OAuth is intentionally not implemented.
+Authentication uses PostgreSQL-backed users and sessions. Passwords are hashed with Argon2id, opaque session tokens are stored only as SHA-256 hashes, and the browser receives an HttpOnly/SameSite cookie. Register, login, and logout are exposed through same-origin API routes. Google and Apple sign-in are available as an optional second way in (see "Social sign-in" below).
 
 Public registration is closed by default when `NODE_ENV=production`. Administrators provision or approve production users through authorized workflows. Only set `ALLOW_PUBLIC_REGISTRATION=true` when a reviewed public onboarding flow is intentionally enabled.
 
@@ -103,7 +103,24 @@ Never place real values in Git. The command uses Argon2id, a serializable Postgr
 
 ## Authentication rate limiting
 
-`login`, `register`, and sensitive project operations use a vendor-neutral `RateLimitProvider` contract. Development and tests default to the documented in-memory adapter. When `REDIS_URL` is configured, the application uses Redis with atomic increment and expiry semantics across instances. Production fails closed if no distributed provider is configured.
+`login`, `register`, `oauth`, and sensitive project operations use a vendor-neutral `RateLimitProvider` contract. Development and tests default to the documented in-memory adapter. When `REDIS_URL` is configured, the application uses Redis with atomic increment and expiry semantics across instances. Production fails closed if no distributed provider is configured.
+
+## Social sign-in (Google and Apple)
+
+Both sign-in panels show «المتابعة عبر Google / Apple» under the form. A provider's button is **disabled and marked «قريباً / Soon»** until all of its credentials are present, so nothing is offered that cannot work. To turn one on, set its variables (see `.env.example`; `AUTH_SECRET` must also be set) and register this redirect URI with the provider, using the value of `NEXT_PUBLIC_APP_URL` as the origin:
+
+| Provider | Variables | Redirect URI |
+|---|---|---|
+| Google | `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET` | `<origin>/api/auth/oauth/google/callback` |
+| Apple | `APPLE_CLIENT_ID` (Services ID), `APPLE_TEAM_ID`, `APPLE_KEY_ID`, `APPLE_PRIVATE_KEY` (.p8 contents, `\n` for line breaks) | `<origin>/api/auth/oauth/apple/callback` |
+
+Google accepts `http://localhost:3000` for development. Apple only accepts a public HTTPS domain that you have verified in the Apple developer account, so test it through an HTTPS tunnel or on the real domain.
+
+How it works: `GET /api/auth/oauth/{provider}/start` creates a single-use state, nonce, and (for Google) PKCE verifier, stores them in a signed HttpOnly `jenan_oauth` cookie that lives 10 minutes, and redirects to the provider. The callback (`GET` for Google, `POST` form for Apple) verifies the state, exchanges the code, and verifies the ID token signature against the provider's published keys together with issuer, audience, expiry, nonce, and a verified email. Apple's client secret is an ES256 token signed on the server from your `.p8` key. No provider token is stored.
+
+Accounts: a returning provider identity signs in directly. A verified email that already belongs to an account is linked to it only when that cannot be an impersonation, meaning the address was verified before, the account has no password, or public registration is closed so every account was provisioned by an administrator; otherwise the person is told to sign in with their password. Otherwise a new passwordless account is created when public registration is allowed and the person continues to `/user/onboarding`. Disabled accounts are refused. Every outcome is audited and rate limited under the `oauth` policy, and failures return to the panel with a neutral notice.
+
+Tests: `npm run test:e2e:social-auth` (UI states and the full redirect flow against a local mock provider), plus `tests/unit/oauth-*.test.ts` and `tests/integration/oauth-signin.integration.test.ts`.
 
 ## Password recovery delivery
 

@@ -7,7 +7,7 @@ import type {
 import { MemoryRateLimitProvider } from "@/lib/rate-limit/memory-provider";
 import { RedisRateLimitProvider } from "@/lib/rate-limit/redis-provider";
 
-export type AuthRateLimitRoute = "forgot" | "login" | "register" | "reset";
+export type AuthRateLimitRoute = "forgot" | "login" | "oauth" | "register" | "reset";
 
 const policies: Record<
   AuthRateLimitRoute,
@@ -15,6 +15,7 @@ const policies: Record<
 > = {
   forgot: { limit: 4, windowMs: 60_000 },
   login: { limit: 8, windowMs: 60_000 },
+  oauth: { limit: 20, windowMs: 60_000 },
   register: { limit: 4, windowMs: 60_000 },
   reset: { limit: 8, windowMs: 60_000 },
 };

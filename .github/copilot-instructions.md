@@ -7,7 +7,7 @@
 - The canonical homepage is frozen after acceptance. Change it only to fix a verified regression or to implement a new explicit product decision.
 - For authentication panels, the only visual authorities are `design-references/Jenan-PRO/APPROVED_AUTH_REFERENCES/login-1672x941.png` and `register-1448x1086.png`. They supersede Auth `reference.html`, `spec.txt`, and alternate/legacy candidates.
 - Keep exactly one production public interface, Auth flow, Auth component, and Auth stylesheet. `/` is pre-entry, `/auth` and `/login` are sign-in, and `/register` is account creation; compatibility aliases must reuse the same implementation.
-- The pre-login page keeps its approved decisions: no large platform title, no top navigation/search/bell, no news/statistics/distribution strip, no lower trust-icon row, and no large circular auth entries. Never restore them. The bottom area is the service panels (one static panel every 7 seconds); the Auth entries are two small rectangular buttons under the globe.
+- The pre-login page keeps its approved decisions: no large platform title, no top navigation/search/bell, no news/statistics/distribution strip, no lower trust-icon row, and no large circular auth entries. Never restore them. The bottom area is the seven service panels from `design-references/Jenan-PRO/APPROVED_HOME_REFERENCE/service-panels/` (one static panel every 3 seconds, very light fade/slide, no motion inside the scene); the Auth entries are two small rectangular buttons under the globe.
 - The archives complement one another. Follow the newest detailed Jenan PRO page reference first, then its `reference.html`, `spec.txt`, and general blueprint.
 - Use legacy Jenan BIZ material only for visual direction. All new visible identity must read `Jenan PRO` or `جنان برو`.
 
@@ -22,7 +22,7 @@
 
 ## Visual Implementation
 
-- Build real React/CSS/SVG components. Reference screenshots and HTML are visual authorities only and must never be used as production page backgrounds.
+- Build real React/CSS/SVG components. Reference screenshots and HTML are visual authorities only and must never be used as production page backgrounds. The single explicit exception is the cropped scene photo of each bottom service panel on the pre-login page (`APPROVED_HOME_REFERENCE/service-panels/README.md`), shipped as a background layer under real text.
 - Preserve the Jenan PRO design family: dark premium futuristic, deep navy/black-blue, electric cyan/teal, controlled emerald/gold/purple accents, glass depth, restrained glow, clear hierarchy, strong typography, and professional data/AI visuals.
 - Never stretch key assets or use `object-fit: fill`. Avoid overlap, accidental horizontal scrolling, clipped text, and large reference-image gutters.
 - Recompose layouts for desktop, laptop, tablet, and mobile using Grid/Flexbox, `minmax()`, `clamp()`, percentages, and content-driven breakpoints.

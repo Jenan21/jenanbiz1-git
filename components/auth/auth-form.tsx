@@ -25,6 +25,7 @@ import {
   AuthUserIcon,
   AuthUserPlusIcon,
 } from "@/components/auth/auth-icons";
+import { oauthNotice } from "@/lib/auth/oauth/shared";
 import type { Locale } from "@/types/i18n";
 
 interface AuthFormProps {
@@ -171,6 +172,12 @@ export function AuthForm({ mode, locale, labels }: AuthFormProps) {
   const registering = mode === "register";
   const resetSucceeded =
     mode === "login" && searchParams.get("reset") === "success";
+  // a failed Google / Apple attempt comes back here with a short error code
+  const socialNotice = oauthNotice(
+    locale,
+    searchParams.get("oauth_error"),
+    searchParams.get("oauth_provider"),
+  );
   const selectedCountry = countriesByLocale[locale].find(
     (country) => country.code === countryCode,
   );
@@ -368,6 +375,11 @@ export function AuthForm({ mode, locale, labels }: AuthFormProps) {
             <AuthAlertIcon />
             {error}
           </p>
+        ) : socialNotice ? (
+          <p className="auth-status" data-state="error" role="alert">
+            <AuthAlertIcon />
+            {socialNotice}
+          </p>
         ) : resetSucceeded ? (
           <p className="auth-status" data-state="success" role="status">
             <AuthCheckIcon />
@@ -495,6 +507,11 @@ export function AuthForm({ mode, locale, labels }: AuthFormProps) {
         <p className="auth-hint" data-state="error" role="alert">
           <AuthAlertIcon />
           {error}
+        </p>
+      ) : socialNotice ? (
+        <p className="auth-hint" data-state="error" role="alert">
+          <AuthAlertIcon />
+          {socialNotice}
         </p>
       ) : termsOpen ? (
         <p className="auth-hint" data-state="terms" id="auth-terms-body">

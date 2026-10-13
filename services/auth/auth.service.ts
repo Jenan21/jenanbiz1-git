@@ -32,7 +32,7 @@ function safeEmailFingerprint(email: string) {
   return createHash("sha256").update(email).digest("hex").slice(0, 16);
 }
 
-async function createSession(
+export async function createSession(
   userId: string,
   remembered: boolean,
   tx: Prisma.TransactionClient,

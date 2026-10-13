@@ -823,6 +823,7 @@ model User {
   profile                    Profile?
   memberships                OrganizationMember[]
   sessions                   Session[]
+  authIdentities             AuthIdentity[]
   passwordResetTokens        PasswordResetToken[]
   notifications              Notification[]
   communityAccessGrants      CommunityAccessGrant[]
@@ -1460,6 +1461,27 @@ model Session {
 
   @@index([userId])
   @@index([expiresAt])
+}
+
+enum AuthIdentityProvider {
+  GOOGLE
+  APPLE
+}
+
+/// A sign-in identity issued by an external provider (Google, Apple). The provider's stable `sub`
+/// is the key; the email is kept only as the address the provider asserted at the time.
+model AuthIdentity {
+  id                String                   @id @default(cuid())
+  userId            String
+  user              User                     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  provider          AuthIdentityProvider
+  providerAccountId String
+  email             String?
+  createdAt         DateTime                 @default(now())
+  lastUsedAt        DateTime?
+
+  @@unique([provider, providerAccountId])
+  @@index([userId])
 }
 
 model PasswordResetToken {

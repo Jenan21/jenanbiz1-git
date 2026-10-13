@@ -28,7 +28,7 @@
 /* per-card geometry: login first, register overrides */
 .access-page {
   --card-w: 758px;
-  --card-h: 766px;
+  --card-h: 836px;
   --form-x: 125px;
   --form-w: 507px;
   --form-y: 284.5px;
@@ -52,7 +52,7 @@
 
 .access-page[data-mode="register"] {
   --card-w: 752px;
-  --card-h: 938px;
+  --card-h: 1008px;
   --form-x: 106px;
   --form-w: 541px;
   --form-y: 289px;
@@ -925,32 +925,86 @@ body:has(.access-page) nextjs-portal {
 }
 
 .access-page__or {
-  position: relative;
-  display: grid;
-  place-items: center;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
   height: 24px;
   color: #dcecf3;
   font-size: 16px;
   line-height: 24px;
+  white-space: nowrap;
+  direction: ltr;
 }
 
 .access-page__or::before,
 .access-page__or::after {
   content: "";
-  position: absolute;
-  top: 12px;
+  flex: 1;
   height: 1px;
   background: rgba(150, 215, 232, 0.55);
 }
 
-.access-page__or::before {
-  left: 2px;
-  right: calc(50% + 22px);
+/* ---------- Google / Apple ---------- */
+.auth-social {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px;
+  margin-top: 12px;
+  direction: ltr;
 }
 
-.access-page__or::after {
-  left: calc(50% + 22px);
-  right: 2px;
+.auth-social__btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  height: 56px;
+  padding: 0 14px;
+  border: 1.5px solid rgba(15, 207, 228, 0.78);
+  border-radius: 20px;
+  color: #fff;
+  background: linear-gradient(180deg, rgba(1, 15, 26, 0.88), rgba(2, 20, 32, 0.78));
+  box-shadow: inset 0 -10px 18px rgba(0, 188, 225, 0.07), 0 0 14px rgba(15, 207, 228, 0.12);
+  font: 500 17px/1 "Alexandria Variable", "Segoe UI", sans-serif;
+  text-decoration: none;
+  cursor: pointer;
+  transition: border-color 160ms ease, box-shadow 160ms ease, transform 160ms ease;
+}
+
+.auth-social__btn svg {
+  flex: none;
+  width: 26px;
+  height: 26px;
+}
+
+.auth-social__btn:hover:not(:disabled),
+.auth-social__btn:focus-visible {
+  border-color: #6af3ff;
+  box-shadow: inset 0 -10px 18px rgba(0, 200, 235, 0.12), 0 0 24px rgba(31, 231, 255, 0.34);
+  outline: 0;
+  transform: translateY(-1px);
+}
+
+.auth-social__btn:disabled {
+  cursor: not-allowed;
+  border-color: rgba(15, 207, 228, 0.42);
+  color: rgba(255, 255, 255, 0.72);
+  box-shadow: none;
+}
+
+.auth-social__btn:disabled svg {
+  opacity: 0.7;
+}
+
+.auth-social__btn small {
+  padding: 3px 9px;
+  border: 1px solid rgba(180, 234, 242, 0.34);
+  border-radius: 999px;
+  color: #b4eaf2;
+  font-size: 11.5px;
+  font-weight: 600;
+  line-height: 1;
 }
 
 .access-page__alt-link {
@@ -959,7 +1013,7 @@ body:has(.access-page) nextjs-portal {
   justify-content: center;
   gap: 18px;
   height: 57px;
-  margin-top: 12px;
+  margin-top: 14px;
   border: 1.5px solid rgba(15, 207, 228, 0.78);
   border-radius: 20px;
   color: #fff;

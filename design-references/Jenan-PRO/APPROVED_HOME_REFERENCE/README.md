@@ -18,7 +18,7 @@ Kept or added:
 - Headline on one colour, three short lines: «بيانات دقيقة / رؤى ذكية / نمو مستدام» (EN: Accurate data / Smart insights / Sustainable growth), with the tagline «خدمات متكاملة · تحليلات ذكية · نمو بلا حدود» shown as three words separated by spacing only (no dots or dividers).
 - Four capability icons under the headline, the three platform indicators, and the closing quote.
 - Two small rectangular access buttons (`access-buttons-665x385.png`) centred under the globe and above the service panels.
-- Service panels at the bottom (Projects, Academy, Talent, Market, Software, Programs): one static panel at a time, replaced every 7 seconds with a very light fade/slide, no motion inside the scene, paused while hovered. Scenes are generated in code, kept calm on the left so the text and services lead, and use the Jenan PRO palette (violet only as a small accent).
+- Service panels at the bottom: the seven approved designs in `service-panels/` (Projects, Academy, Talent, Market, Software, Marketing, Tools). One static panel at a time, replaced every 3 seconds with a very light fade/slide, no motion inside the scene, paused while hovered, focused or touched and for reduced motion. Text, tiles, call to action and dots are live; the photographic scene of each design is a cropped background layer (explicit exception, see `service-panels/README.md`). Violet stays a small accent.
 - Layout stays one fixed 1661×947 composition scaled to the window.
 
 ## Integrity

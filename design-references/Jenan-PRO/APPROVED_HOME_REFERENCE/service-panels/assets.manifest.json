@@ -1,0 +1,566 @@
+{
+  "scale": 2,
+  "sceneAspect": 2.3583333333333334,
+  "panels": {
+    "projects": {
+      "source": "01-projects.png",
+      "sourceSha256": "D927BB0309393B16BDBB408752B02C5D71B8CA59DC28F5DBBC675F5916064652",
+      "scene": {
+        "file": "projects-scene.webp",
+        "box": [
+          745,
+          150,
+          1340,
+          402
+        ],
+        "size": [
+          1190,
+          504
+        ],
+        "bytes": 83796
+      },
+      "icons": [
+        {
+          "file": "projects-1.webp",
+          "box": [
+            598,
+            393,
+            651,
+            443
+          ],
+          "size": [
+            162,
+            156
+          ],
+          "bytes": 9018
+        },
+        {
+          "file": "projects-2.webp",
+          "box": [
+            425,
+            398,
+            494,
+            443
+          ],
+          "size": [
+            194,
+            146
+          ],
+          "bytes": 12948
+        },
+        {
+          "file": "projects-3.webp",
+          "box": [
+            267,
+            392,
+            320,
+            443
+          ],
+          "size": [
+            162,
+            158
+          ],
+          "bytes": 11214
+        },
+        {
+          "file": "projects-4.webp",
+          "box": [
+            105,
+            393,
+            157,
+            443
+          ],
+          "size": [
+            160,
+            156
+          ],
+          "bytes": 9038
+        }
+      ]
+    },
+    "academy": {
+      "source": "02-academy.png",
+      "sourceSha256": "4655B7C05B1F7DB2E0D2D858E9572F5B5B908883112F0C2BD18E65CDB1906926",
+      "scene": {
+        "file": "academy-scene.webp",
+        "box": [
+          812,
+          184,
+          1340,
+          408
+        ],
+        "size": [
+          1056,
+          448
+        ],
+        "bytes": 85152
+      },
+      "icons": [
+        {
+          "file": "academy-1.webp",
+          "box": [
+            596,
+            400,
+            653,
+            443
+          ],
+          "size": [
+            170,
+            142
+          ],
+          "bytes": 9148
+        },
+        {
+          "file": "academy-2.webp",
+          "box": [
+            438,
+            396,
+            489,
+            443
+          ],
+          "size": [
+            158,
+            150
+          ],
+          "bytes": 9848
+        },
+        {
+          "file": "academy-3.webp",
+          "box": [
+            267,
+            396,
+            328,
+            443
+          ],
+          "size": [
+            178,
+            150
+          ],
+          "bytes": 10526
+        },
+        {
+          "file": "academy-4.webp",
+          "box": [
+            103,
+            399,
+            165,
+            443
+          ],
+          "size": [
+            180,
+            144
+          ],
+          "bytes": 8878
+        }
+      ]
+    },
+    "talent": {
+      "source": "03-talent.png",
+      "sourceSha256": "783E37B9355B5097B172197EFC16E749E5AC20380AF1CBEC4D81FE98909A39E4",
+      "scene": {
+        "file": "talent-scene.webp",
+        "box": [
+          745,
+          120,
+          1340,
+          372
+        ],
+        "size": [
+          1190,
+          504
+        ],
+        "bytes": 79432
+      },
+      "icons": [
+        {
+          "file": "talent-1.webp",
+          "box": [
+            592,
+            392,
+            651,
+            443
+          ],
+          "size": [
+            174,
+            158
+          ],
+          "bytes": 10246
+        },
+        {
+          "file": "talent-2.webp",
+          "box": [
+            420,
+            394,
+            495,
+            443
+          ],
+          "size": [
+            206,
+            154
+          ],
+          "bytes": 10542
+        },
+        {
+          "file": "talent-3.webp",
+          "box": [
+            265,
+            391,
+            321,
+            443
+          ],
+          "size": [
+            168,
+            160
+          ],
+          "bytes": 11130
+        },
+        {
+          "file": "talent-4.webp",
+          "box": [
+            103,
+            392,
+            162,
+            443
+          ],
+          "size": [
+            174,
+            158
+          ],
+          "bytes": 6840
+        }
+      ]
+    },
+    "market": {
+      "source": "04-market.png",
+      "sourceSha256": "6FEEF30C654E7467523465E178B1D01BE64FA5F04BC10EE8C875ED0A237F25D4",
+      "scene": {
+        "file": "market-scene.webp",
+        "box": [
+          745,
+          120,
+          1340,
+          372
+        ],
+        "size": [
+          1190,
+          504
+        ],
+        "bytes": 100548
+      },
+      "icons": [
+        {
+          "file": "market-1.webp",
+          "box": [
+            585,
+            391,
+            664,
+            443
+          ],
+          "size": [
+            214,
+            160
+          ],
+          "bytes": 11698
+        },
+        {
+          "file": "market-2.webp",
+          "box": [
+            427,
+            391,
+            490,
+            443
+          ],
+          "size": [
+            182,
+            160
+          ],
+          "bytes": 12700
+        },
+        {
+          "file": "market-3.webp",
+          "box": [
+            266,
+            388,
+            326,
+            443
+          ],
+          "size": [
+            176,
+            166
+          ],
+          "bytes": 11024
+        },
+        {
+          "file": "market-4.webp",
+          "box": [
+            98,
+            385,
+            165,
+            443
+          ],
+          "size": [
+            190,
+            172
+          ],
+          "bytes": 11440
+        }
+      ]
+    },
+    "software": {
+      "source": "05-software.png",
+      "sourceSha256": "3025C6846DBAE3C83A965BA271E7FCD7EDC576B150F55329356E537E14FE4A6D",
+      "scene": {
+        "file": "software-scene.webp",
+        "box": [
+          745,
+          110,
+          1340,
+          362
+        ],
+        "size": [
+          1190,
+          504
+        ],
+        "bytes": 62656
+      },
+      "icons": [
+        {
+          "file": "software-1.webp",
+          "box": [
+            583,
+            406,
+            644,
+            455
+          ],
+          "size": [
+            178,
+            154
+          ],
+          "bytes": 10996
+        },
+        {
+          "file": "software-2.webp",
+          "box": [
+            427,
+            404,
+            476,
+            455
+          ],
+          "size": [
+            154,
+            158
+          ],
+          "bytes": 8872
+        },
+        {
+          "file": "software-3.webp",
+          "box": [
+            258,
+            410,
+            323,
+            455
+          ],
+          "size": [
+            186,
+            146
+          ],
+          "bytes": 10390
+        },
+        {
+          "file": "software-4.webp",
+          "box": [
+            89,
+            406,
+            158,
+            455
+          ],
+          "size": [
+            194,
+            154
+          ],
+          "bytes": 11076
+        }
+      ]
+    },
+    "marketing": {
+      "source": "06-marketing.png",
+      "sourceSha256": "39FD262A1664FC6C2AF44CDD969923ED35691962CCCF0FEC772301E7017E33B5",
+      "scene": {
+        "file": "marketing-scene.webp",
+        "box": [
+          650,
+          250,
+          1176,
+          473
+        ],
+        "size": [
+          1052,
+          446
+        ],
+        "bytes": 62460
+      },
+      "icons": [
+        {
+          "file": "marketing-1.webp",
+          "box": [
+            540,
+            381,
+            583,
+            426
+          ],
+          "size": [
+            142,
+            146
+          ],
+          "bytes": 5508
+        },
+        {
+          "file": "marketing-2.webp",
+          "box": [
+            388,
+            381,
+            436,
+            429
+          ],
+          "size": [
+            152,
+            152
+          ],
+          "bytes": 8212
+        },
+        {
+          "file": "marketing-3.webp",
+          "box": [
+            240,
+            382,
+            285,
+            429
+          ],
+          "size": [
+            146,
+            150
+          ],
+          "bytes": 8586
+        },
+        {
+          "file": "marketing-4.webp",
+          "box": [
+            82,
+            379,
+            136,
+            424
+          ],
+          "size": [
+            164,
+            146
+          ],
+          "bytes": 9198
+        }
+      ]
+    },
+    "tools": {
+      "source": "07-tools.png",
+      "sourceSha256": "6BCD35406AD58E07F3C277488AD8D7016B6FC19854E125C3114E8103B1260D63",
+      "scene": {
+        "file": "tools-scene.webp",
+        "box": [
+          745,
+          130,
+          1340,
+          382
+        ],
+        "size": [
+          1190,
+          504
+        ],
+        "bytes": 77710
+      },
+      "icons": [
+        {
+          "file": "tools-1.webp",
+          "box": [
+            607,
+            392,
+            666,
+            443
+          ],
+          "size": [
+            174,
+            158
+          ],
+          "bytes": 9580
+        },
+        {
+          "file": "tools-2.webp",
+          "box": [
+            431,
+            391,
+            513,
+            443
+          ],
+          "size": [
+            220,
+            160
+          ],
+          "bytes": 14074
+        },
+        {
+          "file": "tools-3.webp",
+          "box": [
+            267,
+            395,
+            335,
+            443
+          ],
+          "size": [
+            192,
+            152
+          ],
+          "bytes": 12356
+        },
+        {
+          "file": "tools-4.webp",
+          "box": [
+            106,
+            392,
+            159,
+            443
+          ],
+          "size": [
+            162,
+            158
+          ],
+          "bytes": 10442
+        }
+      ]
+    }
+  },
+  "brand": {
+    "file": "brand-leaf.webp",
+    "box": [
+      64,
+      80,
+      134,
+      150
+    ],
+    "size": [
+      164,
+      164
+    ],
+    "bytes": 9074
+  },
+  "ctaRocket": {
+    "file": "marketing-cta-rocket.webp",
+    "box": [
+      82,
+      602,
+      126,
+      646
+    ],
+    "size": [
+      100,
+      100
+    ],
+    "bytes": 6222
+  }
+}

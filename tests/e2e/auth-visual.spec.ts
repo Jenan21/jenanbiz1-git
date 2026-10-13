@@ -172,7 +172,7 @@ for (const locale of ["ar", "en"] as const) {
         expect(layout.panel.top).toBeGreaterThanOrEqual(-1);
         expect(layout.panel.bottom).toBeLessThanOrEqual(layout.viewportHeight + 1);
         // the approved cards keep their proportions at every screen size
-        const ratio = route.screen === "register" ? 752 / 938 : 758 / 766;
+        const ratio = route.screen === "register" ? 752 / 1008 : 758 / 836;
         expect(layout.panel.width / layout.panel.height).toBeCloseTo(ratio, 1);
       }
 
