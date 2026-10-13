@@ -142,7 +142,7 @@ The application uses Redis for atomic, distributed auth rate limits when `REDIS_
 
 Vercel cannot run the Docker Compose Redis or backup services. For Vercel, configure a managed Redis-compatible `REDIS_URL`, link a private Vercel Blob store, set `METRICS_TOKEN`, and use an external monitor to call `/api/health/ready`. Persisted user files use private Blob storage on Vercel and local disk in development. Supabase Free does not replace a tested backup and restore policy; export backups to independently retained storage before production use.
 
-Set both `SITE_ACCESS_USERNAME` and `SITE_ACCESS_PASSWORD` to protect a private preview with HTTP Basic authentication. The protection fails closed when only one value is configured. Readiness and liveness endpoints remain public so external monitors can verify the deployment.
+Set both `SITE_ACCESS_USERNAME` and `SITE_ACCESS_PASSWORD` to protect a private preview with HTTP Basic authentication. The protection fails closed when only one value is configured, and a production deployment with no gate at all answers `503` unless the owner has approved the public launch with `PUBLIC_LAUNCH=approved`. Readiness and liveness endpoints remain public so external monitors can verify the deployment.
 
 The Vercel deployment must not be promoted until a managed Redis integration is connected and has supplied `REDIS_URL` to the Production environment. The repository's scheduled readiness workflow intentionally fails when `/api/health/ready` is not healthy; it does not replace an independently retained PostgreSQL backup or a restore drill.
 
@@ -169,7 +169,17 @@ A `.sa` domain must first be registered through a SaudiNIC-accredited registrar 
 1. Run `vercel domains add <domain> jenan-pro-private`, then `vercel domains verify <domain>` and create the DNS records it prints at the DNS provider (the apex `A` records and a `CNAME` for `www`), or delegate the nameservers to `ns1.vercel-dns.com` and `ns2.vercel-dns.com`. Add `www.<domain>` with a permanent redirect to the apex: `vercel api /v10/projects/jenan-pro-private/domains -X POST -f name=www.<domain> -f redirect=<domain> -F redirectStatusCode=308`. Vercel issues the HTTPS certificate by itself once the records resolve; a domain can be attached before it resolves.
 2. Set `NEXT_PUBLIC_APP_URL` to `https://<domain>` in the Production environment and release again; it is used for OAuth redirect URIs, absolute links, and the metadata base (canonical and Open Graph URLs).
 3. Register the new OAuth redirect URIs with Google and Apple and update `PRODUCTION_READINESS_URL`.
-4. To open the site to the public, remove `SITE_ACCESS_USERNAME` and `SITE_ACCESS_PASSWORD` from the Production environment and release again. Public sign-up follows `ALLOW_PUBLIC_REGISTRATION`, and password recovery needs `RESEND_API_KEY` and `AUTH_RECOVERY_EMAIL_FROM`.
+4. The site stays behind the private gate until the owner approves each step of the staged access below. Password recovery needs `RESEND_API_KEY` and `AUTH_RECOVERY_EMAIL_FROM`.
+
+### Staged access
+
+The platform is opened in stages, and the owner approves each one:
+
+1. **Private testing (current).** The gate covers every page and API except the health probes, so the home page, sign-in, registration, password recovery, and OAuth cannot be reached without the gate password. `ALLOW_PUBLIC_REGISTRATION=true` only applies behind the gate, which lets the owner create the first account. Production starts with no accounts; the first administrator is created with `npm run auth:bootstrap-super-admin`.
+2. **Limited trial.** A small invited group is given access through the gate. Keep the group small and rotate the gate password when the trial ends.
+3. **Public launch.** Remove `SITE_ACCESS_USERNAME` and `SITE_ACCESS_PASSWORD`, set `PUBLIC_LAUNCH=approved`, decide `ALLOW_PUBLIC_REGISTRATION`, and release again.
+
+Do not remove the gate or widen access without the owner's explicit approval. A deployment that has no gate, such as a Vercel Preview, answers `503` instead of opening by accident.
 
 ## Next steps
 

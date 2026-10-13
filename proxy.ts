@@ -17,11 +17,16 @@ function authenticationRequired() {
   });
 }
 
+// Without a private gate, a production deployment is served only once the owner has approved the public launch.
+function servesPublicly() {
+  return process.env.NODE_ENV !== "production" || process.env.PUBLIC_LAUNCH?.trim() === "approved";
+}
+
 export function proxy(request: NextRequest) {
   const username = process.env.SITE_ACCESS_USERNAME?.trim();
   const password = process.env.SITE_ACCESS_PASSWORD;
 
-  if (!username && !password) return NextResponse.next();
+  if (!username && !password) return servesPublicly() ? NextResponse.next() : protectionUnavailable();
   if (!username || !password) return protectionUnavailable();
 
   const expectedAuthorization = `Basic ${btoa(`${username}:${password}`)}`;

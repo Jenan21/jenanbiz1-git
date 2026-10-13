@@ -19,6 +19,7 @@
 - Financial formulas and other deterministic calculations must remain deterministic. Use AI only for appropriate analysis and recommendations.
 - Never present demo values as production data. Use truthful empty, unavailable, estimated, source, date, confidence, and review states.
 - Every visible action must work or be clearly disabled. Do not expose unsupported export formats.
+- Launch policy (owner decision, 2026-10-13): the production site at `jenanpro.sa` stays private. Sign-in and registration are not opened to anyone but the owner until the owner has tested the platform and its services and explicitly approves; the next step is a limited trial for a small invited group, and only later a public launch. Never remove `SITE_ACCESS_USERNAME`/`SITE_ACCESS_PASSWORD`, set `PUBLIC_LAUNCH=approved`, or widen access in any other way without that explicit approval.
 
 ## Visual Implementation
 
