@@ -3,6 +3,7 @@ import { cookies, headers } from "next/headers";
 import type { ReactNode } from "react";
 import { InterfaceVisibilityProvider } from "@/components/account/interface-visibility-provider";
 import { getDirection, resolveLocale } from "@/lib/i18n";
+import { resolveSiteUrl } from "@/lib/platform/site-url";
 import "@fontsource-variable/alexandria";
 import "@/styles/globals.css";
 import "@/styles/global-home.css";
@@ -43,7 +44,7 @@ import "@/styles/marketing-flow.css";
 import "@/styles/robotics-flow.css";
 
 export const metadata: Metadata = {
-  metadataBase: new URL("https://jenanbiz.com"),
+  metadataBase: resolveSiteUrl(),
   applicationName: "Jenan Pro",
   title: {
     default: "Jenan Pro | Global Business Platform",
