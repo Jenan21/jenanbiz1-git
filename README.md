@@ -150,6 +150,27 @@ The `postgres-backup` service writes a compressed PostgreSQL dump immediately af
 
 GitHub Actions runs type checking, linting, Prisma migrations, tests, and a production build for pull requests and pushes to `main`. A separate scheduled workflow probes the public Vercel readiness endpoint every five minutes; a non-200 response makes the workflow fail visibly. These workflows become active after this change is committed and pushed. Configure managed Redis and the production environment variables before relying on a successful readiness check.
 
+### Releasing to Vercel
+
+The project is `jenan-pro-private`. `vercel-build` (`prisma generate && next build`) generates the Prisma client during the Vercel build because `generated/prisma` is not committed. Deploy a clean export of a commit rather than a working tree, so only tracked files are uploaded (`.vercelignore` additionally excludes `.env*`, local data, and test output). Deploy from this repository only; an older clone linked to the same project would replace the release with outdated code.
+
+1. Apply pending migrations to the production database first; they are additive, so the running release keeps working. Run `prisma migrate status`, then `prisma migrate deploy`, with `DATABASE_URL` set to the Production `DATABASE_URL_UNPOOLED` value (pull it with `vercel env pull --environment=production` inside a temporary directory and delete the file afterwards).
+2. Export the commit and link it: `git archive --format=tar --output=release.tar HEAD -- . ':(exclude)design-references' ':(exclude)tests'`, extract it into an empty directory, then `vercel link --yes --project jenan-pro-private`.
+3. Stage the release without switching domains: `vercel deploy --prod --skip-domain --yes --logs`.
+4. Verify the staged URL, which also works behind Deployment Protection: `vercel curl <url>/api/health/ready` must report `ready`.
+5. Promote it with `vercel promote <url> --yes`. To roll back, promote the previous production deployment URL the same way.
+
+The `PRODUCTION_READINESS_URL` repository variable is the address the scheduled readiness monitor probes; keep it pointed at the live domain's `/api/health/ready`.
+
+### Attaching a custom domain
+
+A `.sa` domain must first be registered through a SaudiNIC-accredited registrar (`whois.nic.net.sa` answers `No Match` until it is). Then:
+
+1. Run `vercel domains add <domain> jenan-pro-private` and create the DNS records Vercel prints (an `A` record to `76.76.21.21` for the apex and a `CNAME` for `www`, or delegate the nameservers to `ns1.vercel-dns.com` and `ns2.vercel-dns.com`).
+2. Set `NEXT_PUBLIC_APP_URL` to `https://<domain>` in the Production environment and release again; it is used for OAuth redirect URIs and absolute links.
+3. Register the new OAuth redirect URIs with Google and Apple and update `PRODUCTION_READINESS_URL`.
+4. To open the site to the public, remove `SITE_ACCESS_USERNAME` and `SITE_ACCESS_PASSWORD` from the Production environment and release again. Public sign-up follows `ALLOW_PUBLIC_REGISTRATION`, and password recovery needs `RESEND_API_KEY` and `AUTH_RECOVERY_EMAIL_FROM`.
+
 ## Next steps
 
 1. Review domain terminology, tenancy rules, and authorization boundaries.
