@@ -166,7 +166,7 @@ The `PRODUCTION_READINESS_URL` repository variable is the address the scheduled 
 
 A `.sa` domain must first be registered through a SaudiNIC-accredited registrar (`whois.nic.net.sa` answers `No Match` until it is). Then:
 
-1. Run `vercel domains add <domain> jenan-pro-private` and create the DNS records Vercel prints (an `A` record to `76.76.21.21` for the apex and a `CNAME` for `www`, or delegate the nameservers to `ns1.vercel-dns.com` and `ns2.vercel-dns.com`).
+1. Run `vercel domains add <domain> jenan-pro-private`, then `vercel domains verify <domain>` and create the DNS records it prints at the DNS provider (the apex `A` records and a `CNAME` for `www`), or delegate the nameservers to `ns1.vercel-dns.com` and `ns2.vercel-dns.com`. Add `www.<domain>` with a permanent redirect to the apex: `vercel api /v10/projects/jenan-pro-private/domains -X POST -f name=www.<domain> -f redirect=<domain> -F redirectStatusCode=308`. Vercel issues the HTTPS certificate by itself once the records resolve; a domain can be attached before it resolves.
 2. Set `NEXT_PUBLIC_APP_URL` to `https://<domain>` in the Production environment and release again; it is used for OAuth redirect URIs, absolute links, and the metadata base (canonical and Open Graph URLs).
 3. Register the new OAuth redirect URIs with Google and Apple and update `PRODUCTION_READINESS_URL`.
 4. To open the site to the public, remove `SITE_ACCESS_USERNAME` and `SITE_ACCESS_PASSWORD` from the Production environment and release again. Public sign-up follows `ALLOW_PUBLIC_REGISTRATION`, and password recovery needs `RESEND_API_KEY` and `AUTH_RECOVERY_EMAIL_FROM`.
