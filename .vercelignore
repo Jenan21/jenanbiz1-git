@@ -5,3 +5,16 @@ playwright.config.ts
 vitest.config.ts
 compose.yaml
 Dockerfile
+# local-only files must never be uploaded, even when deploying from a working tree
+.env
+.env.*
+.data/
+outputs/
+test-results/
+playwright-report/
+blob-report/
+coverage/
+.next-e2e/
+work/
+*.log
+*.tsbuildinfo
