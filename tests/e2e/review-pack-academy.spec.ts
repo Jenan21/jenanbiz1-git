@@ -137,10 +137,9 @@ test.describe("academy cinematic preview", () => {
     expect(layout.width).toBeLessThanOrEqual(layout.viewport + 1);
   });
 
-  test("switches the full academy copy to English", async ({ context, page }) => {
-    await context.addCookies([
-      { name: "locale", value: "en", domain: "localhost", path: "/" },
-    ]);
+test("switches the full academy copy to English", async ({ context, page, baseURL }) => {
+  if (!baseURL) throw new Error("Playwright baseURL is required");
+  await context.addCookies([{ name: "locale", value: "en", url: baseURL }]);
     await page.goto("/academy-showcase-review");
     await expect(page.getByRole("heading", { name: "Knowledge is the key to your dreams and the gateway to the future." })).toBeVisible();
     await expect(page.getByRole("link", { name: /Studies/ })).toBeVisible();
