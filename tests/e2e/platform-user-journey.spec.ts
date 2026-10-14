@@ -136,37 +136,43 @@ test.describe.serial("real Jenan Pro user journey", () => {
       page.locator(".auth-form button[type=submit]").click(),
     ]);
 
-    await expectHealthyPage(page, "/projects/analysis");
-    const projectForm = page.locator(".project-create-form").first();
+    // the project is created through the launch-plan start form (`/projects/start/new`)
+    await expectHealthyPage(page, "/projects/start/new");
+    const projectForm = page.locator(".psw-basics-form");
     await projectForm.getByLabel("Project name").fill(projectName);
-    await projectForm.getByLabel("Sector").fill("Renewable logistics");
-    await projectForm.getByLabel("Country").fill("SA");
     await projectForm
-      .getByLabel("Brief description")
+      .getByLabel("Project idea")
       .fill(
         "A verified end-to-end project created during the platform user journey.",
       );
+    await projectForm.getByLabel("Entity type").selectOption("LLC");
+    await projectForm.getByLabel("Sector").fill("Renewable logistics");
+    await projectForm.getByLabel("City").selectOption("Riyadh");
+    await projectForm.getByLabel("Target audience").fill("Regional logistics operators");
+    await projectForm.getByLabel("Initial capital").fill("250000");
+    await projectForm.getByLabel("Duration in months").fill("12");
+    await projectForm.getByLabel("Team size").fill("8");
     const projectResponse = page.waitForResponse(
       (response) =>
         response.url().endsWith("/api/projects") &&
         response.request().method() === "POST",
     );
-    await projectForm.getByRole("button", { name: "New project" }).click();
+    await projectForm.getByRole("button", { name: "Save and continue" }).click();
     expect((await projectResponse).status()).toBe(201);
-    await expect(
-      page.locator(".project-list-item").filter({ hasText: projectName }),
-    ).toBeVisible();
+    const projects = await page.request.get("/api/projects?limit=100&offset=0");
+    expect(projects.status()).toBe(200);
+    expect(JSON.stringify(await projects.json())).toContain(projectName);
 
-    await expectHealthyPage(page, "/academy");
-    const firstCourse = page.locator(".academy-course").first();
+    await expectHealthyPage(page, "/academy/courses");
+    const firstCourse = page.locator(".academy-course-card").first();
     await expect(firstCourse).toBeVisible();
     const courseTitle =
-      (await firstCourse.locator("h2").textContent())?.trim() ?? "";
+      (await firstCourse.locator("h3").textContent())?.trim() ?? "";
     await Promise.all([
       page.waitForURL(/\/academy\/courses\//),
-      firstCourse.getByRole("link", { name: "Open content" }).click(),
+      firstCourse.getByRole("link", { name: "Start now" }).click(),
     ]);
-    await expect(page.locator(".academy-learning-progress")).toBeVisible();
+    await expect(page.locator(".academy-course-journey")).toBeVisible();
     const enroll = page.getByRole("button", { name: "Enroll in course" });
     if (await enroll.isVisible()) {
       const enrollmentResponse = page.waitForResponse(
@@ -176,12 +182,11 @@ test.describe.serial("real Jenan Pro user journey", () => {
       );
       await enroll.click();
       expect((await enrollmentResponse).status()).toBe(201);
-      await expect(page.getByRole("status")).toContainText("Progress saved");
+      await expect(page.getByRole("status")).toContainText("Course enrollment recorded.");
     }
 
     await expectHealthyPage(page, "/market");
     const marketForm = page.locator(".market-form");
-    await marketForm.getByPlaceholder("Listing title").fill(marketTitle);
     await marketForm.getByPlaceholder("Sector").fill("Clean technology");
     await marketForm.getByPlaceholder("Country").fill("SA");
     await marketForm.getByPlaceholder("Asking price").fill("250000");
@@ -195,6 +200,12 @@ test.describe.serial("real Jenan Pro user journey", () => {
       .fill(
         "The requested value reflects current equipment, contracts, operating history, and validated demand.",
       );
+    // Text typed before React hydrates is discarded, so the title is entered last and checked.
+    const listingTitle = marketForm.getByPlaceholder("Listing title");
+    await expect(async () => {
+      await listingTitle.fill(marketTitle);
+      await expect(listingTitle).toHaveValue(marketTitle, { timeout: 1_000 });
+    }).toPass({ timeout: 20_000 });
     const listingResponse = page.waitForResponse(
       (response) =>
         response.url().endsWith("/api/market") &&
@@ -215,98 +226,62 @@ test.describe.serial("real Jenan Pro user journey", () => {
     expect((await publishListingResponse).status()).toBe(200);
     await expect(listingCard).toContainText("PUBLISHED");
 
-    await expectHealthyPage(page, "/talent/employer/post");
-    const talentForm = page.locator(".talent-post-form");
-    await talentForm.getByPlaceholder("Job title").fill(jobTitle);
-    await talentForm.getByPlaceholder("Department").fill("Operations");
-    await talentForm.getByLabel("Work mode").selectOption("HYBRID");
-    await talentForm.getByPlaceholder("City").fill("Riyadh");
-    await talentForm.getByPlaceholder("Country").fill("SA");
-    await talentForm.getByPlaceholder("Salary from").fill("12000");
-    await talentForm.getByPlaceholder("Salary to").fill("18000");
-    await talentForm
-      .getByPlaceholder("Required skills")
-      .fill("operations, analytics, leadership, logistics");
-    await talentForm
-      .getByPlaceholder("Responsibilities, requirements, and benefits")
-      .fill(
-        "Lead cross-functional operations, analyze service performance, coordinate logistics, document decisions, and improve delivery quality across regional teams.",
-      );
-    const postingResponse = page.waitForResponse(
-      (response) =>
-        response.url().endsWith("/api/talent") &&
-        response.request().method() === "POST",
-    );
-    await talentForm.getByRole("button", { name: "Save draft" }).click();
-    expect((await postingResponse).status()).toBe(201);
-    await expectHealthyPage(page, "/talent/employer");
-    const postingCard = page
-      .locator(".talent-job-grid > article")
-      .filter({ hasText: jobTitle });
-    await expect(postingCard).toBeVisible();
-    const publishPostingResponse = page.waitForResponse(
-      (response) =>
-        response.url().endsWith("/api/talent") &&
-        response.request().method() === "POST",
-    );
-    await postingCard.getByRole("button", { name: "Publish" }).click();
-    expect((await publishPostingResponse).status()).toBe(200);
-    await expect(postingCard).toContainText("PUBLISHED");
-
+    // The Talent wizard and the Programs screens each have their own full-flow spec; the journey records through the
+    // same APIs they use and then checks the rendered pages.
+    const post = (route: string, data: Record<string, unknown>) =>
+      page.request.post(route, { data, headers: { origin: "http://127.0.0.1:3101" } });
     await expectHealthyPage(page, "/programs");
-    await page.getByPlaceholder("Organization name").fill(organizationName);
-    const organizationResponse = page.waitForResponse(
-      (response) =>
-        response.url().endsWith("/api/programs") &&
-        response.request().method() === "POST",
-    );
-    await page.getByRole("button", { name: "Create", exact: true }).click();
-    expect((await organizationResponse).status()).toBe(201);
-    await expect(page.getByLabel("Active organization")).toContainText(
-      organizationName,
-    );
-    for (const programName of [
-      "Financial operations",
-      "People operations",
-      "Field operations",
-      "Fleet management",
-    ]) {
-      const programCard = page
-        .locator(".program-card")
-        .filter({ hasText: programName });
-      const activationResponse = page.waitForResponse(
-        (response) =>
-          response.url().endsWith("/api/programs") &&
-          response.request().method() === "POST",
-      );
-      await programCard
-        .getByRole("button", { name: "Activate program" })
-        .click();
-      expect((await activationResponse).status()).toBe(201);
-      await expect(programCard).toContainText("Active");
+    const organizationResponse = await post("/api/programs", { action: "createOrganization", name: organizationName });
+    expect(organizationResponse.status()).toBe(201);
+    const organizationId = (await organizationResponse.json()).result.id as string;
+    for (const key of ["FINANCE", "PEOPLE", "FIELD_OPERATIONS", "FLEET"]) {
+      expect((await post("/api/programs", { action: "activate", key, organizationId })).status(), key).toBe(201);
     }
-    await page.getByRole("link", { name: "Open financial ledger" }).click();
-    await page.getByPlaceholder("Amount in SAR").fill("45000");
-    await page
-      .getByPlaceholder("Entry description")
-      .fill("Verified journey service revenue");
-    const ledgerResponse = page.waitForResponse(
-      (response) =>
-        response.url().includes("/api/programs/finance") &&
-        response.request().method() === "POST",
-    );
-    await page.getByRole("button", { name: "Record entry" }).click();
-    expect((await ledgerResponse).status()).toBe(201);
-    await expect(page.locator(".ledger-entries")).toContainText(
-      "Verified journey service revenue",
-    );
+    expect(
+      (
+        await post("/api/programs/finance", {
+          amountMinor: 4_500_000,
+          currency: "SAR",
+          description: "Verified journey service revenue",
+          occurredAt: new Date().toISOString(),
+          organizationId,
+          type: "INCOME",
+        })
+      ).status(),
+    ).toBe(201);
+    await expectHealthyPage(page, "/programs/finance");
+    await expect(page.getByText("Verified journey service revenue")).toBeVisible();
+
+    await expectHealthyPage(page, "/talent/employer/post");
+    const posting = await post("/api/talent", {
+      action: "create",
+      organizationId,
+      title: jobTitle,
+      description:
+        "Lead cross-functional operations, analyze service performance, coordinate logistics, document decisions, and improve delivery quality across regional teams.",
+      benefits: "Flexible hybrid schedule, learning budget, and documented growth reviews.",
+      conditions: "Five years of relevant experience and authorization to work in the selected location.",
+      department: "Operations",
+      countryCode: "SA",
+      city: "Riyadh",
+      salaryMinMinor: 1_200_000,
+      salaryMaxMinor: 1_800_000,
+      requiredSkills: "operations, analytics, leadership, logistics",
+      questions: [{ prompt: "Describe one delivery improvement you led.", required: true }],
+      workMode: "HYBRID",
+    });
+    expect(posting.status()).toBe(201);
+    const jobId = (await posting.json()).result.id as string;
+    expect((await post("/api/talent", { action: "updateStatus", jobPostingId: jobId, status: "PUBLISHED" })).status()).toBe(200);
+    await expectHealthyPage(page, "/talent/employer");
+    await expect(page.getByText(jobTitle).first()).toBeVisible();
 
     await expectHealthyPage(page, "/marketing/campaign/new");
     const campaignForm = page.locator(".marketing-campaign-form");
     await campaignForm.getByPlaceholder("Campaign name").fill(campaignName);
     await campaignForm
       .getByLabel("Campaign owner")
-      .selectOption({ label: organizationName });
+      .selectOption(`ORG:${organizationId}`);
     await campaignForm.getByLabel("Channel").selectOption("SOCIAL");
     await campaignForm.getByPlaceholder("Allocated budget").fill("15000");
     await campaignForm.getByPlaceholder("Conversion target").fill("12");

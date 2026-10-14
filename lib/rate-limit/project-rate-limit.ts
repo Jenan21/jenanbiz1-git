@@ -2,6 +2,7 @@ import { createHash } from "node:crypto";
 import type { NextRequest } from "next/server";
 import type { RateLimitDecision } from "@/lib/rate-limit/contracts";
 import { getRateLimitProvider } from "@/lib/rate-limit/auth-rate-limit";
+import { clientAddress } from "@/lib/security/site-gate";
 
 export type ProjectRateLimitAction = "create" | "assessment" | "financial" | "intelligence" | "risk" | "decision" | "membership" | "phase" | "start";
 
@@ -18,8 +19,7 @@ const policies: Record<ProjectRateLimitAction, { limit: number; windowMs: number
 };
 
 function requestIdentity(request: NextRequest, userId: string) {
-  const ip = request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() || request.headers.get("x-real-ip") || "local";
-  return createHash("sha256").update(`${ip}:${userId}`).digest("hex");
+  return createHash("sha256").update(`${clientAddress(request.headers)}:${userId}`).digest("hex");
 }
 
 export function checkProjectRateLimit(action: ProjectRateLimitAction, request: NextRequest, userId: string): Promise<RateLimitDecision> {

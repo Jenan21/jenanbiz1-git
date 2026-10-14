@@ -1,4 +1,5 @@
 import { db } from "@/lib/db";
+import { verifiedPaymentFilter } from "@/lib/marketing/payment-providers";
 
 export type FinancialSummary = {
   revenueByCurrency: Array<{ currency: string; succeededMinor: number; pendingMinor: number; refundedMinor: number }>;
@@ -10,12 +11,13 @@ export type FinancialSummary = {
 
 export async function getFinancialSummary(): Promise<FinancialSummary> {
   const [paymentGroups, costGroups, executionGroups, costRecords, zeroCostRecords, recentPayments] = await Promise.all([
-    db.payment.groupBy({ by: ["currency", "status"], _sum: { amountMinor: true } }),
+    // Rows the earlier self-service flow recorded without any money moving are not payments and stay out of every total.
+    db.payment.groupBy({ by: ["currency", "status"], where: verifiedPaymentFilter, _sum: { amountMinor: true } }),
     db.costRecord.groupBy({ by: ["currency", "provider"], _sum: { computeCostMinor: true }, _count: { _all: true } }),
     db.modelExecution.groupBy({ by: ["success"], _count: { _all: true } }),
     db.costRecord.count(),
     db.costRecord.count({ where: { computeCostMinor: 0 } }),
-    db.payment.findMany({ select: { amountMinor: true, currency: true, status: true, createdAt: true }, orderBy: { createdAt: "desc" }, take: 20 }),
+    db.payment.findMany({ where: verifiedPaymentFilter, select: { amountMinor: true, currency: true, status: true, createdAt: true }, orderBy: { createdAt: "desc" }, take: 20 }),
   ]);
 
   const currencies = new Map<string, { succeededMinor: number; pendingMinor: number; refundedMinor: number }>();

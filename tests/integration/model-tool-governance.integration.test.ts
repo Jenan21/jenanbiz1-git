@@ -9,6 +9,7 @@ import { decideToolApproval, executeGovernedTool, registerGovernedTool, requestT
 
 describe("model and tool governance", () => {
   let actorId = "";
+  let approverId = "";
   const modelIds: string[] = [];
   let toolId = "";
 
@@ -40,7 +41,16 @@ describe("model and tool governance", () => {
     expect(denied.status).toBe("DENIED");
     const pending = await requestToolExecution({ actorId, payload: { title: "Approved brief", description: "Governed execution" }, role: SystemRole.ADMIN, toolKey: tool.key });
     expect(pending.status).toBe("PENDING_APPROVAL");
-    await decideToolApproval({ approve: true, executionId: pending.id, rationale: "Least-privilege review passed" }, actorId);
+
+    // maker-checker: the requester cannot approve their own request, and the refusal leaves it pending
+    await expect(decideToolApproval({ approve: true, executionId: pending.id, rationale: "Approving my own request" }, actorId)).rejects.toThrow(
+      "someone other than the person who made it",
+    );
+    expect((await db.toolExecution.findUniqueOrThrow({ where: { id: pending.id } })).status).toBe("PENDING_APPROVAL");
+
+    const approver = await db.user.create({ data: { email: `governance.approver.${randomUUID()}@example.test`, status: UserStatus.ACTIVE, systemRole: SystemRole.ADMIN } });
+    approverId = approver.id;
+    await decideToolApproval({ approve: true, executionId: pending.id, rationale: "Least-privilege review passed" }, approverId);
     const completed = await executeGovernedTool(pending.id, actorId);
     expect(completed.status).toBe("SUCCEEDED");
     expect(completed.output).toMatchObject({ category: "general" });
@@ -53,6 +63,10 @@ describe("model and tool governance", () => {
     if (actorId) {
       await db.auditLog.deleteMany({ where: { actorId } });
       await db.user.delete({ where: { id: actorId } }).catch(() => undefined);
+    }
+    if (approverId) {
+      await db.auditLog.deleteMany({ where: { actorId: approverId } });
+      await db.user.delete({ where: { id: approverId } }).catch(() => undefined);
     }
     await db.$disconnect();
   });

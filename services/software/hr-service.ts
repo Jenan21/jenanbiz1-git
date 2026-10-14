@@ -1,5 +1,6 @@
 import { LeaveRequestStatus, PayrollRunStatus, Prisma } from "@/generated/prisma/client";
 import { db } from "@/lib/db";
+import { assertMinorAmount } from "@/lib/software/money-limits";
 import { requireSoftwareMembership } from "./software-access";
 
 function dayStart(value: Date) {
@@ -10,8 +11,7 @@ function cleanOptional(value?: string) {
   return value?.trim() || undefined;
 }
 
-export async function listSoftwareHr(organizationId: string, userId: string) {
-  await requireSoftwareMembership(organizationId, userId);
+async function readSoftwareHr(organizationId: string) {
   const [employees, attendance, leaveRequests, payrollRuns, reviews] = await Promise.all([
     db.softwareEmployee.findMany({ where: { organizationId }, orderBy: { updatedAt: "desc" }, take: 200 }),
     db.attendanceRecord.findMany({ where: { employee: { organizationId } }, include: { employee: { select: { name: true, employeeNumber: true } } }, orderBy: { date: "desc" }, take: 200 }),
@@ -22,17 +22,37 @@ export async function listSoftwareHr(organizationId: string, userId: string) {
   return { employees, attendance, leaveRequests, payrollRuns, reviews };
 }
 
+export type SoftwareHrRecords = Awaited<ReturnType<typeof readSoftwareHr>>;
+
+/** Salaries, payroll, leave and reviews are for the organization owner only, like every HR write. */
+export async function listSoftwareHr(organizationId: string, userId: string) {
+  await requireSoftwareMembership(organizationId, userId, true);
+  return readSoftwareHr(organizationId);
+}
+
+/** The workspace view of HR: the owner gets the records, every other member gets an empty section so the pages still render. */
+export async function listSoftwareHrForMember(organizationId: string, userId: string): Promise<SoftwareHrRecords> {
+  const membership = await requireSoftwareMembership(organizationId, userId);
+  if (!membership.isOwner) return { employees: [], attendance: [], leaveRequests: [], payrollRuns: [], reviews: [] };
+  return readSoftwareHr(organizationId);
+}
+
 export async function createSoftwareEmployee(input: { currency?: string; email?: string; employeeNumber: string; hiredAt: Date; memberId?: string; name: string; organizationId: string; roleTitle: string; salaryMinor: number; userId: string }) {
   await requireSoftwareMembership(input.organizationId, input.userId, true);
   if (input.memberId) {
     const member = await db.organizationMember.findFirst({ where: { id: input.memberId, organizationId: input.organizationId, status: "ACTIVE" }, select: { id: true } });
     if (!member) throw new Error("Organization member not found");
   }
-  return db.$transaction(async (transaction) => {
-    const employee = await transaction.softwareEmployee.create({ data: { organizationId: input.organizationId, memberId: input.memberId, employeeNumber: input.employeeNumber.trim().toUpperCase(), name: input.name.trim(), email: cleanOptional(input.email), roleTitle: input.roleTitle.trim(), salaryMinor: input.salaryMinor, currency: input.currency?.trim().toUpperCase() || "SAR", hiredAt: input.hiredAt, createdById: input.userId } });
-    await transaction.auditLog.create({ data: { actorId: input.userId, organizationId: input.organizationId, action: "software.hr.employee.created", entityType: "SoftwareEmployee", entityId: employee.id, metadata: { employeeNumber: employee.employeeNumber } } });
-    return employee;
-  });
+  try {
+    return await db.$transaction(async (transaction) => {
+      const employee = await transaction.softwareEmployee.create({ data: { organizationId: input.organizationId, memberId: input.memberId, employeeNumber: input.employeeNumber.trim().toUpperCase(), name: input.name.trim(), email: cleanOptional(input.email), roleTitle: input.roleTitle.trim(), salaryMinor: input.salaryMinor, currency: input.currency?.trim().toUpperCase() || "SAR", hiredAt: input.hiredAt, createdById: input.userId } });
+      await transaction.auditLog.create({ data: { actorId: input.userId, organizationId: input.organizationId, action: "software.hr.employee.created", entityType: "SoftwareEmployee", entityId: employee.id, metadata: { employeeNumber: employee.employeeNumber } } });
+      return employee;
+    });
+  } catch (error) {
+    if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2002") throw new Error("An employee with this number or member link already exists");
+    throw error;
+  }
 }
 
 export async function recordAttendance(input: { checkInAt?: Date; checkOutAt?: Date; date: Date; employeeId: string; note?: string; organizationId: string; status: "PRESENT" | "ABSENT" | "REMOTE"; userId: string }) {
@@ -77,8 +97,10 @@ export async function createPayrollRun(input: { deductions?: Record<string, numb
     if (deductionsMinor > employee.salaryMinor) throw new Error("Payroll deductions exceed gross salary");
     return { employeeId: employee.id, grossMinor: employee.salaryMinor, deductionsMinor, netMinor: employee.salaryMinor - deductionsMinor };
   });
+  const totalGrossMinor = assertMinorAmount(items.reduce((total, item) => total + item.grossMinor, 0), "Payroll gross total");
+  const totalNetMinor = assertMinorAmount(items.reduce((total, item) => total + item.netMinor, 0), "Payroll net total");
   return db.$transaction(async (transaction) => {
-    const payroll = await transaction.payrollRun.create({ data: { organizationId: input.organizationId, periodStart: dayStart(input.periodStart), periodEnd: dayStart(input.periodEnd), totalGrossMinor: items.reduce((total, item) => total + item.grossMinor, 0), totalNetMinor: items.reduce((total, item) => total + item.netMinor, 0), createdById: input.userId, items: { create: items } }, include: { items: true } });
+    const payroll = await transaction.payrollRun.create({ data: { organizationId: input.organizationId, periodStart: dayStart(input.periodStart), periodEnd: dayStart(input.periodEnd), totalGrossMinor, totalNetMinor, createdById: input.userId, items: { create: items } }, include: { items: true } });
     await transaction.auditLog.create({ data: { actorId: input.userId, organizationId: input.organizationId, action: "software.hr.payroll.created", entityType: "PayrollRun", entityId: payroll.id, metadata: { employeeCount: items.length, totalNetMinor: payroll.totalNetMinor } } });
     return payroll;
   });
@@ -90,7 +112,10 @@ export async function postPayrollRun(input: { organizationId: string; payrollRun
     const payroll = await transaction.payrollRun.findFirst({ where: { id: input.payrollRunId, organizationId: input.organizationId, status: PayrollRunStatus.DRAFT } });
     if (!payroll) throw new Error("Draft payroll run not found");
     const postedAt = new Date();
-    const updated = await transaction.payrollRun.update({ where: { id: payroll.id }, data: { status: PayrollRunStatus.POSTED, postedAt } });
+    // Only the request that moves the run out of DRAFT may book its expense; a concurrent duplicate stops here and rolls back.
+    const claimed = await transaction.payrollRun.updateMany({ where: { id: payroll.id, organizationId: input.organizationId, status: PayrollRunStatus.DRAFT }, data: { status: PayrollRunStatus.POSTED, postedAt } });
+    if (claimed.count !== 1) throw new Error("Payroll run has already been posted");
+    const updated = await transaction.payrollRun.findFirstOrThrow({ where: { id: payroll.id } });
     await transaction.financialEntry.create({ data: { organizationId: input.organizationId, type: "EXPENSE", amountMinor: payroll.totalNetMinor, currency: "SAR", description: `Payroll ${payroll.periodStart.toISOString().slice(0, 10)} to ${payroll.periodEnd.toISOString().slice(0, 10)}`, occurredAt: postedAt, createdById: input.userId } });
     await transaction.auditLog.create({ data: { actorId: input.userId, organizationId: input.organizationId, action: "software.hr.payroll.posted", entityType: "PayrollRun", entityId: payroll.id, metadata: { totalNetMinor: payroll.totalNetMinor } as Prisma.InputJsonValue } });
     return updated;

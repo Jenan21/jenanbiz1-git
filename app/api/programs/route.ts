@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { getCurrentUser } from "@/lib/auth/session";
 import { hasValidOrigin } from "@/lib/auth/request";
+import { publicErrorMessage } from "@/lib/http/safe-error";
 import {
   activateOrganizationProgram,
   createOrganizationForUser,
@@ -37,7 +38,7 @@ export async function POST(request: NextRequest) {
       : await updateOrganizationProgramStatus({ ...input, userId: user.id });
     return NextResponse.json({ success: true, result }, { status: input.action === "createOrganization" || input.action === "activate" ? 201 : 200 });
   } catch (error) {
-    const message = error instanceof Error ? error.message : "Programs command failed";
-    return NextResponse.json({ success: false, message }, { status: message.includes("required") ? 403 : 404 });
+    const status = error instanceof Error && error.message.includes("required") ? 403 : 404;
+    return NextResponse.json({ success: false, message: publicErrorMessage(error, "Programs command failed") }, { status });
   }
 }

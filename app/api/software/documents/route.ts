@@ -1,17 +1,23 @@
 import { NextRequest, NextResponse } from "next/server";
 import { Document, Packer, Paragraph } from "docx";
 import ExcelJS from "exceljs";
-import { deletePdfPages, extractPdfPages, extractPdfText, imagesToPdf, mergePdfs, numberPdfPages, optimizePdf, redactPdf, reorderPdfPages, rotatePdfPages, splitPdf, textToPdf, watermarkPdf } from "@/packages/pdf-engine/src";
-import { parseDocx } from "@/packages/docs-engine/src";
+import { deletePdfPages, extractPdfPages, extractPdfText, imagesToPdf, mergePdfs, numberPdfPages, optimizePdf, PdfLimitError, redactPdf, reorderPdfPages, rotatePdfPages, splitPdf, textToPdf, watermarkPdf } from "@/packages/pdf-engine/src";
+import { DocumentLimitError, parseDocx } from "@/packages/docs-engine/src";
 import { parseXlsx } from "@/packages/sheets-engine/src";
 import { getCurrentUser } from "@/lib/auth/session";
 import { hasValidOrigin } from "@/lib/auth/request";
 import { db } from "@/lib/db";
+import { publicErrorMessage } from "@/lib/http/safe-error";
+import { enforceRouteRateLimit } from "@/lib/rate-limit/route-rate-limit";
+import { exceedsDeclaredBodyLimit } from "@/services/files/request-limits";
 
 export const runtime = "nodejs";
 
 const maxFiles = 8;
 const maxFileBytes = 10 * 1024 * 1024;
+// Headroom for the multipart envelope and the small form fields around the files.
+const maxRequestBytes = maxFiles * maxFileBytes + 1024 * 1024;
+const maxFieldChars = 10_000;
 
 function hasPdfSignature(bytes: Uint8Array) {
   return bytes.length >= 5 && new TextDecoder().decode(bytes.subarray(0, 5)) === "%PDF-";
@@ -52,11 +58,14 @@ export async function POST(request: NextRequest) {
   const user = await getCurrentUser();
   if (!user) return NextResponse.json({ success: false, message: "Authentication required" }, { status: 401 });
   if (!hasValidOrigin(request)) return NextResponse.json({ success: false, message: "Invalid request origin" }, { status: 403 });
+  const limited = await enforceRouteRateLimit(request, { scope: "software:documents", limit: 20, windowMs: 60_000, userId: user.id });
+  if (limited) return limited;
+  if (exceedsDeclaredBodyLimit(request, maxRequestBytes)) return NextResponse.json({ success: false, message: "Invalid document request" }, { status: 413 });
 
   const form = await request.formData().catch(() => null);
   const action = form?.get("action");
   const files = form?.getAll("files").filter((value): value is File => value instanceof File) ?? [];
-  if (!form || typeof action !== "string" || !files.length || files.length > maxFiles || files.some((file) => file.size === 0 || file.size > maxFileBytes)) {
+  if (!form || typeof action !== "string" || !files.length || files.length > maxFiles || files.some((file) => file.size === 0 || file.size > maxFileBytes) || [...form.values()].some((value) => typeof value === "string" && value.length > maxFieldChars)) {
     return NextResponse.json({ success: false, message: "Invalid document request" }, { status: 400 });
   }
 
@@ -162,8 +171,10 @@ export async function POST(request: NextRequest) {
       return binaryResponse(new Uint8Array(output), "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", "jenan-pdf-text.xlsx");
     }
     return NextResponse.json({ success: false, message: "Unknown document action" }, { status: 400 });
-  } catch {
-    return NextResponse.json({ success: false, message: "The document could not be processed" }, { status: 422 });
+  } catch (error) {
+    // Limit errors carry a message written for the user; anything else is logged and answered with a reference.
+    const message = error instanceof DocumentLimitError || error instanceof PdfLimitError ? error.message : publicErrorMessage(error, "The document could not be processed");
+    return NextResponse.json({ success: false, message }, { status: 422 });
   }
 }
 

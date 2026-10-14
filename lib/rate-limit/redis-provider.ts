@@ -9,6 +9,7 @@ function deniedDecision(input: RateLimitConsumeInput) {
     remaining: 0,
     resetAt: new Date(now + input.windowMs),
     retryAfterSeconds: Math.max(1, Math.ceil(input.windowMs / 1_000)),
+    degraded: true,
   } satisfies RateLimitDecision;
 }
 
@@ -39,6 +40,25 @@ export class RedisRateLimitProvider implements RateLimitProvider {
       return this.client.isReady;
     } catch {
       return false;
+    }
+  }
+
+  async peek(input: RateLimitConsumeInput): Promise<RateLimitDecision> {
+    try {
+      await this.connect();
+      const [stored, ttl] = await Promise.all([this.client.get(input.key), this.client.pTTL(input.key)]);
+      const count = Number(stored ?? 0);
+      const allowed = count < input.limit;
+      const remainingMs = ttl > 0 ? ttl : input.windowMs;
+      return {
+        allowed,
+        limit: input.limit,
+        remaining: Math.max(0, input.limit - count),
+        resetAt: new Date(Date.now() + remainingMs),
+        retryAfterSeconds: allowed ? 0 : Math.max(1, Math.ceil(remainingMs / 1_000)),
+      };
+    } catch {
+      return deniedDecision(input);
     }
   }
 

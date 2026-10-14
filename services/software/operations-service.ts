@@ -1,5 +1,6 @@
 import { CrmLeadStatus, PosShiftStatus, PurchaseOrderStatus } from "@/generated/prisma/client";
 import { db } from "@/lib/db";
+import { assertMinorAmount } from "@/lib/software/money-limits";
 import { requireSoftwareMembership } from "./software-access";
 
 function cleanOptional(value?: string) {
@@ -80,9 +81,9 @@ export async function createPurchaseOrder(input: { currency?: string; expectedAt
   const lines = input.lines.map((line) => {
     const product = line.productId ? productMap.get(line.productId) : undefined;
     if (line.productId && !product) throw new Error("Product not found");
-    return { productId: product?.id, description: cleanOptional(line.description) ?? product?.name ?? "Purchase item", quantity: line.quantity, unitCostMinor: line.unitCostMinor, lineTotalMinor: line.quantity * line.unitCostMinor };
+    return { productId: product?.id, description: cleanOptional(line.description) ?? product?.name ?? "Purchase item", quantity: line.quantity, unitCostMinor: line.unitCostMinor, lineTotalMinor: assertMinorAmount(line.quantity * line.unitCostMinor, "Purchase line total") };
   });
-  const totalMinor = lines.reduce((total, line) => total + line.lineTotalMinor, 0);
+  const totalMinor = assertMinorAmount(lines.reduce((total, line) => total + line.lineTotalMinor, 0), "Purchase order total");
   return db.$transaction(async (transaction) => {
     const order = await transaction.purchaseOrder.create({ data: { organizationId: input.organizationId, supplierId: input.supplierId, number: `PO-${new Date().toISOString().slice(0, 10).replaceAll("-", "")}-${crypto.randomUUID().slice(0, 8).toUpperCase()}`, currency: input.currency?.trim().toUpperCase() || "SAR", totalMinor, expectedAt: input.expectedAt, createdById: input.userId, lines: { create: lines } }, include: { supplier: true, lines: true } });
     await transaction.auditLog.create({ data: { actorId: input.userId, organizationId: input.organizationId, action: "software.purchase.created", entityType: "PurchaseOrder", entityId: order.id, metadata: { totalMinor } } });
@@ -96,8 +97,12 @@ export async function updatePurchaseOrderStatus(input: { orderId: string; organi
     const order = await transaction.purchaseOrder.findFirst({ where: { id: input.orderId, organizationId: input.organizationId }, include: { lines: true } });
     if (!order) throw new Error("Purchase order not found");
     if (order.status === PurchaseOrderStatus.RECEIVED) throw new Error("A received purchase order cannot be changed");
+    if (input.status === PurchaseOrderStatus.RECEIVED && order.status !== PurchaseOrderStatus.ORDERED) throw new Error("Only ordered purchases can be received");
+    // Only the request that moves the order out of the status it read may go on; a concurrent duplicate stops here and
+    // rolls back, so the stock is received and the expense booked once.
+    const claimed = await transaction.purchaseOrder.updateMany({ where: { id: order.id, organizationId: input.organizationId, status: order.status }, data: { status: input.status, receivedAt: input.status === PurchaseOrderStatus.RECEIVED ? new Date() : undefined } });
+    if (claimed.count !== 1) throw new Error("The purchase order status was changed by another request");
     if (input.status === PurchaseOrderStatus.RECEIVED) {
-      if (order.status !== PurchaseOrderStatus.ORDERED) throw new Error("Only ordered purchases can be received");
       for (const line of order.lines) {
         if (!line.productId) continue;
         await transaction.softwareProduct.update({ where: { id: line.productId }, data: { stockQuantity: { increment: line.quantity }, costMinor: line.unitCostMinor } });
@@ -105,7 +110,7 @@ export async function updatePurchaseOrderStatus(input: { orderId: string; organi
       }
       await transaction.financialEntry.create({ data: { organizationId: input.organizationId, type: "EXPENSE", amountMinor: order.totalMinor, currency: order.currency, description: `Received purchase ${order.number}`, occurredAt: new Date(), createdById: input.userId } });
     }
-    const updated = await transaction.purchaseOrder.update({ where: { id: order.id }, data: { status: input.status, receivedAt: input.status === PurchaseOrderStatus.RECEIVED ? new Date() : undefined }, include: { supplier: true, lines: true } });
+    const updated = await transaction.purchaseOrder.findFirstOrThrow({ where: { id: order.id }, include: { supplier: true, lines: true } });
     await transaction.auditLog.create({ data: { actorId: input.userId, organizationId: input.organizationId, action: "software.purchase.status.updated", entityType: "PurchaseOrder", entityId: order.id, metadata: { status: input.status } } });
     return updated;
   });
@@ -138,9 +143,9 @@ export async function recordPosSale(input: { customerId?: string; organizationId
     if (product.currency !== shift.currency) throw new Error("Product and POS shift currencies must match");
     if (input.customerId && !customer) throw new Error("Customer not found");
     if (product.stockQuantity < input.quantity) throw new Error("Insufficient inventory for POS sale");
-    const subtotalMinor = input.quantity * product.priceMinor;
+    const subtotalMinor = assertMinorAmount(input.quantity * product.priceMinor, "POS sale total");
     const taxMinor = Math.round(subtotalMinor * (input.taxRateBps ?? 1500) / 10_000);
-    const totalMinor = subtotalMinor + taxMinor;
+    const totalMinor = assertMinorAmount(subtotalMinor + taxMinor, "POS sale total");
     const document = await transaction.salesDocument.create({ data: { organizationId: input.organizationId, customerId: input.customerId, posShiftId: shift.id, kind: "INVOICE", status: "PAID", number: `POS-${new Date().toISOString().slice(0, 10).replaceAll("-", "")}-${crypto.randomUUID().slice(0, 8).toUpperCase()}`, currency: product.currency, subtotalMinor, taxMinor, totalMinor, createdById: input.userId, lines: { create: { productId: product.id, description: product.name, quantity: input.quantity, unitPriceMinor: product.priceMinor, taxRateBps: input.taxRateBps ?? 1500, lineTotalMinor: totalMinor } }, receipts: { create: { organizationId: input.organizationId, amountMinor: totalMinor, currency: product.currency, reference: `POS shift ${shift.id}`, createdById: input.userId } } }, include: { lines: true, receipts: true } });
     await transaction.softwareProduct.update({ where: { id: product.id }, data: { stockQuantity: { decrement: input.quantity } } });
     await transaction.inventoryMovement.create({ data: { organizationId: input.organizationId, productId: product.id, type: "SALE", quantity: -input.quantity, referenceType: "SalesDocument", referenceId: document.id, createdById: input.userId } });

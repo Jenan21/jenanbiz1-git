@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { publicErrorMessage } from "@/lib/http/safe-error";
 import { z } from "zod";
 
 import { BackupRecordStatus, IncidentStatus, Prisma, RestoreDrillStatus, WorkerNodeStatus } from "@/generated/prisma/client";
@@ -67,7 +68,7 @@ export async function POST(request: NextRequest) {
       : await recordRestoreDrill({ backupId: input.backupId, error: input.error, evidence: input.evidence as Prisma.InputJsonValue | undefined, status: input.status, target: input.target });
     return NextResponse.json({ success: true, result: serialize(result) });
   } catch (error) {
-    const message = error instanceof Error ? error.message : "Observability command failed";
+    const message = publicErrorMessage(error, "Observability command failed");
     return NextResponse.json({ success: false, message }, { status: message.endsWith("not found") ? 404 : 409 });
   }
 }

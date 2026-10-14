@@ -1,0 +1,159 @@
+import { NextRequest } from "next/server";
+import { beforeEach, describe, expect, it, vi } from "vitest";
+
+import { Prisma } from "@/generated/prisma/client";
+import { MemoryRateLimitProvider } from "@/lib/rate-limit/memory-provider";
+
+const mocks = vi.hoisted(() => ({
+  user: { id: "user-1" } as { id: string } | null,
+  addProjectMember: vi.fn(),
+  userCanReadProject: vi.fn(),
+  createProjectReport: vi.fn(),
+  searchProjectIntelligence: vi.fn(),
+}));
+
+const provider = new MemoryRateLimitProvider();
+
+vi.mock("@/lib/auth/session", () => ({ getCurrentUser: async () => mocks.user }));
+vi.mock("@/lib/auth/request", () => ({ hasValidOrigin: () => true }));
+vi.mock("@/lib/db", () => ({ db: {} }));
+vi.mock("@/lib/rate-limit/auth-rate-limit", () => ({ getRateLimitProvider: () => provider }));
+vi.mock("@/services/projects/project-report", () => ({ createProjectReport: mocks.createProjectReport }));
+vi.mock("@/services/projects/project-intelligence", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@/services/projects/project-intelligence")>()),
+  searchProjectIntelligence: mocks.searchProjectIntelligence,
+}));
+vi.mock("@/services/projects/project-service", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@/services/projects/project-service")>()),
+  addProjectMember: mocks.addProjectMember,
+  userCanReadProject: mocks.userCanReadProject,
+}));
+
+import { POST as postProjects } from "@/app/api/projects/route";
+import { GET as getReport } from "@/app/api/projects/[projectId]/report/route";
+
+const projectId = "ckprojectaaaaaaaaaaaaaaaaa";
+const prismaFailure = () =>
+  new Prisma.PrismaClientKnownRequestError("Invalid `prisma.user.findUnique()` invocation in /app/services/projects/project-service.ts:194:31 SELECT \"email\" FROM \"User\"", { code: "P2022", clientVersion: "7.9.1" });
+
+function reportRequest(query = "") {
+  return new Request(`http://localhost/api/projects/${projectId}/report${query}`, { headers: { "x-real-ip": "192.0.2.50" } });
+}
+
+function command(body: unknown) {
+  return new NextRequest("http://localhost/api/projects", { method: "POST", body: JSON.stringify(body), headers: { "content-type": "application/json", "x-real-ip": "192.0.2.51" } });
+}
+
+beforeEach(() => {
+  provider.clear();
+  vi.clearAllMocks();
+  mocks.addProjectMember.mockReset();
+  vi.spyOn(console, "error").mockImplementation(() => undefined);
+  mocks.user = { id: "user-1" };
+  mocks.userCanReadProject.mockResolvedValue(true);
+  mocks.createProjectReport.mockResolvedValue(new Uint8Array([37, 80, 68, 70]));
+  mocks.searchProjectIntelligence.mockResolvedValue({ location: null });
+});
+
+describe("project report route", () => {
+  it("allows eight reports a minute per user and then answers 429 for that user only", async () => {
+    for (let index = 0; index < 8; index += 1) {
+      expect((await getReport(reportRequest(), { params: Promise.resolve({ projectId }) })).status).toBe(200);
+    }
+    const limited = await getReport(reportRequest(), { params: Promise.resolve({ projectId }) });
+    expect(limited.status).toBe(429);
+    expect(Number(limited.headers.get("retry-after"))).toBeGreaterThanOrEqual(1);
+    await expect(limited.json()).resolves.toEqual({ error: "RATE_LIMITED" });
+    expect(mocks.createProjectReport).toHaveBeenCalledTimes(8);
+
+    mocks.user = { id: "user-2" };
+    expect((await getReport(reportRequest(), { params: Promise.resolve({ projectId }) })).status).toBe(200);
+  });
+
+  it("counts a location report against the same budget and never reaches the providers for a project the user cannot read", async () => {
+    mocks.userCanReadProject.mockResolvedValue(false);
+    const response = await getReport(reportRequest("?location=Riyadh&countryCode=SA"), { params: Promise.resolve({ projectId }) });
+    expect(response.status).toBe(404);
+    expect(mocks.searchProjectIntelligence).not.toHaveBeenCalled();
+    expect(mocks.createProjectReport).not.toHaveBeenCalled();
+  });
+
+  it("calls the providers once for a readable project and bounds what it forwards", async () => {
+    const response = await getReport(reportRequest("?location=Riyadh&countryCode=sa&sector=Retail"), { params: Promise.resolve({ projectId }) });
+    expect(response.status).toBe(200);
+    expect(mocks.searchProjectIntelligence).toHaveBeenCalledTimes(1);
+    expect(mocks.searchProjectIntelligence).toHaveBeenCalledWith({ query: "Riyadh", countryCode: "sa", sector: "Retail" });
+
+    const tooLong = await getReport(reportRequest(`?location=${"x".repeat(201)}`), { params: Promise.resolve({ projectId }) });
+    expect(tooLong.status).toBe(400);
+    const badCountry = await getReport(reportRequest("?location=Riyadh&countryCode=SAU"), { params: Promise.resolve({ projectId }) });
+    expect(badCountry.status).toBe(400);
+    expect(mocks.searchProjectIntelligence).toHaveBeenCalledTimes(1);
+  });
+
+  it("requires a signed-in user before counting anything", async () => {
+    mocks.user = null;
+    expect((await getReport(reportRequest(), { params: Promise.resolve({ projectId }) })).status).toBe(401);
+  });
+
+  it("does not echo a database error", async () => {
+    mocks.createProjectReport.mockRejectedValue(prismaFailure());
+    const response = await getReport(reportRequest(), { params: Promise.resolve({ projectId }) });
+    expect(response.status).toBe(500);
+    const body = await response.json() as { message: string };
+    expect(body.message).toMatch(/^Report generation failed \(ref [0-9a-f]{8}\)$/);
+    expect(JSON.stringify(body)).not.toMatch(/prisma|invocation|SELECT|project-service/i);
+  });
+
+  it("keeps the deliberate not-found answer", async () => {
+    mocks.createProjectReport.mockRejectedValue(new Error("Project not found"));
+    const response = await getReport(reportRequest(), { params: Promise.resolve({ projectId }) });
+    expect(response.status).toBe(404);
+    await expect(response.json()).resolves.toMatchObject({ message: "Project not found" });
+  });
+});
+
+describe("projects command route", () => {
+  it("answers a database failure with a generic sentence and a reference, with the same 409 status", async () => {
+    mocks.addProjectMember.mockRejectedValue(prismaFailure());
+    const response = await postProjects(command({ action: "addMember", projectId, email: "member@example.test", role: "VIEWER" }));
+    expect(response.status).toBe(409);
+    const body = await response.json() as { success: boolean; message: string };
+    expect(body.success).toBe(false);
+    expect(body.message).toMatch(/^Project command failed \(ref [0-9a-f]{8}\)$/);
+    expect(JSON.stringify(body)).not.toMatch(/prisma|invocation|SELECT|project-service/i);
+  });
+
+  it("still tells the user the deliberate business reasons, with their original status codes", async () => {
+    mocks.addProjectMember.mockRejectedValueOnce(new Error("Project member user not found"));
+    const missing = await postProjects(command({ action: "addMember", projectId, email: "nobody@example.test", role: "VIEWER" }));
+    expect(missing.status).toBe(409);
+    await expect(missing.json()).resolves.toMatchObject({ message: "Project member user not found" });
+
+    mocks.addProjectMember.mockRejectedValueOnce(new Error("Project not found"));
+    const absent = await postProjects(command({ action: "addMember", projectId, email: "member@example.test", role: "VIEWER" }));
+    expect(absent.status).toBe(404);
+  });
+
+  it("limits member lookups per signed-in user with the existing membership budget", async () => {
+    mocks.addProjectMember.mockRejectedValue(new Error("Project member user not found"));
+    const statuses: number[] = [];
+    for (let index = 0; index < 16; index += 1) {
+      statuses.push((await postProjects(command({ action: "addMember", projectId, email: `guess${index}@example.test`, role: "VIEWER" }))).status);
+    }
+    expect(statuses.slice(0, 15).every((status) => status === 409)).toBe(true);
+    expect(statuses[15]).toBe(429);
+    expect(mocks.addProjectMember).toHaveBeenCalledTimes(15);
+  });
+
+  it("rejects financial inputs that would loop for ever or overflow instead of computing them", async () => {
+    const inputs = { initialInvestment: 10_000, monthlyFixedCosts: 1_000, variableCostPerUnit: 5, pricePerUnit: 20, monthlyUnits: 300, months: 12 };
+    const accepted = await postProjects(command({ action: "calculateFeasibility", inputs }));
+    expect(accepted.status).toBe(200);
+
+    for (const patch of [{ months: 1_000_000_000 }, { months: 601 }, { monthlyUnits: 1_000_000_001 }, { initialInvestment: 1e300 }]) {
+      const rejected = await postProjects(command({ action: "calculateFeasibility", inputs: { ...inputs, ...patch } }));
+      expect(rejected.status).toBe(400);
+    }
+  });
+});

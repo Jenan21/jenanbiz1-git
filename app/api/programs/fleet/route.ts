@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { getCurrentUser } from "@/lib/auth/session";
 import { hasValidOrigin } from "@/lib/auth/request";
+import { publicErrorMessage } from "@/lib/http/safe-error";
 import { createFleetVehicle, listFleetVehicles, updateFleetVehicleStatus } from "@/services/programs/fleet-service";
 
 const commandSchema = z.discriminatedUnion("action", [
@@ -15,7 +16,7 @@ export async function GET(request: NextRequest) {
   const organizationId = request.nextUrl.searchParams.get("organizationId");
   if (!organizationId || !z.string().cuid().safeParse(organizationId).success) return NextResponse.json({ success: false, message: "Valid organizationId required" }, { status: 400 });
   try { return NextResponse.json({ success: true, vehicles: await listFleetVehicles(organizationId, user.id) }); }
-  catch (error) { return NextResponse.json({ success: false, message: error instanceof Error ? error.message : "Fleet could not be loaded" }, { status: 403 }); }
+  catch (error) { return NextResponse.json({ success: false, message: publicErrorMessage(error, "Fleet could not be loaded") }, { status: 403 }); }
 }
 
 export async function POST(request: NextRequest) {
@@ -28,5 +29,5 @@ export async function POST(request: NextRequest) {
     const input = parsed.data;
     const result = input.action === "create" ? await createFleetVehicle({ ...input, userId: user.id }) : await updateFleetVehicleStatus({ ...input, userId: user.id });
     return NextResponse.json({ success: true, result }, { status: input.action === "create" ? 201 : 200 });
-  } catch (error) { return NextResponse.json({ success: false, message: error instanceof Error ? error.message : "Fleet command failed" }, { status: 403 }); }
+  } catch (error) { return NextResponse.json({ success: false, message: publicErrorMessage(error, "Fleet command failed") }, { status: 403 }); }
 }

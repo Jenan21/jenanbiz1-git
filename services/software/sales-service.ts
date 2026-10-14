@@ -1,5 +1,6 @@
 import { Prisma, SalesDocumentKind, SalesDocumentStatus } from "@/generated/prisma/client";
 import { db } from "@/lib/db";
+import { assertMinorAmount } from "@/lib/software/money-limits";
 import { requireSoftwareMembership } from "./software-access";
 
 const salesDocumentInclude = {
@@ -75,19 +76,24 @@ export async function saveSoftwareProduct(input: {
     reorderLevel: input.reorderLevel ?? 0,
     sku: input.sku.trim().toUpperCase(),
   };
-  if (input.productId) {
-    const current = await db.softwareProduct.findFirst({ where: { id: input.productId, organizationId: input.organizationId }, select: { id: true } });
-    if (!current) throw new Error("Product not found");
-    return db.softwareProduct.update({ where: { id: current.id }, data });
-  }
-  return db.$transaction(async (transaction) => {
-    const product = await transaction.softwareProduct.create({ data: { ...data, organizationId: input.organizationId, stockQuantity: input.initialStock ?? 0, createdById: input.userId } });
-    if (product.stockQuantity) {
-      await transaction.inventoryMovement.create({ data: { organizationId: input.organizationId, productId: product.id, type: "ADJUSTMENT", quantity: product.stockQuantity, note: "Initial stock", createdById: input.userId } });
+  try {
+    if (input.productId) {
+      const current = await db.softwareProduct.findFirst({ where: { id: input.productId, organizationId: input.organizationId }, select: { id: true } });
+      if (!current) throw new Error("Product not found");
+      return await db.softwareProduct.update({ where: { id: current.id }, data });
     }
-    await transaction.auditLog.create({ data: { actorId: input.userId, organizationId: input.organizationId, action: "software.product.created", entityType: "SoftwareProduct", entityId: product.id, metadata: { sku: product.sku, initialStock: product.stockQuantity } } });
-    return product;
-  });
+    return await db.$transaction(async (transaction) => {
+      const product = await transaction.softwareProduct.create({ data: { ...data, organizationId: input.organizationId, stockQuantity: input.initialStock ?? 0, createdById: input.userId } });
+      if (product.stockQuantity) {
+        await transaction.inventoryMovement.create({ data: { organizationId: input.organizationId, productId: product.id, type: "ADJUSTMENT", quantity: product.stockQuantity, note: "Initial stock", createdById: input.userId } });
+      }
+      await transaction.auditLog.create({ data: { actorId: input.userId, organizationId: input.organizationId, action: "software.product.created", entityType: "SoftwareProduct", entityId: product.id, metadata: { sku: product.sku, initialStock: product.stockQuantity } } });
+      return product;
+    });
+  } catch (error) {
+    if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2002") throw new Error("A product with this SKU already exists");
+    throw error;
+  }
 }
 
 export async function createSalesDocument(input: {
@@ -117,12 +123,13 @@ export async function createSalesDocument(input: {
     const unitPriceMinor = line.unitPriceMinor ?? product?.priceMinor;
     if (unitPriceMinor === undefined || unitPriceMinor < 0) throw new Error("Line price is invalid");
     const taxRateBps = line.taxRateBps ?? settings?.taxRateBps ?? 1500;
-    const subtotalMinor = line.quantity * unitPriceMinor;
+    const subtotalMinor = assertMinorAmount(line.quantity * unitPriceMinor, "Sales line total");
     const taxMinor = Math.round(subtotalMinor * taxRateBps / 10_000);
-    return { description: cleanOptional(line.description) ?? product?.name ?? "Sales item", productId: product?.id, quantity: line.quantity, unitPriceMinor, taxRateBps, lineTotalMinor: subtotalMinor + taxMinor, subtotalMinor, taxMinor };
+    return { description: cleanOptional(line.description) ?? product?.name ?? "Sales item", productId: product?.id, quantity: line.quantity, unitPriceMinor, taxRateBps, lineTotalMinor: assertMinorAmount(subtotalMinor + taxMinor, "Sales line total"), subtotalMinor, taxMinor };
   });
-  const subtotalMinor = lines.reduce((total, line) => total + line.subtotalMinor, 0);
+  const subtotalMinor = assertMinorAmount(lines.reduce((total, line) => total + line.subtotalMinor, 0), "Sales document total");
   const taxMinor = lines.reduce((total, line) => total + line.taxMinor, 0);
+  const totalMinor = assertMinorAmount(subtotalMinor + taxMinor, "Sales document total");
   return db.$transaction(async (transaction) => {
     const document = await transaction.salesDocument.create({
       data: {
@@ -133,7 +140,7 @@ export async function createSalesDocument(input: {
         currency: documentCurrency,
         subtotalMinor,
         taxMinor,
-        totalMinor: subtotalMinor + taxMinor,
+        totalMinor,
         dueAt: input.dueAt,
         notes: cleanOptional(input.notes),
         createdById: input.userId,
@@ -149,6 +156,9 @@ export async function createSalesDocument(input: {
 export async function updateSalesDocumentStatus(input: { documentId: string; organizationId: string; status: SalesDocumentStatus; userId: string }) {
   await requireSoftwareMembership(input.organizationId, input.userId);
   return db.$transaction(async (transaction) => {
+    // Touching the row first makes concurrent changes to one document queue up, so each one reads what the previous one left.
+    const locked = await transaction.salesDocument.updateMany({ where: { id: input.documentId, organizationId: input.organizationId }, data: { updatedAt: new Date() } });
+    if (!locked.count) throw new Error("Sales document not found");
     const document = await transaction.salesDocument.findFirst({ where: { id: input.documentId, organizationId: input.organizationId }, include: { lines: true, receipts: true } });
     if (!document) throw new Error("Sales document not found");
     if (input.status === "PAID") throw new Error("Paid status is set by receipts");
@@ -183,6 +193,10 @@ export async function updateSalesDocumentStatus(input: { documentId: string; org
 export async function recordSoftwareReceipt(input: { amountMinor: number; documentId: string; organizationId: string; receivedAt?: Date; reference?: string; userId: string }) {
   await requireSoftwareMembership(input.organizationId, input.userId);
   return db.$transaction(async (transaction) => {
+    // Taking the invoice's row lock first makes concurrent receipts queue up, so each one sees the receipts recorded before it
+    // and the balance check below cannot be passed twice for the same money.
+    const locked = await transaction.salesDocument.updateMany({ where: { id: input.documentId, organizationId: input.organizationId, kind: SalesDocumentKind.INVOICE }, data: { updatedAt: new Date() } });
+    if (!locked.count) throw new Error("Invoice not found");
     const document = await transaction.salesDocument.findFirst({ where: { id: input.documentId, organizationId: input.organizationId, kind: SalesDocumentKind.INVOICE }, include: { receipts: true } });
     if (!document) throw new Error("Invoice not found");
     if (document.status === SalesDocumentStatus.VOID) throw new Error("A void invoice cannot receive payment");

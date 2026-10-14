@@ -1,13 +1,11 @@
-import { NextResponse } from 'next/server';
+import { createHash } from 'node:crypto';
+import { NextRequest, NextResponse } from 'next/server';
+import { hasValidOrigin } from '@/lib/auth/request';
+import { getCurrentUser } from '@/lib/auth/session';
+import { enforceRouteRateLimit } from '@/lib/rate-limit/route-rate-limit';
 import { extractPaletteFromBase64 } from '../../../../services/visual-dna/visual-dna.service';
 
-// Simple in-memory rate limiter per IP for the lightweight visual analysis endpoint.
-const RATE_LIMIT_WINDOW_MS = 60 * 1000; // 1 minute
-const RATE_LIMIT_MAX = 60; // requests per window
-const rateMap: Map<string, { count: number; windowStart: number }> = new Map();
-const RATE_MAP_MAX_ENTRIES = 10_000;
-
-// Small in-memory cache to avoid re-processing identical images repeatedly.
+// Small in-memory cache to avoid re-processing identical images repeatedly (keyed by the full content hash).
 const PALETTE_CACHE_TTL_MS = 10 * 60 * 1000;
 const PALETTE_CACHE_MAX_ENTRIES = 200;
 const paletteCache: Map<string, { palette: string[]; expiresAt: number }> = new Map();
@@ -20,14 +18,6 @@ function nowMs() {
   return Date.now();
 }
 
-function pruneRateMap(now: number) {
-  if (rateMap.size < RATE_MAP_MAX_ENTRIES) return;
-  for (const [key, entry] of rateMap) {
-    if (now - entry.windowStart > RATE_LIMIT_WINDOW_MS) rateMap.delete(key);
-    if (rateMap.size < RATE_MAP_MAX_ENTRIES) break;
-  }
-}
-
 function prunePaletteCache(now: number) {
   for (const [key, entry] of paletteCache) {
     if (entry.expiresAt <= now) paletteCache.delete(key);
@@ -37,23 +27,6 @@ function prunePaletteCache(now: number) {
     if (first.done) break;
     paletteCache.delete(first.value);
   }
-}
-
-function getClientIp(req: Request) {
-  return (req.headers.get('x-forwarded-for') || req.headers.get('x-real-ip') || 'unknown');
-}
-
-function tooManyRequests(ip: string) {
-  const now = nowMs();
-  pruneRateMap(now);
-  const entry = rateMap.get(ip);
-  if (!entry || now - entry.windowStart > RATE_LIMIT_WINDOW_MS) {
-    rateMap.set(ip, { count: 1, windowStart: now });
-    return false;
-  }
-  entry.count += 1;
-  if (entry.count > RATE_LIMIT_MAX) return true;
-  return false;
 }
 
 function timeoutPromise<T>(p: Promise<T>, ms: number): Promise<T> {
@@ -69,13 +42,14 @@ function timeoutPromise<T>(p: Promise<T>, ms: number): Promise<T> {
   });
 }
 
-export async function POST(req: Request) {
+export async function POST(req: NextRequest) {
   try {
-    const ip = getClientIp(req);
-    if (tooManyRequests(ip)) {
-      return NextResponse.json({ error: 'rate_limited' }, { status: 429 });
-    }
-
+    if (!hasValidOrigin(req)) return NextResponse.json({ error: 'invalid_origin' }, { status: 403 });
+    // Decoding an image costs real CPU, so only signed-in users may ask, within a shared per-user budget.
+    const user = await getCurrentUser();
+    if (!user) return NextResponse.json({ error: 'authentication_required' }, { status: 401 });
+    const limited = await enforceRouteRateLimit(req, { scope: 'visual-dna', userId: user.id, limit: 20, windowMs: 60_000 });
+    if (limited) return limited;
     // Fast reject by Content-Length before reading JSON body.
     const contentLength = req.headers.get('content-length');
     if (contentLength) {
@@ -107,8 +81,8 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: 'payload_too_large' }, { status: 413 });
     }
 
-    // Build lightweight cache key from exact payload string and check TTL cache.
-    const cacheKey = `${mime}:${b64.length}:${b64.slice(0, 64)}:${b64.slice(-64)}`;
+    // Build the cache key from the full content hash and check the TTL cache.
+    const cacheKey = `${mime}:${createHash('sha256').update(b64).digest('hex')}`;
     const now = nowMs();
     prunePaletteCache(now);
     const cached = paletteCache.get(cacheKey);

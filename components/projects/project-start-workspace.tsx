@@ -114,7 +114,7 @@ type StartProject = {
     role: string;
     user: {
       id: string;
-      email: string;
+      email?: string;
       profile?: { displayName?: string | null } | null;
     };
   }>;
@@ -1657,22 +1657,24 @@ function TeamVendorsScreen({
                 <h2>{t(ar, "أعضاء المشروع", "Project members")}</h2>
                 <span>{project.members.length}</span>
               </header>
-              {project.members.map((member) => (
-                <article key={member.id}>
-                  <span className="psw-avatar">
-                    {(member.user.profile?.displayName ?? member.user.email)
-                      .slice(0, 2)
-                      .toUpperCase()}
-                  </span>
-                  <div>
-                    <b>
-                      {member.user.profile?.displayName ?? member.user.email}
-                    </b>
-                    <small>{member.user.email}</small>
-                  </div>
-                  <strong>{member.role}</strong>
-                </article>
-              ))}
+              {project.members.map((member) => {
+                const memberLabel =
+                  member.user.profile?.displayName ??
+                  member.user.email ??
+                  t(ar, "عضو", "Member");
+                return (
+                  <article key={member.id}>
+                    <span className="psw-avatar">
+                      {memberLabel.slice(0, 2).toUpperCase()}
+                    </span>
+                    <div>
+                      <b>{memberLabel}</b>
+                      <small>{member.user.email ?? ""}</small>
+                    </div>
+                    <strong>{member.role}</strong>
+                  </article>
+                );
+              })}
             </div>
           </div>
           <aside className="psw-panel psw-role-list">

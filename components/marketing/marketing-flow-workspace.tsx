@@ -5,6 +5,7 @@ import { FormEvent, useEffect, useState } from "react";
 
 import type {
   MarketingCampaignRecord,
+  MarketingPaymentRequest,
   MarketingPayload,
 } from "@/components/marketing/marketing-flow-types";
 import { Icon } from "@/components/ui/icons";
@@ -150,15 +151,18 @@ function Empty({ locale, message }: { locale: Locale; message?: string }) {
 
 export function MarketingFlowWorkspace({
   campaignId,
+  isPlatformAdmin = false,
   locale,
   route,
 }: {
   campaignId?: string;
+  isPlatformAdmin?: boolean;
   locale: Locale;
   route: MarketingFlowRoute;
 }) {
   const ar = locale === "ar";
   const [data, setData] = useState<MarketingPayload | null>(null);
+  const [paymentRequests, setPaymentRequests] = useState<MarketingPaymentRequest[]>([]);
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState("");
@@ -180,13 +184,20 @@ export function MarketingFlowWorkspace({
           payload?.message ??
             (ar ? "تعذر تحميل التسويق." : "Marketing could not be loaded."),
         );
+      if (isPlatformAdmin) {
+        const review = (await fetch("/api/marketing/payment-requests", { cache: "no-store" })
+          .then((reviewResponse) => reviewResponse.json())
+          .catch(() => null)) as { requests?: MarketingPaymentRequest[] } | null;
+        if (!active) return;
+        setPaymentRequests(review?.requests ?? []);
+      }
       setLoading(false);
     }
     void load();
     return () => {
       active = false;
     };
-  }, [ar, refreshVersion]);
+  }, [ar, isPlatformAdmin, refreshVersion]);
 
   async function runCommand(
     command: Record<string, unknown>,
@@ -316,6 +327,43 @@ export function MarketingFlowWorkspace({
       form.reset();
   }
 
+  async function submitPaymentConfirmation(
+    event: FormEvent<HTMLFormElement>,
+    request: MarketingPaymentRequest,
+  ) {
+    event.preventDefault();
+    const reference = formValue(new FormData(event.currentTarget), "reference");
+    setBusy(true);
+    setMessage("");
+    const response = await fetch("/api/marketing/payment-requests", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({
+        action: "confirmPaymentReceived",
+        amountMinor: request.payment.amountMinor,
+        campaignId: request.id,
+        reference,
+      }),
+    });
+    const payload = (await response.json().catch(() => null)) as {
+      message?: string;
+    } | null;
+    if (response.ok) {
+      setMessage(
+        ar
+          ? "تم تأكيد استلام الدفع وتفعيل الحملة وتكليف روبوت."
+          : "Payment confirmed; the campaign is active and a robot is assigned.",
+      );
+      setRefreshVersion((version) => version + 1);
+    } else {
+      setMessage(
+        payload?.message ??
+          (ar ? "تعذر تأكيد الدفع." : "The payment could not be confirmed."),
+      );
+    }
+    setBusy(false);
+  }
+
   if (loading || !data)
     return (
       <section
@@ -441,6 +489,69 @@ export function MarketingFlowWorkspace({
               <Icon name="arrow" />
             </Link>
           </section>
+          {isPlatformAdmin ? (
+            <section
+              aria-label={
+                ar
+                  ? "طلبات الدفع بانتظار التأكيد"
+                  : "Payment requests awaiting confirmation"
+              }
+              className="marketing-campaign-detail marketing-payment-review"
+            >
+              <header>
+                <h2>
+                  {ar
+                    ? "طلبات الدفع بانتظار التأكيد"
+                    : "Payment requests awaiting confirmation"}
+                </h2>
+                <p>
+                  {ar
+                    ? "أكّد الاستلام بعد مطابقة المبلغ والمرجع. يفعّل التأكيد الحملة ويكلّف روبوتاً."
+                    : "Confirm only after matching the amount and the reference. Confirming activates the campaign and assigns a robot."}
+                </p>
+              </header>
+              {paymentRequests.map((item) => (
+                <form
+                  className="marketing-lead-form"
+                  key={item.id}
+                  onSubmit={(event) => void submitPaymentConfirmation(event, item)}
+                >
+                  <strong>{item.name}</strong>
+                  <span>
+                    {item.organization?.name ??
+                      item.createdBy.profile?.displayName ??
+                      item.createdBy.email}
+                  </span>
+                  <span>
+                    {money(item.payment.amountMinor, item.payment.currency, locale)}
+                  </span>
+                  <input
+                    aria-label={ar ? "مرجع التحويل أو الإيصال" : "Transfer or receipt reference"}
+                    maxLength={120}
+                    minLength={3}
+                    name="reference"
+                    placeholder={ar ? "مرجع التحويل أو الإيصال" : "Transfer or receipt reference"}
+                    required
+                  />
+                  <span>{formatDate(item.payment.createdAt, locale)}</span>
+                  <button
+                    className="button button--primary"
+                    disabled={busy}
+                    type="submit"
+                  >
+                    {ar ? "تأكيد استلام الدفع" : "Confirm payment received"}
+                  </button>
+                </form>
+              ))}
+              {!paymentRequests.length ? (
+                <p>
+                  {ar
+                    ? "لا توجد طلبات دفع بانتظار التأكيد."
+                    : "No payment requests are waiting for confirmation."}
+                </p>
+              ) : null}
+            </section>
+          ) : null}
         </>
       ) : null}
 
@@ -450,8 +561,8 @@ export function MarketingFlowWorkspace({
             <h2>{ar ? "إعداد الحملة" : "Campaign setup"}</h2>
             <p>
               {ar
-                ? "تُحفظ الحملة كمسودة؛ التفعيل يحتاج جودة وميزانية مسجلة وروبوتاً متاحاً."
-                : "Campaigns start as drafts; activation requires quality, recorded budget, and an available robot."}
+                ? "تُحفظ الحملة كمسودة؛ التفعيل يحتاج جودة كافية وطلب دفع يؤكده فريق جنان برو وروبوتاً متاحاً."
+                : "Campaigns start as drafts; activation requires quality, a payment request that Jenan PRO confirms, and an available robot."}
             </p>
           </header>
           <input
@@ -578,7 +689,6 @@ export function MarketingFlowWorkspace({
         selected ? (
           <CampaignDetail
             campaign={selected}
-            data={data}
             locale={locale}
             busy={busy}
             runCommand={runCommand}
@@ -909,13 +1019,11 @@ function CampaignCard({
 function CampaignDetail({
   busy,
   campaign,
-  data,
   locale,
   runCommand,
 }: {
   busy: boolean;
   campaign: MarketingCampaignRecord;
-  data: MarketingPayload;
   locale: Locale;
   runCommand: (
     command: Record<string, unknown>,
@@ -924,8 +1032,9 @@ function CampaignDetail({
 }) {
   const ar = locale === "ar";
   const performance = campaign.performanceSnapshot;
-  const canConfirm =
-    !campaign.payment && Boolean(data.readiness.availableRobot);
+  // A recorded request is not a payment: the campaign can only be activated once the payment itself is SUCCEEDED.
+  const paymentConfirmed = campaign.payment?.status === "SUCCEEDED";
+  const paymentPending = campaign.payment?.status === "PENDING";
   return (
     <article className="marketing-campaign-detail">
       <header>
@@ -1002,11 +1111,15 @@ function CampaignDetail({
         <section>
           <h3>{ar ? "التنفيذ" : "Execution"}</h3>
           <p>
-            {campaign.payment
-              ? `${ar ? "تأكيد داخلي" : "Internal confirmation"}: ${campaign.payment.provider ?? "—"}`
-              : ar
-                ? "الميزانية غير مؤكدة"
-                : "Budget not confirmed"}
+            {paymentConfirmed
+              ? `${ar ? "تم تأكيد الدفع" : "Payment confirmed"}${campaign.payment?.paidAt ? ` · ${formatDate(campaign.payment.paidAt, locale)}` : ""}`
+              : paymentPending
+                ? ar
+                  ? "تم تسجيل طلب الدفع — بانتظار التأكيد"
+                  : "Payment request recorded — awaiting confirmation"
+                : ar
+                  ? "الميزانية غير مؤكدة"
+                  : "Budget not confirmed"}
           </p>
           <p>
             {campaign.robotTask
@@ -1044,28 +1157,34 @@ function CampaignDetail({
         {!campaign.payment ? (
           <button
             className="button button--primary"
-            disabled={busy || !canConfirm}
-            title={
-              !data.readiness.availableRobot
-                ? ar
-                  ? "لا يوجد روبوت نشط متاح"
-                  : "No active robot is available"
-                : undefined
-            }
+            disabled={busy}
             onClick={() =>
               void runCommand(
-                { action: "confirmPaymentAndAssign", campaignId: campaign.id },
+                { action: "requestPayment", campaignId: campaign.id },
                 [
-                  "تم تسجيل تأكيد الميزانية الداخلي وتعيين منفذ.",
-                  "Internal budget confirmation recorded and executor assigned.",
+                  "تم تسجيل طلب الدفع — بانتظار التأكيد.",
+                  "Payment request recorded — awaiting confirmation.",
                 ],
               )
             }
             type="button"
           >
-            {ar ? "تأكيد داخلي وتعيين" : "Internal confirm and assign"}
+            {ar ? "طلب تأكيد الدفع" : "Request payment confirmation"}
           </button>
-        ) : campaign.status === "ACTIVE" ? (
+        ) : paymentPending ? (
+          <button
+            className="button button--ghost"
+            disabled
+            title={
+              ar
+                ? "يفعّل الحملة فريق جنان برو بعد تأكيد استلام الدفع"
+                : "Jenan PRO activates the campaign once the payment is confirmed"
+            }
+            type="button"
+          >
+            {ar ? "بانتظار تأكيد الدفع" : "Awaiting payment confirmation"}
+          </button>
+        ) : paymentConfirmed && campaign.status === "ACTIVE" ? (
           <button
             className="button button--ghost"
             disabled={busy}
@@ -1083,7 +1202,7 @@ function CampaignDetail({
           >
             {ar ? "إيقاف" : "Pause"}
           </button>
-        ) : campaign.status === "PAUSED" ? (
+        ) : paymentConfirmed && campaign.status === "PAUSED" ? (
           <button
             className="button button--primary"
             disabled={busy}

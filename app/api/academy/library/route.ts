@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { publicErrorMessage } from "@/lib/http/safe-error";
 import { z } from "zod";
 
 import { AcademyResourceApprovalState, AcademyResourceKind, type Prisma } from "@/generated/prisma/client";
@@ -79,7 +80,7 @@ export async function POST(request: NextRequest) {
             : await addAcademyResourceAttachment({ ...input, sizeBytes: input.sizeBytes === undefined ? undefined : BigInt(input.sizeBytes) }, user.id);
     return NextResponse.json({ success: true, result: serialize(result) }, { status: input.action === "createResource" || input.action === "createVersion" || input.action === "createExamQuestion" || input.action === "addAttachment" ? 201 : 200 });
   } catch (error) {
-    const message = error instanceof Error ? error.message : "Academy library command failed";
+    const message = publicErrorMessage(error, "Academy library command failed");
     return NextResponse.json({ success: false, message }, { status: message.endsWith("not found") ? 404 : 409 });
   }
 }

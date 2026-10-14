@@ -193,6 +193,11 @@ function formatDate(value: string, locale: Locale) {
   }).format(new Date(value));
 }
 
+// An applicant's email reaches the employer only with the applicant's consent, so the name is the normal label.
+function applicantLabel(applicant: OwnedTalentApplication["applicant"], ar: boolean) {
+  return applicant.profile?.displayName ?? applicant.email ?? (ar ? "مرشح" : "Candidate");
+}
+
 const statusLabels: Record<string, [string, string]> = {
   ACCEPTED: ["المرحلة التالية", "Advanced"],
   ARCHIVED: ["مؤرشف", "Archived"],
@@ -1940,7 +1945,7 @@ export function TalentFlowWorkspace({
               {visibleApplicants.map((application) => (
                 <article key={application.id}>
                   <span className="talent-employer-avatar"><Icon name="user" /></span>
-                  <div><h3>{application.applicant.profile?.displayName ?? application.applicant.email}</h3><p>{application.jobPosting.title}</p><small>{formatDate(application.createdAt, locale)}</small></div>
+                  <div><h3>{applicantLabel(application.applicant, ar)}</h3><p>{application.jobPosting.title}</p><small>{formatDate(application.createdAt, locale)}</small></div>
                   <strong>{application.matchScore}%</strong>
                   <Status locale={locale} value={application.status} />
                   <div className="talent-employer-actions"><Link href={`/talent/employer/candidates/${application.id}`}>{ar ? "عرض الطلب" : "View application"}</Link>{application.status === "SUBMITTED" ? <button disabled={busy} onClick={() => void runCommand({ action: "updateApplicationStatus", applicationId: application.id, status: "UNDER_REVIEW" }, ["بدأت مراجعة الطلب.", "Application moved to review."])} type="button">{ar ? "بدء المراجعة" : "Start review"}</button> : null}</div>
@@ -1990,7 +1995,7 @@ export function TalentFlowWorkspace({
               <header><div><span>{ar ? "جدولة جديدة" : "NEW SCHEDULE"}</span><h2>{ar ? "جدولة مقابلة" : "Schedule interview"}</h2></div></header>
               <select aria-label={ar ? "طلب التوظيف" : "Job application"} name="applicationId" required>
                 <option value="">{ar ? "اختر مرشحًا" : "Select candidate"}</option>
-                {data.applications.filter((application) => ["UNDER_REVIEW", "ACCEPTED"].includes(application.status)).map((application) => <option key={application.id} value={application.id}>{application.applicant.profile?.displayName ?? application.applicant.email} · {application.jobPosting.title}</option>)}
+                {data.applications.filter((application) => ["UNDER_REVIEW", "ACCEPTED"].includes(application.status)).map((application) => <option key={application.id} value={application.id}>{applicantLabel(application.applicant, ar)} · {application.jobPosting.title}</option>)}
               </select>
               <input aria-label={ar ? "موعد المقابلة" : "Interview date"} name="scheduledAt" required type="datetime-local" />
               <select aria-label={ar ? "نوع المقابلة" : "Interview mode"} name="mode"><option value="VIDEO">{ar ? "اتصال مرئي" : "Video"}</option><option value="PHONE">{ar ? "اتصال هاتفي" : "Phone"}</option><option value="ON_SITE">{ar ? "حضوري" : "On site"}</option></select>
@@ -2002,7 +2007,7 @@ export function TalentFlowWorkspace({
             <section className="talent-employer-panel">
               <header><div><span>{ar ? "جدول المقابلات" : "INTERVIEW SCHEDULE"}</span><h2>{ar ? "المقابلات القادمة والسابقة" : "Upcoming and past interviews"}</h2></div><strong>{employerInterviews.length}</strong></header>
               <div className="talent-employer-request-list">
-                {employerInterviews.map(({ application, interview }) => <article key={interview.id}><span className="talent-employer-avatar"><Icon name="people" /></span><div><h3>{application.applicant.profile?.displayName ?? application.applicant.email}</h3><p>{application.jobPosting.title}</p><small>{new Intl.DateTimeFormat(ar ? "ar-SA" : "en-GB", { dateStyle: "medium", timeStyle: "short" }).format(new Date(interview.scheduledAt))}</small></div><Status locale={locale} value={interview.mode} /><Status locale={locale} value={interview.status} /><div className="talent-employer-actions">{interview.status === "SCHEDULED" ? <><button disabled={busy} onClick={() => void runCommand({ action: "updateInterviewStatus", interviewId: interview.id, status: "COMPLETED" }, ["تم إكمال المقابلة.", "Interview completed."])} type="button">{ar ? "إكمال" : "Complete"}</button><button disabled={busy} onClick={() => void runCommand({ action: "updateInterviewStatus", interviewId: interview.id, status: "CANCELLED" }, ["تم إلغاء المقابلة.", "Interview cancelled."])} type="button">{ar ? "إلغاء" : "Cancel"}</button></> : null}</div></article>)}
+                {employerInterviews.map(({ application, interview }) => <article key={interview.id}><span className="talent-employer-avatar"><Icon name="people" /></span><div><h3>{applicantLabel(application.applicant, ar)}</h3><p>{application.jobPosting.title}</p><small>{new Intl.DateTimeFormat(ar ? "ar-SA" : "en-GB", { dateStyle: "medium", timeStyle: "short" }).format(new Date(interview.scheduledAt))}</small></div><Status locale={locale} value={interview.mode} /><Status locale={locale} value={interview.status} /><div className="talent-employer-actions">{interview.status === "SCHEDULED" ? <><button disabled={busy} onClick={() => void runCommand({ action: "updateInterviewStatus", interviewId: interview.id, status: "COMPLETED" }, ["تم إكمال المقابلة.", "Interview completed."])} type="button">{ar ? "إكمال" : "Complete"}</button><button disabled={busy} onClick={() => void runCommand({ action: "updateInterviewStatus", interviewId: interview.id, status: "CANCELLED" }, ["تم إلغاء المقابلة.", "Interview cancelled."])} type="button">{ar ? "إلغاء" : "Cancel"}</button></> : null}</div></article>)}
                 {!employerInterviews.length ? <EmptyState locale={locale} message={ar ? "لا توجد مقابلات مجدولة." : "No interviews are scheduled."} /> : null}
               </div>
             </section>
@@ -2014,15 +2019,15 @@ export function TalentFlowWorkspace({
         <section className="talent-message-center talent-message-center--employer">
           <aside>
             <header><h2>{ar ? "محادثات المرشحين" : "Candidate conversations"}</h2><strong>{data.applications.length}</strong></header>
-            {data.applications.map((application) => <Link className={employerConversation?.id === application.id ? "is-active" : undefined} href={`/talent/employer/messages?application=${application.id}`} key={application.id}><span><Icon name="user" /></span><div><strong>{application.applicant.profile?.displayName ?? application.applicant.email}</strong><small>{application.messages.at(-1)?.body ?? application.jobPosting.title}</small></div></Link>)}
+            {data.applications.map((application) => <Link className={employerConversation?.id === application.id ? "is-active" : undefined} href={`/talent/employer/messages?application=${application.id}`} key={application.id}><span><Icon name="user" /></span><div><strong>{applicantLabel(application.applicant, ar)}</strong><small>{application.messages.at(-1)?.body ?? application.jobPosting.title}</small></div></Link>)}
           </aside>
           <div>
-            {employerConversation ? <><header><div><h2>{employerConversation.applicant.profile?.displayName ?? employerConversation.applicant.email}</h2><p>{employerConversation.jobPosting.title}</p></div><Link href={`/talent/employer/candidates/${employerConversation.id}`}>{ar ? "ملف المرشح" : "Candidate profile"}</Link></header><TalentConversation applicationId={employerConversation.id} busy={busy} closed={["REJECTED", "WITHDRAWN"].includes(employerConversation.status)} currentUserId={data.viewerId} locale={locale} messages={employerConversation.messages} runCommand={runCommand} /></> : <EmptyState locale={locale} message={ar ? "لا توجد طلبات لفتح محادثة." : "No applications are available for a conversation."} />}
+            {employerConversation ? <><header><div><h2>{applicantLabel(employerConversation.applicant, ar)}</h2><p>{employerConversation.jobPosting.title}</p></div><Link href={`/talent/employer/candidates/${employerConversation.id}`}>{ar ? "ملف المرشح" : "Candidate profile"}</Link></header><TalentConversation applicationId={employerConversation.id} busy={busy} closed={["REJECTED", "WITHDRAWN"].includes(employerConversation.status)} currentUserId={data.viewerId} locale={locale} messages={employerConversation.messages} runCommand={runCommand} /></> : <EmptyState locale={locale} message={ar ? "لا توجد طلبات لفتح محادثة." : "No applications are available for a conversation."} />}
           </div>
           <aside className="talent-message-center__profile">
             {employerConversation ? (
               <>
-                <header><div><span>{ar ? "معلومات المرشح" : "CANDIDATE DETAILS"}</span><h2>{employerConversation.applicant.profile?.displayName ?? employerConversation.applicant.email}</h2></div><span className="talent-employer-avatar"><Icon name="user" /></span></header>
+                <header><div><span>{ar ? "معلومات المرشح" : "CANDIDATE DETAILS"}</span><h2>{applicantLabel(employerConversation.applicant, ar)}</h2></div><span className="talent-employer-avatar"><Icon name="user" /></span></header>
                 <section>
                   <div><small>{ar ? "الوظيفة" : "Posting"}</small><strong>{employerConversation.jobPosting.title}</strong></div>
                   <div><small>{ar ? "المطابقة" : "Match"}</small><strong>{employerConversation.matchScore}%</strong></div>
@@ -2055,7 +2060,7 @@ export function TalentFlowWorkspace({
               ["WITHDRAWN", ar ? "منسحبة" : "Withdrawn"],
             ].map(([status, label]) => {
               const applications = data.applications.filter((application) => application.status === status);
-              return <section className={`talent-hiring-pipeline__stage talent-hiring-pipeline__stage--${status.toLowerCase()}`} key={status}><header><div><span>{applications.length}</span><h2>{label}</h2></div><Icon name={status === "ACCEPTED" ? "check" : status === "REJECTED" ? "x" : "activity"} /></header>{applications.map((application) => <article key={application.id}><div><strong>{application.applicant.profile?.displayName ?? application.applicant.email}</strong><small>{application.jobPosting.title}</small></div><span>{application.matchScore}%</span><Link href={`/talent/employer/candidates/${application.id}`}>{ar ? "فتح الملف" : "Open profile"}</Link>{status === "SUBMITTED" ? <button disabled={busy} onClick={() => void runCommand({ action: "updateApplicationStatus", applicationId: application.id, status: "UNDER_REVIEW" }, ["بدأت مراجعة الطلب.", "Application moved to review."])} type="button">{ar ? "بدء المراجعة" : "Start review"}</button> : null}</article>)}{!applications.length ? <p>{ar ? "لا توجد طلبات في هذه المرحلة." : "No applications in this stage."}</p> : null}</section>;
+              return <section className={`talent-hiring-pipeline__stage talent-hiring-pipeline__stage--${status.toLowerCase()}`} key={status}><header><div><span>{applications.length}</span><h2>{label}</h2></div><Icon name={status === "ACCEPTED" ? "check" : status === "REJECTED" ? "x" : "activity"} /></header>{applications.map((application) => <article key={application.id}><div><strong>{applicantLabel(application.applicant, ar)}</strong><small>{application.jobPosting.title}</small></div><span>{application.matchScore}%</span><Link href={`/talent/employer/candidates/${application.id}`}>{ar ? "فتح الملف" : "Open profile"}</Link>{status === "SUBMITTED" ? <button disabled={busy} onClick={() => void runCommand({ action: "updateApplicationStatus", applicationId: application.id, status: "UNDER_REVIEW" }, ["بدأت مراجعة الطلب.", "Application moved to review."])} type="button">{ar ? "بدء المراجعة" : "Start review"}</button> : null}</article>)}{!applications.length ? <p>{ar ? "لا توجد طلبات في هذه المرحلة." : "No applications in this stage."}</p> : null}</section>;
             })}
           </section>
         </>
@@ -2496,8 +2501,7 @@ function ApplicantCard({
   ) => Promise<boolean>;
 }) {
   const ar = locale === "ar";
-  const candidateName =
-    application.applicant.profile?.displayName ?? application.applicant.email;
+  const candidateName = applicantLabel(application.applicant, ar);
   return (
     <article className="talent-employer-applicant-card">
       <header>
@@ -2573,8 +2577,7 @@ function CandidateDetail({
 }) {
   const ar = locale === "ar";
   const snapshot = application.profileSnapshot;
-  const candidateName =
-    application.applicant.profile?.displayName ?? application.applicant.email;
+  const candidateName = applicantLabel(application.applicant, ar);
   const matchedSkills = application.matchSignals?.matchedSkills ?? [];
   const missingSkills = application.matchSignals?.missingSkills ?? [];
   return (
@@ -2632,7 +2635,7 @@ function CandidateDetail({
                   <div><dt>{ar ? "الخبرة" : "Experience"}</dt><dd>{snapshot.yearsExperience ?? 0} {ar ? "سنوات" : "years"}</dd></div>
                   <div><dt>{ar ? "الموقع" : "Location"}</dt><dd>{[snapshot.city, snapshot.countryCode].filter(Boolean).join(", ") || "—"}</dd></div>
                   <div><dt>{ar ? "التوفر" : "Availability"}</dt><dd>{snapshot.availability ?? "—"}</dd></div>
-                  <div><dt>{ar ? "البريد المصرح" : "Authorized email"}</dt><dd>{application.applicant.email}</dd></div>
+                  <div><dt>{ar ? "البريد المصرح" : "Authorized email"}</dt><dd>{application.applicant.email ?? "—"}</dd></div>
                 </dl>
               </>
             ) : (

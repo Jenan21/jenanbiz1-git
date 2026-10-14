@@ -1,9 +1,15 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getCurrentUser } from "@/lib/auth/session";
 import { hasValidOrigin } from "@/lib/auth/request";
-import { FileAssetError, listUserFiles, uploadUserFile } from "@/services/files/file-asset-service";
+import { publicErrorMessage } from "@/lib/http/safe-error";
+import { enforceRouteRateLimit } from "@/lib/rate-limit/route-rate-limit";
+import { FILE_LIMITS, FileAssetError, listUserFiles, uploadUserFile } from "@/services/files/file-asset-service";
+import { exceedsDeclaredBodyLimit } from "@/services/files/request-limits";
 
 export const runtime = "nodejs";
+
+// Headroom for the multipart envelope around a single file.
+const maxRequestBytes = FILE_LIMITS.maxFileBytes + 1024 * 1024;
 
 export async function GET() {
   const user = await getCurrentUser();
@@ -15,6 +21,9 @@ export async function POST(request: NextRequest) {
   const user = await getCurrentUser();
   if (!user) return NextResponse.json({ message: "Authentication required" }, { status: 401 });
   if (!hasValidOrigin(request)) return NextResponse.json({ message: "Invalid request origin" }, { status: 403 });
+  const limited = await enforceRouteRateLimit(request, { scope: "files:upload", limit: 20, windowMs: 60_000, userId: user.id });
+  if (limited) return limited;
+  if (exceedsDeclaredBodyLimit(request, maxRequestBytes)) return NextResponse.json({ message: "The file must be between 1 byte and 10 MB" }, { status: 413 });
   const form = await request.formData().catch(() => null);
   const file = form?.get("file");
   const projectId = form?.get("projectId");
@@ -28,7 +37,7 @@ export async function POST(request: NextRequest) {
   try {
     return NextResponse.json({ file: await uploadUserFile(user.id, file, projectId || undefined, marketListingId || undefined, marketVisibility === "PUBLIC" ? "PUBLIC" : "NDA_REQUIRED") }, { status: 201 });
   } catch (error) {
-    const message = error instanceof FileAssetError ? error.message : "The file could not be stored";
+    const message = error instanceof FileAssetError ? error.message : publicErrorMessage(error, "The file could not be stored");
     return NextResponse.json({ message }, { status: 422 });
   }
 }

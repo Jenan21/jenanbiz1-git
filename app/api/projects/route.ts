@@ -23,6 +23,7 @@ import { calculateFeasibility, calculateRiskScore, calculateScenarios } from "@/
 import { assessProjectQuality } from "@/services/projects/project-quality";
 import { saveProjectIntelligenceSnapshot, searchProjectIntelligence } from "@/services/projects/project-intelligence";
 import { db } from "@/lib/db";
+import { publicErrorMessage } from "@/lib/http/safe-error";
 import { checkProjectRateLimit, type ProjectRateLimitAction } from "@/lib/rate-limit/project-rate-limit";
 import {
   runProjectAnalysis,
@@ -42,12 +43,12 @@ const complianceStatuses = ["REQUIRED", "IN_PROGRESS", "SUBMITTED", "APPROVED", 
 const vendorKinds = ["VENDOR", "PARTNER"] as const;
 const vendorStatuses = ["PROSPECT", "APPROVED", "ACTIVE", "SUSPENDED", "ARCHIVED"] as const;
 const financialInputs = z.object({
-  initialInvestment: z.number().finite().min(0),
-  monthlyFixedCosts: z.number().finite().min(0),
-  variableCostPerUnit: z.number().finite().min(0),
-  pricePerUnit: z.number().finite().min(0),
-  monthlyUnits: z.number().int().min(1),
-  months: z.number().int().min(1),
+  initialInvestment: z.number().finite().min(0).max(1_000_000_000_000),
+  monthlyFixedCosts: z.number().finite().min(0).max(1_000_000_000_000),
+  variableCostPerUnit: z.number().finite().min(0).max(1_000_000_000_000),
+  pricePerUnit: z.number().finite().min(0).max(1_000_000_000_000),
+  monthlyUnits: z.number().int().min(1).max(1_000_000_000),
+  months: z.number().int().min(1).max(600),
   annualDiscountRate: z.number().finite().min(0).max(100).optional(),
   annualInflationRate: z.number().finite().min(0).max(100).optional(),
   taxRate: z.number().finite().min(0).max(100).optional(),
@@ -333,7 +334,7 @@ export async function GET(request: NextRequest) {
   const requestedLimit = Number(query.get("limit") ?? "50");
   const requestedOffset = Number(query.get("offset") ?? "0");
   const limit = Number.isInteger(requestedLimit) ? Math.min(Math.max(requestedLimit, 1), 100) : 50;
-  const offset = Number.isInteger(requestedOffset) ? Math.max(requestedOffset, 0) : 0;
+  const offset = Number.isInteger(requestedOffset) ? Math.min(Math.max(requestedOffset, 0), 100_000) : 0;
   const status = query.get("status");
   const phase = query.get("phase");
   if (status && !projectStatuses.includes(status as typeof projectStatuses[number])) return NextResponse.json({ success: false, message: "Invalid project status filter" }, { status: 400 });
@@ -420,28 +421,28 @@ export async function POST(request: NextRequest) {
                 ? assessProjectQuality(input.assessments)
                 : input.action === "searchIntelligence"
                   ? await (async () => {
+                      // The project check comes first so outside providers are never called on behalf of a project the user cannot edit.
+                      const project = input.projectId
+                        ? await db.project.findFirst({
+                            where: {
+                              id: input.projectId,
+                              OR: [
+                                { createdById: user.id },
+                                { members: { some: { userId: user.id, role: { in: ["OWNER", "EDITOR"] } } } },
+                              ],
+                            },
+                            select: { id: true },
+                          })
+                        : null;
+                      if (input.projectId && !project) throw new Error("Project not found");
                       const result = await searchProjectIntelligence(input);
-                      if (input.projectId) {
-                        const project = await db.project.findFirst({
-                          where: {
-                            id: input.projectId,
-                            OR: [
-                              { createdById: user.id },
-                              { members: { some: { userId: user.id, role: { in: ["OWNER", "EDITOR"] } } } },
-                            ],
-                          },
-                          select: { id: true },
-                        });
-                        if (!project) throw new Error("Project not found");
-                        await saveProjectIntelligenceSnapshot(project.id, input.query, result);
-                      }
+                      if (project) await saveProjectIntelligenceSnapshot(project.id, input.query, result);
                       return result;
                     })()
               : await startProject(input.projectId, user.id);
     return NextResponse.json({ success: true, result }, { status: input.action === "create" || input.action === "createCompliance" || input.action === "createVendor" ? 201 : 200 });
   } catch (error) {
-    const message = error instanceof Error ? error.message : "Project command failed";
-    const status = message === "Project not found" ? 404 : 409;
-    return NextResponse.json({ success: false, message }, { status });
+    const status = error instanceof Error && error.message === "Project not found" ? 404 : 409;
+    return NextResponse.json({ success: false, message: publicErrorMessage(error, "Project command failed") }, { status });
   }
 }

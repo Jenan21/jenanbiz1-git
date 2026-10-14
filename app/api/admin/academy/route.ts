@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { publicErrorMessage } from "@/lib/http/safe-error";
 import { z } from "zod";
 import type { Prisma } from "@/generated/prisma/client";
 import { hasPlatformAdminAccess } from "@/lib/auth/authorization";
@@ -92,7 +93,7 @@ export async function POST(request: NextRequest) {
       await refreshGeographicKnowledgeFreshness(actorId);
     return NextResponse.json({ success: true, result });
   } catch (error) {
-    const message = error instanceof Error ? error.message : "Academy command failed";
+    const message = publicErrorMessage(error, "Academy command failed");
     return NextResponse.json({ success: false, message }, { status: 409 });
   }
 }

@@ -105,6 +105,8 @@ Never place real values in Git. The command uses Argon2id, a serializable Postgr
 
 `login`, `register`, `oauth`, and sensitive project operations use a vendor-neutral `RateLimitProvider` contract. Development and tests default to the documented in-memory adapter. When `REDIS_URL` is configured, the application uses Redis with atomic increment and expiry semantics across instances. Production fails closed if no distributed provider is configured.
 
+Every authentication route spends three independent budgets (`lib/rate-limit/auth-rate-limit.ts`): one client trying one account, one client across all accounts, and one account across all clients, so neither spraying many accounts from one address nor rotating addresses against one account gets around the limit. Expensive routes (document processing, exports, uploads, image analysis, metrics) share the same provider through `enforceRouteRateLimit` (`lib/rate-limit/route-rate-limit.ts`). The client address is read from the platform's forwarded-address header (Vercel overwrites it, so it cannot be spoofed there); when the app runs behind another reverse proxy, make that proxy overwrite `X-Forwarded-For` instead of appending to it.
+
 ## Social sign-in (Google and Apple)
 
 Both sign-in panels show «المتابعة عبر Google / Apple» under the form. A provider's button is **disabled and marked «قريباً / Soon»** until all of its credentials are present, so nothing is offered that cannot work. To turn one on, set its variables (see `.env.example`; `AUTH_SECRET` must also be set) and register this redirect URI with the provider, using the value of `NEXT_PUBLIC_APP_URL` as the origin:
@@ -130,6 +132,18 @@ Development returns a local single-use recovery code for testing. Production sen
 
 Session cookies are HttpOnly, SameSite=Lax, scoped to `/`, and Secure in production. Opaque session values are never stored directly in PostgreSQL, sessions have explicit expiry and are deleted on logout or expiry, passwords use Argon2id, validation is server-side, duplicate emails return a conflict, invalid login paths perform password verification against a dummy Argon2id hash, RBAC is enforced in server components, and security-relevant auth actions are audited without passwords or tokens.
 
+Further controls, all covered by tests:
+
+- **Password hash isolation.** The database client omits `User.passwordHash` globally; only the sign-in and OAuth-linking queries ask for it (`omit: { passwordHash: false }`). Other people's accounts are only ever exposed as a display name (`lib/auth/public-user.ts`).
+- **Recovery codes.** An attempt is reserved atomically before a code is checked, so concurrent guesses cannot exceed five per code; unknown addresses and wrong codes take as long as real ones, and e-mail delivery runs after the response is sent so timing does not reveal which addresses exist.
+- **Private-preview gate.** Credentials are compared in constant time (UTF-8, so non-Latin passwords work), a client is blocked for ten minutes after ten wrong guesses (a correct guess is refused too while the block lasts), a signed twelve-hour cookie spares later requests the check, and rotating the password revokes every cookie.
+- **Response headers.** Every response carries `X-Content-Type-Options`, `X-Frame-Options`, `Referrer-Policy`, `Permissions-Policy`, `Cross-Origin-Opener-Policy`, and `Strict-Transport-Security`, plus an enforced `Content-Security-Policy` limited to `base-uri`, `form-action`, `frame-ancestors`, and `object-src`. In production the proxy also sends the complete nonce-based policy as `Content-Security-Policy-Report-Only`; violations are posted to `/api/security/csp-report` and logged as `[csp-violation]`. Once the logs stay quiet during testing, change that header's name to `Content-Security-Policy` in `proxy.ts` to enforce it.
+- **Errors.** Route handlers return a generic message with a short reference for database and runtime errors (`lib/http/safe-error.ts`); the detail goes to the server log.
+- **Database transport.** `lib/db-url.ts` pins `sslmode=verify-full` whenever the URL asks for `require`, `prefer`, or `verify-ca`, so a future `pg` major (which follows libpq and stops verifying the certificate for those modes) cannot weaken TLS silently.
+- **Redirects.** The post-sign-in destination must be a same-site path (`lib/auth/redirect.ts`).
+- **Supply chain.** `npm audit --omit=dev` must stay at zero (CI enforces it); `package.json` lists the install scripts that may run (`allowScripts`: only Prisma's), GitHub Actions are pinned to commit SHAs, and Dependabot, CodeQL, dependency review, secret scanning with push protection, and private vulnerability reporting are enabled for the repository. See `SECURITY.md` for the reporting process and the accepted development-tooling advisories.
+- **Containers.** The image runs as the unprivileged `node` user from a digest-pinned base image; Compose drops all capabilities from the app and keeps uploaded files on a named volume.
+
 ## Production Operations
 
 `compose.yaml` provides PostgreSQL, Redis, migration, application, and scheduled PostgreSQL backup services. Set non-empty `POSTGRES_PASSWORD`, `REDIS_PASSWORD`, `AUTH_SECRET`, and `METRICS_TOKEN` values in the deployment environment. Set `ALLOW_PUBLIC_REGISTRATION=true` only when public account creation is intended, and configure the password-recovery email variables before production launch. Then run:
@@ -148,7 +162,7 @@ The Vercel deployment must not be promoted until a managed Redis integration is 
 
 The `postgres-backup` service writes a compressed PostgreSQL dump immediately after startup and then on `BACKUP_INTERVAL_SECONDS` (default: daily). It retains backups for `BACKUP_RETENTION_DAYS` (default: 14), and its healthcheck fails when the latest successful backup is stale. Restore drills must be performed against a separate database before treating a deployment as production-ready.
 
-GitHub Actions runs type checking, linting, Prisma migrations, tests, and a production build for pull requests and pushes to `main`. A separate scheduled workflow probes the public Vercel readiness endpoint every five minutes; a non-200 response makes the workflow fail visibly. These workflows become active after this change is committed and pushed. Configure managed Redis and the production environment variables before relying on a successful readiness check.
+GitHub Actions runs on pull requests and pushes to `main`. The *Continuous verification* workflow has a fast `verify` job (type check, lint, unit and integration tests, production build, dependency audit) and an `e2e` matrix that runs the 36 Playwright projects in seven parallel groups, each with its own server, PostgreSQL, and Redis, so the suite finishes in the time of its slowest group. The `review-pack` project only produces screenshots and is excluded. *CodeQL* analyses the code and the workflows, *Dependency review* blocks pull requests that add high-severity dependencies, and a separate scheduled workflow probes the public Vercel readiness endpoint every five minutes; a non-200 response makes it fail visibly. Configure managed Redis and the production environment variables before relying on a successful readiness check.
 
 ### Releasing to Vercel
 

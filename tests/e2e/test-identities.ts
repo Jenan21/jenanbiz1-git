@@ -17,4 +17,10 @@ export const e2eIdentity = {
     password: `E2E-admin-${runId}-Strong!`,
     displayName: "E2E Admin",
   },
+  // matches the `e2e.admin.%` pattern, so the fixture cleanup removes it together with the administrator
+  superAdmin: {
+    email: `e2e.admin.super.${runId}@example.test`,
+    password: `E2E-super-${runId}-Strong!`,
+    displayName: "E2E Super Admin",
+  },
 };

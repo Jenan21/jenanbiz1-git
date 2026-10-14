@@ -1,5 +1,6 @@
 import { MarketingCampaignStatus, MarketingLeadStatus, Prisma } from "@/generated/prisma/client";
-import { db } from "@/lib/db";
+import { db, type DbExecutor } from "@/lib/db";
+import { MANUAL_REVIEW_PAYMENT_PROVIDER } from "@/lib/marketing/payment-providers";
 
 const campaignInclude = {
   leads: { orderBy: { updatedAt: "desc" as const } },
@@ -7,6 +8,8 @@ const campaignInclude = {
   payment: { select: { id: true, payerUserId: true, amountMinor: true, currency: true, status: true, provider: true, paidAt: true } },
   robotTask: { select: { id: true, title: true, status: true, robot: { select: { id: true, name: true } } } },
 } satisfies Prisma.MarketingCampaignInclude;
+
+const MIN_ACTIVATION_QUALITY = 60;
 
 function assessCampaignQuality(input: {
   budgetMinor: number;
@@ -57,7 +60,7 @@ export function calculateRecordedMarketingPerformance(campaign: { budgetMinor: n
   return { allocatedBudgetPerConversionMinor, allocatedBudgetPerLeadMinor, allocationBasis: "CAMPAIGN_BUDGET_NOT_ACTUAL_SPEND" as const, conversionRate, converted, externalMetricsAvailable: false as const, externalUnavailable: ["REACH", "CLICKS", "IMPRESSIONS", "ACTUAL_SPEND", "ROAS"] as const, kpiProgress, leads: leadCount, pipelineReturnRatio, pipelineValueMinor, qualified, recordedLeadTrend: [...trend.entries()].sort(([left], [right]) => left.localeCompare(right)).map(([date, value]) => ({ date, ...value })), source: "RECORDED_LEADS" as const };
 }
 
-async function refreshCampaignPerformance(campaignId: string, transaction: Prisma.TransactionClient = db) {
+async function refreshCampaignPerformance(campaignId: string, transaction: DbExecutor = db) {
   const campaign = await transaction.marketingCampaign.findUnique({
     where: { id: campaignId },
     select: { budgetMinor: true, kpiTarget: true, leads: { select: { createdAt: true, status: true, valueMinor: true } } },
@@ -79,7 +82,8 @@ export async function listMarketingCampaigns(userId: string) {
 
 export async function getMarketingReadiness() {
   const availableRobot = await db.robot.findFirst({ where: { status: "ACTIVE", isVisible: true }, orderBy: [{ intelligence: "desc" }, { skill: "desc" }], select: { id: true, name: true } });
-  return { availableRobot, externalChannelProviderConnected: false, externalPaymentProviderConnected: false };
+  // No payment gateway is connected: a campaign's payment is confirmed by Jenan PRO staff after the money is received.
+  return { availableRobot, externalChannelProviderConnected: false, externalPaymentProviderConnected: false, paymentConfirmation: "MANUAL_REVIEW" as const };
 }
 
 export async function createMarketingCampaign(input: { budgetMinor: number; callToAction?: string; channel: "CONTENT" | "EMAIL" | "SOCIAL" | "PAID_SEARCH" | "DIRECT"; contentBrief?: string; currency?: string; customerType: "INDIVIDUAL" | "ORGANIZATION"; endsAt?: Date; kpiTarget?: number; name: string; objective: string; organizationId?: string; startsAt?: Date; targetAudience?: string }, userId: string) {
@@ -99,10 +103,12 @@ export async function createMarketingCampaign(input: { budgetMinor: number; call
 
 export async function updateMarketingCampaignStatus(campaignId: string, status: "ACTIVE" | "PAUSED" | "ARCHIVED", userId: string) {
   return db.$transaction(async (transaction) => {
-    const campaign = await transaction.marketingCampaign.findFirst({ where: { id: campaignId, createdById: userId }, select: { id: true, paymentId: true, qualityScore: true } });
+    const campaign = await transaction.marketingCampaign.findFirst({ where: { id: campaignId, createdById: userId }, select: { id: true, payment: { select: { status: true } }, qualityScore: true } });
     if (!campaign) throw new Error("Campaign not found");
-    if (status === "ACTIVE" && campaign.qualityScore < 60) throw new Error("Campaign quality score is too low to activate");
-    if (status === "ACTIVE" && !campaign.paymentId) throw new Error("Budget confirmation is required to activate");
+    if (status === "ACTIVE" && campaign.qualityScore < MIN_ACTIVATION_QUALITY) throw new Error("Campaign quality score is too low to activate");
+    // Only a confirmed payment activates a campaign; a recorded request is not a payment.
+    if (status === "ACTIVE" && campaign.payment?.status === "PENDING") throw new Error("Payment confirmation is still pending");
+    if (status === "ACTIVE" && campaign.payment?.status !== "SUCCEEDED") throw new Error("Budget confirmation is required to activate");
     const updated = await transaction.marketingCampaign.update({ where: { id: campaignId }, data: { status }, include: campaignInclude });
     await transaction.auditLog.create({ data: { actorId: userId, action: "marketing.campaign.status.updated", entityType: "MarketingCampaign", entityId: updated.id, metadata: { status } } });
     return updated;
@@ -142,26 +148,115 @@ export async function createMarketingAudienceSegment(input: { campaignId: string
   });
 }
 
-export async function confirmCampaignPaymentAndAssignRobot(campaignId: string, userId: string) {
+function isUniqueViolation(error: unknown) {
+  return error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2002";
+}
+
+function isJsonObject(value: Prisma.JsonValue | null): value is Prisma.JsonObject {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
+}
+
+async function recordCampaignPaymentRequest(campaignId: string, userId: string) {
   return db.$transaction(async (transaction) => {
-    const campaign = await transaction.marketingCampaign.findFirst({ where: { id: campaignId, createdById: userId }, select: { id: true, name: true, objective: true, channel: true, customerType: true, organizationId: true, budgetMinor: true, currency: true, paymentId: true, qualityScore: true, robotTaskId: true } });
+    const campaign = await transaction.marketingCampaign.findFirst({
+      where: { id: campaignId, createdById: userId },
+      select: { id: true, name: true, customerType: true, organizationId: true, budgetMinor: true, currency: true, qualityScore: true, robotTaskId: true, status: true, payment: { select: { id: true, status: true } } },
+    });
     if (!campaign) throw new Error("Campaign not found");
-    if (campaign.paymentId || campaign.robotTaskId) throw new Error("Campaign payment already confirmed");
-    if (campaign.qualityScore < 60) throw new Error("Campaign quality score is too low to activate");
+    if (campaign.robotTaskId || campaign.payment?.status === "SUCCEEDED") throw new Error("Campaign payment already confirmed");
+    // Asking again for a request that is already recorded changes nothing and returns it.
+    if (campaign.payment?.status === "PENDING") return transaction.marketingCampaign.findUniqueOrThrow({ where: { id: campaign.id }, include: campaignInclude });
+    if (campaign.payment) throw new Error("The payment request for this campaign is closed; contact support");
+    if (campaign.status === MarketingCampaignStatus.ARCHIVED) throw new Error("Archived campaigns cannot request payment");
+    if (campaign.qualityScore < MIN_ACTIVATION_QUALITY) throw new Error("Campaign quality score is too low to activate");
+    if (campaign.budgetMinor <= 0) throw new Error("Set a campaign budget before requesting payment");
 
     const membership = campaign.customerType === "ORGANIZATION" ? await transaction.organizationMember.findFirst({ where: { organizationId: campaign.organizationId ?? undefined, userId, status: "ACTIVE", isOwner: true }, select: { organizationId: true } }) : null;
     if (campaign.customerType === "ORGANIZATION" && !membership) throw new Error("Active organization membership required");
+
+    // A request is not a payment: it stays PENDING until an administrator confirms that the money arrived.
+    const payment = await transaction.payment.create({ data: { organizationId: membership?.organizationId, payerUserId: campaign.customerType === "INDIVIDUAL" ? userId : undefined, amountMinor: campaign.budgetMinor, currency: campaign.currency, status: "PENDING", provider: MANUAL_REVIEW_PAYMENT_PROVIDER, externalRef: `marketing-${campaign.id}`, metadata: { campaignId: campaign.id, purpose: "marketing-campaign", customerType: campaign.customerType, requestedByUserId: userId } } });
+    const updated = await transaction.marketingCampaign.update({ where: { id: campaign.id }, data: { organizationId: membership?.organizationId, paymentId: payment.id }, include: campaignInclude });
+    await transaction.auditLog.create({ data: { actorId: userId, organizationId: membership?.organizationId, action: "marketing.campaign.payment.requested", entityType: "Payment", entityId: payment.id, metadata: { campaignId: campaign.id, amountMinor: payment.amountMinor, currency: payment.currency, customerType: campaign.customerType } } });
+    return updated;
+  });
+}
+
+/**
+ * Records the owner's request to pay for a campaign. This never marks anything as paid and never activates the campaign:
+ * the payment stays PENDING (provider MANUAL_REVIEW) until `confirmCampaignPaymentReceived` is run by an administrator.
+ * Asking twice returns the same request.
+ */
+export async function requestCampaignPayment(campaignId: string, userId: string) {
+  try {
+    return await recordCampaignPaymentRequest(campaignId, userId);
+  } catch (error) {
+    // A concurrent request recorded the payment first (the payment reference is unique); run again to return that one.
+    if (!isUniqueViolation(error)) throw error;
+    return recordCampaignPaymentRequest(campaignId, userId);
+  }
+}
+
+/**
+ * Administrator action: the money for a recorded request has arrived. Marks the payment SUCCEEDED, assigns the top
+ * available robot and activates the campaign. The payment is flipped with a conditional update, so concurrent
+ * confirmations cannot both succeed, and the caller must name the amount the request was for.
+ */
+export async function confirmCampaignPaymentReceived(input: { amountMinor: number; campaignId: string; reference: string }, adminUserId: string) {
+  return db.$transaction(async (transaction) => {
+    const campaign = await transaction.marketingCampaign.findUnique({
+      where: { id: input.campaignId },
+      select: { id: true, name: true, objective: true, channel: true, customerType: true, organizationId: true, createdById: true, budgetMinor: true, qualityScore: true, robotTaskId: true, status: true, payment: { select: { id: true, amountMinor: true, currency: true, provider: true, status: true, metadata: true } } },
+    });
+    if (!campaign) throw new Error("Campaign not found");
+    // Whoever asks for a campaign cannot also be the one who confirms its money arrived.
+    if (campaign.createdById === adminUserId) throw new Error("A payment request must be confirmed by a different administrator");
+    const payment = campaign.payment;
+    if (!payment || payment.provider !== MANUAL_REVIEW_PAYMENT_PROVIDER) throw new Error("No payment request is awaiting confirmation");
+    if (payment.status === "SUCCEEDED" || campaign.robotTaskId) throw new Error("Campaign payment already confirmed");
+    if (payment.status !== "PENDING") throw new Error("The payment request is no longer pending");
+    if (campaign.status === MarketingCampaignStatus.ARCHIVED) throw new Error("Archived campaigns cannot be activated");
+    if (campaign.qualityScore < MIN_ACTIVATION_QUALITY) throw new Error("Campaign quality score is too low to activate");
+    if (input.amountMinor !== payment.amountMinor || payment.amountMinor !== campaign.budgetMinor) throw new Error("The received amount does not match the payment request");
     const robot = await transaction.robot.findFirst({ where: { status: "ACTIVE", isVisible: true }, orderBy: [{ intelligence: "desc" }, { skill: "desc" }], select: { id: true, name: true } });
     if (!robot) throw new Error("No active bounty robot is available");
 
-    const payment = await transaction.payment.create({ data: { organizationId: membership?.organizationId, payerUserId: campaign.customerType === "INDIVIDUAL" ? userId : undefined, amountMinor: campaign.budgetMinor, currency: campaign.currency, status: "SUCCEEDED", provider: "INTERNAL_CONFIRMATION", paidAt: new Date(), externalRef: `marketing-${campaign.id}`, metadata: { campaignId: campaign.id, purpose: "marketing-campaign", customerType: campaign.customerType } } });
+    const confirmedAt = new Date();
+    const confirmed = await transaction.payment.updateMany({
+      where: { id: payment.id, status: "PENDING", provider: MANUAL_REVIEW_PAYMENT_PROVIDER },
+      data: { status: "SUCCEEDED", paidAt: confirmedAt, metadata: { ...(isJsonObject(payment.metadata) ? payment.metadata : {}), confirmedAt: confirmedAt.toISOString(), confirmedByUserId: adminUserId, receivedReference: input.reference } as Prisma.InputJsonObject },
+    });
+    if (confirmed.count !== 1) throw new Error("The payment request is no longer pending");
+
     const robotTask = await transaction.robotTask.create({ data: { robotId: robot.id, title: `Marketing campaign: ${campaign.name}`, description: `Channel: ${campaign.channel}\nObjective: ${campaign.objective}`, status: "ACTIVE", priority: "HIGH" } });
-    const updated = await transaction.marketingCampaign.update({ where: { id: campaign.id }, data: { organizationId: membership?.organizationId, paymentId: payment.id, robotTaskId: robotTask.id, status: MarketingCampaignStatus.ACTIVE }, include: campaignInclude });
+    const updated = await transaction.marketingCampaign.update({ where: { id: campaign.id }, data: { robotTaskId: robotTask.id, status: MarketingCampaignStatus.ACTIVE }, include: campaignInclude });
     await transaction.auditLog.createMany({ data: [
-      { actorId: userId, organizationId: membership?.organizationId, action: "marketing.campaign.payment.confirmed", entityType: "Payment", entityId: payment.id, metadata: { campaignId: campaign.id, amountMinor: payment.amountMinor, currency: payment.currency, customerType: campaign.customerType } },
-      { actorId: userId, organizationId: membership?.organizationId, action: "marketing.campaign.robot.assigned", entityType: "RobotTask", entityId: robotTask.id, metadata: { campaignId: campaign.id, robotId: robot.id } },
+      { actorId: adminUserId, organizationId: campaign.organizationId, action: "marketing.campaign.payment.confirmed", entityType: "Payment", entityId: payment.id, metadata: { campaignId: campaign.id, amountMinor: payment.amountMinor, currency: payment.currency, customerType: campaign.customerType, requestedByUserId: campaign.createdById, reference: input.reference } },
+      { actorId: adminUserId, organizationId: campaign.organizationId, action: "marketing.campaign.robot.assigned", entityType: "RobotTask", entityId: robotTask.id, metadata: { campaignId: campaign.id, robotId: robot.id } },
     ] });
     return updated;
+  });
+}
+
+/** Administrator view: campaigns whose payment request is recorded and still waiting to be confirmed, oldest first. */
+export async function listPendingMarketingPaymentRequests() {
+  return db.marketingCampaign.findMany({
+    where: { status: { not: MarketingCampaignStatus.ARCHIVED }, robotTaskId: null, payment: { is: { status: "PENDING", provider: MANUAL_REVIEW_PAYMENT_PROVIDER } } },
+    select: {
+      id: true,
+      name: true,
+      channel: true,
+      customerType: true,
+      budgetMinor: true,
+      currency: true,
+      qualityScore: true,
+      createdAt: true,
+      createdBy: { select: { id: true, email: true, profile: { select: { displayName: true } } } },
+      organization: { select: { id: true, name: true } },
+      payment: { select: { id: true, amountMinor: true, currency: true, status: true, provider: true, createdAt: true } },
+    },
+    orderBy: [{ updatedAt: "asc" }, { id: "asc" }],
+    take: 100,
   });
 }
 

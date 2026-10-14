@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { getCurrentUser } from "@/lib/auth/session";
 import { hasValidOrigin } from "@/lib/auth/request";
+import { publicErrorMessage } from "@/lib/http/safe-error";
+import { enforceRouteRateLimit } from "@/lib/rate-limit/route-rate-limit";
 import { acceptOrganizationInvitation, inviteOrganizationMember, listOrganizationMembers, listPendingOrganizationInvitations } from "@/services/programs/people-service";
 
 const commandSchema = z.discriminatedUnion("action", [
@@ -18,8 +20,7 @@ export async function GET(request: NextRequest) {
   try {
     return NextResponse.json({ success: true, members: await listOrganizationMembers(organizationId, user.id) });
   } catch (error) {
-    const message = error instanceof Error ? error.message : "Members could not be loaded";
-    return NextResponse.json({ success: false, message }, { status: 403 });
+    return NextResponse.json({ success: false, message: publicErrorMessage(error, "Members could not be loaded") }, { status: 403 });
   }
 }
 
@@ -29,6 +30,11 @@ export async function POST(request: NextRequest) {
   if (!hasValidOrigin(request)) return NextResponse.json({ success: false, message: "Invalid request origin" }, { status: 403 });
   const parsed = commandSchema.safeParse(await request.json().catch(() => null));
   if (!parsed.success) return NextResponse.json({ success: false, message: "Invalid people command" }, { status: 400 });
+  if (parsed.data.action === "invite") {
+    // An invitation says whether an address belongs to a registered user, so every lookup is metered per signed-in user.
+    const limited = await enforceRouteRateLimit(request, { scope: "members:lookup", limit: 15, windowMs: 60_000, userId: user.id });
+    if (limited) return limited;
+  }
   try {
     const input = parsed.data;
     const result = input.action === "invite"
@@ -36,7 +42,7 @@ export async function POST(request: NextRequest) {
       : await acceptOrganizationInvitation(input.membershipId, user.id);
     return NextResponse.json({ success: true, result }, { status: input.action === "invite" ? 201 : 200 });
   } catch (error) {
-    const message = error instanceof Error ? error.message : "People command failed";
-    return NextResponse.json({ success: false, message }, { status: message.includes("required") || message.includes("not found") ? 403 : 409 });
+    const rawMessage = error instanceof Error ? error.message : "";
+    return NextResponse.json({ success: false, message: publicErrorMessage(error, "People command failed") }, { status: rawMessage.includes("required") || rawMessage.includes("not found") ? 403 : 409 });
   }
 }

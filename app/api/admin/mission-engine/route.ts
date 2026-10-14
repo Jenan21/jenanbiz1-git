@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { publicErrorMessage } from "@/lib/http/safe-error";
 import { z } from "zod";
 
 import { MissionDependencyType, MissionRetryBackoff, Prisma, SystemRole } from "@/generated/prisma/client";
@@ -74,7 +75,7 @@ export async function POST(request: NextRequest) {
       : await recordMissionRunCost({ actualDuration: input.actualDuration, attemptId: input.attemptId, computeCostMinor: input.computeCostMinor, currency: input.currency, estimatedDuration: input.estimatedDuration, inputTokens: input.inputTokens, model: input.model, outputTokens: input.outputTokens, provider: input.provider, robotId: input.robotId, runId: input.runId }, user.id);
     return NextResponse.json({ success: true, result });
   } catch (error) {
-    const message = error instanceof Error ? error.message : "Mission engine command failed";
+    const message = publicErrorMessage(error, "Mission engine command failed");
     return NextResponse.json({ success: false, message }, { status: message.endsWith("not found") ? 404 : 409 });
   }
 }

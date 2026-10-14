@@ -1,7 +1,7 @@
 import { randomInt, randomUUID } from "node:crypto";
 import { UserStatus } from "@/generated/prisma/client";
 import { db } from "@/lib/db";
-import { hashPassword, verifyPassword } from "@/lib/auth/password";
+import { getDummyPasswordHash, hashPassword, verifyPassword } from "@/lib/auth/password";
 import { getPasswordRecoveryEmailProvider } from "@/services/auth/recovery-email-provider";
 import type { RequestContext } from "@/services/auth/auth.service";
 import type { EmailProvider } from "@/services/providers.contracts";
@@ -15,10 +15,18 @@ export class PasswordRecoveryError extends Error {
   }
 }
 
+/**
+ * `schedule` lets the caller run the e-mail delivery after the response has been sent. Delivery takes a visible amount
+ * of time for real accounts and none for unknown ones, so awaiting it would reveal which addresses are registered.
+ * Without a scheduler (tests, scripts) delivery runs inline.
+ */
+export type DeliveryScheduler = (task: () => Promise<void>) => void;
+
 export async function requestPasswordReset(
   email: string,
   context: RequestContext = {},
   provider: EmailProvider | null = getPasswordRecoveryEmailProvider(),
+  schedule?: DeliveryScheduler,
 ) {
   const normalizedEmail = email.trim().toLowerCase();
   const user = await db.user.findUnique({
@@ -38,6 +46,8 @@ export async function requestPasswordReset(
     user.status !== UserStatus.ACTIVE ||
     delivery === "unavailable"
   ) {
+    // Spend the time a real request spends on hashing the code, so this answer is not faster than the others.
+    await hashPassword(String(randomInt(100_000, 1_000_000)));
     return { accepted: true, delivery };
   }
 
@@ -67,43 +77,53 @@ export async function requestPasswordReset(
 
   if (provider) {
     const traceId = randomUUID();
-    try {
-      await provider.send({
-        subject: "Jenan Pro password recovery code",
-        text: `رمز استعادة حساب جنان برو: ${code}\nJenan Pro recovery code: ${code}\nينتهي الرمز خلال 10 دقائق. / The code expires in 10 minutes.`,
-        to: normalizedEmail,
-        traceId,
-      });
-      await db.auditLog.create({
-        data: {
-          actorId: user.id,
-          action: "authentication.password_reset.delivered",
-          entityType: "PasswordResetToken",
-          entityId: token.id,
-          ipAddress: context.ipAddress,
-          metadata: { provider: provider.name, traceId },
-        },
-      });
-      return { accepted: true, delivery: "email" as const };
-    } catch {
-      await db.$transaction([
-        db.passwordResetToken.update({
-          where: { id: token.id },
-          data: { usedAt: new Date() },
-        }),
-        db.auditLog.create({
+    const deliver = async () => {
+      try {
+        await provider.send({
+          subject: "Jenan Pro password recovery code",
+          text: `رمز استعادة حساب جنان برو: ${code}\nJenan Pro recovery code: ${code}\nينتهي الرمز خلال 10 دقائق. / The code expires in 10 minutes.`,
+          to: normalizedEmail,
+          traceId,
+        });
+        await db.auditLog.create({
           data: {
             actorId: user.id,
-            action: "authentication.password_reset.delivery_failed",
+            action: "authentication.password_reset.delivered",
             entityType: "PasswordResetToken",
             entityId: token.id,
             ipAddress: context.ipAddress,
             metadata: { provider: provider.name, traceId },
           },
+        });
+      } catch {
+        await db.$transaction([
+          db.passwordResetToken.update({
+            where: { id: token.id },
+            data: { usedAt: new Date() },
+          }),
+          db.auditLog.create({
+            data: {
+              actorId: user.id,
+              action: "authentication.password_reset.delivery_failed",
+              entityType: "PasswordResetToken",
+              entityId: token.id,
+              ipAddress: context.ipAddress,
+              metadata: { provider: provider.name, traceId },
+            },
+          }),
+        ]);
+      }
+    };
+    if (schedule) {
+      schedule(() =>
+        deliver().catch(() => {
+          console.error("Password recovery delivery bookkeeping failed", traceId);
         }),
-      ]);
-      return { accepted: true, delivery: "email" as const };
+      );
+    } else {
+      await deliver();
     }
+    return { accepted: true, delivery: "email" as const };
   }
 
   return {
@@ -132,26 +152,25 @@ export async function confirmPasswordReset(
     },
   });
   const token = user?.passwordResetTokens[0];
-  if (
-    !user ||
-    user.status !== UserStatus.ACTIVE ||
-    !token ||
-    token.attempts >= maxAttempts
-  ) {
+  if (!user || user.status !== UserStatus.ACTIVE || !token) {
+    // No live code for this address: verify against a hash nobody knows so the answer takes as long as a wrong guess.
+    await verifyPassword(await getDummyPasswordHash(), input.code);
+    throw new PasswordRecoveryError("INVALID_OR_EXPIRED_CODE");
+  }
+
+  // Take one of the code's attempts before checking it. The update only matches while the code is live and under the
+  // cap, so concurrent guesses cannot exceed `maxAttempts` in total, however many arrive at once.
+  const reserved = await db.passwordResetToken.updateMany({
+    where: { id: token.id, usedAt: null, expiresAt: { gt: new Date() }, attempts: { lt: maxAttempts } },
+    data: { attempts: { increment: 1 } },
+  });
+  if (reserved.count !== 1) {
+    await verifyPassword(await getDummyPasswordHash(), input.code);
     throw new PasswordRecoveryError("INVALID_OR_EXPIRED_CODE");
   }
 
   const valid = await verifyPassword(token.tokenHash, input.code);
-  if (!valid) {
-    await db.passwordResetToken.update({
-      where: { id: token.id },
-      data: {
-        attempts: { increment: 1 },
-        usedAt: token.attempts + 1 >= maxAttempts ? new Date() : undefined,
-      },
-    });
-    throw new PasswordRecoveryError("INVALID_OR_EXPIRED_CODE");
-  }
+  if (!valid) throw new PasswordRecoveryError("INVALID_OR_EXPIRED_CODE");
 
   const passwordHash = await hashPassword(input.password);
   await db.$transaction(async (transaction) => {

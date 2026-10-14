@@ -1,8 +1,9 @@
-import { NextRequest, NextResponse } from "next/server";
+import { NextRequest, NextResponse, after } from "next/server";
 import { z, ZodError } from "zod";
 import { getRequestContext, hasValidOrigin } from "@/lib/auth/request";
 import { checkAuthRateLimit } from "@/lib/rate-limit/auth-rate-limit";
 import { confirmPasswordReset, PasswordRecoveryError, requestPasswordReset } from "@/services/auth/password-recovery-service";
+import { getPasswordRecoveryEmailProvider } from "@/services/auth/recovery-email-provider";
 
 const requestSchema = z.object({ action: z.literal("request"), email: z.string().trim().email().max(320) });
 const confirmSchema = z.object({
@@ -26,7 +27,10 @@ export async function POST(request: NextRequest) {
 
     if (action === "request") {
       const input = requestSchema.parse(payload);
-      return NextResponse.json(await requestPasswordReset(input.email, getRequestContext(request)));
+      // E-mail delivery runs after the response is sent, so the response time does not reveal whether the address exists.
+      return NextResponse.json(
+        await requestPasswordReset(input.email, getRequestContext(request), getPasswordRecoveryEmailProvider(), (task) => after(task)),
+      );
     }
     const input = confirmSchema.parse(payload);
     await confirmPasswordReset(input, getRequestContext(request));

@@ -1,17 +1,19 @@
 import { afterAll, describe, expect, it } from "vitest";
 import { db } from "@/lib/db";
 import {
-  confirmCampaignPaymentAndAssignRobot,
+  confirmCampaignPaymentReceived,
   createMarketingAudienceSegment,
   createMarketingCampaign,
   createMarketingLead,
   refreshMarketingCampaignPerformance,
+  requestCampaignPayment,
   updateMarketingCampaignStatus,
   updateMarketingLead,
 } from "@/services/marketing/campaign-service";
 
 const suffix = crypto.randomUUID().slice(0, 8);
 let userId: string | undefined;
+let adminId: string | undefined;
 let robotId: string | undefined;
 const campaignIds: string[] = [];
 
@@ -19,22 +21,26 @@ afterAll(async () => {
   if (campaignIds.length) await db.marketingCampaign.deleteMany({ where: { id: { in: campaignIds } } });
   if (userId) await db.payment.deleteMany({ where: { payerUserId: userId, externalRef: { startsWith: "marketing-" } } });
   if (robotId) await db.robot.delete({ where: { id: robotId } });
+  if (adminId) await db.user.delete({ where: { id: adminId } });
   if (userId) await db.user.delete({ where: { id: userId } });
   await db.$disconnect();
 });
 
 describe("marketing domain", () => {
-  it("scores campaigns, gates weak activation, assigns robots, and reports performance", async () => {
+  it("scores campaigns, gates weak activation, assigns robots after an administrator confirms payment, and reports performance", async () => {
     const user = await db.user.create({ data: { email: `marketing-${suffix}@example.test`, status: "ACTIVE", profile: { create: { displayName: "Growth owner", locale: "en", language: "en" } } } });
     userId = user.id;
-    const robot = await db.robot.create({ data: { intelligence: 95, isVisible: true, name: `Growth hunter ${suffix}`, skill: 91, slug: `growth-hunter-${suffix}`, status: "ACTIVE" } });
+    const admin = await db.user.create({ data: { email: `marketing-admin-${suffix}@example.test`, status: "ACTIVE", systemRole: "ADMIN" } });
+    adminId = admin.id;
+    // Outranks every other robot, so it is the one assigned.
+    const robot = await db.robot.create({ data: { intelligence: 2_000_000_000, isVisible: true, name: `Growth hunter ${suffix}`, skill: 2_000_000_000, slug: `growth-hunter-${suffix}`, status: "ACTIVE" } });
     robotId = robot.id;
 
     const weak = await createMarketingCampaign({ budgetMinor: 0, channel: "CONTENT", customerType: "INDIVIDUAL", name: `Weak campaign ${suffix}`, objective: "Short goal" }, user.id);
     campaignIds.push(weak.id);
     expect(weak.qualityScore).toBeLessThan(60);
     await expect(updateMarketingCampaignStatus(weak.id, "ACTIVE", user.id)).rejects.toThrow("quality score");
-    await expect(confirmCampaignPaymentAndAssignRobot(weak.id, user.id)).rejects.toThrow("quality score");
+    await expect(requestCampaignPayment(weak.id, user.id)).rejects.toThrow("quality score");
 
     const strong = await createMarketingCampaign({
       budgetMinor: 12_000_00,
@@ -48,9 +54,17 @@ describe("marketing domain", () => {
     }, user.id);
     campaignIds.push(strong.id);
     expect(strong.qualityScore).toBeGreaterThanOrEqual(80);
-    const active = await confirmCampaignPaymentAndAssignRobot(strong.id, user.id);
+
+    // The owner can only ask for payment to be reviewed; nothing is paid, assigned or active yet.
+    const requested = await requestCampaignPayment(strong.id, user.id);
+    expect(requested.status).toBe("DRAFT");
+    expect(requested.payment).toMatchObject({ provider: "MANUAL_REVIEW", status: "PENDING" });
+    expect(requested.robotTask).toBeNull();
+    await expect(updateMarketingCampaignStatus(strong.id, "ACTIVE", user.id)).rejects.toThrow("pending");
+
+    const active = await confirmCampaignPaymentReceived({ amountMinor: strong.budgetMinor, campaignId: strong.id, reference: `TRX-${suffix}` }, admin.id);
     expect(active.status).toBe("ACTIVE");
-    expect(active.robotTask?.robot.id).toBeTruthy();
+    expect(active.robotTask?.robot.id).toBe(robot.id);
     expect(active.payment?.status).toBe("SUCCEEDED");
 
     const lead = await createMarketingLead({ campaignId: strong.id, label: "Lead A", source: "LinkedIn", status: "QUALIFIED", valueMinor: 600_000 }, user.id);

@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { publicErrorMessage } from "@/lib/http/safe-error";
 import { z } from "zod";
 
 import { hasPlatformAdminAccess } from "@/lib/auth/authorization";
@@ -34,7 +35,7 @@ export async function POST(request: NextRequest) {
       : await reviewRobotInformationRequest(input, user.id);
     return NextResponse.json({ success: true, result }, { status: input.action === "reviewInformationRequest" ? 200 : 201 });
   } catch (error) {
-    const message = error instanceof Error ? error.message : "Admin operation failed";
+    const message = publicErrorMessage(error, "Admin operation failed");
     return NextResponse.json({ success: false, message }, { status: message.endsWith("not found") ? 404 : 409 });
   }
 }

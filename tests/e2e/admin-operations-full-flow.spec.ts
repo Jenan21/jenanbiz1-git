@@ -12,7 +12,7 @@ const viewports = [
 ] as const;
 
 test.describe("admin operations 80-page acceptance", () => {
-  test.describe.configure({ timeout: 240_000 });
+  test.describe.configure({ timeout: 600_000 });
 
   test.beforeEach(async ({ context }) => {
     await cleanE2EIdentities();

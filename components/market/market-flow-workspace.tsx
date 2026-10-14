@@ -23,7 +23,7 @@ type Listing = {
   sector: string | null;
   countryCode: string | null;
   currency: string;
-  createdBy: { email: string; profile: { displayName: string | null } | null };
+  createdBy: { id: string; profile: { displayName: string | null } | null };
   askingPriceMinor: number | null;
   valuationNote: string | null;
   qualityScore: number;
@@ -41,7 +41,7 @@ type Viewing = {
   status: string;
   isListingOwner: boolean;
   listing: { title: string };
-  requester: { email: string; profile: { displayName: string | null } | null };
+  requester: { id: string; profile: { displayName: string | null } | null };
 };
 type Offer = {
   id: string;
@@ -55,9 +55,20 @@ type Offer = {
   isListingOwner: boolean;
   isBuyer: boolean;
   listing: { title: string };
-  buyer: { email: string; profile: { displayName: string | null } | null };
+  buyer: { id: string; profile: { displayName: string | null } | null };
 };
-type Payload = { listings: Listing[]; viewings: Viewing[]; offers: Offer[] };
+type DealCursors = { offers: string | null; viewings: string | null };
+type Payload = {
+  listings: Listing[];
+  viewings: Viewing[];
+  offers: Offer[];
+  pagination?: { offersNextCursor: string | null; viewingsNextCursor: string | null };
+};
+
+function mergeById<T extends { id: string }>(current: T[], incoming: T[]) {
+  const known = new Set(current.map((item) => item.id));
+  return [...current, ...incoming.filter((item) => !known.has(item.id))];
+}
 
 const flowLinks = [
   ["/market/listings", "العروض", "Listings"],
@@ -122,6 +133,10 @@ export function MarketFlowWorkspace({
   const [visibility, setVisibility] = useState<"PUBLIC" | "NDA_REQUIRED">(
     "NDA_REQUIRED",
   );
+  const [dealCursors, setDealCursors] = useState<DealCursors>({
+    offers: null,
+    viewings: null,
+  });
 
   async function load(preferredId?: string) {
     const response = await fetch("/api/market", { cache: "no-store" });
@@ -135,6 +150,10 @@ export function MarketFlowWorkspace({
       return;
     }
     setPayload(data);
+    setDealCursors({
+      offers: data.pagination?.offersNextCursor ?? null,
+      viewings: data.pagination?.viewingsNextCursor ?? null,
+    });
     setSelectedId((current) => {
       if (preferredId && data.listings.some((item) => item.id === preferredId))
         return preferredId;
@@ -185,6 +204,35 @@ export function MarketFlowWorkspace({
       );
     setBusy(false);
     return response.ok;
+  }
+
+  // Viewings and offers arrive a page at a time; a list that has run out keeps no cursor and is not asked for again.
+  async function loadMoreDeals() {
+    if (!dealCursors.offers && !dealCursors.viewings) return;
+    setBusy(true);
+    const params = new URLSearchParams({ section: "deals" });
+    if (dealCursors.offers) params.set("offersCursor", dealCursors.offers);
+    if (dealCursors.viewings) params.set("viewingsCursor", dealCursors.viewings);
+    const response = await fetch(`/api/market?${params.toString()}`, { cache: "no-store" });
+    const data = (await response.json().catch(() => null)) as
+      (Pick<Payload, "offers" | "pagination" | "viewings"> & { message?: string }) | null;
+    if (!response.ok || !data) {
+      setMessage(
+        data?.message ??
+          (ar ? "تعذر تحميل المزيد." : "More could not be loaded."),
+      );
+    } else {
+      setPayload((current) => ({
+        ...current,
+        offers: dealCursors.offers ? mergeById(current.offers, data.offers) : current.offers,
+        viewings: dealCursors.viewings ? mergeById(current.viewings, data.viewings) : current.viewings,
+      }));
+      setDealCursors({
+        offers: dealCursors.offers ? (data.pagination?.offersNextCursor ?? null) : null,
+        viewings: dealCursors.viewings ? (data.pagination?.viewingsNextCursor ?? null) : null,
+      });
+    }
+    setBusy(false);
   }
 
   const selected = payload.listings.find((item) => item.id === selectedId);
@@ -887,12 +935,22 @@ export function MarketFlowWorkspace({
                       </div>
                     </article>
                   ))}
+                  {dealCursors.offers || dealCursors.viewings ? (
+                    <button
+                      className="button button--secondary"
+                      disabled={busy}
+                      onClick={() => void loadMoreDeals()}
+                      type="button"
+                    >
+                      {ar ? "تحميل المزيد من الطلبات والعروض" : "Load more requests and offers"}
+                    </button>
+                  ) : null}
                 </section>
               ) : null}
               {definition.route === "/market/deal/sample/report" ? (
                 <section className="market-deal-report" data-market-focus="deal-report">
                   <header><div><span>JENAN PRO MARKET</span><h3>{ar ? "تقرير الصفقة" : "Deal report"}</h3><p>{selected.title}</p></div><strong>{acceptedOffer ? (ar ? "عرض مقبول" : "ACCEPTED OFFER") : activeOffer ? (ar ? "صفقة نشطة" : "ACTIVE DEAL") : (ar ? "بانتظار عرض" : "AWAITING OFFER")}</strong></header>
-                  <div className="market-deal-report__parties"><article><span>{ar ? "البائع" : "Seller"}</span><strong>{selected.createdBy.profile?.displayName ?? selected.createdBy.email}</strong></article><article><span>{ar ? "المشتري" : "Buyer"}</span><strong>{(acceptedOffer ?? activeOffer)?.buyer.profile?.displayName ?? (acceptedOffer ?? activeOffer)?.buyer.email ?? (ar ? "غير محدد" : "Not assigned")}</strong></article></div>
+                  <div className="market-deal-report__parties"><article><span>{ar ? "البائع" : "Seller"}</span><strong>{selected.createdBy.profile?.displayName ?? (ar ? "عضو في المنصة" : "Platform member")}</strong></article><article><span>{ar ? "المشتري" : "Buyer"}</span><strong>{(acceptedOffer ?? activeOffer)?.buyer.profile?.displayName ?? ((acceptedOffer ?? activeOffer) ? (ar ? "عضو في المنصة" : "Platform member") : (ar ? "غير محدد" : "Not assigned"))}</strong></article></div>
                   <div className="market-flow__timeline">{dealStages.map((step, index) => <span className={step.complete ? "is-complete" : index === currentStage ? "is-active" : ""} key={step.key}><i>{index + 1}</i><b>{step.key}</b></span>)}</div>
                   <dl><div><dt>{ar ? "المستندات المتاحة" : "Available documents"}</dt><dd>{selected.files.length}</dd></div><div><dt>{ar ? "طلبات المعاينة" : "Viewing requests"}</dt><dd>{selectedViewings.length}</dd></div><div><dt>{ar ? "العروض" : "Offers"}</dt><dd>{selectedOffers.length}</dd></div><div><dt>{ar ? "قيمة العرض الحالي" : "Current offer"}</dt><dd>{acceptedOffer || activeOffer ? money((acceptedOffer ?? activeOffer)!.amountMinor, (acceptedOffer ?? activeOffer)!.currency) : (ar ? "غير متاح" : "Unavailable")}</dd></div></dl>
                   <section><h4>{ar ? "سجل العروض" : "Offer record"}</h4>{selectedOffers.map((item) => <article key={item.id}><span>{item.status}</span><strong>{money(item.amountMinor, item.currency)}</strong><small>{item.validUntil ? `${ar ? "صالح حتى" : "Valid until"}: ${new Intl.DateTimeFormat(ar ? "ar-SA" : "en-GB", { dateStyle: "medium" }).format(new Date(item.validUntil))}` : (ar ? "لا يوجد تاريخ صلاحية مسجل" : "No validity date recorded")}</small></article>)}{!selectedOffers.length ? <p>{ar ? "لا توجد عروض مسجلة." : "No recorded offers."}</p> : null}</section>

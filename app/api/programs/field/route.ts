@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { getCurrentUser } from "@/lib/auth/session";
 import { hasValidOrigin } from "@/lib/auth/request";
+import { publicErrorMessage } from "@/lib/http/safe-error";
 import { createFieldAssignment, listFieldAssignments, listFieldAssignees, updateFieldAssignmentStatus } from "@/services/programs/field-operations-service";
 
 const commandSchema = z.discriminatedUnion("action", [
@@ -21,7 +22,7 @@ export async function GET(request: NextRequest) {
     ]);
     return NextResponse.json({ success: true, assignments, members });
   }
-  catch (error) { return NextResponse.json({ success: false, message: error instanceof Error ? error.message : "Assignments could not be loaded" }, { status: 403 }); }
+  catch (error) { return NextResponse.json({ success: false, message: publicErrorMessage(error, "Assignments could not be loaded") }, { status: 403 }); }
 }
 
 export async function POST(request: NextRequest) {
@@ -34,5 +35,5 @@ export async function POST(request: NextRequest) {
     const input = parsed.data;
     const result = input.action === "create" ? await createFieldAssignment({ ...input, dueAt: input.dueAt ? new Date(input.dueAt) : undefined, userId: user.id }) : await updateFieldAssignmentStatus({ ...input, userId: user.id });
     return NextResponse.json({ success: true, result }, { status: input.action === "create" ? 201 : 200 });
-  } catch (error) { return NextResponse.json({ success: false, message: error instanceof Error ? error.message : "Field operations command failed" }, { status: 403 }); }
+  } catch (error) { return NextResponse.json({ success: false, message: publicErrorMessage(error, "Field operations command failed") }, { status: 403 }); }
 }

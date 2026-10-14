@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { publicErrorMessage } from "@/lib/http/safe-error";
 import { z } from "zod";
 
 import { hasValidOrigin } from "@/lib/auth/request";
@@ -18,7 +19,7 @@ export async function POST(request: NextRequest) {
     const delivery = await requestReportEmail({ ...parsed.data, reportPath: parsed.data.reportPath }, user.id);
     return NextResponse.json({ success: true, delivery, providerState: "AWAITING_APPROVED_PROVIDER" }, { status: 202 });
   } catch (error) {
-    const message = error instanceof Error ? error.message : "Report delivery request failed";
+    const message = publicErrorMessage(error, "Report delivery request failed");
     return NextResponse.json({ success: false, message }, { status: message.includes("live source") ? 409 : 404 });
   }
 }

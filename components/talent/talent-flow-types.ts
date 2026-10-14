@@ -28,8 +28,7 @@ export type TalentPosting = {
     employeeRange: string | null;
     hiringSettings: { defaultWorkMode?: string; interviewDuration?: number; notificationsEnabled?: boolean } | null;
   } | null;
-  createdBy: { email: string; profile: { displayName: string | null } | null };
-  applications: { applicantId: string; matchScore: number; status: string }[];
+  createdBy: { id: string; profile: { displayName: string | null } | null };
   questions: { id: string; prompt: string; required: boolean; sequence: number }[];
   createdAt: string;
   updatedAt: string;
@@ -81,7 +80,8 @@ export type OwnedTalentApplication = {
   employerNotes: string | null;
   status: "SUBMITTED" | "UNDER_REVIEW" | "ACCEPTED" | "REJECTED" | "WITHDRAWN";
   jobPosting: { id: string; title: string };
-  applicant: { email: string; profile: { displayName: string | null } | null };
+  // The address is sent to the employer only when the applicant consented to share their profile.
+  applicant: { email?: string; profile: { displayName: string | null } | null };
   cvDocument: TalentCv | null;
   answers: { id: string; questionId: string; promptSnapshot: string; answer: string }[];
   interviews: TalentInterviewRecord[];

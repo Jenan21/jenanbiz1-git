@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { publicErrorMessage } from "@/lib/http/safe-error";
 import { z } from "zod";
 
 import { hasValidOrigin } from "@/lib/auth/request";
@@ -25,7 +26,7 @@ export async function POST(request: NextRequest) {
   try {
     return NextResponse.json({ success: true, result: await createRobotInformationRequest(parsed.data, user.id) }, { status: 201 });
   } catch (error) {
-    const message = error instanceof Error ? error.message : "Robotics request failed";
+    const message = publicErrorMessage(error, "Robotics request failed");
     return NextResponse.json({ success: false, message }, { status: message.endsWith("not found") ? 404 : 409 });
   }
 }

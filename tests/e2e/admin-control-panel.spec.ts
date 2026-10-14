@@ -111,7 +111,7 @@ test.describe("admin control panel acceptance", () => {
 
     for (const route of adminRoutes) {
       await page.goto(route, { waitUntil: "domcontentloaded" });
-      expect(page.url(), `${route} must require authentication`).toContain("/login");
+      expect(page.url(), `${route} must require authentication`).toMatch(/\/auth\?next=/);
     }
   });
 
@@ -241,7 +241,7 @@ test.describe("admin control panel acceptance", () => {
 
     await page.request.post("/api/auth/logout", { headers: { origin } });
     await page.goto(`/admin/robots/${robotId}`, { waitUntil: "domcontentloaded" });
-    expect(page.url()).toContain("/login");
+    expect(page.url()).toMatch(/\/auth\?next=/);
 
     if (createdRobotId) {
       await queryE2E('DELETE FROM "Robot" WHERE id = $1', [createdRobotId]);

@@ -1,3 +1,4 @@
+import { OrganizationMemberStatus } from "@/generated/prisma/client";
 import { db } from "@/lib/db";
 import { getCommunityAccess } from "@/services/community/community-access-service";
 
@@ -18,7 +19,9 @@ export async function getAccountOverview(userId: string) {
   const completedLessonIds = new Set(completedLessons.map((lesson) => lesson.lessonId));
   return {
     projects,
-    organizations: memberships.map((membership) => ({ id: membership.organization.id, name: membership.organization.name, membershipStatus: membership.status, isOwner: membership.isOwner, role: membership.role?.name ?? null, subscriptions: membership.organization.subscriptions })),
+    // Subscription details belong to the organization's members; an invited or suspended membership still lists the
+    // organization (the person can see their own invitation) but without its billing state.
+    organizations: memberships.map((membership) => ({ id: membership.organization.id, name: membership.organization.name, membershipStatus: membership.status, isOwner: membership.isOwner, role: membership.role?.name ?? null, subscriptions: membership.status === OrganizationMemberStatus.ACTIVE ? membership.organization.subscriptions : [] })),
     services: { marketListings: listings, marketingCampaigns: campaigns, jobPostings, fileCount },
     requests: { marketInquiries: inquiries, jobApplications },
     learning: enrollments.map((enrollment) => ({ id: enrollment.id, status: enrollment.status, enrolledAt: enrollment.enrolledAt, completedAt: enrollment.completedAt, course: { id: enrollment.course.id, title: enrollment.course.title, completedLessons: enrollment.course.lessons.filter((lesson) => completedLessonIds.has(lesson.id)).length, totalLessons: enrollment.course.lessons.length } })),

@@ -1,3 +1,5 @@
+import { OrganizationMemberStatus } from "@/generated/prisma/client";
+import { ORGANIZATION_PERMISSIONS } from "@/lib/auth/authorization";
 import { db } from "@/lib/db";
 
 export async function getUserPayments(userId: string) {
@@ -5,7 +7,22 @@ export async function getUserPayments(userId: string) {
     where: {
       OR: [
         { payerUserId: userId },
-        { organization: { members: { some: { userId } } } },
+        // An organization's payments are billing records: the owner, or an ACTIVE member whose role carries the finance
+        // permission, may see them. An invited or suspended member, or an ordinary member, may not.
+        {
+          organization: {
+            members: {
+              some: {
+                userId,
+                status: OrganizationMemberStatus.ACTIVE,
+                OR: [
+                  { isOwner: true },
+                  { role: { permissions: { some: { permission: { key: ORGANIZATION_PERMISSIONS.financeRead } } } } },
+                ],
+              },
+            },
+          },
+        },
       ],
     },
     select: {

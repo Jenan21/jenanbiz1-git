@@ -106,8 +106,10 @@ export async function loginUser(
   input: LoginData,
   context: RequestContext = {},
 ) {
+  // The hash is requested explicitly; the client omits it everywhere else.
   const userWithHash = await db.user.findUnique({
     where: { email: input.email },
+    omit: { passwordHash: false },
   });
   const candidateHash = userWithHash?.passwordHash ?? (await dummyPasswordHash);
   const valid = await verifyPassword(candidateHash, input.password);
@@ -145,8 +147,14 @@ export async function loginUser(
         ipAddress: context.ipAddress,
       },
     });
-    return { user: userWithHash, ...session };
+    return { user: omitPasswordHash(userWithHash), ...session };
   });
+}
+
+function omitPasswordHash<T extends { passwordHash?: string | null }>(user: T): Omit<T, "passwordHash"> {
+  const rest = { ...user };
+  delete rest.passwordHash;
+  return rest;
 }
 
 export async function logoutSession(

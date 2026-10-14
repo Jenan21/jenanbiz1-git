@@ -51,6 +51,7 @@ describe.sequential("OAuth sign-in against PostgreSQL", () => {
     const user = await db.user.findUniqueOrThrow({
       where: { id: result.user.id },
       include: { profile: true, authIdentities: true, sessions: true },
+      omit: { passwordHash: false },
     });
     expect(user.email).toBe(email("new"));
     expect(user.passwordHash).toBeNull();
@@ -91,7 +92,7 @@ describe.sequential("OAuth sign-in against PostgreSQL", () => {
     expect(result.created).toBe(false);
     expect(result.user.id).toBe(existing.id);
     expect(await db.auditLog.count({ where: { actorId: existing.id, action: "user.oauth_linked" } })).toBe(1);
-    expect((await db.user.findUniqueOrThrow({ where: { id: existing.id } })).passwordHash).toBe("x");
+    expect((await db.user.findUniqueOrThrow({ where: { id: existing.id }, omit: { passwordHash: false } })).passwordHash).toBe("x");
   });
 
   it("refuses to take over an unverified password account while public sign-up is open", async () => {

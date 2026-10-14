@@ -1,8 +1,11 @@
 import { MarketInquiryStatus, MarketListingStatus, MarketOfferStatus, MarketViewingStatus, Prisma } from "@/generated/prisma/client";
-import { db } from "@/lib/db";
+import { publicUserSelect } from "@/lib/auth/public-user";
+import { db, type DbExecutor } from "@/lib/db";
+import { MARKET_LIMITS } from "@/lib/market/market-limits";
 
+// Other people only ever see a seller's or buyer's display name and opaque id, never the account record.
 const listingInclude = {
-  createdBy: { include: { profile: true } },
+  createdBy: { select: publicUserSelect },
   project: { select: { id: true, name: true } },
   organization: { select: { id: true, name: true } },
 } satisfies Prisma.MarketListingInclude;
@@ -15,6 +18,19 @@ export type MarketListingFilters = {
   search?: string;
   status?: "DRAFT" | "PUBLISHED" | "PAUSED" | "ARCHIVED";
 };
+
+export type MarketPageSize = { take?: number };
+
+function pageSize(take?: number) {
+  const value = Math.trunc(take ?? MARKET_LIMITS.defaultPageSize);
+  return Number.isFinite(value) ? Math.min(Math.max(value, 1), MARKET_LIMITS.maxPageSize) : MARKET_LIMITS.defaultPageSize;
+}
+
+// A page is read one row past its size: the extra row only tells whether another page follows, and the last row shown is the cursor for it.
+function cursorPage<T extends { id: string }>(rows: T[], take: number) {
+  const items = rows.slice(0, take);
+  return { items, nextCursor: rows.length > take ? items[items.length - 1].id : null };
+}
 
 function assessListingQuality(input: {
   askingPriceMinor?: number;
@@ -59,8 +75,10 @@ function slugify(value: string) {
 }
 
 export async function listMarketListings(userId: string, filters: MarketListingFilters = {}) {
-  const limit = Math.min(Math.max(filters.limit ?? 50, 1), 100);
-  const offset = Math.max(filters.offset ?? 0, 0);
+  const requestedLimit = Math.trunc(filters.limit ?? 50);
+  const limit = Number.isFinite(requestedLimit) ? Math.min(Math.max(requestedLimit, 1), 100) : 50;
+  const requestedOffset = Math.trunc(filters.offset ?? 0);
+  const offset = Number.isFinite(requestedOffset) ? Math.max(requestedOffset, 0) : 0;
   const query = filters.search?.trim();
   const listings = await db.marketListing.findMany({
     where: {
@@ -174,19 +192,26 @@ export async function updateMarketListingStatus(
   });
 }
 
-export async function listMarketInquiries(userId: string) {
-  const inquiries = await db.marketInquiry.findMany({
+export async function listMarketInquiries(userId: string, page: MarketPageSize & { cursor?: string } = {}) {
+  const take = pageSize(page.take);
+  const rows = await db.marketInquiry.findMany({
     where: { OR: [{ requesterId: userId }, { listing: { createdById: userId } }] },
     include: {
       listing: { select: { id: true, title: true, createdById: true } },
-      requester: { select: { email: true, profile: { select: { displayName: true } } } },
+      requester: { select: publicUserSelect },
     },
-    orderBy: { updatedAt: "desc" },
+    orderBy: [{ updatedAt: "desc" }, { id: "desc" }],
+    take: take + 1,
+    ...(page.cursor ? { cursor: { id: page.cursor }, skip: 1 } : {}),
   });
-  return inquiries.map((inquiry) => ({
-    ...inquiry,
-    isListingOwner: inquiry.listing.createdById === userId,
-  }));
+  const { items, nextCursor } = cursorPage(rows, take);
+  return {
+    inquiries: items.map((inquiry) => ({
+      ...inquiry,
+      isListingOwner: inquiry.listing.createdById === userId,
+    })),
+    nextCursor,
+  };
 }
 
 export async function createMarketInquiry(listingId: string, message: string, userId: string) {
@@ -197,6 +222,9 @@ export async function createMarketInquiry(listingId: string, message: string, us
     });
     if (!listing) throw new Error("Published listing not found");
     if (listing.createdById === userId) throw new Error("Listing owner cannot create an inquiry");
+    if (await transaction.marketInquiry.findUnique({ where: { listingId_requesterId: { listingId: listing.id, requesterId: userId } }, select: { id: true } })) {
+      throw new Error("You have already sent an inquiry about this listing");
+    }
     const inquiry = await transaction.marketInquiry.create({
       data: { listingId: listing.id, requesterId: userId, message: message.trim() },
     });
@@ -234,7 +262,13 @@ export async function updateMarketInquiryStatus(inquiryId: string, status: "CONT
   });
 }
 
-async function requireProtectedMarketAccess(listingId: string, userId: string, transaction: Prisma.TransactionClient) {
+// Takes a row lock on the listing until the transaction ends, so the checks that follow cannot be overtaken by a concurrent request.
+async function lockMarketListing(transaction: DbExecutor, listingId: string) {
+  await transaction.$queryRaw`SELECT "id" FROM "MarketListing" WHERE "id" = ${listingId} FOR UPDATE`;
+}
+
+async function requireProtectedMarketAccess(listingId: string, userId: string, transaction: DbExecutor) {
+  await lockMarketListing(transaction, listingId);
   const listing = await transaction.marketListing.findFirst({
     where: { id: listingId, status: MarketListingStatus.PUBLISHED },
     select: { id: true, createdById: true, requiresNda: true, currency: true },
@@ -267,6 +301,12 @@ export async function createMarketViewingRequest(input: { listingId: string; pre
   return db.$transaction(async (transaction) => {
     await requireProtectedMarketAccess(input.listingId, userId, transaction);
     if (input.preferredAt <= new Date()) throw new Error("Viewing date must be in the future");
+    const openViewings = await transaction.marketViewingRequest.count({
+      where: { listingId: input.listingId, requesterId: userId, status: { in: [MarketViewingStatus.REQUESTED, MarketViewingStatus.CONFIRMED] } },
+    });
+    if (openViewings >= MARKET_LIMITS.openViewingsPerRequesterPerListing) {
+      throw new Error(`You already have ${MARKET_LIMITS.openViewingsPerRequesterPerListing} open viewing requests for this listing`);
+    }
     const viewing = await transaction.marketViewingRequest.create({ data: { listingId: input.listingId, requesterId: userId, preferredAt: input.preferredAt, attendees: input.attendees, notes: input.notes?.trim() || undefined } });
     await transaction.auditLog.create({ data: { actorId: userId, action: "market.viewing.requested", entityType: "MarketViewingRequest", entityId: viewing.id, metadata: { listingId: input.listingId } } });
     return viewing;
@@ -276,6 +316,12 @@ export async function createMarketViewingRequest(input: { listingId: string; pre
 export async function createMarketOffer(input: { listingId: string; amountMinor: number; currency?: string; terms: string; message?: string; validUntil?: Date }, userId: string) {
   return db.$transaction(async (transaction) => {
     const listing = await requireProtectedMarketAccess(input.listingId, userId, transaction);
+    const openOffers = await transaction.marketOffer.count({
+      where: { listingId: input.listingId, buyerId: userId, status: { in: [MarketOfferStatus.SUBMITTED, MarketOfferStatus.NEGOTIATING] } },
+    });
+    if (openOffers >= MARKET_LIMITS.openOffersPerBuyerPerListing) {
+      throw new Error(`You already have ${MARKET_LIMITS.openOffersPerBuyerPerListing} open offers on this listing`);
+    }
     const offer = await transaction.marketOffer.create({ data: { listingId: input.listingId, buyerId: userId, amountMinor: input.amountMinor, currency: input.currency?.trim().toUpperCase() || listing.currency, terms: input.terms.trim(), message: input.message?.trim() || undefined, validUntil: input.validUntil } });
     await transaction.auditLog.create({ data: { actorId: userId, action: "market.offer.submitted", entityType: "MarketOffer", entityId: offer.id, metadata: { listingId: input.listingId, amountMinor: input.amountMinor } } });
     return offer;
@@ -291,10 +337,18 @@ export async function updateMarketOfferStatus(offerId: string, status: "NEGOTIAT
     if ((!owner && !buyer) || (status === "WITHDRAWN" ? !buyer : !owner)) throw new Error("Market offer not found");
     const finalStatuses = new Set<MarketOfferStatus>([MarketOfferStatus.ACCEPTED, MarketOfferStatus.REJECTED, MarketOfferStatus.WITHDRAWN, MarketOfferStatus.CLOSED]);
     if (finalStatuses.has(offer.status)) throw new Error("Market offer is already final");
-    const updated = await transaction.marketOffer.update({ where: { id: offer.id }, data: { status: MarketOfferStatus[status] } });
+    if (status === "ACCEPTED") {
+      // Accepting is serialised per listing, so two requests cannot each accept a different offer on it.
+      await lockMarketListing(transaction, offer.listingId);
+      const accepted = await transaction.marketOffer.findFirst({ where: { listingId: offer.listingId, status: MarketOfferStatus.ACCEPTED }, select: { id: true } });
+      if (accepted) throw new Error(accepted.id === offer.id ? "Market offer is already final" : "Another offer has already been accepted for this listing");
+    }
+    // The change only applies while the offer still has the status it was read with, so exactly one of two concurrent changes wins.
+    const changed = await transaction.marketOffer.updateMany({ where: { id: offer.id, status: offer.status }, data: { status: MarketOfferStatus[status] } });
+    if (changed.count !== 1) throw new Error("Market offer was changed by another request; reload and try again");
     if (status === "ACCEPTED") await transaction.marketOffer.updateMany({ where: { listingId: offer.listingId, id: { not: offer.id }, status: { in: [MarketOfferStatus.SUBMITTED, MarketOfferStatus.NEGOTIATING] } }, data: { status: MarketOfferStatus.REJECTED } });
     await transaction.auditLog.create({ data: { actorId: userId, action: "market.offer.status.updated", entityType: "MarketOffer", entityId: offer.id, metadata: { listingId: offer.listingId, status } } });
-    return updated;
+    return transaction.marketOffer.findUniqueOrThrow({ where: { id: offer.id } });
   });
 }
 
@@ -308,27 +362,37 @@ export async function updateMarketViewingStatus(viewingId: string, status: "CONF
   });
 }
 
-export async function listMarketDeals(userId: string) {
+export type MarketDealsPage = MarketPageSize & { offersCursor?: string; viewingsCursor?: string };
+
+export async function listMarketDeals(userId: string, page: MarketDealsPage = {}) {
+  const take = pageSize(page.take);
   const [viewings, offers] = await Promise.all([
     db.marketViewingRequest.findMany({
       where: { OR: [{ requesterId: userId }, { listing: { createdById: userId } }] },
       include: {
         listing: { select: { id: true, title: true, createdById: true } },
-        requester: { select: { email: true, profile: { select: { displayName: true } } } },
+        requester: { select: publicUserSelect },
       },
-      orderBy: { updatedAt: "desc" },
+      orderBy: [{ updatedAt: "desc" }, { id: "desc" }],
+      take: take + 1,
+      ...(page.viewingsCursor ? { cursor: { id: page.viewingsCursor }, skip: 1 } : {}),
     }),
     db.marketOffer.findMany({
       where: { OR: [{ buyerId: userId }, { listing: { createdById: userId } }] },
       include: {
         listing: { select: { id: true, title: true, createdById: true } },
-        buyer: { select: { email: true, profile: { select: { displayName: true } } } },
+        buyer: { select: publicUserSelect },
       },
-      orderBy: { updatedAt: "desc" },
+      orderBy: [{ updatedAt: "desc" }, { id: "desc" }],
+      take: take + 1,
+      ...(page.offersCursor ? { cursor: { id: page.offersCursor }, skip: 1 } : {}),
     }),
   ]);
+  const viewingsPage = cursorPage(viewings, take);
+  const offersPage = cursorPage(offers, take);
   return {
-    viewings: viewings.map((item) => ({ ...item, isListingOwner: item.listing.createdById === userId })),
-    offers: offers.map((item) => ({ ...item, isListingOwner: item.listing.createdById === userId, isBuyer: item.buyerId === userId })),
+    viewings: viewingsPage.items.map((item) => ({ ...item, isListingOwner: item.listing.createdById === userId })),
+    offers: offersPage.items.map((item) => ({ ...item, isListingOwner: item.listing.createdById === userId, isBuyer: item.buyerId === userId })),
+    nextCursors: { offers: offersPage.nextCursor, viewings: viewingsPage.nextCursor },
   };
 }

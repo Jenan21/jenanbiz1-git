@@ -19,11 +19,16 @@ export async function listFleetVehicles(organizationId: string, userId: string) 
 export async function createFleetVehicle(input: { organizationId: string; label: string; plateNumber: string; userId: string }) {
   const membership = await requireFleetAccess(input.organizationId, input.userId);
   if (!membership.isOwner) throw new Error("Organization owner access required");
-  return db.$transaction(async (transaction) => {
-    const vehicle = await transaction.fleetVehicle.create({ data: { organizationId: input.organizationId, label: input.label, plateNumber: input.plateNumber.toUpperCase(), createdById: input.userId } });
-    await transaction.auditLog.create({ data: { actorId: input.userId, organizationId: input.organizationId, action: "fleet.vehicle.created", entityType: "FleetVehicle", entityId: vehicle.id, metadata: { plateNumber: vehicle.plateNumber } as Prisma.InputJsonValue } });
-    return vehicle;
-  });
+  try {
+    return await db.$transaction(async (transaction) => {
+      const vehicle = await transaction.fleetVehicle.create({ data: { organizationId: input.organizationId, label: input.label, plateNumber: input.plateNumber.toUpperCase(), createdById: input.userId } });
+      await transaction.auditLog.create({ data: { actorId: input.userId, organizationId: input.organizationId, action: "fleet.vehicle.created", entityType: "FleetVehicle", entityId: vehicle.id, metadata: { plateNumber: vehicle.plateNumber } as Prisma.InputJsonValue } });
+      return vehicle;
+    });
+  } catch (error) {
+    if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2002") throw new Error("A vehicle with this plate number already exists");
+    throw error;
+  }
 }
 
 export async function updateFleetVehicleStatus(input: { organizationId: string; vehicleId: string; status: Exclude<FleetVehicleStatus, "ACTIVE">; userId: string }) {

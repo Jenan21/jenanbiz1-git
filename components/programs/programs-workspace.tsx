@@ -7,7 +7,7 @@ import type { Locale } from "@/types/i18n";
 type ProgramKey = "FINANCE" | "PEOPLE" | "FIELD_OPERATIONS" | "FLEET";
 type ProgramStatus = "ACTIVE" | "SUSPENDED" | "ARCHIVED";
 type OrganizationProgram = { id: string; key: ProgramKey; status: ProgramStatus };
-type OrganizationHealth = { activePrograms: number; activeVehicles: number; financeBalanceMinor: number; members: number; openAssignments: number; readinessScore: number; totalPrograms: number };
+type OrganizationHealth = { activePrograms: number; activeVehicles: number; financeBalanceMinor: number | null; members: number; openAssignments: number; readinessScore: number; totalPrograms: number };
 type Organization = { id: string; name: string; businessPrograms: OrganizationProgram[]; health: OrganizationHealth };
 
 const programs: Array<{ key: ProgramKey; ar: string; en: string; arDescription: string; enDescription: string }> = [
@@ -85,7 +85,7 @@ export function ProgramsWorkspace({ locale }: { locale: Locale }) {
         <article><span>{ar ? "الجاهزية" : "Readiness"}</span><strong>{selectedOrganization.health.readinessScore}%</strong></article>
         <article><span>{ar ? "البرامج النشطة" : "Active programs"}</span><strong>{selectedOrganization.health.activePrograms}/{selectedOrganization.health.totalPrograms}</strong></article>
         <article><span>{ar ? "الأعضاء" : "Members"}</span><strong>{selectedOrganization.health.members}</strong></article>
-        <article><span>{ar ? "الرصيد" : "Balance"}</span><strong>{(selectedOrganization.health.financeBalanceMinor / 100).toLocaleString()} SAR</strong></article>
+        <article><span>{ar ? "الرصيد" : "Balance"}</span><strong>{selectedOrganization.health.financeBalanceMinor === null ? "—" : `${(selectedOrganization.health.financeBalanceMinor / 100).toLocaleString()} SAR`}</strong></article>
         <article><span>{ar ? "مهام مفتوحة" : "Open field work"}</span><strong>{selectedOrganization.health.openAssignments}</strong></article>
         <article><span>{ar ? "مركبات نشطة" : "Active vehicles"}</span><strong>{selectedOrganization.health.activeVehicles}</strong></article>
       </section> : null}

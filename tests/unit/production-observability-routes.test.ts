@@ -21,6 +21,7 @@ vi.mock("@/lib/db", () => ({
 }));
 
 vi.mock("@/lib/rate-limit/auth-rate-limit", () => ({
+  getRateLimitProvider: () => ({ consume: async () => ({ allowed: true, limit: 60, remaining: 59, resetAt: Date.now() + 60_000 }), name: "test", peek: async () => ({ allowed: true, limit: 60, remaining: 60, resetAt: Date.now() + 60_000 }) }),
   isRateLimitProviderReady: mocks.rateLimitReady,
 }));
 

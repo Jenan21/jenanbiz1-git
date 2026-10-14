@@ -26,6 +26,7 @@ import {
   AuthUserPlusIcon,
 } from "@/components/auth/auth-icons";
 import { oauthNotice } from "@/lib/auth/oauth/shared";
+import { resolvePostSignInPath } from "@/lib/auth/redirect";
 import type { Locale } from "@/types/i18n";
 
 interface AuthFormProps {
@@ -300,12 +301,9 @@ export function AuthForm({ mode, locale, labels }: AuthFormProps) {
         setLoading(false);
         return;
       }
-      const requested = searchParams.get("next");
       const destination = registering
         ? "/user/onboarding"
-        : requested?.startsWith("/") && !requested.startsWith("//")
-          ? requested
-          : "/dashboard";
+        : resolvePostSignInPath(searchParams.get("next"), window.location.origin);
       router.replace(destination);
       router.refresh();
     } catch {

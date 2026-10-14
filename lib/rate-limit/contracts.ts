@@ -11,10 +11,14 @@ export interface RateLimitDecision {
   remaining: number;
   resetAt: Date;
   retryAfterSeconds: number;
+  /** Set when the backing store could not be reached and `allowed` is a fail-closed default rather than a measurement. */
+  degraded?: boolean;
 }
 
 export interface RateLimitProvider {
   consume(input: RateLimitConsumeInput): Promise<RateLimitDecision>;
+  /** Reads the counter without consuming a slot; `allowed` tells whether another attempt would be let through. */
+  peek?(input: RateLimitConsumeInput): Promise<RateLimitDecision>;
   isReady(): Promise<boolean>;
 }
 

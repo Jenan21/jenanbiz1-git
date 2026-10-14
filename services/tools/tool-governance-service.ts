@@ -33,6 +33,8 @@ export async function decideToolApproval(input: { approve: boolean; executionId:
   return db.$transaction(async (transaction) => {
     const execution = await transaction.toolExecution.findUnique({ where: { id: input.executionId }, include: { approval: true } });
     if (!execution?.approval || execution.status !== ToolExecutionStatus.PENDING_APPROVAL) throw new Error("Pending tool approval not found");
+    // Maker-checker: the person who asked for an execution cannot be the one who approves it.
+    if (execution.approval.requestedById === actorId) throw new Error("A tool request must be decided by someone other than the person who made it");
     await transaction.toolApproval.update({ where: { executionId: execution.id }, data: { decidedAt: new Date(), decidedById: actorId, rationale: input.rationale, status: input.approve ? "APPROVED" : "REJECTED" } });
     const updated = await transaction.toolExecution.update({ where: { id: execution.id }, data: { completedAt: input.approve ? null : new Date(), error: input.approve ? null : input.rationale, status: input.approve ? ToolExecutionStatus.RUNNING : ToolExecutionStatus.DENIED } });
     await transaction.auditLog.create({ data: { actorId, action: input.approve ? "tool.approval.approved" : "tool.approval.rejected", entityType: "ToolExecution", entityId: execution.id, metadata: { rationale: input.rationale, traceId: execution.traceId } } });

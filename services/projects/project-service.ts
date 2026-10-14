@@ -12,6 +12,7 @@ import {
   ProjectVendorStatus,
   Prisma,
 } from "@/generated/prisma/client";
+import { memberUserView } from "@/lib/auth/authorization";
 import { db } from "@/lib/db";
 import { getProjectLaunchPlanReadiness } from "@/services/projects/project-launch";
 import { assessProjectQuality } from "@/services/projects/project-quality";
@@ -46,6 +47,10 @@ function slugify(value: string) {
   return slug || "project";
 }
 
+// The address is read only so presentProject() can show it to the project's owner (and to its own holder); it is
+// removed from everything else, and no other user column (phone, status, role, hash) is ever read for a member list.
+const memberIdentitySelect = { id: true, email: true, profile: { select: { displayName: true } } } as const satisfies Prisma.UserSelect;
+
 function projectInclude() {
   return {
     phases: { orderBy: { sequence: "asc" as const } },
@@ -56,11 +61,27 @@ function projectInclude() {
     complianceItems: { orderBy: [{ kind: "asc" as const }, { createdAt: "desc" as const }] },
     vendors: { orderBy: [{ kind: "asc" as const }, { createdAt: "desc" as const }] },
     evidenceFiles: { select: { id: true, fileName: true, mimeType: true, sizeBytes: true, checksum: true, createdAt: true }, orderBy: { createdAt: "desc" as const } },
-    members: { include: { user: { include: { profile: true } } }, orderBy: { createdAt: "asc" as const } },
+    members: { include: { user: { select: memberIdentitySelect } }, orderBy: { createdAt: "asc" as const } },
     organization: true,
-    createdBy: { include: { profile: true } },
+    createdBy: { select: memberIdentitySelect },
     intelligenceSnapshots: { orderBy: { fetchedAt: "desc" as const }, take: 1 },
   } satisfies Prisma.ProjectInclude;
+}
+
+type ProjectRecord = Prisma.ProjectGetPayload<{ include: ReturnType<typeof projectInclude> }>;
+
+/**
+ * The project as one of its people may read it. Every project member sees the names of the team; only the owner sees
+ * the members' email addresses, and the creator sees their own.
+ */
+function presentProject(project: ProjectRecord, viewerId: string) {
+  const { createdBy, members, ...rest } = project;
+  const viewerIsOwner = project.createdById === viewerId || members.some((member) => member.userId === viewerId && member.role === ProjectMemberRole.OWNER);
+  return {
+    ...rest,
+    createdBy: memberUserView(createdBy, { seesEmails: false, userId: viewerId }),
+    members: members.map(({ user, ...member }) => ({ ...member, user: memberUserView(user, { seesEmails: viewerIsOwner, userId: viewerId }) })),
+  };
 }
 
 function projectAccessWhere(userId: string, roles?: ProjectMemberRole[]) {
@@ -78,10 +99,13 @@ export async function listUserProjects(userId: string) {
     include: projectInclude(),
     orderBy: { updatedAt: "desc" },
   });
-  return projects.map((project) => ({
-    ...project,
-    evidenceFiles: project.evidenceFiles.map((file) => ({ ...file, sizeBytes: file.sizeBytes.toString() })),
-  }));
+  return projects.map((project) => {
+    const presented = presentProject(project, userId);
+    return {
+      ...presented,
+      evidenceFiles: presented.evidenceFiles.map((file) => ({ ...file, sizeBytes: file.sizeBytes.toString() })),
+    };
+  });
 }
 
 export async function listUserProjectsPage(
@@ -116,19 +140,28 @@ export async function listUserProjectsPage(
     db.project.count({ where }),
   ]);
   return {
-    projects: projects.map((project) => ({
-      ...project,
-      evidenceFiles: project.evidenceFiles.map((file) => ({ ...file, sizeBytes: file.sizeBytes.toString() })),
-    })),
+    projects: projects.map((project) => {
+      const presented = presentProject(project, userId);
+      return {
+        ...presented,
+        evidenceFiles: presented.evidenceFiles.map((file) => ({ ...file, sizeBytes: file.sizeBytes.toString() })),
+      };
+    }),
     page: { total, limit: input.limit, offset: input.offset, hasMore: input.offset + input.limit < total },
   };
 }
 
 export async function getUserProject(projectId: string, userId: string) {
-  return db.project.findFirst({
+  const project = await db.project.findFirst({
     where: { id: projectId, ...projectAccessWhere(userId) },
     include: projectInclude(),
   });
+  return project ? presentProject(project, userId) : null;
+}
+
+/** A cheap membership check for callers that must not start expensive or outbound work for a project the user cannot read. */
+export async function userCanReadProject(projectId: string, userId: string) {
+  return (await db.project.count({ where: { id: projectId, ...projectAccessWhere(userId) } })) > 0;
 }
 
 export async function createProject(
@@ -179,7 +212,7 @@ export async function createProject(
         metadata: { phaseCount: phasePlan.length, assessmentCount: assessmentTypes.length },
       },
     });
-    return project;
+    return presentProject(project, userId);
   });
 }
 
@@ -198,12 +231,14 @@ export async function addProjectMember(
       where: { projectId_userId: { projectId, userId: memberUser.id } },
       create: { projectId, userId: memberUser.id, addedById: userId, role: input.role },
       update: { role: input.role, addedById: userId },
-      include: { user: { include: { profile: true } } },
+      include: { user: { select: memberIdentitySelect } },
     });
     await transaction.auditLog.create({
       data: { actorId: userId, action: "project.member.upserted", entityType: "ProjectMember", entityId: member.id, metadata: { projectId, memberUserId: member.userId, role: member.role } },
     });
-    return member;
+    // The owner typed this address, so it goes back to them; nothing else about the person (phone, city, status, role) does.
+    const { user, ...membership } = member;
+    return { ...membership, user: memberUserView(user, { seesEmails: true, userId }) };
   });
 }
 

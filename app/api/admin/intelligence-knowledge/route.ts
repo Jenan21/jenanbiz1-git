@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { publicErrorMessage } from "@/lib/http/safe-error";
 import { z } from "zod";
 
 import { type Prisma } from "@/generated/prisma/client";
@@ -36,7 +37,7 @@ export async function GET(request: NextRequest) {
     try {
       return NextResponse.json({ success: true, diff: await compareKnowledgeVersions(knowledgeId, from, to) });
     } catch (error) {
-      return NextResponse.json({ success: false, message: error instanceof Error ? error.message : "Knowledge diff failed" }, { status: 404 });
+      return NextResponse.json({ success: false, message: publicErrorMessage(error, "Knowledge diff failed") }, { status: 404 });
     }
   }
   const knowledge = await getKnowledgeSnapshot(knowledgeId);
@@ -58,7 +59,7 @@ export async function POST(request: NextRequest) {
       : await linkKnowledgeEvidence(input, user.id);
     return NextResponse.json({ success: true, result }, { status: input.action === "create" || input.action === "createVersion" ? 201 : 200 });
   } catch (error) {
-    const message = error instanceof Error ? error.message : "Knowledge command failed";
+    const message = publicErrorMessage(error, "Knowledge command failed");
     return NextResponse.json({ success: false, message }, { status: message.endsWith("not found") ? 404 : 409 });
   }
 }

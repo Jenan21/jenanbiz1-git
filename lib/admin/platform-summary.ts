@@ -1,4 +1,5 @@
 import { db } from "@/lib/db";
+import { verifiedPaymentFilter } from "@/lib/marketing/payment-providers";
 
 export type AdminSummary = {
   totalRobots: number;
@@ -85,7 +86,7 @@ export async function getPlatformAdminSummary(): Promise<AdminSummary> {
     db.learningLog.count(),
     db.robot.groupBy({ by: ["status"], _count: { _all: true } }),
     db.robot.aggregate({ _avg: { intelligence: true, skill: true, experience: true } }),
-    db.payment.aggregate({ where: { status: "SUCCEEDED" }, _sum: { amountMinor: true } }),
+    db.payment.aggregate({ where: { status: "SUCCEEDED", ...verifiedPaymentFilter }, _sum: { amountMinor: true } }),
     db.payment.aggregate({ where: { status: "PENDING" }, _sum: { amountMinor: true } }),
     db.modelExecution.count(),
     db.modelExecution.count({ where: { success: true } }),

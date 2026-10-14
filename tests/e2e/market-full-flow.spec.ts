@@ -47,6 +47,9 @@ test.describe.serial("Jenan Market buyer and seller flow", () => {
     expect(publicListing.confidentialDetails).toBeNull();
     expect(publicListing.files).toHaveLength(0);
     expect(publicListing.ndaAccepted).toBe(false);
+    // Other members appear only as a display name and an id, never as an account record.
+    expect(publicListing.createdBy).toEqual({ id: expect.any(String), profile: { displayName: e2eIdentity.user.displayName } });
+    for (const forbidden of ["passwordHash", "systemRole", e2eIdentity.user.email]) expect(JSON.stringify(publicPayload)).not.toContain(forbidden);
     expect((await buyerPage.request.get(`/api/files/${fileId}`)).status()).toBe(404);
     expect((await buyerPage.request.post("/api/market", { headers: { origin }, data: { action: "createOffer", listingId, amountMinor: 4_750_000, terms: "Subject to review of protected documents." } })).status()).toBe(409);
 
@@ -66,6 +69,11 @@ test.describe.serial("Jenan Market buyer and seller flow", () => {
     expect((await ownerPage.request.post("/api/market", { headers: { origin }, data: { action: "updateViewingStatus", viewingId, status: "CONFIRMED" } })).status()).toBe(200);
     expect((await ownerPage.request.post("/api/market", { headers: { origin }, data: { action: "updateOfferStatus", offerId, status: "NEGOTIATING" } })).status()).toBe(200);
     expect((await ownerPage.request.post("/api/market", { headers: { origin }, data: { action: "updateOfferStatus", offerId, status: "ACCEPTED" } })).status()).toBe(200);
+    const ownerPayload = await (await ownerPage.request.get("/api/market")).json();
+    expect(ownerPayload.offers.find((item: { id: string }) => item.id === offerId).buyer).toEqual({ id: expect.any(String), profile: { displayName: e2eIdentity.admin.displayName } });
+    expect(ownerPayload.viewings.find((item: { id: string }) => item.id === viewingId).requester).toEqual({ id: expect.any(String), profile: { displayName: e2eIdentity.admin.displayName } });
+    for (const forbidden of ["passwordHash", "systemRole", e2eIdentity.admin.email]) expect(JSON.stringify(ownerPayload)).not.toContain(forbidden);
+    expect(ownerPayload.pagination).toMatchObject({ offersNextCursor: null, viewingsNextCursor: null });
 
     for (const definition of marketFlowDefinitions) {
       const page = definition.route.startsWith("/market/sell") ? ownerPage : buyerPage;

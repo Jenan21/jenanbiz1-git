@@ -5,6 +5,7 @@ import { ModelRegistryStatus, Prisma, SystemRole, ToolRiskLevel } from "@/genera
 import { hasPlatformAdminAccess } from "@/lib/auth/authorization";
 import { hasValidOrigin } from "@/lib/auth/request";
 import { getCurrentUser } from "@/lib/auth/session";
+import { publicErrorMessage } from "@/lib/http/safe-error";
 import { recordRoutedModelExecution, registerModel, routeModel, setModelFallback, setModelRoutingRule } from "@/services/ai/model-routing-service";
 import { decideToolApproval, executeGovernedTool, registerGovernedTool, requestToolExecution, setToolPermission } from "@/services/tools/tool-governance-service";
 
@@ -27,6 +28,10 @@ export async function POST(request: NextRequest) {
   if (!hasValidOrigin(request)) return NextResponse.json({ success: false, message: "Invalid request origin" }, { status: 403 });
   const parsed = commandSchema.safeParse(await request.json().catch(() => null));
   if (!parsed.success) return NextResponse.json({ success: false, message: "Invalid model/tool command" }, { status: 400 });
+  // Defining a tool and widening who may run it are the powers a single compromised administrator must not hold.
+  if ((parsed.data.action === "registerTool" || parsed.data.action === "setToolPermission") && user.systemRole !== SystemRole.SUPER_ADMIN) {
+    return NextResponse.json({ success: false, message: "Only a super administrator can register tools or change their permissions" }, { status: 403 });
+  }
   try {
     const input = parsed.data;
     const result = input.action === "registerModel" ? await registerModel({ averageLatencyMs: input.averageLatencyMs, capabilities: input.capabilities, contextWindow: input.contextWindow, currency: input.currency, displayName: input.displayName, enabled: input.enabled, inputCostPerMillionMinor: input.inputCostPerMillionMinor, modelKey: input.modelKey, outputCostPerMillionMinor: input.outputCostPerMillionMinor, provider: input.provider, qualityScore: input.qualityScore, status: input.status })
@@ -41,7 +46,7 @@ export async function POST(request: NextRequest) {
       : await executeGovernedTool(input.executionId, user.id);
     return NextResponse.json({ success: true, result });
   } catch (error) {
-    const message = error instanceof Error ? error.message : "Model/tool command failed";
-    return NextResponse.json({ success: false, message }, { status: message.endsWith("not found") ? 404 : 409 });
+    const reason = error instanceof Error ? error.message : "";
+    return NextResponse.json({ success: false, message: publicErrorMessage(error, "Model/tool command failed") }, { status: reason.endsWith("not found") ? 404 : 409 });
   }
 }

@@ -139,6 +139,13 @@ export function AccountOverview({
       date: item.updatedAt,
       href: "/marketing",
     })),
+    ...overview.services.jobPostings.map((item) => ({
+      id: `posting-${item.id}`,
+      title: item.title,
+      type: ar ? "إعلان وظيفة" : "Job posting",
+      date: item.updatedAt,
+      href: "/talent/employer",
+    })),
   ]
     .sort(
       (first, second) =>

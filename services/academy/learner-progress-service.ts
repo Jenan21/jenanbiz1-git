@@ -4,9 +4,9 @@ import {
   LearnerEnrollmentStatus,
   Prisma,
 } from "@/generated/prisma/client";
-import { db } from "@/lib/db";
+import { db, type DbExecutor } from "@/lib/db";
 
-async function maybeAwardLearnerCertificate(courseId: string, userId: string, transaction: Prisma.TransactionClient = db) {
+async function maybeAwardLearnerCertificate(courseId: string, userId: string, transaction: DbExecutor = db) {
   const [course, totalLessons, completedLessons, exams] = await Promise.all([
     transaction.academyCourse.findUnique({
       where: { id: courseId },
@@ -109,6 +109,9 @@ export async function saveLearnerLessonNote(input: { content: string; lessonId: 
   });
 }
 
+/** How many times one learner may sit one assessment when the exam does not set its own limit. */
+export const DEFAULT_MAX_EXAM_ATTEMPTS = 5;
+
 export async function submitLearnerExamAttempt(input: { answers: Array<{ optionId: string; questionId: string }>; examId: string; userId: string }) {
   const exam = await db.academyExam.findUnique({
     where: { id: input.examId },
@@ -131,8 +134,7 @@ export async function submitLearnerExamAttempt(input: { answers: Array<{ optionI
   if (input.answers.length !== exam.questions.length || new Set(input.answers.map((answer) => answer.questionId)).size !== exam.questions.length) {
     throw new Error("Every exam question requires exactly one answer");
   }
-  const attempts = await db.learnerExamAttempt.count({ where: { userId: input.userId, examId: input.examId } });
-  if (exam.maxAttempts && attempts >= exam.maxAttempts) throw new Error("Maximum exam attempts reached");
+  const maxAttempts = exam.maxAttempts && exam.maxAttempts > 0 ? exam.maxAttempts : DEFAULT_MAX_EXAM_ATTEMPTS;
   let earnedPoints = 0;
   const totalPoints = exam.questions.reduce((total, question) => total + question.points, 0);
   const evidence = exam.questions.map((question) => {
@@ -147,8 +149,17 @@ export async function submitLearnerExamAttempt(input: { answers: Array<{ optionI
   const outcome = score >= exam.passingScore ? AcademicAssessmentOutcome.PASSED : AcademicAssessmentOutcome.FAILED;
 
   return db.$transaction(async (transaction) => {
+    // Counting the earlier attempts and recording this one must be a single step. Touching the learner's enrollment row
+    // first makes parallel submissions queue up, so each one counts every attempt committed before it.
+    const locked = await transaction.learnerEnrollment.updateMany({ where: { id: enrollment.id, userId: input.userId }, data: { updatedAt: new Date() } });
+    if (locked.count !== 1) throw new Error("Course enrollment required");
+    const previousAttempts = await transaction.learnerExamAttempt.count({ where: { userId: input.userId, examId: input.examId } });
+    if (previousAttempts >= maxAttempts) throw new Error("Maximum exam attempts reached");
+    // The per-question evidence stays in the record for review; the learner only gets the score and the outcome back, because
+    // a right/wrong flag per question would let repeated attempts reveal the answer key.
     const attempt = await transaction.learnerExamAttempt.create({
       data: { userId: input.userId, examId: input.examId, score, outcome, evidence },
+      select: { id: true, examId: true, score: true, outcome: true, createdAt: true },
     });
     const certificate = outcome === AcademicAssessmentOutcome.PASSED
       ? await maybeAwardLearnerCertificate(exam.courseId!, input.userId, transaction)
@@ -162,7 +173,7 @@ export async function submitLearnerExamAttempt(input: { answers: Array<{ optionI
         metadata: { examId: input.examId, courseId: exam.courseId, score, outcome } as Prisma.InputJsonValue,
       },
     });
-    return { attempt, certificate };
+    return { attempt, certificate, attemptsUsed: previousAttempts + 1, attemptsRemaining: maxAttempts - previousAttempts - 1 };
   });
 }
 

@@ -1,4 +1,5 @@
 import { AcademyResourceApprovalState, AcademyResourceKind, Prisma } from "@/generated/prisma/client";
+import { publicUserSelect } from "@/lib/auth/public-user";
 import { db } from "@/lib/db";
 
 export type AcademyReference = { title: string; url?: string; source?: string; publishedAt?: string };
@@ -15,7 +16,7 @@ export function academyResourceKindForRoute(route: string) {
 const includeResource = {
   academy: { select: { id: true, name: true, slug: true } },
   course: { select: { id: true, code: true, title: true } },
-  approvedBy: { select: { id: true, email: true, profile: { select: { displayName: true } } } },
+  approvedBy: { select: publicUserSelect },
   versions: { orderBy: { version: "desc" as const }, take: 20 },
   attachments: { orderBy: { createdAt: "desc" as const } },
 } satisfies Prisma.AcademyResourceInclude;

@@ -72,14 +72,16 @@ async function attemptSignIn(
     if (!profile.emailVerified) throw new OAuthSignInError("EMAIL_UNVERIFIED");
     const email = profile.email;
 
-    const existing = await tx.user.findUnique({ where: { email } });
-    if (existing) {
+    const existingWithHash = await tx.user.findUnique({ where: { email }, omit: { passwordHash: false } });
+    if (existingWithHash) {
+      // Only whether a password exists is needed; the hash itself goes no further than this check.
+      const { passwordHash, ...existing } = existingWithHash;
       if (existing.status !== UserStatus.ACTIVE) throw new OAuthSignInError("ACCOUNT_DISABLED");
       // An unverified password account might have been created by someone who does not own the address.
       // It is linked only when no such squatter can exist: the address was verified before, the account
       // has no password, or public sign-up is closed so every account was provisioned by an administrator.
       const linkable =
-        existing.emailVerifiedAt !== null || existing.passwordHash === null || !options.registrationOpen;
+        existing.emailVerifiedAt !== null || passwordHash === null || !options.registrationOpen;
       if (!linkable) throw new OAuthSignInError("ACCOUNT_EXISTS");
       await tx.authIdentity.create({
         data: { userId: existing.id, provider, providerAccountId: profile.subject, email, lastUsedAt: new Date() },

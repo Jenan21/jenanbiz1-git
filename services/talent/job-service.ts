@@ -1,22 +1,24 @@
 import { JobApplicationStatus, JobPostingStatus, Prisma, StudioDocumentKind, TalentInterviewMode, TalentInterviewStatus } from "@/generated/prisma/client";
+import { publicUserSelect } from "@/lib/auth/public-user";
 import { db } from "@/lib/db";
 
+const organizationSummarySelect = {
+  id: true,
+  name: true,
+  description: true,
+  industry: true,
+  website: true,
+  countryCode: true,
+  city: true,
+  employeeRange: true,
+  hiringSettings: true,
+} as const satisfies Prisma.OrganizationSelect;
+
+// A posting is readable by every signed-in user, so it carries its publisher's name only: no contact details, and none of the
+// applications (those belong to the publisher's dedicated employer view and to each applicant's own list).
 const postingInclude = {
-  createdBy: { include: { profile: true } },
-  organization: {
-    select: {
-      id: true,
-      name: true,
-      description: true,
-      industry: true,
-      website: true,
-      countryCode: true,
-      city: true,
-      employeeRange: true,
-      hiringSettings: true,
-    },
-  },
-  applications: { select: { applicantId: true, matchScore: true, status: true } },
+  createdBy: { select: publicUserSelect },
+  organization: { select: organizationSummarySelect },
   questions: { orderBy: { sequence: "asc" as const } },
 } satisfies Prisma.JobPostingInclude;
 
@@ -101,9 +103,14 @@ function slugify(value: string) {
   return slug || "job";
 }
 
+function clampInteger(value: number | undefined, minimum: number, maximum: number, fallback: number) {
+  if (value === undefined || !Number.isFinite(value)) return fallback;
+  return Math.min(Math.max(Math.trunc(value), minimum), maximum);
+}
+
 export async function listJobPostings(userId: string, filters: JobPostingFilters = {}) {
-  const limit = Math.min(Math.max(filters.limit ?? 50, 1), 100);
-  const offset = Math.max(filters.offset ?? 0, 0);
+  const limit = clampInteger(filters.limit, 1, 100, 50);
+  const offset = clampInteger(filters.offset, 0, 100_000, 0);
   const query = filters.search?.trim();
   return db.jobPosting.findMany({
     where: {
@@ -189,6 +196,16 @@ export async function updateJobPostingStatus(jobPostingId: string, status: "PUBL
 }
 
 export async function applyToJob(jobPostingId: string, message: string | undefined, applicantId: string, options: { answers?: Array<{ answer: string; questionId: string }>; cvDocumentId?: string; shareProfile?: boolean } = {}) {
+  try {
+    return await submitJobApplication(jobPostingId, message, applicantId, options);
+  } catch (error) {
+    // One application per person and posting is enforced by the database, which also settles two simultaneous submissions.
+    if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2002") throw new Error("You have already applied to this job posting");
+    throw error;
+  }
+}
+
+async function submitJobApplication(jobPostingId: string, message: string | undefined, applicantId: string, options: { answers?: Array<{ answer: string; questionId: string }>; cvDocumentId?: string; shareProfile?: boolean }) {
   return db.$transaction(async (transaction) => {
     const posting = await transaction.jobPosting.findFirst({ where: { id: jobPostingId, status: JobPostingStatus.PUBLISHED }, select: { id: true, createdById: true, description: true, requiredSkills: true, title: true, questions: { orderBy: { sequence: "asc" } } } });
     if (!posting) throw new Error("Job posting not found");
@@ -262,7 +279,7 @@ export async function listDiscoverableTalent(userId: string, query?: string) {
 export async function listMyJobApplications(userId: string) {
   return db.jobApplication.findMany({
     where: { applicantId: userId },
-    include: { jobPosting: { include: { organization: true, createdBy: { include: { profile: true } } } }, cvDocument: { select: { id: true, title: true, currentVersion: true } }, answers: { orderBy: { createdAt: "asc" } }, interviews: { orderBy: { scheduledAt: "desc" } }, messages: { include: { sender: { select: { profile: { select: { displayName: true } } } } }, orderBy: { createdAt: "asc" } } },
+    include: { jobPosting: { include: { organization: { select: organizationSummarySelect }, createdBy: { select: publicUserSelect } } }, cvDocument: { select: { id: true, title: true, currentVersion: true } }, answers: { orderBy: { createdAt: "asc" } }, interviews: { orderBy: { scheduledAt: "desc" } }, messages: { include: { sender: { select: { profile: { select: { displayName: true } } } } }, orderBy: { createdAt: "asc" } } },
     orderBy: { updatedAt: "desc" },
   });
 }
@@ -361,7 +378,7 @@ export async function updateTalentInterviewStatus(
 export async function listTalentMatches(userId: string) {
   const [profile, postings, candidates] = await Promise.all([
     db.talentProfile.findUnique({ where: { userId } }),
-    db.jobPosting.findMany({ where: { status: JobPostingStatus.PUBLISHED }, include: { organization: true, createdBy: { include: { profile: true } } }, orderBy: { qualityScore: "desc" }, take: 100 }),
+    db.jobPosting.findMany({ where: { status: JobPostingStatus.PUBLISHED }, include: { organization: { select: organizationSummarySelect }, createdBy: { select: publicUserSelect } }, orderBy: { qualityScore: "desc" }, take: 100 }),
     db.talentProfile.findMany({ where: { isDiscoverable: true, userId: { not: userId } }, select: { id: true, userId: true, headline: true, summary: true, city: true, countryCode: true, yearsExperience: true, skills: true, availability: true, user: { select: { profile: { select: { displayName: true } } } } }, take: 100 }),
   ]);
   const candidateMatches = profile ? postings.filter((posting) => posting.createdById !== userId).map((posting) => ({ posting, ...scoreApplicationMatch(posting, undefined, profile) })).sort((left, right) => right.score - left.score) : [];
@@ -371,7 +388,7 @@ export async function listTalentMatches(userId: string) {
 }
 
 export async function listOwnedJobApplications(userId: string) {
-  return db.jobApplication.findMany({
+  const applications = await db.jobApplication.findMany({
     where: { jobPosting: { createdById: userId } },
     include: {
       jobPosting: { select: { id: true, title: true } },
@@ -386,6 +403,12 @@ export async function listOwnedJobApplications(userId: string) {
     },
     orderBy: { updatedAt: "desc" },
   });
+  // The applicant's address is part of what they authorize when they consent to share their profile with the employer;
+  // without that consent the employer sees the name only and reaches the person through the application conversation.
+  return applications.map(({ applicant, ...application }) => ({
+    ...application,
+    applicant: { profile: applicant.profile, ...(application.consentedAt ? { email: applicant.email } : {}) },
+  }));
 }
 
 export async function updateJobApplicationStatus(

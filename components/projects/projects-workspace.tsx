@@ -88,7 +88,8 @@ type EvidenceFile = {
 type ProjectMember = {
   id: string;
   role: "OWNER" | "EDITOR" | "REVIEWER" | "VIEWER";
-  user: { email: string; profile: { displayName: string | null } | null };
+  // The address is only sent to the project's owner (and to the member themself).
+  user: { id: string; email?: string; profile: { displayName: string | null } | null };
 };
 type Intelligence = {
   location: { latitude: number; longitude: number; label: string } | null;
@@ -1748,9 +1749,9 @@ export function ProjectsWorkspace({
               {selected.members.map((member) => (
                 <li key={member.id}>
                   <strong>
-                    {member.user.profile?.displayName ?? member.user.email}
+                    {member.user.profile?.displayName ?? member.user.email ?? (ar ? "عضو" : "Member")}
                   </strong>
-                  <span>{member.user.email}</span>
+                  <span>{member.user.email ?? ""}</span>
                   <small>{member.role}</small>
                 </li>
               ))}

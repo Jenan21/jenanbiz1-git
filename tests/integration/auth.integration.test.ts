@@ -68,6 +68,7 @@ describe.sequential("real PostgreSQL authentication integration", () => {
     const stored = await db.user.findUnique({
       where: { id: result.user.id },
       include: { profile: true, sessions: true },
+      omit: { passwordHash: false },
     });
     expect(stored).toMatchObject({
       email: baseRegistration.email,

@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { publicErrorMessage } from "@/lib/http/safe-error";
 import { z } from "zod";
 import { getCurrentUser } from "@/lib/auth/session";
 import { hasValidOrigin } from "@/lib/auth/request";
@@ -36,5 +37,5 @@ export async function POST(request: NextRequest) {
           ? await saveLearnerLessonNote({ content: parsed.data.content, lessonId: parsed.data.lessonId, userId: user.id })
           : await submitLearnerExamAttempt({ answers: parsed.data.answers, examId: parsed.data.examId, userId: user.id });
     return NextResponse.json({ success: true, result }, { status: parsed.data.action === "enroll" ? 201 : 200 });
-  } catch (error) { return NextResponse.json({ success: false, message: error instanceof Error ? error.message : "Learning progress failed" }, { status: 409 }); }
+  } catch (error) { return NextResponse.json({ success: false, message: publicErrorMessage(error, "Learning progress failed") }, { status: 409 }); }
 }

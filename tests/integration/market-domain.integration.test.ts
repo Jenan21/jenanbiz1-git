@@ -82,7 +82,7 @@ describe("market domain", () => {
     const inquiry = await createMarketInquiry(strong.id, "I am interested and want to review the documents.", buyer.id);
     inquiryIds.push(inquiry.id);
     expect(await db.notification.count({ where: { userId: owner.id, type: "MARKET_INQUIRY" } })).toBe(1);
-    expect((await listMarketInquiries(owner.id))[0]?.isListingOwner).toBe(true);
+    expect((await listMarketInquiries(owner.id)).inquiries[0]?.isListingOwner).toBe(true);
     expect((await updateMarketInquiryStatus(inquiry.id, "CONTACTED", owner.id)).status).toBe("CONTACTED");
   });
 });

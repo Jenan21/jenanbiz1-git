@@ -93,6 +93,38 @@ export async function seedE2EAdmin() {
   }
 }
 
+/** A second, more privileged administrator: some operations (e.g. registering tools) are reserved for SUPER_ADMIN and approvals need a second person. */
+export async function seedE2ESuperAdmin() {
+  const userId = randomUUID();
+  const profileId = randomUUID();
+  const passwordHash = await hash(e2eIdentity.superAdmin.password, {
+    memoryCost: 65_536,
+    timeCost: 3,
+    parallelism: 1,
+    outputLen: 32,
+  });
+  const e2eDb = createE2EDb();
+  const client = await e2eDb.connect();
+  try {
+    await client.query("BEGIN");
+    await client.query(
+      'INSERT INTO "User" (id, email, "passwordHash", status, "systemRole", "createdAt", "updatedAt") VALUES ($1, $2, $3, \'ACTIVE\', \'SUPER_ADMIN\', NOW(), NOW())',
+      [userId, e2eIdentity.superAdmin.email, passwordHash],
+    );
+    await client.query(
+      'INSERT INTO "Profile" (id, "userId", "displayName", locale, language, "countryCode", timezone, "createdAt", "updatedAt") VALUES ($1, $2, $3, \'en\', \'en\', \'SA\', \'Asia/Riyadh\', NOW(), NOW())',
+      [profileId, userId, e2eIdentity.superAdmin.displayName],
+    );
+    await client.query("COMMIT");
+  } catch (error) {
+    await client.query("ROLLBACK");
+    throw error;
+  } finally {
+    client.release();
+    await e2eDb.end();
+  }
+}
+
 export async function seedE2EUser() {
   const userId = randomUUID();
   const profileId = randomUUID();

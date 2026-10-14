@@ -1,7 +1,7 @@
 import { randomUUID } from "node:crypto";
 import { expect, test } from "@playwright/test";
 
-import { cleanE2EIdentities, createE2ESession, queryE2E, seedE2EAdmin } from "./identity-fixture";
+import { cleanE2EIdentities, createE2ESession, queryE2E, seedE2EAdmin, seedE2ESuperAdmin } from "./identity-fixture";
 import { e2eIdentity } from "./test-identities";
 
 const origin = process.env.PLAYWRIGHT_BASE_URL ?? `http://127.0.0.1:${process.env.PLAYWRIGHT_PORT ?? "3101"}`;
@@ -11,17 +11,21 @@ test.describe.serial("model and tool governance UI", () => {
   const modelIds: string[] = [];
   let toolId = "";
 
-  test.beforeAll(async () => { await cleanE2EIdentities(); await seedE2EAdmin(); });
+  test.beforeAll(async () => { await cleanE2EIdentities(); await seedE2EAdmin(); await seedE2ESuperAdmin(); });
   test.afterAll(async () => {
     if (toolId) await queryE2E('DELETE FROM "ToolDefinition" WHERE id = $1', [toolId]);
     if (modelIds.length) await queryE2E('DELETE FROM "ModelRegistryEntry" WHERE id = ANY($1::text[])', [modelIds]);
     await cleanE2EIdentities();
   });
 
-  test("routes models and governs approved tool execution", async ({ context, page }) => {
+  test("routes models and governs approved tool execution", async ({ browser, context, page }) => {
     const token = await createE2ESession(e2eIdentity.admin.email);
     await context.addCookies([{ name: "jenan_session", value: token, url: origin }]);
-    async function post(data: Record<string, unknown>, status = 200) { const response = await page.request.post("/api/admin/model-tools", { headers: { origin }, data }); expect(response.status()).toBe(status); return response.json(); }
+    // a second person: registering tools and approving requests must not be done by the administrator who asks
+    const superContext = await browser.newContext();
+    await superContext.addCookies([{ name: "jenan_session", value: await createE2ESession(e2eIdentity.superAdmin.email), url: origin }]);
+    const superPage = await superContext.newPage();
+    async function post(data: Record<string, unknown>, status = 200, as: typeof page = page) { const response = await as.request.post("/api/admin/model-tools", { headers: { origin }, data }); expect(response.status()).toBe(status); return response.json(); }
     const primary = (await post({ action: "registerModel", averageLatencyMs: 250, capabilities: ["general", "json"], displayName: "E2E Primary", enabled: true, inputCostPerMillionMinor: 100, modelKey: `primary-${randomUUID()}`, outputCostPerMillionMinor: 200, provider: "internal", qualityScore: 90, status: "ACTIVE" })).result;
     const fallback = (await post({ action: "registerModel", averageLatencyMs: 300, capabilities: ["general", "json"], displayName: "E2E Fallback", enabled: true, modelKey: `fallback-${randomUUID()}`, provider: "internal", qualityScore: 80, status: "ACTIVE" })).result;
     modelIds.push(primary.id, fallback.id);
@@ -32,14 +36,20 @@ test.describe.serial("model and tool governance UI", () => {
     expect(routed.fallbacks[0].id).toBe(fallback.id);
     await post({ action: "recordModelExecution", inputTokens: 1000, latencyMs: 275, modelId: primary.id, outputTokens: 500, qualityScore: 92, routingRuleId: rule.id, success: true, taskType: "general", traceId: routed.traceId });
 
-    const tool = (await post({ action: "registerTool", enabled: true, handlerId: "task-brief", key: `e2e-tool-${randomUUID()}`, name: "E2E Governed Tool", riskLevel: "HIGH" })).result;
+    // an ordinary administrator cannot define a tool or widen who may run it
+    await post({ action: "registerTool", enabled: true, handlerId: "task-brief", key: `e2e-denied-${randomUUID()}`, name: "Denied Tool" }, 403);
+    const tool = (await post({ action: "registerTool", enabled: true, handlerId: "task-brief", key: `e2e-tool-${randomUUID()}`, name: "E2E Governed Tool", riskLevel: "HIGH" }, 200, superPage)).result;
     toolId = tool.id;
-    await post({ action: "setToolPermission", allowed: true, approvalRequired: true, role: "ADMIN", scopes: ["mission:write"], toolId: tool.id });
+    await post({ action: "setToolPermission", allowed: true, approvalRequired: true, role: "ADMIN", scopes: ["mission:write"], toolId: tool.id }, 403);
+    await post({ action: "setToolPermission", allowed: true, approvalRequired: true, role: "ADMIN", scopes: ["mission:write"], toolId: tool.id }, 200, superPage);
     const execution = (await post({ action: "requestToolExecution", payload: { title: "E2E governed execution" }, toolKey: tool.key })).result;
     expect(execution.status).toBe("PENDING_APPROVAL");
-    await post({ action: "decideToolApproval", approve: true, executionId: execution.id, rationale: "E2E approval" });
+    // the requester cannot approve their own request; a second person can
+    await post({ action: "decideToolApproval", approve: true, executionId: execution.id, rationale: "E2E self approval" }, 409);
+    await post({ action: "decideToolApproval", approve: true, executionId: execution.id, rationale: "E2E approval" }, 200, superPage);
     const completed = (await post({ action: "executeTool", executionId: execution.id })).result;
     expect(completed.status).toBe("SUCCEEDED");
+    await superContext.close();
 
     await page.goto("/models/router", { waitUntil: "domcontentloaded" });
     await expect(page.locator(".mission-engine-console")).toBeVisible();

@@ -5,7 +5,10 @@ import {
   Prisma,
   TaskStatus,
 } from "@/generated/prisma/client";
+import { memberUserView } from "@/lib/auth/authorization";
 import { db } from "@/lib/db";
+
+const assigneeUserSelect = { id: true, email: true, profile: { select: { displayName: true } } } as const satisfies Prisma.UserSelect;
 
 async function requireFieldAccess(organizationId: string, userId: string) {
   const [membership, program] = await Promise.all([
@@ -17,29 +20,28 @@ async function requireFieldAccess(organizationId: string, userId: string) {
   return membership;
 }
 
+// Colleagues are listed by name; their email addresses are for the owner who assigns the work (and for each person themself).
 export async function listFieldAssignments(organizationId: string, userId: string) {
-  await requireFieldAccess(organizationId, userId);
-  return db.fieldAssignment.findMany({
+  const membership = await requireFieldAccess(organizationId, userId);
+  const assignments = await db.fieldAssignment.findMany({
     where: { organizationId },
     orderBy: [{ dueAt: "asc" }, { createdAt: "desc" }],
-    include: {
-      assigneeMember: {
-        select: {
-          id: true,
-          user: { select: { email: true, profile: { select: { displayName: true } } } },
-        },
-      },
-    },
+    include: { assigneeMember: { select: { id: true, user: { select: assigneeUserSelect } } } },
   });
+  return assignments.map(({ assigneeMember, ...assignment }) => ({
+    ...assignment,
+    assigneeMember: assigneeMember ? { id: assigneeMember.id, user: memberUserView(assigneeMember.user, { seesEmails: membership.isOwner, userId }) } : null,
+  }));
 }
 
 export async function listFieldAssignees(organizationId: string, userId: string) {
-  await requireFieldAccess(organizationId, userId);
-  return db.organizationMember.findMany({
+  const membership = await requireFieldAccess(organizationId, userId);
+  const members = await db.organizationMember.findMany({
     where: { organizationId, status: OrganizationMemberStatus.ACTIVE },
     orderBy: [{ isOwner: "desc" }, { createdAt: "asc" }],
-    select: { id: true, user: { select: { email: true, profile: { select: { displayName: true } } } } },
+    select: { id: true, user: { select: assigneeUserSelect } },
   });
+  return members.map(({ user, ...member }) => ({ ...member, user: memberUserView(user, { seesEmails: membership.isOwner, userId }) }));
 }
 
 export async function createFieldAssignment(input: { organizationId: string; title: string; description?: string; dueAt?: Date; assigneeMemberId?: string; userId: string }) {

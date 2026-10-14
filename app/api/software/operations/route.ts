@@ -3,9 +3,10 @@ import { z } from "zod";
 
 import { hasValidOrigin } from "@/lib/auth/request";
 import { getCurrentUser } from "@/lib/auth/session";
+import { publicErrorMessage } from "@/lib/http/safe-error";
 import { createOrganizationForUser } from "@/services/programs/organization-program-service";
 import { createSoftwareBranch, saveSoftwareSettings, updateSoftwareBranchStatus } from "@/services/software/company-service";
-import { createLeaveRequest, createPayrollRun, createPerformanceReview, createSoftwareEmployee, listSoftwareHr, postPayrollRun, recordAttendance, updateLeaveRequestStatus } from "@/services/software/hr-service";
+import { createLeaveRequest, createPayrollRun, createPerformanceReview, createSoftwareEmployee, listSoftwareHrForMember, postPayrollRun, recordAttendance, updateLeaveRequestStatus } from "@/services/software/hr-service";
 import { adjustInventory, closePosShift, createCrmLead, createPurchaseOrder, createSoftwareSupplier, listSoftwareOperations, openPosShift, recordPosSale, summarizeSoftwareOperations, updateCrmLeadStatus, updatePurchaseOrderStatus } from "@/services/software/operations-service";
 import { createSalesDocument, listSalesWorkspace, recordSoftwareReceipt, saveSoftwareCustomer, saveSoftwareProduct, summarizeSalesWorkspace, updateSalesDocumentStatus } from "@/services/software/sales-service";
 import { getSoftwareCompany, listSoftwareOrganizations } from "@/services/software/software-access";
@@ -55,12 +56,12 @@ export async function GET(request: NextRequest) {
       getSoftwareCompany(selectedId, user.id),
       listSalesWorkspace(selectedId, user.id),
       listSoftwareOperations(selectedId, user.id),
-      listSoftwareHr(selectedId, user.id),
+      listSoftwareHrForMember(selectedId, user.id),
     ]);
     return NextResponse.json({ success: true, organizations, workspace: { company, sales, operations, hr, salesSummary: summarizeSalesWorkspace(sales), operationsSummary: summarizeSoftwareOperations(operations) } });
   } catch (error) {
-    const message = error instanceof Error ? error.message : "Software workspace failed";
-    return NextResponse.json({ success: false, message }, { status: message.includes("required") ? 403 : 404 });
+    const status = error instanceof Error && error.message.includes("required") ? 403 : 404;
+    return NextResponse.json({ success: false, message: publicErrorMessage(error, "Software workspace failed") }, { status });
   }
 }
 
@@ -100,8 +101,8 @@ export async function POST(request: NextRequest) {
     const createdActions = new Set(["createOrganization", "createBranch", "saveCustomer", "saveProduct", "createSalesDocument", "recordReceipt", "createLead", "createSupplier", "createPurchase", "openShift", "recordPosSale", "createEmployee", "recordAttendance", "createLeave", "createPayroll", "createPerformance"]);
     return NextResponse.json({ success: true, result }, { status: createdActions.has(input.action) ? 201 : 200 });
   } catch (error) {
-    const message = error instanceof Error ? error.message : "Software command failed";
-    const status = message.includes("required") ? 403 : message.endsWith("not found") ? 404 : 409;
-    return NextResponse.json({ success: false, message }, { status });
+    const rawMessage = error instanceof Error ? error.message : "";
+    const status = rawMessage.includes("required") ? 403 : rawMessage.endsWith("not found") ? 404 : 409;
+    return NextResponse.json({ success: false, message: publicErrorMessage(error, "Software command failed") }, { status });
   }
 }

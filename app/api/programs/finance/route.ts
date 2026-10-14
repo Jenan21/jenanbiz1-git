@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { getCurrentUser } from "@/lib/auth/session";
 import { hasValidOrigin } from "@/lib/auth/request";
+import { publicErrorMessage } from "@/lib/http/safe-error";
 import { createFinancialEntry, listFinancialEntries } from "@/services/programs/financial-entry-service";
 
 const entrySchema = z.object({
@@ -21,8 +22,7 @@ export async function GET(request: NextRequest) {
   try {
     return NextResponse.json({ success: true, entries: await listFinancialEntries(organizationId, user.id) });
   } catch (error) {
-    const message = error instanceof Error ? error.message : "Finance entries could not be loaded";
-    return NextResponse.json({ success: false, message }, { status: 403 });
+    return NextResponse.json({ success: false, message: publicErrorMessage(error, "Finance entries could not be loaded") }, { status: 403 });
   }
 }
 
@@ -37,7 +37,6 @@ export async function POST(request: NextRequest) {
     const entry = await createFinancialEntry({ ...input, currency: input.currency.toUpperCase(), occurredAt: new Date(input.occurredAt), userId: user.id });
     return NextResponse.json({ success: true, entry }, { status: 201 });
   } catch (error) {
-    const message = error instanceof Error ? error.message : "Financial entry could not be created";
-    return NextResponse.json({ success: false, message }, { status: 403 });
+    return NextResponse.json({ success: false, message: publicErrorMessage(error, "Financial entry could not be created") }, { status: 403 });
   }
 }

@@ -2,7 +2,7 @@ import { randomUUID } from "node:crypto";
 import { expect, test } from "@playwright/test";
 
 import { MARKETING_FLOW_ROUTES } from "@/lib/marketing/marketing-routes";
-import { cleanE2EIdentities, createE2ESession, queryE2E, seedE2EUser } from "./identity-fixture";
+import { cleanE2EIdentities, createE2ESession, queryE2E, seedE2EAdmin, seedE2EUser } from "./identity-fixture";
 import { e2eIdentity } from "./test-identities";
 
 const origin = "http://127.0.0.1:3101";
@@ -20,6 +20,7 @@ test.describe.serial("Jenan Marketing full flow", () => {
   test.beforeAll(async () => {
     await cleanE2EIdentities();
     await seedE2EUser();
+    await seedE2EAdmin();
     await queryE2E('INSERT INTO "Robot" (id, name, slug, intelligence, skill, experience, status, "isVisible", "createdAt", "updatedAt") VALUES ($1, $2, $3, 95, 92, 0, \'ACTIVE\', true, NOW(), NOW())', [robotId, "E2E Marketing Robot", robotSlug]);
   });
 
@@ -28,7 +29,7 @@ test.describe.serial("Jenan Marketing full flow", () => {
     await queryE2E('DELETE FROM "Robot" WHERE id = $1', [robotId]);
   });
 
-  test("uses sourced metrics and completes campaign, audience, lead, analytics, and report flows", async ({ context, page }) => {
+  test("uses sourced metrics and completes campaign, audience, lead, analytics, and report flows", async ({ browser, context, page }) => {
     const token = await createE2ESession(e2eIdentity.user.email);
     await context.addCookies([{ name: "jenan_session", value: token, url: origin, httpOnly: true, sameSite: "Lax" }, { name: "locale", value: "en", url: origin }]);
     const organizationResponse = await page.request.post("/api/software/operations", { headers: { origin }, data: { action: "createOrganization", name: "E2E Marketing Company" } });
@@ -57,10 +58,38 @@ test.describe.serial("Jenan Marketing full flow", () => {
     await expect(page.locator(".marketing-campaign-detail")).toContainText("External channel provider: not connected");
     await expect(page.locator(".marketing-flow__signals--six > article")).toHaveCount(6);
     await expect(page.locator(".marketing-metric--unavailable")).toHaveCount(2);
-    const confirmResponse = page.waitForResponse((response) => response.url().endsWith("/api/marketing") && response.request().method() === "POST");
-    await page.getByRole("button", { name: "Internal confirm and assign" }).click();
+    const requestResponse = page.waitForResponse((response) => response.url().endsWith("/api/marketing") && response.request().method() === "POST");
+    await page.getByRole("button", { name: "Request payment confirmation" }).click();
+    expect((await requestResponse).status()).toBe(200);
+    // A request is not a payment: nothing is paid, assigned or active until an administrator confirms it.
+    await expect(page.locator(".marketing-campaign-detail")).toContainText("Payment request recorded — awaiting confirmation");
+    await expect(page.getByRole("button", { name: "Awaiting payment confirmation" })).toBeDisabled();
+    await expect(page.locator(".marketing-campaign-detail")).not.toContainText("E2E Marketing Robot");
+    const requested = (await (await page.request.get("/api/marketing")).json()).campaigns.find((campaign: { id: string }) => campaign.id === campaignId);
+    expect(requested).toMatchObject({ status: "DRAFT", robotTask: null, payment: { provider: "MANUAL_REVIEW", status: "PENDING", amountMinor: 1_200_000 } });
+    expect((await page.request.post("/api/marketing", { headers: { origin }, data: { action: "updateCampaignStatus", campaignId, status: "ACTIVE" } })).status()).toBe(409);
+    expect((await page.request.post("/api/marketing", { headers: { origin }, data: { action: "confirmPaymentAndAssign", campaignId } })).status()).toBe(400);
+    expect((await page.request.get("/api/marketing/payment-requests")).status()).toBe(403);
+    expect((await page.request.post("/api/marketing/payment-requests", { headers: { origin }, data: { action: "confirmPaymentReceived", campaignId, amountMinor: 1_200_000, reference: "E2E-SELF-CONFIRM" } })).status()).toBe(403);
+
+    const adminContext = await browser.newContext();
+    await adminContext.addCookies([{ name: "jenan_session", value: await createE2ESession(e2eIdentity.admin.email), url: origin, httpOnly: true, sameSite: "Lax" }, { name: "locale", value: "en", url: origin }]);
+    const adminPage = await adminContext.newPage();
+    const queue = await (await adminPage.request.get("/api/marketing/payment-requests")).json();
+    expect(queue.requests.some((item: { id: string; payment: { status: string } }) => item.id === campaignId && item.payment.status === "PENDING")).toBe(true);
+    expect((await adminPage.request.post("/api/marketing/payment-requests", { headers: { origin }, data: { action: "confirmPaymentReceived", campaignId, amountMinor: 1, reference: "E2E-WRONG-AMOUNT" } })).status()).toBe(409);
+    await adminPage.goto("/marketing", { waitUntil: "domcontentloaded" });
+    const reviewRow = adminPage.locator(".marketing-payment-review form").filter({ hasText: "E2E Sourced Growth Campaign" });
+    await reviewRow.getByPlaceholder("Transfer or receipt reference").fill("E2E-TRX-0001");
+    const confirmResponse = adminPage.waitForResponse((response) => response.url().endsWith("/api/marketing/payment-requests") && response.request().method() === "POST");
+    await reviewRow.getByRole("button", { name: "Confirm payment received" }).click();
     expect((await confirmResponse).status()).toBe(200);
+    await adminContext.close();
+
+    await page.goto(`/marketing/campaign/sample?campaign=${campaignId}`, { waitUntil: "domcontentloaded" });
+    await expect(page.locator(".marketing-campaign-detail")).toContainText("Payment confirmed");
     await expect(page.locator(".marketing-campaign-detail")).toContainText("E2E Marketing Robot");
+    await expect(page.getByRole("button", { name: "Pause" })).toBeVisible();
 
     await page.goto("/marketing/audience", { waitUntil: "domcontentloaded" });
     await page.getByLabel("Campaign").selectOption(campaignId);

@@ -5,6 +5,12 @@ const documentInclude = {
   versions: { orderBy: { version: "desc" as const }, take: 20 },
 } satisfies Prisma.StudioDocumentInclude;
 
+// The history list only needs each version's number and date; a version's content is read only when it is restored,
+// so a long list does not carry up to twenty full copies of every document.
+const documentListInclude = {
+  versions: { orderBy: { version: "desc" as const }, take: 20, select: { id: true, version: true, title: true, createdAt: true } },
+} satisfies Prisma.StudioDocumentInclude;
+
 export type StudioDocumentInput = {
   content: Record<string, unknown>;
   kind: StudioDocumentKind;
@@ -22,7 +28,7 @@ function normalizeInput(input: StudioDocumentInput) {
 export async function listStudioDocuments(userId: string, kind?: StudioDocumentKind) {
   return db.studioDocument.findMany({
     where: { ownerId: userId, kind },
-    include: documentInclude,
+    include: documentListInclude,
     orderBy: { updatedAt: "desc" },
     take: 100,
   });

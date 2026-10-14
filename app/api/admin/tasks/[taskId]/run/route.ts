@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { publicErrorMessage } from "@/lib/http/safe-error";
 import { z } from "zod";
 import { hasPlatformAdminAccess } from "@/lib/auth/authorization";
 import { hasValidOrigin } from "@/lib/auth/request";
@@ -31,7 +32,7 @@ export async function POST(
     const result = await executeRobotTask({ taskId, taskType: parsed.data.taskType });
     return NextResponse.json({ success: true, result });
   } catch (error) {
-    const message = error instanceof Error ? error.message : "Task execution failed";
+    const message = publicErrorMessage(error, "Task execution failed");
     const status = message === "Robot task not found" ? 404 : 409;
     return NextResponse.json({ success: false, message }, { status });
   }

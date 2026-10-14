@@ -1,29 +1,26 @@
 import {
   FinancialEntryType,
-  OrganizationMemberStatus,
   OrganizationProgramKey,
   OrganizationProgramStatus,
   Prisma,
 } from "@/generated/prisma/client";
+import { ORGANIZATION_PERMISSIONS } from "@/lib/auth/authorization";
 import { db } from "@/lib/db";
+import { requireOrganizationPermission } from "@/services/software/software-access";
 
-async function requireFinanceAccess(organizationId: string, userId: string) {
-  const [membership, program] = await Promise.all([
-    db.organizationMember.findFirst({
-      where: { organizationId, userId, status: OrganizationMemberStatus.ACTIVE },
-      select: { id: true },
-    }),
-    db.organizationProgram.findUnique({
-      where: { organizationId_key: { organizationId, key: OrganizationProgramKey.FINANCE } },
-      select: { status: true },
-    }),
-  ]);
-  if (!membership) throw new Error("Active organization membership required");
+// The ledger holds the organization's income and expenses (payroll postings included), so it is not open to every member:
+// the owner, or a member whose role carries the finance permission, may read it; writing needs the write permission.
+async function requireFinanceAccess(organizationId: string, userId: string, permissionKey: string) {
+  await requireOrganizationPermission(organizationId, userId, permissionKey);
+  const program = await db.organizationProgram.findUnique({
+    where: { organizationId_key: { organizationId, key: OrganizationProgramKey.FINANCE } },
+    select: { status: true },
+  });
   if (program?.status !== OrganizationProgramStatus.ACTIVE) throw new Error("Active financial program required");
 }
 
 export async function listFinancialEntries(organizationId: string, userId: string) {
-  await requireFinanceAccess(organizationId, userId);
+  await requireFinanceAccess(organizationId, userId, ORGANIZATION_PERMISSIONS.financeRead);
   return db.financialEntry.findMany({
     where: { organizationId },
     orderBy: [{ occurredAt: "desc" }, { createdAt: "desc" }],
@@ -40,7 +37,7 @@ export async function createFinancialEntry(input: {
   occurredAt: Date;
   userId: string;
 }) {
-  await requireFinanceAccess(input.organizationId, input.userId);
+  await requireFinanceAccess(input.organizationId, input.userId, ORGANIZATION_PERMISSIONS.financeWrite);
   return db.$transaction(async (transaction) => {
     const entry = await transaction.financialEntry.create({
       data: {

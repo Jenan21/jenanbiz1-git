@@ -7,7 +7,7 @@ type Listing = {
   id: string;
   askingPriceMinor: number | null;
   countryCode: string | null;
-  createdBy: { email: string; profile: { displayName: string | null } | null };
+  createdBy: { id: string; profile: { displayName: string | null } | null };
   currency: string;
   isOwner: boolean;
   kind: "PROJECT" | "BUSINESS";
@@ -23,7 +23,7 @@ type Inquiry = {
   isListingOwner: boolean;
   listing: { id: string; title: string };
   message: string;
-  requester: { email: string; profile: { displayName: string | null } | null };
+  requester: { id: string; profile: { displayName: string | null } | null };
   status: "NEW" | "CONTACTED" | "CLOSED";
 };
 
@@ -189,7 +189,7 @@ export function MarketWorkspace({ locale }: { locale: Locale }) {
         {!loading && !listings.length ? <p className="market-message">{ar ? "لا توجد إدراجات مطابقة." : "No matching listings."}</p> : null}
       </div>
 
-      {ownerInquiries.length ? <section className="market-inquiries"><h2>{ar ? "طلبات الاهتمام الواردة" : "Incoming inquiries"}</h2>{ownerInquiries.map((inquiry) => <article key={inquiry.id}><div><strong>{inquiry.listing.title}</strong><span>{inquiry.requester.profile?.displayName ?? inquiry.requester.email}</span><p>{inquiry.message}</p></div><div><strong>{inquiry.status}</strong>{inquiry.status === "NEW" ? <button className="button button--secondary" disabled={submitting} onClick={() => void updateInquiryStatus(inquiry.id, "CONTACTED")} type="button">{ar ? "تم التواصل" : "Mark contacted"}</button> : null}{inquiry.status !== "CLOSED" ? <button className="button button--ghost" disabled={submitting} onClick={() => void updateInquiryStatus(inquiry.id, "CLOSED")} type="button">{ar ? "إغلاق" : "Close"}</button> : null}</div></article>)}</section> : null}
+      {ownerInquiries.length ? <section className="market-inquiries"><h2>{ar ? "طلبات الاهتمام الواردة" : "Incoming inquiries"}</h2>{ownerInquiries.map((inquiry) => <article key={inquiry.id}><div><strong>{inquiry.listing.title}</strong><span>{inquiry.requester.profile?.displayName ?? (ar ? "عضو في المنصة" : "Platform member")}</span><p>{inquiry.message}</p></div><div><strong>{inquiry.status}</strong>{inquiry.status === "NEW" ? <button className="button button--secondary" disabled={submitting} onClick={() => void updateInquiryStatus(inquiry.id, "CONTACTED")} type="button">{ar ? "تم التواصل" : "Mark contacted"}</button> : null}{inquiry.status !== "CLOSED" ? <button className="button button--ghost" disabled={submitting} onClick={() => void updateInquiryStatus(inquiry.id, "CLOSED")} type="button">{ar ? "إغلاق" : "Close"}</button> : null}</div></article>)}</section> : null}
     </section>
   );
 }
