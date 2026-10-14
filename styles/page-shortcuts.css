@@ -1,0 +1,94 @@
+.page-shortcuts {
+  position: fixed;
+  z-index: 60;
+  inset-block-end: 14px;
+  inset-inline-start: 14px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  max-width: calc(100vw - 28px);
+}
+
+.page-shortcuts__item {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  min-height: 40px;
+  padding: 0 14px;
+  border: 1px solid rgba(40, 200, 235, 0.55);
+  border-radius: 999px;
+  color: #dff9ff;
+  background: rgba(2, 18, 33, 0.92);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.42);
+  font: inherit;
+  font-size: 0.8rem;
+  font-weight: 700;
+  line-height: 1;
+  text-decoration: none;
+  cursor: pointer;
+}
+
+.page-shortcuts__item:hover,
+.page-shortcuts__item:focus-visible {
+  border-color: #13e9f4;
+  background: rgba(4, 40, 62, 0.97);
+}
+
+.page-shortcuts__item .icon {
+  flex: none;
+  width: 17px;
+  height: 17px;
+}
+
+/* The arrow icon points to the end of the line; "back" points to the start. */
+html[dir="ltr"] .page-shortcuts__back {
+  transform: scaleX(-1);
+}
+
+.page-shortcuts__item.is-admin {
+  border-color: rgba(244, 192, 79, 0.7);
+  color: #ffe7ad;
+  background: rgba(34, 24, 4, 0.92);
+}
+
+.page-shortcuts__item.is-admin:hover,
+.page-shortcuts__item.is-admin:focus-visible {
+  border-color: #f4c04f;
+  background: rgba(58, 40, 6, 0.96);
+}
+
+html[lang="ar"] .page-shortcuts__label[lang="en"],
+html[lang="en"] .page-shortcuts__label[lang="ar"] {
+  display: none;
+}
+
+@media (max-width: 700px) {
+  .page-shortcuts {
+    inset-block-end: 10px;
+    inset-inline-start: 10px;
+    gap: 6px;
+  }
+
+  .page-shortcuts__item {
+    min-width: 42px;
+    min-height: 42px;
+    padding: 0;
+    justify-content: center;
+  }
+
+  /* Icon only on a phone; the label stays for screen readers. */
+  .page-shortcuts__label {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
+  }
+}
+
+@media print {
+  .page-shortcuts {
+    display: none;
+  }
+}

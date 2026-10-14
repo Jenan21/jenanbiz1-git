@@ -93,7 +93,7 @@ jobs:
           - name: auth
             projects: >-
               --project=auth-visual-acceptance --project=auth-flow-responsive --project=user-center-responsive
-              --project=auth-chromium --project=account-approval
+              --project=auth-chromium --project=account-approval --project=page-shortcuts
           - name: admin
             projects: >-
               --project=admin-control-panel --project=admin-operations-full-flow --project=mission-engine
