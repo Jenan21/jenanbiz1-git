@@ -6,7 +6,8 @@ import { MemoryRateLimitProvider } from "@/lib/rate-limit/memory-provider";
 
 const mocks = vi.hoisted(() => ({
   user: { id: "user-1" } as { id: string } | null,
-  addProjectMember: vi.fn(),
+  inviteProjectMember: vi.fn(),
+  acceptInvitation: vi.fn(),
   userCanReadProject: vi.fn(),
   createProjectReport: vi.fn(),
   searchProjectIntelligence: vi.fn(),
@@ -19,18 +20,24 @@ vi.mock("@/lib/auth/request", () => ({ hasValidOrigin: () => true }));
 vi.mock("@/lib/db", () => ({ db: {} }));
 vi.mock("@/lib/rate-limit/auth-rate-limit", () => ({ getRateLimitProvider: () => provider }));
 vi.mock("@/services/projects/project-report", () => ({ createProjectReport: mocks.createProjectReport }));
+vi.mock("@/services/projects/project-invitations", () => ({
+  inviteProjectMember: mocks.inviteProjectMember,
+  acceptProjectInvitation: mocks.acceptInvitation,
+  declineProjectInvitation: vi.fn(),
+  revokeProjectInvitation: vi.fn(),
+}));
 vi.mock("@/services/projects/project-intelligence", async (importOriginal) => ({
   ...(await importOriginal<typeof import("@/services/projects/project-intelligence")>()),
   searchProjectIntelligence: mocks.searchProjectIntelligence,
 }));
 vi.mock("@/services/projects/project-service", async (importOriginal) => ({
   ...(await importOriginal<typeof import("@/services/projects/project-service")>()),
-  addProjectMember: mocks.addProjectMember,
   userCanReadProject: mocks.userCanReadProject,
 }));
 
 import { POST as postProjects } from "@/app/api/projects/route";
 import { GET as getReport } from "@/app/api/projects/[projectId]/report/route";
+import { EmailNotVerifiedError } from "@/lib/auth/email-verification-policy";
 
 const projectId = "ckprojectaaaaaaaaaaaaaaaaa";
 const prismaFailure = () =>
@@ -47,7 +54,8 @@ function command(body: unknown) {
 beforeEach(() => {
   provider.clear();
   vi.clearAllMocks();
-  mocks.addProjectMember.mockReset();
+  mocks.inviteProjectMember.mockReset();
+  mocks.acceptInvitation.mockReset();
   vi.spyOn(console, "error").mockImplementation(() => undefined);
   mocks.user = { id: "user-1" };
   mocks.userCanReadProject.mockResolvedValue(true);
@@ -114,9 +122,11 @@ describe("project report route", () => {
 });
 
 describe("projects command route", () => {
+  const invite = (email = "member@example.test") => command({ action: "inviteMember", projectId, email, role: "VIEWER" });
+
   it("answers a database failure with a generic sentence and a reference, with the same 409 status", async () => {
-    mocks.addProjectMember.mockRejectedValue(prismaFailure());
-    const response = await postProjects(command({ action: "addMember", projectId, email: "member@example.test", role: "VIEWER" }));
+    mocks.inviteProjectMember.mockRejectedValue(prismaFailure());
+    const response = await postProjects(invite());
     expect(response.status).toBe(409);
     const body = await response.json() as { success: boolean; message: string };
     expect(body.success).toBe(false);
@@ -125,25 +135,41 @@ describe("projects command route", () => {
   });
 
   it("still tells the user the deliberate business reasons, with their original status codes", async () => {
-    mocks.addProjectMember.mockRejectedValueOnce(new Error("Project member user not found"));
-    const missing = await postProjects(command({ action: "addMember", projectId, email: "nobody@example.test", role: "VIEWER" }));
-    expect(missing.status).toBe(409);
-    await expect(missing.json()).resolves.toMatchObject({ message: "Project member user not found" });
+    mocks.inviteProjectMember.mockRejectedValueOnce(new Error("Project owner access required"));
+    const refused = await postProjects(invite());
+    expect(refused.status).toBe(409);
+    await expect(refused.json()).resolves.toMatchObject({ message: "Project owner access required" });
 
-    mocks.addProjectMember.mockRejectedValueOnce(new Error("Project not found"));
-    const absent = await postProjects(command({ action: "addMember", projectId, email: "member@example.test", role: "VIEWER" }));
-    expect(absent.status).toBe(404);
+    mocks.inviteProjectMember.mockRejectedValueOnce(new Error("Project not found"));
+    expect((await postProjects(invite())).status).toBe(404);
+
+    mocks.acceptInvitation.mockRejectedValueOnce(new Error("Invitation not found"));
+    const missing = await postProjects(command({ action: "acceptInvitation", invitationId: "ckinvitationaaaaaaaaaaaaaa" }));
+    expect(missing.status).toBe(404);
+    await expect(missing.json()).resolves.toMatchObject({ message: "Invitation not found" });
   });
 
-  it("limits member lookups per signed-in user with the existing membership budget", async () => {
-    mocks.addProjectMember.mockRejectedValue(new Error("Project member user not found"));
+  it("answers 403 with a stable code when the e-mail address is not verified", async () => {
+    mocks.acceptInvitation.mockRejectedValueOnce(new EmailNotVerifiedError());
+    const response = await postProjects(command({ action: "acceptInvitation", invitationId: "ckinvitationaaaaaaaaaaaaaa" }));
+    expect(response.status).toBe(403);
+    await expect(response.json()).resolves.toEqual({ success: false, code: "EMAIL_NOT_VERIFIED", message: "Verify your e-mail address first" });
+  });
+
+  it("no longer accepts the old command that added an account without its consent", async () => {
+    const response = await postProjects(command({ action: "addMember", projectId, email: "member@example.test", role: "EDITOR" }));
+    expect(response.status).toBe(400);
+  });
+
+  it("limits invitations per signed-in user with the existing membership budget", async () => {
+    mocks.inviteProjectMember.mockRejectedValue(new Error("Project owner access required"));
     const statuses: number[] = [];
     for (let index = 0; index < 16; index += 1) {
-      statuses.push((await postProjects(command({ action: "addMember", projectId, email: `guess${index}@example.test`, role: "VIEWER" }))).status);
+      statuses.push((await postProjects(invite(`guess${index}@example.test`))).status);
     }
     expect(statuses.slice(0, 15).every((status) => status === 409)).toBe(true);
     expect(statuses[15]).toBe(429);
-    expect(mocks.addProjectMember).toHaveBeenCalledTimes(15);
+    expect(mocks.inviteProjectMember).toHaveBeenCalledTimes(15);
   });
 
   it("rejects financial inputs that would loop for ever or overflow instead of computing them", async () => {

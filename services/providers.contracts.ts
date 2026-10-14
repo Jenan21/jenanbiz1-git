@@ -20,7 +20,7 @@ export interface DocumentStorageProvider {
 
 export interface EmailProvider {
   readonly name: string;
-  send(input: { subject: string; text: string; to: string; traceId: string }): Promise<{ messageId: string }>;
+  send(input: { html?: string; replyTo?: string; subject: string; text: string; to: string; traceId: string }): Promise<{ messageId: string }>;
 }
 
 export interface PaymentProvider {

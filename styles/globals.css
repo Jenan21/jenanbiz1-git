@@ -2368,6 +2368,30 @@ a:focus-visible {
   grid-template-columns: 1fr;
   gap: 14px;
 }
+.email-verification-notice {
+  margin-top: 14px;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px 16px;
+  padding: 10px 16px;
+  border: 1px solid color-mix(in srgb, var(--brand) 55%, transparent);
+  border-radius: 12px;
+  color: #dff6fb;
+  background: color-mix(in srgb, var(--brand) 12%, transparent);
+  font-size: 14px;
+}
+.email-verification-notice a {
+  color: var(--brand);
+  font-weight: 700;
+  text-decoration: none;
+  white-space: nowrap;
+}
+.email-verification-notice a:hover,
+.email-verification-notice a:focus-visible {
+  text-decoration: underline;
+}
 .hero {
   min-height: 150px;
   border-radius: 20px;
@@ -2868,6 +2892,77 @@ a:focus-visible {
 .project-members__list small {
   color: var(--muted);
   overflow-wrap: anywhere;
+}
+.project-invitations {
+  display: grid;
+  gap: 8px;
+  margin-top: 14px;
+  padding: 12px 14px;
+  border: 1px solid color-mix(in srgb, var(--border) 60%, transparent);
+  border-radius: 12px;
+  background: color-mix(in srgb, var(--deep) 45%, transparent);
+}
+.project-invitations h3 {
+  margin: 0;
+  font-size: 14px;
+}
+.project-invitations p {
+  margin: 0;
+  color: var(--muted);
+  font-size: 12px;
+}
+.project-invitations a {
+  color: var(--brand);
+  font-weight: 700;
+}
+.project-invitations ul {
+  display: grid;
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.project-invitations li {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px 12px;
+  padding: 8px 0;
+  border-bottom: 1px solid color-mix(in srgb, var(--border) 42%, transparent);
+}
+.project-invitations li:last-child {
+  border-bottom: 0;
+}
+.project-invitations li > div:first-child {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.project-invitations small {
+  color: var(--muted);
+  font-size: 11px;
+}
+.project-invitations__actions {
+  display: flex;
+  gap: 8px;
+}
+.projects-dashboard__invitations {
+  padding: 0 1.5% 8px;
+  background: #03111e;
+}
+.projects-dashboard__invitations:empty {
+  display: none;
+}
+.projects-dashboard__invitations .project-invitations {
+  margin-top: 0;
+}
+.psw-team-actions form > p[role="status"] {
+  grid-column: 1 / -1;
+  margin: 0;
+  font-size: 12px;
+  line-height: 1.6;
 }
 .admin-map-provider-form {
   display: grid;

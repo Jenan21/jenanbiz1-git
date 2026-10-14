@@ -23,7 +23,7 @@ export function AuthWorkflowShell({
 }) {
   const ar = locale === "ar";
   return (
-    <main className="auth-workflow" data-auth-access={route === "/user/onboarding" ? "AUTHENTICATED" : "PUBLIC"} data-auth-privacy="SENSITIVE_FORM" data-auth-route={route} data-auth-screen={route === "/user/onboarding" ? "onboarding" : "forgot"} data-auth-source={source}>
+    <main className="auth-workflow" data-auth-access={route.startsWith("/user/") ? "AUTHENTICATED" : "PUBLIC"} data-auth-privacy="SENSITIVE_FORM" data-auth-route={route} data-auth-screen={route === "/user/onboarding" ? "onboarding" : route === "/user/verify-email" ? "verify-email" : "forgot"} data-auth-source={source}>
       <div className="auth-workflow__backdrop" aria-hidden="true" />
       <header className="auth-workflow__header">
         <Link href="/" className="auth-workflow__brand" aria-label={ar ? "Jenan Pro الرئيسية" : "Jenan Pro home"}>

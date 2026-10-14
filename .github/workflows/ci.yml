@@ -62,6 +62,8 @@ jobs:
       - run: npm run db:migrate
       - run: npx prisma migrate status
       - run: npm run academy:seed
+      # The home world map ships as a generated static asset; fail when it no longer matches its source data.
+      - run: node scripts/generate-world-map.mjs --check
       - run: npm run typecheck
       - run: npm run lint
       - run: npm run test
@@ -99,7 +101,7 @@ jobs:
               --project=report-pages
           - name: projects-and-academy
             projects: >-
-              --project=projects-section --project=projects-flow-routes --project=academy-flow-routes
+              --project=projects-section --project=projects-flow-routes --project=project-invitations --project=academy-flow-routes
               --project=academy-content-library
           - name: market-talent-marketing
             projects: >-

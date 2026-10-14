@@ -16,6 +16,13 @@ import {
   type ProjectComplianceRecord,
   type ProjectVendorRecord,
 } from "@/components/projects/project-launch-records";
+import {
+  type InvitationDelivery,
+  invitationDeliveryMessage,
+  postProjectCommand,
+  ReceivedProjectInvitations,
+  SentProjectInvitations,
+} from "@/components/projects/project-invitations";
 import type { Locale } from "@/types/i18n";
 import type { ProjectFocus } from "@/lib/projects/project-flow-routes";
 
@@ -332,6 +339,7 @@ export function ProjectsWorkspace({
   });
   const [evidenceFile, setEvidenceFile] = useState<File | null>(null);
   const [memberEmail, setMemberEmail] = useState("");
+  const [inviteVersion, setInviteVersion] = useState(0);
   const [memberRole, setMemberRole] = useState<
     "EDITOR" | "REVIEWER" | "VIEWER"
   >("EDITOR");
@@ -694,19 +702,35 @@ export function ProjectsWorkspace({
     }
   }
 
-  async function addMember(event: FormEvent<HTMLFormElement>) {
+  async function inviteMember(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     if (!selected) return;
-    await run(
-      {
-        action: "addMember",
-        projectId: selected.id,
-        email: memberEmail,
-        role: memberRole,
-      },
-      ar ? "تمت إضافة عضو المشروع." : "Project member added.",
-    );
-    setMemberEmail("");
+    setBusy(true);
+    setMessage("");
+    try {
+      const result = await postProjectCommand<{ delivery: InvitationDelivery }>(
+        {
+          action: "inviteMember",
+          projectId: selected.id,
+          email: memberEmail,
+          role: memberRole,
+        },
+        ar ? "تعذر إرسال الدعوة." : "The invitation could not be sent.",
+      );
+      setMessage(invitationDeliveryMessage(ar, result.delivery));
+      setMemberEmail("");
+      setInviteVersion((current) => current + 1);
+    } catch (error) {
+      setMessage(
+        error instanceof Error
+          ? error.message
+          : ar
+            ? "تعذر إرسال الدعوة."
+            : "The invitation could not be sent.",
+      );
+    } finally {
+      setBusy(false);
+    }
   }
 
   async function searchIntelligence(event: FormEvent<HTMLFormElement>) {
@@ -866,6 +890,7 @@ export function ProjectsWorkspace({
           ))}
         </select>
       </div>
+      <ReceivedProjectInvitations ar={ar} onAccepted={() => load()} />
       {message ? (
         <p className="project-error" role="status">
           {message}
@@ -1712,9 +1737,9 @@ export function ProjectsWorkspace({
                   : "The owner manages membership; editors update content, reviewers record decisions, and viewers have read-only access."}
               </p>
             </header>
-            <form className="project-members__form" onSubmit={addMember}>
+            <form className="project-members__form" onSubmit={inviteMember}>
               <label>
-                {ar ? "بريد المستخدم المسجل" : "Registered user email"}
+                {ar ? "البريد الإلكتروني للمدعو" : "Email address to invite"}
                 <input
                   required
                   type="email"
@@ -1742,9 +1767,10 @@ export function ProjectsWorkspace({
                 type="submit"
                 disabled={busy}
               >
-                {ar ? "إضافة عضو" : "Add member"}
+                {ar ? "إرسال دعوة" : "Send invitation"}
               </button>
             </form>
+            <SentProjectInvitations ar={ar} projectId={selected.id} refreshKey={inviteVersion} />
             <ul className="project-members__list">
               {selected.members.map((member) => (
                 <li key={member.id}>

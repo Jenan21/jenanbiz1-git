@@ -3,6 +3,7 @@ import { UserStatus } from "@/generated/prisma/client";
 import { db } from "@/lib/db";
 import { getDummyPasswordHash, hashPassword, verifyPassword } from "@/lib/auth/password";
 import { getPasswordRecoveryEmailProvider } from "@/services/auth/recovery-email-provider";
+import { recoveryEmail } from "@/services/mail/templates";
 import type { RequestContext } from "@/services/auth/auth.service";
 import type { EmailProvider } from "@/services/providers.contracts";
 
@@ -79,9 +80,11 @@ export async function requestPasswordReset(
     const traceId = randomUUID();
     const deliver = async () => {
       try {
+        const message = recoveryEmail({ code, expiresInMinutes: resetLifetimeMs / 60_000 });
         await provider.send({
-          subject: "Jenan Pro password recovery code",
-          text: `رمز استعادة حساب جنان برو: ${code}\nJenan Pro recovery code: ${code}\nينتهي الرمز خلال 10 دقائق. / The code expires in 10 minutes.`,
+          html: message.html,
+          subject: message.subject,
+          text: message.text,
           to: normalizedEmail,
           traceId,
         });

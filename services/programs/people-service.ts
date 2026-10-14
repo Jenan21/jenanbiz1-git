@@ -5,6 +5,7 @@ import {
   Prisma,
 } from "@/generated/prisma/client";
 import { db } from "@/lib/db";
+import { emailVerificationRequired, requireVerifiedEmail } from "@/lib/auth/email-verification-policy";
 
 async function requirePeopleOwner(organizationId: string, userId: string) {
   const [membership, program] = await Promise.all([
@@ -42,11 +43,13 @@ export async function inviteOrganizationMember(input: {
   userId: string;
 }) {
   await requirePeopleOwner(input.organizationId, input.userId);
+  await requireVerifiedEmail(input.userId);
   const invitee = await db.user.findUnique({
     where: { email: input.email.toLowerCase() },
-    select: { id: true },
+    select: { id: true, emailVerifiedAt: true },
   });
-  if (!invitee) throw new Error("Registered user not found");
+  // An account whose address nobody has proven yet cannot be invited, so a pre-registered address stays out of reach.
+  if (!invitee || (emailVerificationRequired() && !invitee.emailVerifiedAt)) throw new Error("Registered user not found");
   if (invitee.id === input.userId) throw new Error("Owner is already a member");
   const membership = await db.organizationMember.upsert({
     where: { organizationId_userId: { organizationId: input.organizationId, userId: invitee.id } },
@@ -67,6 +70,7 @@ export async function inviteOrganizationMember(input: {
 }
 
 export async function acceptOrganizationInvitation(membershipId: string, userId: string) {
+  await requireVerifiedEmail(userId);
   const membership = await db.organizationMember.findFirst({
     where: { id: membershipId, userId, status: OrganizationMemberStatus.INVITED },
     select: { id: true, organizationId: true },

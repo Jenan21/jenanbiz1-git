@@ -1,10 +1,9 @@
-import { NextRequest, NextResponse } from "next/server";
+import { NextRequest, NextResponse, after } from "next/server";
 import { z } from "zod";
 import { getCurrentUser } from "@/lib/auth/session";
 import { hasValidOrigin } from "@/lib/auth/request";
 import {
   createProject,
-  addProjectMember,
   createProjectComplianceItem,
   createProjectRisk,
   createProjectVendor,
@@ -20,6 +19,13 @@ import {
   updateProjectVendorStatus,
 } from "@/services/projects/project-service";
 import { calculateFeasibility, calculateRiskScore, calculateScenarios } from "@/services/projects/project-calculations";
+import {
+  acceptProjectInvitation,
+  declineProjectInvitation,
+  inviteProjectMember,
+  revokeProjectInvitation,
+} from "@/services/projects/project-invitations";
+import { EmailNotVerifiedError } from "@/lib/auth/email-verification-policy";
 import { assessProjectQuality } from "@/services/projects/project-quality";
 import { saveProjectIntelligenceSnapshot, searchProjectIntelligence } from "@/services/projects/project-intelligence";
 import { db } from "@/lib/db";
@@ -237,7 +243,7 @@ function actionRateLimit(action: (typeof commandSchema)["_output"]["action"]): P
   if (action === "searchIntelligence") return "intelligence";
   if (action === "createRisk" || action === "updateRiskStatus" || action === "calculateRisk") return "risk";
   if (action === "recordDecision") return "decision";
-  if (action === "addMember") return "membership";
+  if (action === "inviteMember" || action === "acceptInvitation" || action === "declineInvitation" || action === "revokeInvitation") return "membership";
   if (action === "createCompliance" || action === "updateComplianceStatus" || action === "createVendor" || action === "updateVendorStatus") return "phase";
   if (action === "updatePhase") return "phase";
   if (action === "start") return "start";
@@ -287,7 +293,10 @@ const commandSchema = z.discriminatedUnion("action", [
     source: z.string().trim().min(3).max(500),
   }),
   z.object({ action: z.literal("start"), projectId: z.string().cuid() }),
-  z.object({ action: z.literal("addMember"), projectId: z.string().cuid(), email: z.string().trim().email().max(320), role: z.enum(projectMemberRoles) }),
+  z.object({ action: z.literal("inviteMember"), projectId: z.string().cuid(), email: z.string().trim().email().max(320), role: z.enum(projectMemberRoles) }),
+  z.object({ action: z.literal("acceptInvitation"), invitationId: z.string().cuid() }),
+  z.object({ action: z.literal("declineInvitation"), invitationId: z.string().cuid() }),
+  z.object({ action: z.literal("revokeInvitation"), projectId: z.string().cuid(), invitationId: z.string().cuid() }),
   z.object({ action: z.literal("createCompliance"), projectId: z.string().cuid(), kind: z.enum(complianceKinds), title: z.string().trim().min(2).max(240), authority: z.string().trim().max(240).optional(), reference: z.string().trim().max(500).optional(), dueAt: z.string().datetime().optional(), notes: z.string().trim().max(4000).optional() }),
   z.object({ action: z.literal("updateComplianceStatus"), projectId: z.string().cuid(), itemId: z.string().cuid(), status: z.enum(complianceStatuses) }),
   z.object({ action: z.literal("createVendor"), projectId: z.string().cuid(), kind: z.enum(vendorKinds), name: z.string().trim().min(2).max(240), category: z.string().trim().max(160).optional(), contactEmail: z.string().trim().email().max(320).optional(), notes: z.string().trim().max(4000).optional() }),
@@ -370,8 +379,14 @@ export async function POST(request: NextRequest) {
     const input = parsed.data;
     const result = input.action === "create"
       ? await createProject(input, user.id)
-      : input.action === "addMember"
-        ? await addProjectMember(input.projectId, input, user.id)
+      : input.action === "inviteMember"
+        ? await inviteProjectMember(input.projectId, input, user.id, { schedule: (task) => after(task) })
+      : input.action === "acceptInvitation"
+        ? await acceptProjectInvitation(input.invitationId, user.id)
+      : input.action === "declineInvitation"
+        ? await declineProjectInvitation(input.invitationId, user.id)
+      : input.action === "revokeInvitation"
+        ? await revokeProjectInvitation(input.projectId, input.invitationId, user.id)
       : input.action === "createCompliance"
         ? await createProjectComplianceItem(input.projectId, { ...input, dueAt: input.dueAt ? new Date(input.dueAt) : undefined }, user.id)
       : input.action === "updateComplianceStatus"
@@ -442,7 +457,11 @@ export async function POST(request: NextRequest) {
               : await startProject(input.projectId, user.id);
     return NextResponse.json({ success: true, result }, { status: input.action === "create" || input.action === "createCompliance" || input.action === "createVendor" ? 201 : 200 });
   } catch (error) {
-    const status = error instanceof Error && error.message === "Project not found" ? 404 : 409;
+    if (error instanceof EmailNotVerifiedError) {
+      return NextResponse.json({ success: false, code: error.code, message: error.message }, { status: 403 });
+    }
+    const missing = error instanceof Error && (error.message === "Project not found" || error.message === "Invitation not found");
+    const status = missing ? 404 : 409;
     return NextResponse.json({ success: false, message: publicErrorMessage(error, "Project command failed") }, { status });
   }
 }

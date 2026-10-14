@@ -1,4 +1,5 @@
 import { MarketingCampaignStatus, MarketingLeadStatus, Prisma } from "@/generated/prisma/client";
+import { requireVerifiedEmail } from "@/lib/auth/email-verification-policy";
 import { db, type DbExecutor } from "@/lib/db";
 import { MANUAL_REVIEW_PAYMENT_PROVIDER } from "@/lib/marketing/payment-providers";
 
@@ -188,6 +189,7 @@ async function recordCampaignPaymentRequest(campaignId: string, userId: string) 
  * Asking twice returns the same request.
  */
 export async function requestCampaignPayment(campaignId: string, userId: string) {
+  await requireVerifiedEmail(userId);
   try {
     return await recordCampaignPaymentRequest(campaignId, userId);
   } catch (error) {

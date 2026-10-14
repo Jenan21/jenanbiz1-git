@@ -11,6 +11,8 @@ const visualProjects = [
 
 export default defineConfig({
   testDir: "./tests/e2e",
+  // Visual-regression baselines live outside the repository (see tests/e2e/visual-regression.spec.ts).
+  ...(process.env.VISUAL_BASELINE_DIR ? { snapshotPathTemplate: `${process.env.VISUAL_BASELINE_DIR.replace(/\\/g, "/")}/{arg}{ext}` } : {}),
   fullyParallel: false,
   workers: 1,
   retries: process.env.CI ? 1 : 0,
@@ -53,6 +55,12 @@ export default defineConfig({
     {
       name: "security-sweep",
       testMatch: /security-sweep\.spec\.ts/,
+    },
+    {
+      // Needs a recorded baseline folder (VISUAL_BASELINE_DIR); not part of the CI groups.
+      name: "visual-regression",
+      testMatch: /visual-regression\.spec\.ts/,
+      timeout: 120_000,
     },
     {
       // Needs a production server (see the file); not part of the dev-server groups in CI.
@@ -148,6 +156,12 @@ export default defineConfig({
     {
       name: "projects-flow-routes",
       testMatch: /projects-flow-routes\.spec\.ts/,
+      use: { viewport: { width: 1440, height: 1000 }, locale: "en-US" },
+      metadata: { appLocale: "en" },
+    },
+    {
+      name: "project-invitations",
+      testMatch: /project-invitations\.spec\.ts/,
       use: { viewport: { width: 1440, height: 1000 }, locale: "en-US" },
       metadata: { appLocale: "en" },
     },

@@ -5,7 +5,8 @@ import { db } from "@/lib/db";
 import { createAcademyResource, createAcademyResourceVersion, listAcademyResources, reviewAcademyResource } from "@/services/academy/content-library-service";
 import { activateOrganizationProgram, createOrganizationForUser } from "@/services/programs/organization-program-service";
 import { createFieldAssignment, listFieldAssignees, listFieldAssignments } from "@/services/programs/field-operations-service";
-import { addProjectMember, createProject, getUserProject, listUserProjects, listUserProjectsPage } from "@/services/projects/project-service";
+import { createProject, getUserProject, listUserProjects, listUserProjectsPage } from "@/services/projects/project-service";
+import { acceptProjectInvitation, inviteProjectMember } from "@/services/projects/project-invitations";
 import { getSoftwareCompany } from "@/services/software/software-access";
 import { applyToJob, createJobPosting, listJobPostings, listMyJobApplications, listOwnedJobApplications, listSavedJobs, listTalentMatches, saveJob, saveTalentProfile, updateJobPostingStatus } from "@/services/talent/job-service";
 
@@ -59,14 +60,21 @@ afterAll(async () => {
 });
 
 describe("project people", () => {
-  it("answers addMember with the person's name and the address the owner typed, and nothing else", async () => {
+  it("answers an invitation with the address the owner typed and nothing else, and adds people only once they accept", async () => {
     const project = await createProject({ name: `Privacy project ${suffix}` }, ids.owner);
     refs.project = project.id;
-    const added = await addProjectMember(project.id, { email: emails.editor, role: "EDITOR" }, ids.owner);
-    await addProjectMember(project.id, { email: emails.reviewer, role: "REVIEWER" }, ids.owner);
+    const sent = await inviteProjectMember(project.id, { email: emails.editor, role: "EDITOR" }, ids.owner, { provider: null });
+    const second = await inviteProjectMember(project.id, { email: emails.reviewer, role: "REVIEWER" }, ids.owner, { provider: null });
 
-    expect(added.user).toEqual({ id: ids.editor, email: emails.editor, profile: { displayName: nameOf("editor") } });
-    expect(shown(added)).not.toMatch(privateFields);
+    expect(sent.invitation).toMatchObject({ projectId: project.id, email: emails.editor, role: "EDITOR", status: "PENDING" });
+    expect(sent.delivery).toBe("unavailable");
+    expect(shown(sent)).not.toMatch(privateFields);
+    expect(await getUserProject(project.id, ids.editor)).toBeNull();
+
+    const joined = await acceptProjectInvitation(sent.invitation.id, ids.editor);
+    await acceptProjectInvitation(second.invitation.id, ids.reviewer);
+    expect(joined).toEqual({ projectId: project.id, role: "EDITOR" });
+    expect(shown(joined)).not.toMatch(privateFields);
   });
 
   it("shows the owner the team's addresses and nobody else anyone's but their own", async () => {

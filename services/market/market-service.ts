@@ -1,5 +1,6 @@
 import { MarketInquiryStatus, MarketListingStatus, MarketOfferStatus, MarketViewingStatus, Prisma } from "@/generated/prisma/client";
 import { publicUserSelect } from "@/lib/auth/public-user";
+import { requireVerifiedEmail } from "@/lib/auth/email-verification-policy";
 import { db, type DbExecutor } from "@/lib/db";
 import { MARKET_LIMITS } from "@/lib/market/market-limits";
 
@@ -131,6 +132,7 @@ export async function createMarketListing(
   },
   userId: string,
 ) {
+  await requireVerifiedEmail(userId);
   if (input.projectId) {
     const project = await db.project.findFirst({
       where: { id: input.projectId, createdById: userId },

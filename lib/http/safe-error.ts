@@ -22,6 +22,10 @@ function isDatabaseError(error: unknown) {
  * is logged together with a short reference and replaced by a generic sentence carrying that reference.
  */
 export function publicErrorMessage(error: unknown, fallback = "The request could not be completed."): string {
+  // The one subclass that is safe to show: it only asks the person to verify their e-mail address.
+  if (error instanceof Error && (error as { code?: unknown }).code === "EMAIL_NOT_VERIFIED" && error.name === "EmailNotVerifiedError") {
+    return error.message;
+  }
   if (
     error instanceof Error &&
     error.constructor === Error &&

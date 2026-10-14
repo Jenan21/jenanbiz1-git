@@ -1,5 +1,6 @@
 import { JobApplicationStatus, JobPostingStatus, Prisma, StudioDocumentKind, TalentInterviewMode, TalentInterviewStatus } from "@/generated/prisma/client";
 import { publicUserSelect } from "@/lib/auth/public-user";
+import { requireVerifiedEmail } from "@/lib/auth/email-verification-policy";
 import { db } from "@/lib/db";
 
 const organizationSummarySelect = {
@@ -169,6 +170,7 @@ export async function removeSavedJob(jobPostingId: string, userId: string) {
 }
 
 export async function createJobPosting(input: { benefits?: string; city?: string; conditions?: string; countryCode?: string; currency?: string; department?: string; description: string; organizationId?: string; questions?: Array<{ prompt: string; required?: boolean }>; requiredSkills?: string; salaryMaxMinor?: number; salaryMinMinor?: number; title: string; workMode: "ON_SITE" | "HYBRID" | "REMOTE" }, userId: string) {
+  await requireVerifiedEmail(userId);
   if (input.organizationId) {
     const membership = await db.organizationMember.findFirst({ where: { organizationId: input.organizationId, userId, status: "ACTIVE", isOwner: true }, select: { id: true } });
     if (!membership) throw new Error("Organization owner access required");

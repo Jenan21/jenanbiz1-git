@@ -1,6 +1,7 @@
 import Link from "next/link";
 import type { CSSProperties } from "react";
 import { LogoutButton } from "@/components/auth/logout-button";
+import { HubProjectInvitations } from "@/components/projects/project-invitations";
 import { Icon, type IconName } from "@/components/ui/icons";
 import { LanguageSwitcher } from "@/components/ui/language-switcher";
 import type { Locale } from "@/types/i18n";
@@ -203,6 +204,8 @@ export function ProjectsHub({
           </Link>
         ))}
       </section>
+
+      <HubProjectInvitations ar={ar} />
 
       <section className="projects-dashboard__overview">
         <article className="projects-dashboard__outputs">

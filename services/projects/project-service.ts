@@ -216,32 +216,6 @@ export async function createProject(
   });
 }
 
-export async function addProjectMember(
-  projectId: string,
-  input: { email: string; role: "EDITOR" | "REVIEWER" | "VIEWER" },
-  userId: string,
-) {
-  return db.$transaction(async (transaction) => {
-    const project = await transaction.project.findFirst({ where: { id: projectId, ...projectAccessWhere(userId, [ProjectMemberRole.OWNER]) }, select: { id: true } });
-    if (!project) throw new Error("Project owner access required");
-    const memberUser = await transaction.user.findUnique({ where: { email: input.email.trim().toLowerCase() }, select: { id: true } });
-    if (!memberUser) throw new Error("Project member user not found");
-    if (memberUser.id === userId) throw new Error("Project owner is already a member");
-    const member = await transaction.projectMember.upsert({
-      where: { projectId_userId: { projectId, userId: memberUser.id } },
-      create: { projectId, userId: memberUser.id, addedById: userId, role: input.role },
-      update: { role: input.role, addedById: userId },
-      include: { user: { select: memberIdentitySelect } },
-    });
-    await transaction.auditLog.create({
-      data: { actorId: userId, action: "project.member.upserted", entityType: "ProjectMember", entityId: member.id, metadata: { projectId, memberUserId: member.userId, role: member.role } },
-    });
-    // The owner typed this address, so it goes back to them; nothing else about the person (phone, city, status, role) does.
-    const { user, ...membership } = member;
-    return { ...membership, user: memberUserView(user, { seesEmails: true, userId }) };
-  });
-}
-
 export async function updateProjectPhase(
   projectId: string,
   phaseType: ProjectPhaseType,

@@ -8,7 +8,7 @@ import { MemoryRateLimitProvider } from "@/lib/rate-limit/memory-provider";
 import { RedisRateLimitProvider } from "@/lib/rate-limit/redis-provider";
 import { clientAddress } from "@/lib/security/site-gate";
 
-export type AuthRateLimitRoute = "forgot" | "login" | "oauth" | "register" | "reset";
+export type AuthRateLimitRoute = "forgot" | "login" | "oauth" | "register" | "reset" | "verify";
 
 interface Policy {
   limit: number;
@@ -24,6 +24,7 @@ const perAddressAndAccount: Record<AuthRateLimitRoute, Policy> = {
   oauth: { limit: 20, windowMs: 60_000 },
   register: { limit: 4, windowMs: 60_000 },
   reset: { limit: 8, windowMs: 60_000 },
+  verify: { limit: 10, windowMs: 60_000 },
 };
 
 const perAddress: Record<AuthRateLimitRoute, Policy> = {
@@ -32,6 +33,7 @@ const perAddress: Record<AuthRateLimitRoute, Policy> = {
   oauth: { limit: 60, windowMs: 60_000 },
   register: { limit: 30, windowMs: 3_600_000 },
   reset: { limit: 30, windowMs: 3_600_000 },
+  verify: { limit: 60, windowMs: 3_600_000 },
 };
 
 const perAccount: Partial<Record<AuthRateLimitRoute, Policy>> = {
@@ -39,6 +41,7 @@ const perAccount: Partial<Record<AuthRateLimitRoute, Policy>> = {
   login: { limit: 30, windowMs: 900_000 },
   register: { limit: 6, windowMs: 3_600_000 },
   reset: { limit: 10, windowMs: 3_600_000 },
+  verify: { limit: 30, windowMs: 3_600_000 },
 };
 
 const globalForRateLimit = globalThis as typeof globalThis & {

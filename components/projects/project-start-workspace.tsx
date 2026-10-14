@@ -12,6 +12,13 @@ import {
   type ReactNode,
 } from "react";
 import { Icon } from "@/components/ui/icons";
+import {
+  type InvitationDelivery,
+  invitationDeliveryMessage,
+  postProjectCommand,
+  ReceivedProjectInvitations,
+  SentProjectInvitations,
+} from "@/components/projects/project-invitations";
 import type { Locale } from "@/types/i18n";
 
 type JsonRecord = Record<string, unknown>;
@@ -1505,13 +1512,26 @@ function TeamVendorsScreen({
   const [vendorCategory, setVendorCategory] = useState("");
   const [vendorEmail, setVendorEmail] = useState("");
   const [vendorKind, setVendorKind] = useState("VENDOR");
-  async function addMember(event: FormEvent<HTMLFormElement>) {
+  const [inviteMessage, setInviteMessage] = useState("");
+  const [inviteVersion, setInviteVersion] = useState(0);
+  async function inviteMember(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    await onRun(
-      { action: "addMember", projectId: project.id, email, role: memberRole },
-      t(ar, "تمت إضافة العضو.", "Member added."),
-    );
-    setEmail("");
+    setInviteMessage("");
+    try {
+      const result = await postProjectCommand<{ delivery: InvitationDelivery }>(
+        { action: "inviteMember", projectId: project.id, email, role: memberRole },
+        t(ar, "تعذر إرسال الدعوة.", "The invitation could not be sent."),
+      );
+      setInviteMessage(invitationDeliveryMessage(ar, result.delivery));
+      setEmail("");
+      setInviteVersion((current) => current + 1);
+    } catch (error) {
+      setInviteMessage(
+        error instanceof Error
+          ? error.message
+          : t(ar, "تعذر إرسال الدعوة.", "The invitation could not be sent."),
+      );
+    }
   }
   async function addRole(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -1570,8 +1590,8 @@ function TeamVendorsScreen({
         note={
           mode === "team"
             ? [
-                "أضف مستخدمين مسجلين وحدد احتياجات الأدوار الفعلية للمشروع.",
-                "Add registered users and define actual role requirements.",
+                "ادعُ أعضاء بالبريد، وحدد احتياجات الأدوار الفعلية للمشروع.",
+                "Invite members by e-mail and define actual role requirements.",
               ]
             : [
                 "سجل الموردين والشركاء وحالة اعتمادهم دون بيانات تجريبية.",
@@ -1596,9 +1616,10 @@ function TeamVendorsScreen({
       {mode === "team" ? (
         <div className="psw-team-layout">
           <div className="psw-team-main">
+            <ReceivedProjectInvitations ar={ar} onAccepted={onSaved} />
             <div className="psw-team-actions">
-              <form onSubmit={addMember}>
-                <h2>{t(ar, "إضافة مستخدم مسجل", "Add registered user")}</h2>
+              <form onSubmit={inviteMember}>
+                <h2>{t(ar, "دعوة عضو بالبريد", "Invite a member by e-mail")}</h2>
                 <input
                   required
                   type="email"
@@ -1616,8 +1637,9 @@ function TeamVendorsScreen({
                 </select>
                 <button className="psw-primary-button" type="submit">
                   <Icon name="plus" />
-                  {t(ar, "إضافة عضو", "Add member")}
+                  {t(ar, "إرسال دعوة", "Send invitation")}
                 </button>
+                {inviteMessage ? <p role="status">{inviteMessage}</p> : null}
               </form>
               <form onSubmit={addRole}>
                 <h2>{t(ar, "إضافة احتياج وظيفي", "Add role requirement")}</h2>
@@ -1676,6 +1698,7 @@ function TeamVendorsScreen({
                 );
               })}
             </div>
+            <SentProjectInvitations ar={ar} projectId={project.id} refreshKey={inviteVersion} />
           </div>
           <aside className="psw-panel psw-role-list">
             <header>

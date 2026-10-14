@@ -4,6 +4,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import type { ReactNode } from "react";
+import { EmailVerificationNotice } from "@/components/auth/email-verification-notice";
 import { LogoutButton } from "@/components/auth/logout-button";
 import { Icon, type IconName } from "@/components/ui/icons";
 import { LanguageSwitcher } from "@/components/ui/language-switcher";
@@ -110,6 +111,7 @@ export function PlatformShell({
           </div>
         </header>
 
+        <EmailVerificationNotice locale={locale} />
         <main className="platform-body">{children}</main>
 
         <div className="bottom-ticker glass market-unavailable">

@@ -1,7 +1,6 @@
 import { afterAll, describe, expect, it } from "vitest";
 import { db } from "@/lib/db";
 import {
-  addProjectMember,
   createProjectComplianceItem,
   createProject,
   createProjectRisk,
@@ -19,6 +18,7 @@ import {
   updateProjectVendorStatus,
 } from "@/services/projects/project-service";
 import { saveProjectAnalysisInput } from "@/services/projects/project-analysis";
+import { acceptProjectInvitation, inviteProjectMember } from "@/services/projects/project-invitations";
 import { saveProjectLaunchPlanSection } from "@/services/projects/project-launch";
 
 const suffix = crypto.randomUUID().slice(0, 8);
@@ -64,8 +64,12 @@ describe("projects domain", () => {
     );
     projectId = project.id;
     outsiderProjectId = (await createProject({ name: `Private outsider portfolio ${suffix}`, sector: "Private" }, outsider.id)).id;
-    await addProjectMember(project.id, { email: editor.email, role: "EDITOR" }, user.id);
-    await addProjectMember(project.id, { email: reviewer.email, role: "REVIEWER" }, user.id);
+    const invitations = await Promise.all([
+      inviteProjectMember(project.id, { email: editor.email, role: "EDITOR" }, user.id, { provider: null }),
+      inviteProjectMember(project.id, { email: reviewer.email, role: "REVIEWER" }, user.id, { provider: null }),
+    ]);
+    await acceptProjectInvitation(invitations[0].invitation.id, editor.id);
+    await acceptProjectInvitation(invitations[1].invitation.id, reviewer.id);
     expect((await listUserProjects(editor.id)).some((item) => item.id === project.id)).toBe(true);
     const filteredPage = await listUserProjectsPage(editor.id, { limit: 1, offset: 0, search: `Private outsider portfolio ${suffix}` });
     expect(filteredPage.projects).toHaveLength(0);

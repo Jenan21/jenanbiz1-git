@@ -95,13 +95,13 @@ The `security-sweep` project (`npm run test:e2e:security`) reads every API route
 
 ## Initial SUPER_ADMIN bootstrap
 
-The first `SUPER_ADMIN` is created by a server-side CLI only; there is no HTTP endpoint. Supply `SUPER_ADMIN_EMAIL`, `SUPER_ADMIN_PASSWORD`, and optional profile variables through the runtime environment, then run:
+The first `SUPER_ADMIN` is created by a server-side CLI only; there is no HTTP endpoint. Run it from a trusted machine with the target `DATABASE_URL` in the runtime environment and the administrator's address on the command line:
 
 ```bash
-npm run auth:bootstrap-super-admin
+npm run auth:bootstrap-super-admin -- --email=owner@example.com --name="Site Owner"
 ```
 
-Never place real values in Git. The command uses Argon2id, a serializable PostgreSQL transaction, and an advisory transaction lock. It refuses to run when any `SUPER_ADMIN` already exists or when the requested email is already assigned, and writes `super_admin.bootstrapped` to `AuditLog`. Any later SUPER_ADMIN creation must use a separately authorized administrative workflow.
+The password is never read from a file and never written anywhere: leave `SUPER_ADMIN_PASSWORD` unset in an interactive terminal and the command generates a strong password (24 characters) and shows it **once** at the end; or supply your own `SUPER_ADMIN_PASSWORD` (16 to 128 characters). A database that is not local needs a typed confirmation of its host name (`--yes` in automation). The address is stored as **not verified** unless `--mark-verified` is passed (use it only when you own the inbox); verify it from the account after signing in once e-mail is set up (`docs/email-setup.md`). The command uses Argon2id, a serializable PostgreSQL transaction and an advisory lock; it refuses to run when any `SUPER_ADMIN` already exists or the address is already assigned, so there is exactly one bootstrap, and it writes `super_admin.bootstrapped` to `AuditLog`. Never place real values in Git. Any later SUPER_ADMIN creation must use a separately authorized administrative workflow.
 
 ## Authentication rate limiting
 
@@ -111,7 +111,7 @@ Every authentication route spends three independent budgets (`lib/rate-limit/aut
 
 ## Social sign-in (Google and Apple)
 
-Both sign-in panels show «المتابعة عبر Google / Apple» under the form. A provider's button is **disabled and marked «قريباً / Soon»** until all of its credentials are present, so nothing is offered that cannot work. To turn one on, set its variables (see `.env.example`; `AUTH_SECRET` must also be set) and register this redirect URI with the provider, using the value of `NEXT_PUBLIC_APP_URL` as the origin:
+Both sign-in panels show «المتابعة عبر Google / Apple» under the form, but **only for providers that are configured**. A provider whose credentials are missing is not shown at all, and when none is configured the whole row disappears (the panel keeps its approved layout), so nothing is offered that cannot work. To turn one on, set its variables (see `.env.example`; `AUTH_SECRET` must also be set) and register this redirect URI with the provider, using the value of `NEXT_PUBLIC_APP_URL` as the origin:
 
 | Provider | Variables | Redirect URI |
 |---|---|---|
@@ -126,9 +126,27 @@ Accounts: a returning provider identity signs in directly. A verified email that
 
 Tests: `npm run test:e2e:social-auth` (UI states and the full redirect flow against a local mock provider), plus `tests/unit/oauth-*.test.ts` and `tests/integration/oauth-signin.integration.test.ts`.
 
+## E-mail: verification, recovery and invitations
+
+All outgoing e-mail goes through one provider (Resend) configured with `RESEND_API_KEY` and `MAIL_FROM`; the full set-up (domain, SPF/DKIM records, variables) is in [docs/email-setup.md](docs/email-setup.md) and `npm run mail:check` validates it. Until it is configured nothing is sent and the interface says so.
+
+- **E-mail verification.** `/user/verify-email` (and a notice in the signed-in shell) mails a six-digit code to the account's own address: valid for 15 minutes, five guesses per code (counted atomically), one code a minute, five an hour; the code only verifies the address it was sent to. When `REQUIRE_EMAIL_VERIFICATION=true` (automatic after `PUBLIC_LAUNCH=approved`), accepting invitations, inviting people, publishing market listings and job postings, and requesting campaign payment need a verified address. Accounts created through Google sign-in start verified because the provider asserts the address.
+- **Project invitations (Invite/Accept).** A project owner invites an e-mail address with a role; nobody is added directly. The invitation is keyed by the address (so the answer is identical for registered and unknown addresses), grants nothing, expires after 14 days, can be cancelled by the owner, and is accepted or declined by the signed-in account whose verified address matches. Owners see their pending invitations per project; invitees see theirs at the top of Projects. Limits: 50 open invitations per project, 40 invitations per person per day, and the existing membership rate limit. Organization invitations also require a verified address on both sides when verification is required.
+
+## Visual regression for the frozen pages
+
+`/`, `/login` and `/register` are design-frozen, so changes to them are checked pixel for pixel before and after. `tests/e2e/visual-regression.spec.ts` captures 64 screenshots (four states, Arabic and English, eight viewports, reduced motion) with zero tolerance. Baselines are not committed: record them on the commit you start from, then compare after your change.
+
+```bash
+VISUAL_BASELINE_DIR=/path/outside/the/repo npm run test:e2e -- tests/e2e/visual-regression.spec.ts --project=visual-regression --update-snapshots   # record
+VISUAL_BASELINE_DIR=/path/outside/the/repo npm run test:e2e -- tests/e2e/visual-regression.spec.ts --project=visual-regression                      # compare
+```
+
+The home world map is a static asset (`public/assets/gateway-world.v1.svg`, immutable cache) referenced with `<use>`, generated from the map data by `npm run generate:world-map`; `node scripts/generate-world-map.mjs --check` fails when the committed files are stale.
+
 ## Password recovery delivery
 
-Development returns a local single-use recovery code for testing. Production sends the code through Resend when both `RESEND_API_KEY` and `AUTH_RECOVERY_EMAIL_FROM` are configured; `AUTH_RECOVERY_EMAIL_ENDPOINT` may override the API endpoint for a compatible approved provider. Responses never reveal whether an account exists. If no provider is configured, the interface reports that recovery delivery is unavailable. Provider failures are audited, the undelivered token is invalidated, and the public response remains neutral to prevent account enumeration.
+Development returns a local single-use recovery code for testing. Production sends the code through Resend when `RESEND_API_KEY` and `MAIL_FROM` (or the older `AUTH_RECOVERY_EMAIL_FROM`) are configured; `AUTH_RECOVERY_EMAIL_ENDPOINT` may override the API endpoint for a compatible approved provider. Responses never reveal whether an account exists. If no provider is configured, the interface reports that recovery delivery is unavailable. Provider failures are audited, the undelivered token is invalidated, and the public response remains neutral to prevent account enumeration.
 
 ## Security posture
 
@@ -164,7 +182,7 @@ The Vercel deployment must not be promoted until a managed Redis integration is 
 
 The `postgres-backup` service writes a compressed PostgreSQL dump immediately after startup and then on `BACKUP_INTERVAL_SECONDS` (default: daily). It retains backups for `BACKUP_RETENTION_DAYS` (default: 14), and its healthcheck fails when the latest successful backup is stale. Restore drills must be performed against a separate database before treating a deployment as production-ready.
 
-GitHub Actions runs on pull requests and pushes to `main`. The *Continuous verification* workflow has a fast `verify` job (type check, lint, unit and integration tests, production build, dependency audit) and an `e2e` matrix that runs the 36 Playwright projects in seven parallel groups, each with its own server, PostgreSQL, and Redis, so the suite finishes in the time of its slowest group. A separate `production-build` job builds the application and starts the real production server (private gate, Redis rate limits, enforced content security policy), then runs the CSP audit and the load and abuse test against it. The `review-pack` project only produces screenshots and is excluded. *CodeQL* analyses the code and the workflows, *Dependency review* blocks pull requests that add high-severity dependencies, and a separate scheduled workflow probes the public Vercel readiness endpoint every five minutes; a non-200 response makes it fail visibly. Configure managed Redis and the production environment variables before relying on a successful readiness check.
+GitHub Actions runs on pull requests and pushes to `main`. The *Continuous verification* workflow has a fast `verify` job (type check, lint, unit and integration tests, production build, dependency audit) and an `e2e` matrix that runs the 37 Playwright projects in seven parallel groups, each with its own server, PostgreSQL, and Redis, so the suite finishes in the time of its slowest group. A separate `production-build` job builds the application and starts the real production server (private gate, Redis rate limits, enforced content security policy), then runs the CSP audit and the load and abuse test against it. The `review-pack` project only produces screenshots and is excluded. *CodeQL* analyses the code and the workflows, *Dependency review* blocks pull requests that add high-severity dependencies, and a separate scheduled workflow probes the public Vercel readiness endpoint every five minutes; a non-200 response makes it fail visibly. Configure managed Redis and the production environment variables before relying on a successful readiness check.
 
 ### Releasing to Vercel
 
@@ -189,14 +207,14 @@ A `.sa` domain must first be registered through a SaudiNIC-accredited registrar 
 1. Run `vercel domains add <domain> jenan-pro-private`, then `vercel domains verify <domain>` and create the DNS records it prints at the DNS provider (the apex `A` records and a `CNAME` for `www`), or delegate the nameservers to `ns1.vercel-dns.com` and `ns2.vercel-dns.com`. Add `www.<domain>` with a permanent redirect to the apex: `vercel api /v10/projects/jenan-pro-private/domains -X POST -f name=www.<domain> -f redirect=<domain> -F redirectStatusCode=308`. Vercel issues the HTTPS certificate by itself once the records resolve; a domain can be attached before it resolves.
 2. Set `NEXT_PUBLIC_APP_URL` to `https://<domain>` in the Production environment and release again; it is used for OAuth redirect URIs, absolute links, and the metadata base (canonical and Open Graph URLs).
 3. Register the new OAuth redirect URIs with Google and Apple and update `PRODUCTION_READINESS_URL`.
-4. The site stays behind the private gate until the owner approves each step of the staged access below. Password recovery needs `RESEND_API_KEY` and `AUTH_RECOVERY_EMAIL_FROM`.
+4. The site stays behind the private gate until the owner approves each step of the staged access below. E-mail (verification, recovery, invitations) needs `RESEND_API_KEY` and `MAIL_FROM`; follow [docs/email-setup.md](docs/email-setup.md).
 
 ### Staged access
 
 The platform is opened in stages, and the owner approves each one:
 
 1. **Private testing (current).** The gate covers every page and API except the health probes, so the home page, sign-in, registration, password recovery, and OAuth cannot be reached without the gate password. `ALLOW_PUBLIC_REGISTRATION=true` only applies behind the gate, which lets the owner create the first account. Production starts with no accounts; the first administrator is created with `npm run auth:bootstrap-super-admin`.
-2. **Limited trial.** A small invited group is given access through the gate. Keep the group small and rotate the gate password when the trial ends.
+2. **Limited trial.** A small invited group is given access through the gate. Before inviting anyone: configure e-mail and run `npm run mail:check`, set `REQUIRE_EMAIL_VERIFICATION=true`, create the single Super Admin, and rotate the gate password (with the owner's approval). Keep the group small and rotate the gate password again when the trial ends. Hosting location is studied in [docs/region-migration-plan.md](docs/region-migration-plan.md).
 3. **Public launch.** Remove `SITE_ACCESS_USERNAME` and `SITE_ACCESS_PASSWORD`, set `PUBLIC_LAUNCH=approved`, decide `ALLOW_PUBLIC_REGISTRATION`, and release again.
 
 Do not remove the gate or widen access without the owner's explicit approval. A deployment that has no gate, such as a Vercel Preview, answers `503` instead of opening by accident.
