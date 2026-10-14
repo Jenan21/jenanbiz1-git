@@ -18,9 +18,12 @@ test.describe.serial("Home service panel links keep their destination", () => {
   test("a guest who picks a Market quick filter returns to it after signing in", async ({ context, page }) => {
     await context.addCookies([{ name: "locale", value: "en", url: origin }]);
     await page.goto("/");
-    await page.locator(".cine__dot").nth(3).click();
     const market = page.locator('.cine__slide[data-state="active"]');
-    await expect(market).toHaveAttribute("data-panel", "market");
+    // A click made before the page has hydrated is lost, and the panels keep rotating; repeat it until it takes effect.
+    await expect(async () => {
+      await page.locator(".cine__dot").nth(3).click();
+      await expect(market).toHaveAttribute("data-panel", "market", { timeout: 1_500 });
+    }).toPass({ timeout: 30_000 });
     await market.getByRole("link", { name: "Restaurants & cafés" }).click();
     await expect(page).toHaveURL(/\/auth\?next=%2Fmarket%2Flistings%3Fq%3D/);
 
