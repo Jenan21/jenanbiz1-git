@@ -105,4 +105,12 @@ describe("project analysis result", () => {
       "PROCEED_TO_DETAILED_FEASIBILITY",
     );
   });
+
+  it("does not read an empty competitor search as low competition or as evidence", () => {
+    const result = buildProjectAnalysisResult(intelligence({ competitors: [] }));
+
+    expect(result.competitionLevel).toBe("UNAVAILABLE");
+    expect(result.competitorCount).toBeNull();
+    expect(result.evidenceCompleteness).toBe(85);
+  });
 });

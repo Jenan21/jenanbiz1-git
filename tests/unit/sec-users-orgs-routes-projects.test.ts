@@ -182,4 +182,26 @@ describe("projects command route", () => {
       expect(rejected.status).toBe(400);
     }
   });
+
+  it("refuses an idea, a place or a name that cannot be understood, with a readable reason, before any record is written", async () => {
+    const bodies = [
+      { action: "saveProjectAnalysis", projectId, input: { idea: "هههههههههههه", city: "Riyadh", targetAudience: "CONSUMERS" } },
+      { action: "saveProjectAnalysis", projectId, input: { idea: "منصة رقمية لتوصيل المنتجات الصحية", city: "aaaaaaaa", targetAudience: "CONSUMERS" } },
+      { action: "create", name: "هههههههههههه", description: "منصة رقمية لتوصيل المنتجات الصحية", sector: "Food", countryCode: "SA" },
+      { action: "saveProjectLaunchPlan", projectId, payload: { section: "BASICS", data: { projectName: "Jenan", idea: "asdfghjkl qwerty", entityType: "LLC", sector: "Food", city: "Riyadh", targetAudience: "Families", initialCapital: 100000, durationMonths: 12, teamSize: 3 } } },
+    ];
+    for (const body of bodies) {
+      const response = await postProjects(command(body));
+      expect(response.status, JSON.stringify(body)).toBe(400);
+      const payload = await response.json() as { code?: string; message: string };
+      expect(payload.code).toBe("UNREADABLE_TEXT");
+      expect(payload.message).toMatch(/[\u0600-\u06ff]/);
+    }
+  });
+
+  it("keeps the generic answer for other invalid commands", async () => {
+    const response = await postProjects(command({ action: "saveProjectAnalysis", projectId, input: { idea: "منصة رقمية لتوصيل المنتجات الصحية", city: "Riyadh", targetAudience: "NOBODY" } }));
+    expect(response.status).toBe(400);
+    await expect(response.json()).resolves.toEqual({ success: false, message: "Invalid project command" });
+  });
 });

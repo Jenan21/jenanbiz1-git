@@ -163,6 +163,7 @@ export async function createProjectReport(projectId: string, userId: string, int
     addText(`Project idea: ${jsonText(analysisInput?.idea)}`);
     addText(`Recommendations: ${jsonText(analysisResult?.recommendations)}`);
     addText("Analysis evidence completeness is not a probability of project success.");
+    addText("The indicators describe the location and country, not the idea itself; idea-specific analysis needs an AI provider that is not enabled on the platform.");
   }
   const feasibilityStudy = jsonRecord(project.feasibilityStudy);
   const feasibilitySections = jsonRecord(feasibilityStudy?.sections);

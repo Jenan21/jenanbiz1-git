@@ -7,6 +7,7 @@ type LocationInput = {
 };
 
 type SourceRecord = { source: string; url: string; fetchedAt: string; confidence: "HIGH" | "MEDIUM" | "LOW" };
+import { competitorSelectorsFor } from "@/lib/projects/competitor-sectors";
 import { getProjectIntelligenceProvider } from "@/services/projects/project-intelligence-provider";
 export type ProjectIntelligenceResult = {
   location: { latitude: number; longitude: number; label: string } | null;
@@ -83,20 +84,27 @@ export async function searchProjectIntelligence(input: LocationInput): Promise<P
     result.limitations.push("A two-letter country code is required for population and purchasing-power data.");
   }
 
-  if (location) {
+  const selectors = competitorSelectorsFor(input.sector);
+  if (!location) {
+    result.limitations.push("A resolvable location is required for competitor discovery.");
+  } else if (!selectors) {
+    result.limitations.push("Competitor discovery needs a sector with a known map category; no competitor count is shown for this sector.");
+  } else {
     const radius = 5000;
-    const category = input.sector?.trim() ? `nwr[\"name\"][\"industry\"~\"${input.sector.trim().replace(/["\\]/g, "")}",i]` : "nwr[\"name\"]";
-    const overpassQuery = `[out:json][timeout:8];(${category}(around:${radius},${location.latitude},${location.longitude}););out center tags;`;
+    const around = `(around:${radius},${location.latitude},${location.longitude})`;
+    const overpassQuery = `[out:json][timeout:8];(${selectors.map((selector) => `${selector}${around};`).join("")});out center tags;`;
     const overpassUrl = `https://overpass-api.de/api/interpreter?data=${encodeURIComponent(overpassQuery)}`;
     try {
-      const payload = await provider.getJson<{ elements?: Array<{ tags?: { name?: string; amenity?: string; shop?: string; office?: string }; lat?: number; lon?: number; center?: { lat: number; lon: number } }> }>(overpassUrl);
-      result.competitors = (payload.elements ?? []).filter((item) => item.tags?.name).slice(0, 50).map((item) => ({ name: item.tags!.name!, category: item.tags!.amenity ?? item.tags!.shop ?? item.tags!.office ?? "business", latitude: item.lat ?? item.center!.lat, longitude: item.lon ?? item.center!.lon }));
+      const payload = await provider.getJson<{ elements?: Array<{ tags?: { name?: string; amenity?: string; shop?: string; office?: string; leisure?: string; tourism?: string }; lat?: number; lon?: number; center?: { lat: number; lon: number } }> }>(overpassUrl);
+      result.competitors = (payload.elements ?? [])
+        .filter((item) => item.tags?.name && (item.lat ?? item.center?.lat) !== undefined && (item.lon ?? item.center?.lon) !== undefined)
+        .slice(0, 50)
+        .map((item) => ({ name: item.tags!.name!, category: item.tags!.amenity ?? item.tags!.shop ?? item.tags!.office ?? item.tags!.leisure ?? item.tags!.tourism ?? "business", latitude: (item.lat ?? item.center?.lat)!, longitude: (item.lon ?? item.center?.lon)! }));
       sources.push({ source: "OpenStreetMap Overpass", url: overpassUrl, fetchedAt, confidence: "MEDIUM" });
+      if (!result.competitors.length) result.limitations.push("No venues of this sector are mapped within 5 km; this is not evidence that there is no competition.");
     } catch {
       result.limitations.push("Competitor discovery could not be loaded from the map provider.");
     }
-  } else {
-    result.limitations.push("A resolvable location is required for competitor discovery.");
   }
 
   if (!result.population.value) result.limitations.push("Population result is unavailable; no population number is shown.");

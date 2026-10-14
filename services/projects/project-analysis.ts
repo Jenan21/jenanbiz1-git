@@ -92,9 +92,10 @@ function persistedInput(value: unknown): ProjectAnalysisInput | undefined {
 export function buildProjectAnalysisResult(
   intelligence: ProjectIntelligenceResult,
 ): ProjectAnalysisResult {
-  const hasCompetitorSource = intelligence.sources.some(
-    (source) => source.source === "OpenStreetMap Overpass",
-  );
+  // A source with zero results is a gap in the map data, not proof of an empty market.
+  const hasCompetitorSource =
+    intelligence.competitors.length > 0 &&
+    intelligence.sources.some((source) => source.source === "OpenStreetMap Overpass");
   const hasReliableSources =
     intelligence.sources.filter(
       (source) => source.confidence === "HIGH" || source.confidence === "MEDIUM",

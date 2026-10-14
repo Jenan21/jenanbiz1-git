@@ -294,6 +294,21 @@ function formatDate(value: string | undefined, locale: Locale) {
   }).format(new Date(value));
 }
 
+function ScopeNotice({ ar }: { ar: boolean }) {
+  return (
+    <p className="pa-scope-notice" data-testid="analysis-scope-notice" role="note">
+      <Icon name="shield" />
+      <span>
+        {t(
+          ar,
+          "تنبيه: هذه المؤشرات تصف الموقع والدولة (السكان، القوة الشرائية، التضخم، والمنشآت المرصودة على الخريطة) ولا تُقيّم فكرتك نفسها. التحليل الخاص بالفكرة يتطلب مزوّد ذكاء اصطناعي غير مفعّل حاليًا في المنصة، لذلك لا يُعرض حكم على جدواها.",
+          "Note: these indicators describe the location and country (population, purchasing power, inflation, and venues mapped nearby). They do not evaluate your idea itself. Idea-specific analysis needs an AI provider that is not enabled on the platform yet, so no verdict on feasibility is shown.",
+        )}
+      </span>
+    </p>
+  );
+}
+
 function levelLabel(
   value: string | undefined,
   ar: boolean,
@@ -302,6 +317,7 @@ function levelLabel(
   const labels: Record<string, readonly [string, string]> = {
     LOW: ["منخفض", "Low"],
     MODERATE: ["متوسط", "Moderate"],
+    MEDIUM: ["متوسط", "Moderate"],
     HIGH: ["مرتفع", "High"],
     UNAVAILABLE: ["غير متاح", "Unavailable"],
   };
@@ -794,6 +810,7 @@ function ResultScreen({
         </div>
         <Link className="pa-primary-button" href={`/projects/analysis/report?project=${project.id}`}><Icon name="eye" />{t(ar, "عرض التقرير الكامل", "View full report")}</Link>
       </header>
+      <ScopeNotice ar={ar} />
       <div className="pa-result-metrics">
         <article className={`tone-${result.competitionLevel.toLowerCase()}`}><Icon name="people" /><span>{t(ar, "مستوى المنافسة", "Competition level")}</span><strong>{levelLabel(result.competitionLevel, ar)}</strong><small>{result.competitorCount === null ? t(ar, "تغطية المنافسين غير متاحة", "Competitor coverage unavailable") : t(ar, `${result.competitorCount} نتيجة مرصودة`, `${result.competitorCount} observed results`)}</small></article>
         <article className={`tone-${result.purchasingPowerLevel.toLowerCase()}`}><Icon name="wallet" /><span>{t(ar, "القوة الشرائية", "Purchasing power")}</span><strong>{levelLabel(result.purchasingPowerLevel, ar)}</strong><small>{t(ar, "وفق مؤشر البنك الدولي المتاح", "Based on available World Bank indicator")}</small></article>
@@ -854,7 +871,7 @@ function ReportScreen({
   } else if (section === "recommendations") {
     content = <><h2>{t(ar, "التوصيات العملية", "Actionable recommendations")}</h2><ol>{result.recommendations.map((code) => resultRecommendations[code] ? <li key={code}>{t(ar, ...resultRecommendations[code])}</li> : null)}</ol></>;
   } else {
-    content = <><span className="pa-report-kicker">{t(ar, "تقرير تحليل مشروع", "Project analysis report")}</span><h1>{project.name}</h1><p>{study.input?.idea}</p><div className="pa-report-score"><strong>{result.evidenceCompleteness}%</strong><span><b>{t(ar, "اكتمال الأدلة", "Evidence completeness")}</b><small>{t(ar, "ليس مقياسًا لفرصة النجاح", "Not a success-probability metric")}</small></span></div><div className="pa-report-summary-cards"><span><small>{t(ar, "المنافسة", "Competition")}</small><b>{levelLabel(result.competitionLevel, ar)}</b></span><span><small>{t(ar, "القوة الشرائية", "Purchasing power")}</small><b>{levelLabel(result.purchasingPowerLevel, ar)}</b></span><span><small>{t(ar, "مخاطر البيانات", "Data risk")}</small><b>{levelLabel(result.dataRiskLevel, ar, false)}</b></span></div></>;
+    content = <><span className="pa-report-kicker">{t(ar, "تقرير تحليل مشروع", "Project analysis report")}</span><h1>{project.name}</h1><p>{study.input?.idea}</p><div className="pa-report-score"><strong>{result.evidenceCompleteness}%</strong><span><b>{t(ar, "اكتمال الأدلة", "Evidence completeness")}</b><small>{t(ar, "ليس مقياسًا لفرصة النجاح", "Not a success-probability metric")}</small></span></div><div className="pa-report-summary-cards"><span><small>{t(ar, "المنافسة", "Competition")}</small><b>{levelLabel(result.competitionLevel, ar)}</b></span><span><small>{t(ar, "القوة الشرائية", "Purchasing power")}</small><b>{levelLabel(result.purchasingPowerLevel, ar)}</b></span><span><small>{t(ar, "مخاطر البيانات", "Data risk")}</small><b>{levelLabel(result.dataRiskLevel, ar, false)}</b></span></div><ScopeNotice ar={ar} /></>;
   }
   return (
     <section className="pa-page pa-report-page" data-testid="analysis-report">

@@ -12,6 +12,7 @@ import {
   type ReactNode,
 } from "react";
 import { Icon } from "@/components/ui/icons";
+import { nameProblem, textProblem, textProblemMessage } from "@/lib/projects/text-quality";
 import {
   type InvitationDelivery,
   invitationDeliveryMessage,
@@ -790,6 +791,11 @@ function BasicsScreen({
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setMessage("");
+    const problem = textProblem(idea) ?? nameProblem(projectName) ?? nameProblem(city);
+    if (problem) {
+      setMessage(textProblemMessage(problem, ar ? "ar" : "en"));
+      return;
+    }
     try {
       let projectId = project?.id;
       if (!projectId) {

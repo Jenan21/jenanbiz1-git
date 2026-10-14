@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { useState, type ChangeEvent, type FormEvent } from "react";
 import { ProjectsCommandHeader } from "@/components/projects/projects-command-header";
 import { Icon, type IconName } from "@/components/ui/icons";
+import { nameProblem, textProblem, textProblemMessage, type TextProblem } from "@/lib/projects/text-quality";
 import type { Locale } from "@/types/i18n";
 
 type CreatedProject = { id: string };
@@ -52,8 +53,16 @@ export function ProjectAnalysisDashboard({
 
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    setBusy(true);
     setMessage("");
+
+    // Checked before any request so that unreadable text never creates a project record.
+    const ideaProblem = textProblem(idea);
+    const cityProblem = nameProblem(city);
+    if (ideaProblem || cityProblem) {
+      setMessage(textProblemMessage((ideaProblem ?? cityProblem) as TextProblem, locale));
+      return;
+    }
+    setBusy(true);
 
     try {
       const response = await fetch("/api/projects", {

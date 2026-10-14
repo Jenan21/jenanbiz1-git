@@ -26,6 +26,7 @@ import {
   revokeProjectInvitation,
 } from "@/services/projects/project-invitations";
 import { EmailNotVerifiedError } from "@/lib/auth/email-verification-policy";
+import { nameProblem, problemFromIssue, textProblem, textProblemBilingualMessage, textQualityIssue } from "@/lib/projects/text-quality";
 import { assessProjectQuality } from "@/services/projects/project-quality";
 import { saveProjectIntelligenceSnapshot, searchProjectIntelligence } from "@/services/projects/project-intelligence";
 import { db } from "@/lib/db";
@@ -59,9 +60,27 @@ const financialInputs = z.object({
   annualInflationRate: z.number().finite().min(0).max(100).optional(),
   taxRate: z.number().finite().min(0).max(100).optional(),
 });
+const ideaText = z
+  .string()
+  .trim()
+  .min(10)
+  .max(4000)
+  .superRefine((value, context) => {
+    const problem = textProblem(value);
+    if (problem) context.addIssue({ code: "custom", message: textQualityIssue(problem) });
+  });
+const placeText = z
+  .string()
+  .trim()
+  .min(2)
+  .max(160)
+  .superRefine((value, context) => {
+    const problem = nameProblem(value);
+    if (problem) context.addIssue({ code: "custom", message: textQualityIssue(problem) });
+  });
 const projectAnalysisInput = z.object({
-  idea: z.string().trim().min(10).max(4000),
-  city: z.string().trim().min(2).max(160),
+  idea: ideaText,
+  city: placeText,
   targetAudience: z.enum(["CONSUMERS", "BUSINESSES", "YOUTH", "FAMILIES"]),
   budgetRange: z
     .enum(["UNDER_100K", "BETWEEN_100K_500K", "BETWEEN_500K_1M", "ABOVE_1M"])
@@ -71,11 +90,11 @@ const projectLaunchPayload = z.discriminatedUnion("section", [
   z.object({
     section: z.literal("BASICS"),
     data: z.object({
-      projectName: z.string().trim().min(2).max(160),
-      idea: z.string().trim().min(10).max(4000),
+      projectName: placeText,
+      idea: ideaText,
       entityType: z.enum(["LLC", "SOLE_PROPRIETORSHIP", "JOINT_STOCK", "NONPROFIT", "OTHER"]),
       sector: z.string().trim().min(2).max(120),
-      city: z.string().trim().min(2).max(160),
+      city: placeText,
       targetAudience: z.string().trim().min(2).max(500),
       initialCapital: z.number().finite().positive().max(1_000_000_000_000),
       durationMonths: z.number().int().min(1).max(120),
@@ -253,7 +272,7 @@ function actionRateLimit(action: (typeof commandSchema)["_output"]["action"]): P
 const commandSchema = z.discriminatedUnion("action", [
   z.object({
     action: z.literal("create"),
-    name: z.string().trim().min(2).max(160),
+    name: placeText,
     description: z.string().trim().max(4000).optional(),
     sector: z.string().trim().max(120).optional(),
     countryCode: z.string().trim().length(2).optional(),
@@ -363,7 +382,14 @@ export async function POST(request: NextRequest) {
   if (!user) return NextResponse.json({ success: false, message: "Authentication required" }, { status: 401 });
   if (!hasValidOrigin(request)) return NextResponse.json({ success: false, message: "Invalid request origin" }, { status: 403 });
   const parsed = commandSchema.safeParse(await request.json().catch(() => null));
-  if (!parsed.success) return NextResponse.json({ success: false, message: "Invalid project command" }, { status: 400 });
+  if (!parsed.success) {
+    // A text that cannot be understood gets a readable reason; every other schema failure stays generic.
+    const unreadable = parsed.error.issues.map((issue) => problemFromIssue(issue.message)).find((problem) => problem !== null);
+    return NextResponse.json(
+      { success: false, code: unreadable ? "UNREADABLE_TEXT" : undefined, message: unreadable ? textProblemBilingualMessage(unreadable) : "Invalid project command" },
+      { status: 400 },
+    );
+  }
   const rateLimitAction = actionRateLimit(parsed.data.action);
   if (rateLimitAction) {
     const decision = await checkProjectRateLimit(rateLimitAction, request, user.id);
