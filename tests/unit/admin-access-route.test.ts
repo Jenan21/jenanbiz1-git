@@ -11,11 +11,11 @@ beforeEach(() => {
 });
 
 describe("admin access probe", () => {
-  it("answers false, not an error, for a visitor without a session", async () => {
+  it("refuses a visitor without a session like every other private route", async () => {
     const response = await GET();
-    expect(response.status).toBe(200);
+    expect(response.status).toBe(401);
     expect(response.headers.get("cache-control")).toBe("no-store");
-    await expect(response.json()).resolves.toEqual({ admin: false });
+    await expect(response.json()).resolves.toEqual({ error: "AUTHENTICATION_REQUIRED" });
   });
 
   it("is true only for administrators and the platform owner", async () => {

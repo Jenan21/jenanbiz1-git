@@ -3,9 +3,10 @@ import { getCurrentUser } from "@/lib/auth/session";
 
 const noStore = { "cache-control": "no-store" };
 
-/** Whether the signed-in account may open /admin. Anonymous visitors get a plain `false`, not an error. */
+/** Whether the signed-in account may open /admin. Visitors without a session are refused like every other private route. */
 export async function GET() {
   const user = await getCurrentUser();
-  const admin = user?.systemRole === "ADMIN" || user?.systemRole === "SUPER_ADMIN";
+  if (!user) return NextResponse.json({ error: "AUTHENTICATION_REQUIRED" }, { status: 401, headers: noStore });
+  const admin = user.systemRole === "ADMIN" || user.systemRole === "SUPER_ADMIN";
   return NextResponse.json({ admin }, { headers: noStore });
 }
