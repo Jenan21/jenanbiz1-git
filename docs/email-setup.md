@@ -58,6 +58,9 @@ you confirm the domain status in the Resend dashboard instead.
 * **Project invitations**: the owner invites an address; the person signs in with it, verifies it, and accepts or declines
   under Projects. The mail contains no link or token: access is granted only by an explicit accept from the matching,
   verified account.
+* **Account approval** (public site): the owners get one e-mail per new registration (at most ten an hour) with the
+  applicant's name and address and a link to `/admin/users`; the applicant gets an e-mail only after approval, so
+  registering with somebody else's address never mails that person.
 
 ## 6. Troubleshooting
 

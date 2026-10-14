@@ -3,12 +3,14 @@ import { db } from "@/lib/db";
 import type { OAuthProfile } from "@/lib/auth/oauth/flow";
 import type { OAuthProviderId } from "@/lib/auth/oauth/shared";
 import { createSession, type RequestContext } from "@/services/auth/auth.service";
+import { notifyOwnersOfPendingAccount } from "@/services/auth/account-approval-service";
 
 export type OAuthSignInErrorCode =
   | "ACCOUNT_DISABLED"
   | "ACCOUNT_EXISTS"
   | "EMAIL_MISSING"
   | "EMAIL_UNVERIFIED"
+  | "PENDING_APPROVAL"
   | "REGISTRATION_CLOSED";
 
 export class OAuthSignInError extends Error {
@@ -24,6 +26,8 @@ export interface OAuthSignInOptions {
   countryCode?: string | null;
   /** Whether a brand-new account may be created (the same policy as the password registration route). */
   registrationOpen: boolean;
+  /** When set, a brand-new account is created waiting for the owner's approval and gets no session. */
+  approvalRequired?: boolean;
 }
 
 const providerEnum: Record<OAuthProviderId, AuthIdentityProvider> = {
@@ -49,6 +53,7 @@ async function attemptSignIn(
     });
 
     if (identity) {
+      if (identity.user.status === UserStatus.PENDING) throw new OAuthSignInError("PENDING_APPROVAL");
       if (identity.user.status !== UserStatus.ACTIVE) throw new OAuthSignInError("ACCOUNT_DISABLED");
       await tx.authIdentity.update({
         where: { id: identity.id },
@@ -76,6 +81,7 @@ async function attemptSignIn(
     if (existingWithHash) {
       // Only whether a password exists is needed; the hash itself goes no further than this check.
       const { passwordHash, ...existing } = existingWithHash;
+      if (existing.status === UserStatus.PENDING) throw new OAuthSignInError("PENDING_APPROVAL");
       if (existing.status !== UserStatus.ACTIVE) throw new OAuthSignInError("ACCOUNT_DISABLED");
       // An unverified password account might have been created by someone who does not own the address.
       // It is linked only when no such squatter can exist: the address was verified before, the account
@@ -105,11 +111,12 @@ async function attemptSignIn(
     }
 
     if (!options.registrationOpen) throw new OAuthSignInError("REGISTRATION_CLOSED");
+    const pending = options.approvalRequired === true;
     const user = await tx.user.create({
       data: {
         email,
         passwordHash: null,
-        status: UserStatus.ACTIVE,
+        status: pending ? UserStatus.PENDING : UserStatus.ACTIVE,
         systemRole: SystemRole.USER,
         emailVerifiedAt: new Date(),
         profile: {
@@ -124,8 +131,8 @@ async function attemptSignIn(
           create: { provider, providerAccountId: profile.subject, email, lastUsedAt: new Date() },
         },
       },
+      include: { profile: true },
     });
-    const session = await createSession(user.id, false, tx, context);
     await tx.auditLog.create({
       data: {
         actorId: user.id,
@@ -133,9 +140,11 @@ async function attemptSignIn(
         entityType: "User",
         entityId: user.id,
         ipAddress: context.ipAddress,
-        metadata: { locale: options.locale, countryCode: options.countryCode ?? null, method: profile.provider },
+        metadata: { locale: options.locale, countryCode: options.countryCode ?? null, method: profile.provider, ...(pending ? { approval: "pending" } : {}) },
       },
     });
+    if (pending) return { pendingApplicant: { id: user.id, email: user.email, displayName: user.profile?.displayName ?? "" } };
+    const session = await createSession(user.id, false, tx, context);
     return { user, created: true, ...session };
   });
 }
@@ -149,12 +158,18 @@ export async function signInWithOAuthProfile(
   options: OAuthSignInOptions,
   context: RequestContext = {},
 ) {
+  let result;
   try {
-    return await attemptSignIn(profile, options, context);
+    result = await attemptSignIn(profile, options, context);
   } catch (error) {
     // Two simultaneous first sign-ins for the same person race on the unique keys; the second sees the winner.
-    if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2002")
-      return attemptSignIn(profile, options, context);
-    throw error;
+    if (!(error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2002")) throw error;
+    result = await attemptSignIn(profile, options, context);
   }
+  if ("pendingApplicant" in result && result.pendingApplicant) {
+    // The account exists and waits for the owner; the visitor gets no session. Telling the owners is best effort.
+    await notifyOwnersOfPendingAccount(result.pendingApplicant).catch(() => console.error("Owner notice failed without exposing request data"));
+    throw new OAuthSignInError("PENDING_APPROVAL");
+  }
+  return result;
 }

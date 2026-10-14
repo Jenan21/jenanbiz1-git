@@ -1,6 +1,7 @@
 import { timingSafeEqual } from "node:crypto";
 import { db } from "@/lib/db";
 import { isPublicRegistrationAllowed } from "@/lib/auth/registration-policy";
+import { accountApprovalRequired } from "@/lib/auth/account-approval-policy";
 import {
   completeAuthorization,
   createAuthorizationRequest,
@@ -84,6 +85,7 @@ const signInErrorCodes = {
   ACCOUNT_EXISTS: "account_exists",
   EMAIL_MISSING: "email_missing",
   EMAIL_UNVERIFIED: "email_unverified",
+  PENDING_APPROVAL: "pending_approval",
   REGISTRATION_CLOSED: "registration_closed",
 } as const satisfies Record<OAuthSignInError["code"], OAuthErrorCode>;
 
@@ -162,6 +164,7 @@ export async function finishOAuth(input: FinishOAuthInput): Promise<FinishOAuthR
         locale: transaction.locale,
         countryCode: input.countryCode,
         registrationOpen: isPublicRegistrationAllowed(input.env),
+        approvalRequired: accountApprovalRequired(input.env),
       },
       input.context,
     );

@@ -39,7 +39,7 @@ export async function POST(request: NextRequest) {
         { status: 400 },
       );
     if (error instanceof AuthenticationError) {
-      const status = error.code === "ACCOUNT_DISABLED" ? 403 : 401;
+      const status = error.code === "ACCOUNT_DISABLED" || error.code === "PENDING_APPROVAL" ? 403 : 401;
       return NextResponse.json({ error: error.code }, { status });
     }
     if (error instanceof PasswordWorkBusyError) return busyResponse();

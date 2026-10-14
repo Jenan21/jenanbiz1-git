@@ -680,6 +680,46 @@ body:has(.access-page) nextjs-portal {
 }
 
 /* ---------- status / hints ---------- */
+.auth-pending {
+  display: grid;
+  justify-items: center;
+  gap: 12px;
+  padding-top: 24px;
+  color: #dff6fb;
+  text-align: center;
+}
+
+.auth-pending svg {
+  width: 40px;
+  height: 40px;
+  color: #8cf0be;
+}
+
+.auth-pending strong {
+  font-size: 20px;
+  line-height: 1.3;
+}
+
+.auth-pending p {
+  margin: 0;
+  color: #b7cadb;
+  font-size: 14.5px;
+  line-height: 1.7;
+}
+
+.auth-pending__link {
+  margin-top: 8px;
+  color: #19e7f0;
+  font-weight: 700;
+  text-decoration: none;
+}
+
+.auth-pending__link:hover,
+.auth-pending__link:focus-visible {
+  text-decoration: underline;
+  outline: 0;
+}
+
 .auth-status {
   position: absolute;
   top: 252px;

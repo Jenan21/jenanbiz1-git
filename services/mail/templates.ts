@@ -105,3 +105,49 @@ export function projectInvitationEmail(input: { inviterName: string; projectName
     ignoreFooter,
   );
 }
+
+/** Sent to the applicant only after the owner approves the account; it never links to anything but the sign-in page. */
+export function accountApprovedEmail(input: { name: string; signInUrl: string }): MailMessage {
+  const name = singleLine(input.name, 80);
+  const greeting = name ? ` ${name}` : "";
+  return render(
+    "Your Jenan PRO account is approved · تمت الموافقة على حسابك في جنان برو",
+    {
+      en: {
+        heading: "Your account is approved",
+        lines: [`Welcome${greeting}. You can now sign in to Jenan PRO with the e-mail address and password you registered with.`, `Sign in at ${input.signInUrl}`],
+      },
+      ar: {
+        heading: "تمت الموافقة على حسابك",
+        lines: [`أهلًا${greeting}. يمكنك الآن تسجيل الدخول إلى جنان برو بالبريد وكلمة المرور اللذين سجّلت بهما.`, `سجّل الدخول من ${input.signInUrl}`],
+      },
+    },
+    {
+      ar: "إن لم تسجّل في جنان برو فتجاهل هذه الرسالة.",
+      en: "If you did not register with Jenan PRO, ignore this message.",
+    },
+  );
+}
+
+/** Sent to the owners when somebody registers; the details are the ones the applicant typed, shown to the owners only. */
+export function pendingAccountOwnerEmail(input: { applicantName: string; applicantEmail: string; pendingCount: number; reviewUrl: string }): MailMessage {
+  const name = singleLine(input.applicantName, 80) || "(no name)";
+  const email = singleLine(input.applicantEmail, 254);
+  return render(
+    "New Jenan PRO account awaiting approval · حساب جديد بانتظار الموافقة",
+    {
+      en: {
+        heading: "A new account is waiting for your approval",
+        lines: [`${name} (${email}) registered. ${input.pendingCount} account(s) are waiting in total.`, `Review and approve at ${input.reviewUrl}`],
+      },
+      ar: {
+        heading: "حساب جديد بانتظار موافقتك",
+        lines: [`سجّل ${name} (${email}). إجمالي الحسابات المنتظرة: ${input.pendingCount}.`, `راجع الطلبات ووافق من ${input.reviewUrl}`],
+      },
+    },
+    {
+      ar: "هذه رسالة تلقائية للمالكين فقط.",
+      en: "This is an automatic message for the owners only.",
+    },
+  );
+}

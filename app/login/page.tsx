@@ -34,6 +34,9 @@ export default async function LoginPage() {
           ACCOUNT_DISABLED: ar
             ? "الحساب غير متاح حاليًا."
             : "This account is currently unavailable.",
+          PENDING_APPROVAL: ar
+            ? "حسابك بانتظار موافقة المالك. سنراسلك عند الموافقة."
+            : "Your account is waiting for the owner's approval. We will e-mail you.",
           VALIDATION_ERROR: ar
             ? "تحقق من البيانات المدخلة."
             : "Please check the entered information.",

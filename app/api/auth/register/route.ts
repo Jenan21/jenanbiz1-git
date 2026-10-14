@@ -1,5 +1,6 @@
-import { NextRequest, NextResponse } from "next/server";
+import { NextRequest, NextResponse, after } from "next/server";
 import { ZodError } from "zod";
+import { accountApprovalRequired } from "@/lib/auth/account-approval-policy";
 import { isPublicRegistrationAllowed } from "@/lib/auth/registration-policy";
 import { getRequestContext, hasValidOrigin } from "@/lib/auth/request";
 import { busyResponse } from "@/lib/auth/busy-response";
@@ -11,6 +12,7 @@ import {
   registerUser,
 } from "@/services/auth/auth.service";
 import { checkAuthRateLimit } from "@/lib/rate-limit/auth-rate-limit";
+import { notifyOwnersOfPendingAccount, registerPendingUser } from "@/services/auth/account-approval-service";
 
 export async function POST(request: NextRequest) {
   if (!hasValidOrigin(request))
@@ -33,7 +35,14 @@ export async function POST(request: NextRequest) {
         },
       );
     const input = registerSchema.parse(payload);
-    const result = await registerUser(input, getRequestContext(request));
+    const context = getRequestContext(request);
+    if (accountApprovalRequired()) {
+      // The account waits for the owner: no session, no cookie, and nothing is mailed to the typed address.
+      const applicant = await registerPendingUser(input, context);
+      after(() => notifyOwnersOfPendingAccount({ displayName: applicant.profile?.displayName ?? input.displayName, email: applicant.email, id: applicant.id }).catch(() => console.error("Owner notice failed without exposing request data")));
+      return NextResponse.json({ status: "PENDING_APPROVAL" }, { status: 202, headers: { "cache-control": "no-store" } });
+    }
+    const result = await registerUser(input, context);
     await setSessionCookie(result.token, result.expiresAt);
     return NextResponse.json(
       {

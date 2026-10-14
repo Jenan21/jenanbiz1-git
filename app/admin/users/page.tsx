@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { AdminShell } from "@/components/admin/admin-shell";
 import { Card } from "@/components/ui/card";
 
@@ -14,9 +14,21 @@ type UserRecord = {
   organizations: string[];
 };
 
+type PendingRecord = {
+  id: string;
+  email: string;
+  displayName: string;
+  countryCode: string | null;
+  phone: string | null;
+  requestedAt: string;
+};
+
 export default function UsersPage() {
   const [lang, setLang] = useState<"ar" | "en">("ar");
   const [users, setUsers] = useState<UserRecord[]>([]);
+  const [pending, setPending] = useState<PendingRecord[]>([]);
+  const [busyId, setBusyId] = useState("");
+  const [notice, setNotice] = useState("");
 
   useEffect(() => {
     const frame = requestAnimationFrame(() => {
@@ -37,19 +49,47 @@ export default function UsersPage() {
     return () => cancelAnimationFrame(frame);
   }, []);
 
-  useEffect(() => {
-    fetch("/api/admin/users")
-      .then((response) => {
-        if (!response.ok) {
-          throw new Error(`Request failed with status ${response.status}`);
-        }
-        return response.json();
-      })
-      .then((payload) => {
-        setUsers(Array.isArray(payload?.users) ? payload.users : []);
-      })
-      .catch(() => undefined);
+  const load = useCallback(async () => {
+    try {
+      const response = await fetch("/api/admin/users", { cache: "no-store" });
+      if (!response.ok) throw new Error(`Request failed with status ${response.status}`);
+      const payload = await response.json();
+      setUsers(Array.isArray(payload?.users) ? payload.users : []);
+      setPending(Array.isArray(payload?.pending) ? payload.pending : []);
+    } catch {
+      // The lists stay as they were; the page shows what it last loaded.
+    }
   }, []);
+
+  useEffect(() => {
+    const frame = requestAnimationFrame(() => void load());
+    return () => cancelAnimationFrame(frame);
+  }, [load]);
+
+  async function decide(account: PendingRecord, action: "approve" | "reject") {
+    setBusyId(account.id);
+    setNotice("");
+    try {
+      const response = await fetch("/api/admin/users", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ action, userId: account.id }),
+      });
+      const payload = (await response.json().catch(() => null)) as { success?: boolean; message?: string } | null;
+      if (!response.ok || !payload?.success) throw new Error(payload?.message ?? "failed");
+      setNotice(
+        action === "approve"
+          ? lang === "ar" ? `تمت الموافقة على ${account.email}${"، وسيصله إشعار بالبريد."}` : `${account.email} approved; they will be e-mailed.`
+          : lang === "ar" ? `تم رفض ${account.email}.` : `${account.email} declined.`,
+      );
+      await load();
+    } catch (error) {
+      setNotice(error instanceof Error && error.message !== "failed" ? error.message : lang === "ar" ? "تعذر تنفيذ العملية." : "The action could not be completed.");
+      await load();
+    } finally {
+      setBusyId("");
+    }
+  }
 
   const qaScore = Math.min(
     10,
@@ -89,6 +129,37 @@ export default function UsersPage() {
             </div>
             <span className={`chip ${qaScore >= 10 ? "chip--success" : "chip--warning"}`}>{qaScore}/10</span>
           </div>
+        </section>
+
+        <section className="owner-grid" data-testid="pending-accounts">
+          <Card className="owner-panel">
+            <header className="panel-header">
+              <h2>{lang === "ar" ? "طلبات التسجيل بانتظار الموافقة" : "Registrations waiting for approval"}</h2>
+              <span>{pending.length}</span>
+            </header>
+            {notice ? <p role="status">{notice}</p> : null}
+            <div className="committee-list">
+              {pending.length > 0 ? pending.map((account) => (
+                <div key={account.id} className="committee-item" data-testid="pending-account">
+                  <div>
+                    <strong>{account.displayName || account.email}</strong>
+                    <small>{account.email}{account.countryCode ? ` · ${account.countryCode}` : ""}{account.phone ? ` · ${account.phone}` : ""}</small>
+                    <small>{new Date(account.requestedAt).toLocaleString(lang === "ar" ? "ar-SA" : "en-GB")}</small>
+                  </div>
+                  <div className="committee-score-box">
+                    <button className="button button--primary" type="button" disabled={busyId === account.id} onClick={() => void decide(account, "approve")}>
+                      {lang === "ar" ? "موافقة" : "Approve"}
+                    </button>
+                    <button className="button button--ghost" type="button" disabled={busyId === account.id} onClick={() => void decide(account, "reject")}>
+                      {lang === "ar" ? "رفض" : "Decline"}
+                    </button>
+                  </div>
+                </div>
+              )) : (
+                <div className="committee-item"><div><strong>{lang === "ar" ? "لا توجد طلبات بانتظار الموافقة" : "No registrations are waiting"}</strong><small>{lang === "ar" ? "تظهر الطلبات الجديدة هنا" : "New requests appear here"}</small></div></div>
+              )}
+            </div>
+          </Card>
         </section>
 
         <section className="owner-grid">

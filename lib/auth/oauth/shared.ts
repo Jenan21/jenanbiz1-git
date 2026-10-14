@@ -17,6 +17,7 @@ export const OAUTH_ERROR_CODES = [
   "account_exists",
   "registration_closed",
   "account_disabled",
+  "pending_approval",
   "rate_limited",
 ] as const;
 export type OAuthErrorCode = (typeof OAUTH_ERROR_CODES)[number];
@@ -72,6 +73,7 @@ export const OAUTH_NOTICE_COPY = {
     account_exists: "البريد مسجّل بكلمة مرور. ادخل بها أو استعدها.",
     registration_closed: "التسجيل الجديد مغلق حالياً.",
     account_disabled: "الحساب غير متاح حاليًا.",
+    pending_approval: "حسابك بانتظار موافقة المالك. سنراسلك عند الموافقة.",
     rate_limited: "محاولات كثيرة. انتظر قليلاً.",
   },
   en: {
@@ -83,6 +85,7 @@ export const OAUTH_NOTICE_COPY = {
     account_exists: "This email has a password account. Sign in with it or reset it.",
     registration_closed: "New registration is currently closed.",
     account_disabled: "This account is currently unavailable.",
+    pending_approval: "Your account is waiting for the owner's approval. We will e-mail you.",
     rate_limited: "Too many attempts. Wait briefly.",
   },
 } as const satisfies Record<"ar" | "en", Record<OAuthErrorCode, string>>;

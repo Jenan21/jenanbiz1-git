@@ -13,7 +13,7 @@ import { hasPlatformAdminAccess } from "@/lib/auth/authorization";
 
 export class AuthenticationError extends Error {
   constructor(
-    public code: "INVALID_CREDENTIALS" | "DUPLICATE_EMAIL" | "ACCOUNT_DISABLED",
+    public code: "INVALID_CREDENTIALS" | "DUPLICATE_EMAIL" | "ACCOUNT_DISABLED" | "PENDING_APPROVAL",
   ) {
     super(code);
   }
@@ -129,6 +129,9 @@ export async function loginUser(
     });
     throw new AuthenticationError("INVALID_CREDENTIALS");
   }
+  // Only someone who proved the password learns that the account is waiting, so this tells strangers nothing.
+  if (userWithHash.status === UserStatus.PENDING)
+    throw new AuthenticationError("PENDING_APPROVAL");
   if (userWithHash.status !== UserStatus.ACTIVE)
     throw new AuthenticationError("ACCOUNT_DISABLED");
   return db.$transaction(async (tx) => {

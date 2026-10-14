@@ -166,6 +166,7 @@ export function AuthForm({ mode, locale, labels }: AuthFormProps) {
   const searchParams = useSearchParams();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [pending, setPending] = useState(false);
   const [termsOpen, setTermsOpen] = useState(false);
   const [countryCode, setCountryCode] = useState(locale === "ar" ? "SA" : "US");
   const changedByUser = useRef(false);
@@ -200,6 +201,9 @@ export function AuthForm({ mode, locale, labels }: AuthFormProps) {
         badPhone: "رقم الجوال غير صالح. مثال: +966 50 123 4567",
         emailOnly: "تسجيل الدخول متاح حاليًا بالبريد الإلكتروني فقط.",
         resetDone: "تم تحديث كلمة المرور. يمكنك تسجيل الدخول الآن.",
+        pendingTitle: "تم استلام طلب التسجيل",
+        pendingBody: "حسابك بانتظار موافقة المالك. سنرسل لك رسالة على بريدك عند الموافقة، وبعدها يمكنك تسجيل الدخول.",
+        pendingBack: "العودة إلى الرئيسية",
       }
     : {
         identifier: "Username or email",
@@ -217,6 +221,9 @@ export function AuthForm({ mode, locale, labels }: AuthFormProps) {
         badPhone: "Invalid mobile number. Example: +966 50 123 4567",
         emailOnly: "Sign-in currently works with your email address only.",
         resetDone: "Your password was updated. You can sign in now.",
+        pendingTitle: "Registration request received",
+        pendingBody: "Your account is waiting for the owner's approval. We will e-mail you when it is approved, and then you can sign in.",
+        pendingBack: "Back to the home page",
       };
 
   useEffect(() => {
@@ -293,12 +300,18 @@ export function AuthForm({ mode, locale, labels }: AuthFormProps) {
         headers: { "content-type": "application/json" },
         body: JSON.stringify(payload),
       });
-      const body = (await response.json()) as { error?: string };
+      const body = (await response.json()) as { error?: string; status?: string };
       if (!response.ok) {
         setError(
           labels.errors[body.error ?? "UNKNOWN"] ?? labels.errors.UNKNOWN,
         );
         setLoading(false);
+        return;
+      }
+      if (registering && body.status === "PENDING_APPROVAL") {
+        // The account exists but waits for the owner: there is no session to continue with.
+        setLoading(false);
+        setPending(true);
         return;
       }
       const destination = registering
@@ -313,6 +326,19 @@ export function AuthForm({ mode, locale, labels }: AuthFormProps) {
   }
 
   const primaryLabel = loading ? labels.loading : labels.submit;
+
+  if (pending) {
+    return (
+      <div className="auth-form auth-pending" role="status" data-testid="registration-pending">
+        <AuthCheckIcon />
+        <strong>{copy.pendingTitle}</strong>
+        <p>{copy.pendingBody}</p>
+        <Link className="auth-pending__link" href="/">
+          {copy.pendingBack}
+        </Link>
+      </div>
+    );
+  }
 
   if (!registering) {
     return (

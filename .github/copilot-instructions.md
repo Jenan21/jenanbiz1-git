@@ -19,7 +19,7 @@
 - Financial formulas and other deterministic calculations must remain deterministic. Use AI only for appropriate analysis and recommendations.
 - Never present demo values as production data. Use truthful empty, unavailable, estimated, source, date, confidence, and review states.
 - Every visible action must work or be clearly disabled. Do not expose unsupported export formats.
-- Launch policy (owner decision, 2026-10-13): the production site at `jenanpro.sa` stays private. Sign-in and registration are not opened to anyone but the owner until the owner has tested the platform and its services and explicitly approves; the next step is a limited trial for a small invited group, and only later a public launch. Never remove `SITE_ACCESS_USERNAME`/`SITE_ACCESS_PASSWORD`, set `PUBLIC_LAUNCH=approved`, or widen access in any other way without that explicit approval.
+- Launch policy (owner decisions): on 2026-10-13 the production site at `jenanpro.sa` was private behind the gate. On 2026-10-14 the owner decided the site is visible to everyone and anyone may register, but **a new account cannot sign in until the owner approves it** (account approval, `REQUIRE_ACCOUNT_APPROVAL`, on by default once `PUBLIC_LAUNCH=approved`). Never turn off approval, remove it from the registration or sign-in paths (password and OAuth), or widen access beyond this without the owner's explicit approval. `SITE_ACCESS_USERNAME`/`SITE_ACCESS_PASSWORD` may only be removed or `PUBLIC_LAUNCH=approved` set with that approval flow in place.
 
 ## Visual Implementation
 

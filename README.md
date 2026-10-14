@@ -45,7 +45,7 @@ Arabic and English dictionaries are included. Locale resolution checks a `locale
 
 Authentication uses PostgreSQL-backed users and sessions. Passwords are hashed with Argon2id, opaque session tokens are stored only as SHA-256 hashes, and the browser receives an HttpOnly/SameSite cookie. Register, login, and logout are exposed through same-origin API routes. Google and Apple sign-in are available as an optional second way in (see "Social sign-in" below).
 
-Public registration is closed by default when `NODE_ENV=production`. Administrators provision or approve production users through authorized workflows. Only set `ALLOW_PUBLIC_REGISTRATION=true` when a reviewed public onboarding flow is intentionally enabled.
+Public registration is closed by default when `NODE_ENV=production`; set `ALLOW_PUBLIC_REGISTRATION=true` to open it. When the site is public (`PUBLIC_LAUNCH=approved`) every new account waits for the owner's approval before it can sign in (see "Staged access").
 
 `/dashboard` requires an authenticated session. `/admin` additionally requires the `ADMIN` or `SUPER_ADMIN` platform role. Organization membership permissions are resolved from persisted roles and permissions.
 
@@ -213,11 +213,16 @@ A `.sa` domain must first be registered through a SaudiNIC-accredited registrar 
 
 The platform is opened in stages, and the owner approves each one:
 
-1. **Private testing (current).** The gate covers every page and API except the health probes, so the home page, sign-in, registration, password recovery, and OAuth cannot be reached without the gate password. `ALLOW_PUBLIC_REGISTRATION=true` only applies behind the gate, which lets the owner create the first account. Production starts with no accounts; the first administrator is created with `npm run auth:bootstrap-super-admin`.
-2. **Limited trial.** A small invited group is given access through the gate. Before inviting anyone: configure e-mail and run `npm run mail:check`, set `REQUIRE_EMAIL_VERIFICATION=true`, create the single Super Admin, and rotate the gate password (with the owner's approval). Keep the group small and rotate the gate password again when the trial ends. Hosting location is studied in [docs/region-migration-plan.md](docs/region-migration-plan.md).
-3. **Public launch.** Remove `SITE_ACCESS_USERNAME` and `SITE_ACCESS_PASSWORD`, set `PUBLIC_LAUNCH=approved`, decide `ALLOW_PUBLIC_REGISTRATION`, and release again.
+1. **Private testing.** The gate covers every page and API except the health probes, so the home page, sign-in, registration, password recovery, and OAuth cannot be reached without the gate password. The first administrator is created with `npm run auth:bootstrap-super-admin`.
+2. **Limited trial.** A small invited group is given access through the gate. Before inviting anyone: configure e-mail and run `npm run mail:check`, set `REQUIRE_EMAIL_VERIFICATION=true`, create the single Super Admin, and rotate the gate password (with the owner's approval). Hosting location is studied in [docs/region-migration-plan.md](docs/region-migration-plan.md).
+3. **Public site with approval (owner decision, 2026-10-14).** Everyone can see the site and register, but **nobody signs in until the owner approves the account.** In Production: remove `SITE_ACCESS_USERNAME` and `SITE_ACCESS_PASSWORD`, set `PUBLIC_LAUNCH=approved`, `ALLOW_PUBLIC_REGISTRATION=true` and `REQUIRE_ACCOUNT_APPROVAL=true`, and release again. How it works:
+   - Registration (password or Google/Apple) creates the account as `PENDING`, with no session. The panel says the request was received; nothing is mailed to the address the applicant typed.
+   - Signing in with the right password answers "waiting for approval" (`PENDING_APPROVAL`); a wrong password or unknown address answers like any failed sign-in.
+   - The owners are e-mailed about each new request (at most ten e-mails an hour) and see the waiting list, with **Approve** and **Decline** buttons, at `/admin/users`. Approving is atomic and audited, and e-mails the applicant a link to the sign-in page; declining suspends the account.
+   - `REQUIRE_EMAIL_VERIFICATION` becomes required automatically at this stage, so an approved person still proves the address before inviting, publishing or paying.
+   - Turning approval off (`REQUIRE_ACCOUNT_APPROVAL=false`) is an owner decision; see `SECURITY.md` (public exposure).
 
-Do not remove the gate or widen access without the owner's explicit approval. A deployment that has no gate, such as a Vercel Preview, answers `503` instead of opening by accident.
+A deployment with neither a gate nor `PUBLIC_LAUNCH=approved`, such as a Vercel Preview, answers `503` instead of opening by accident.
 
 ## Next steps
 
