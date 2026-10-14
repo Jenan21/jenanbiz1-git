@@ -1,4 +1,5 @@
 import { randomUUID } from "node:crypto";
+import { captureException } from "@sentry/nextjs";
 import { Prisma } from "@/generated/prisma/client";
 
 const MAX_PUBLIC_MESSAGE_LENGTH = 300;
@@ -38,5 +39,6 @@ export function publicErrorMessage(error: unknown, fallback = "The request could
   }
   const reference = randomUUID().slice(0, 8);
   console.error(`[api-error ${reference}]`, error);
+  captureException(error, { tags: { reference } });
   return `${fallback} (ref ${reference})`;
 }

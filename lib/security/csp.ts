@@ -51,7 +51,7 @@ export function buildContentSecurityPolicy({
     "style-src 'self' 'unsafe-inline'",
     `img-src ${images.join(" ")}`,
     "font-src 'self' data:",
-    "connect-src 'self'",
+    "connect-src 'self' https://*.ingest.sentry.io https://*.ingest.us.sentry.io https://*.ingest.de.sentry.io",
     "frame-src 'self' blob:",
     "worker-src 'self' blob:",
     "media-src 'self' blob:",

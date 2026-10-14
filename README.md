@@ -20,6 +20,24 @@ Open `http://localhost:3000`. `.env.example` contains placeholders only; never c
 
 Quality commands: `npm run lint`, `npm run typecheck`, `npm test`, `npm run test:e2e`, `npm run format:check`, `npm run prisma:validate`, and `npm run build`.
 
+## Sentry error monitoring
+
+The optional `@sentry/nextjs` integration covers browser errors, the React global error boundary, unhandled Next.js Node/Edge request errors, and unexpected errors caught by the shared safe-error handler (tagged with the existing public reference ID). Expected validation errors remain unreported. Existing audit logs, metrics, authentication, and worker execution are unchanged. Monitoring sends events only in production with a configured DSN; development and unconfigured deployments do not send events. Tracing is disabled, and Replay, profiling, and Sentry Logs are not enabled.
+
+**Project provisioning is not completed:** the official agent-plugin installer ran in the cloud agent but detected no supported assistant CLI and skipped installation. The onboarding run code is not an API credential; no Sentry token, authenticated Sentry MCP session, project ID, or DSN was available. No project or DSN has been fabricated.
+
+To finish setup:
+
+1. An authenticated owner of organization `jenanpro` should create/select a **Next.js** project in Sentry. One project can cover the browser and Next.js backend. Copy its client DSN to `NEXT_PUBLIC_SENTRY_DSN` in the deployment settings and its actual slug to `SENTRY_PROJECT`. No numeric project ID is needed. Leave `SENTRY_DSN` empty to use the same project server-side.
+2. If separate browser/server projects are required, set the second project's DSN as `SENTRY_DSN` and configure source-map uploads for both projects before enabling it (the current build targets the single `SENTRY_PROJECT`). Existing database-backed robot jobs execute within Next.js requests; there is no new standalone worker SDK/process.
+3. Store a least-privilege Sentry build token with the required source-map/release upload permissions as the CI/deployment secret `SENTRY_AUTH_TOKEN`, never as `NEXT_PUBLIC_*`, in source, logs, or a tracked environment file. Supply it only to trusted builds, not untrusted fork PRs or the running application.
+4. Set `SENTRY_RELEASE` to the immutable commit SHA during build and server runtime. `withSentryConfig` injects the matching browser release and uses debug IDs for source-map association. Uploads and release creation/finalization are enabled only when both the build token and project slug exist; otherwise source-map generation/upload is disabled. Uploaded generated maps are deleted from the build output. Do not enable `productionBrowserSourceMaps` or publish `.next`/maps as public artifacts.
+5. Build/deploy with the existing commands. On a private staging deployment with real DSNs, trigger a controlled, non-sensitive client exception and server exception, confirm both arrive in the correct project/release with readable stack traces, and verify unauthenticated requests cannot retrieve `/_next/static/**/*.map`. No intentional-error route is shipped.
+
+The CSP permits only Sentry's HTTPS ingestion domains in addition to same-origin connections; no tunnel, access-gate bypass, or general network wildcard is added. Self-hosted Sentry requires a separately reviewed CSP origin.
+
+`sendDefaultPii` is off. SDK data collection disables user information, cookies, HTTP headers/bodies, URL query parameters, GraphQL documents/variables, AI inputs/outputs, database query data, queue arguments, stack-frame variables, and source context lines. The shared event filter also removes request metadata, Next.js request paths, user details, breadcrumbs, and extra data before transmission. Error messages, stacks, tags, and other SDK context can still contain application-supplied data: review Sentry's server-side data-scrubbing rules and retention/access controls before enabling production DSNs. Never include credentials or private business inputs in exception messages or custom context.
+
 ## Structure
 
 - `app/`: App Router routes and layouts.
