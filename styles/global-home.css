@@ -479,7 +479,7 @@
   opacity: 0;
 }
 
-.global-home__globe .gateway-world-map__countries path[data-active] {
+.global-home__globe .gateway-world-map__countries use[data-active] {
   fill: rgba(25, 119, 156, 0.45);
   stroke: rgba(105, 226, 235, 0.78);
   filter: none;

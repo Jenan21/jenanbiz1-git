@@ -13,23 +13,31 @@ import {
 interface SocialAuthProps {
   locale: "ar" | "en";
   entry: OAuthEntryPoint;
-  /** Which providers the server has credentials for; the others are shown as not yet available. */
+  /** Which providers the server has credentials for. A provider without them is not shown at all. */
   availability: Record<OAuthProviderId, boolean>;
 }
 
 const icons = { google: GoogleIcon, apple: AppleIcon } as const;
 
+/** True when at least one social sign-in provider can actually be used. */
+export function hasSocialProviders(availability: Record<OAuthProviderId, boolean>) {
+  return OAUTH_PROVIDERS.some((provider) => availability[provider]);
+}
+
 export function SocialAuth({ locale, entry, availability }: SocialAuthProps) {
   const ar = locale === "ar";
   const next = useSearchParams().get("next");
+  const providers = OAUTH_PROVIDERS.filter((provider) => availability[provider]);
+  if (!providers.length) return null;
 
   return (
     <div
       className="auth-social"
+      data-count={providers.length}
       role="group"
       aria-label={ar ? "طرق دخول أخرى" : "Other sign-in methods"}
     >
-      {OAUTH_PROVIDERS.map((provider) => {
+      {providers.map((provider) => {
         const label = OAUTH_PROVIDER_LABEL[provider];
         const Icon = icons[provider];
         const action =
@@ -41,22 +49,6 @@ export function SocialAuth({ locale, entry, availability }: SocialAuthProps) {
               ? `التسجيل عبر ${label}`
               : `Sign up with ${label}`;
 
-        if (!availability[provider]) {
-          return (
-            <button
-              key={provider}
-              type="button"
-              className="auth-social__btn"
-              data-provider={provider}
-              disabled
-              aria-label={`${action} (${ar ? "قريباً" : "coming soon"})`}
-            >
-              <Icon />
-              <span>{label}</span>
-              <small>{ar ? "قريباً" : "Soon"}</small>
-            </button>
-          );
-        }
         return (
           <a
             key={provider}

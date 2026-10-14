@@ -1,14 +1,7 @@
 "use client";
 
-import world from "@svg-maps/world";
 import { useState } from "react";
-import { svgPathBbox } from "svg-path-bbox";
-
-interface WorldLocation {
-  id: string;
-  name: string;
-  path: string;
-}
+import { WORLD_COUNTRIES, WORLD_OUTLINES_URL, WORLD_VIEWBOX } from "@/components/auth/world-map-data";
 
 export interface GatewayActivityLocation {
   activeUsers: number;
@@ -16,12 +9,7 @@ export interface GatewayActivityLocation {
   countryName: { ar: string; en: string };
 }
 
-const countryCenters = new Map(
-  (world.locations as WorldLocation[]).map((location) => {
-    const [minX, minY, maxX, maxY] = svgPathBbox(location.path);
-    return [location.id.toUpperCase(), { x: (minX + maxX) / 2, y: (minY + maxY) / 2 }] as const;
-  }),
-);
+const countryCenters = new Map(WORLD_COUNTRIES.map(([id, , x, y]) => [id.toUpperCase(), { x, y }] as const));
 
 export function GatewayWorldMap({ activity, locale }: { activity: GatewayActivityLocation[]; locale: "ar" | "en" }) {
   const [focusedCountry, setFocusedCountry] = useState<string | null>(null);
@@ -32,7 +20,7 @@ export function GatewayWorldMap({ activity, locale }: { activity: GatewayActivit
   return (
     <svg
       className="gateway-world-map"
-      viewBox={world.viewBox}
+      viewBox={WORLD_VIEWBOX}
       role="img"
       aria-label="Global Jenan Pro network"
       preserveAspectRatio="xMidYMid meet"
@@ -91,15 +79,15 @@ export function GatewayWorldMap({ activity, locale }: { activity: GatewayActivit
       </g>
 
       <g className="gateway-world-map__countries" filter="url(#gateway-land-depth)">
-        {(world.locations as WorldLocation[]).map((location) => (
-          <path
-            key={location.id}
-            d={location.path}
-            data-country={location.id}
-            data-active={activityByCountry.has(location.id.toUpperCase()) || undefined}
+        {WORLD_COUNTRIES.map(([id, name]) => (
+          <use
+            key={id}
+            href={`${WORLD_OUTLINES_URL}#${id}`}
+            data-country={id}
+            data-active={activityByCountry.has(id.toUpperCase()) || undefined}
           >
-            <title>{location.name}</title>
-          </path>
+            <title>{name}</title>
+          </use>
         ))}
       </g>
 

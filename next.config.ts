@@ -14,9 +14,16 @@ const nextConfig: NextConfig = {
   agentRules: false,
   experimental: {
     authInterrupts: true,
+    // A small machine can cap the parallel build workers (each one holds a copy of the app in memory).
+    ...(Number(process.env.NEXT_BUILD_CPUS) > 0 ? { cpus: Number(process.env.NEXT_BUILD_CPUS) } : {}),
   },
   async headers() {
     return [
+      {
+        // The file name carries a version, so the browser and the CDN can keep it for good.
+        source: "/assets/gateway-world.v1.svg",
+        headers: [{ key: "Cache-Control", value: "public, max-age=31536000, immutable" }],
+      },
       {
         source: "/:path*",
         headers: [

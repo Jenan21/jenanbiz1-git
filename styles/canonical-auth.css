@@ -954,6 +954,17 @@ body:has(.access-page) nextjs-portal {
   direction: ltr;
 }
 
+/* With a single provider configured its button takes the full row. */
+.auth-social[data-count="1"] {
+  grid-template-columns: minmax(0, 1fr);
+}
+
+/* No provider is configured: the "or" row and the buttons are not drawn, and the link to the other panel keeps the
+   position it has in the reference (24 px row + 12 px gap + 56 px buttons + its own 14 px margin). */
+.access-page__alternate[data-social="off"] .access-page__alt-link {
+  margin-top: 106px;
+}
+
 .auth-social__btn {
   display: flex;
   align-items: center;

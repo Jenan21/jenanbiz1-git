@@ -60,13 +60,19 @@ describe("response headers", () => {
 
   it("is applied to every path together with the enforced framing directives", async () => {
     const rules = await nextConfig.headers!();
-    expect(rules).toHaveLength(1);
-    expect(rules[0].source).toBe("/:path*");
-    const keys = rules[0].headers.map((header) => header.key);
+    const everyPath = rules.filter((rule) => rule.source === "/:path*");
+    expect(everyPath).toHaveLength(1);
+    const keys = everyPath[0].headers.map((header) => header.key);
     for (const header of securityHeaders) expect(keys).toContain(header.key);
-    const csp = rules[0].headers.find((header) => header.key === "Content-Security-Policy")!.value;
+    const csp = everyPath[0].headers.find((header) => header.key === "Content-Security-Policy")!.value;
     for (const part of ENFORCED_CSP_DIRECTIVES) expect(csp).toContain(part);
     expect(csp).not.toMatch(/unsafe-inline|unsafe-eval/);
+  });
+
+  it("caches only the versioned world-map asset for good, and nothing else", async () => {
+    const rules = await nextConfig.headers!();
+    const cached = rules.filter((rule) => rule.headers.some((header) => header.key === "Cache-Control" && /immutable/.test(header.value)));
+    expect(cached.map((rule) => rule.source)).toEqual(["/assets/gateway-world.v1.svg"]);
   });
 
   it("does not advertise the framework", () => {

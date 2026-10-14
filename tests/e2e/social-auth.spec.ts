@@ -17,13 +17,11 @@ const enabled = {
 
 const copy = {
   ar: {
-    soon: "قريباً",
     unavailable: "الدخول عبر Google غير مفعّل بعد.",
     denied: "تم إلغاء الدخول عبر Google.",
     failed: "تعذّر إكمال الدخول عبر Google. حاول مجدداً.",
   },
   en: {
-    soon: "Soon",
     unavailable: "Google sign-in isn't enabled yet.",
     denied: "Google sign-in was cancelled.",
     failed: "Couldn't complete Google sign-in. Try again.",
@@ -43,43 +41,52 @@ async function openPanel(page: Page, path: string) {
 
 for (const locale of ["ar", "en"] as const) {
   for (const entry of ["login", "register"] as const) {
-    test(`${entry} ${locale} offers Google and Apple and reflects what is configured`, async ({ context, page }, testInfo) => {
+    test(`${entry} ${locale} shows only the social providers that are configured`, async ({ context, page }, testInfo) => {
       await setLocale(context, locale, testInfo.project.use.baseURL);
       await openPanel(page, `/${entry}?next=%2Fprojects`);
 
-      const group = page.locator(".auth-social");
-      await expect(group).toBeVisible();
-      await expect(group.locator(".auth-social__btn")).toHaveCount(2);
-      for (const provider of ["google", "apple"] as const) {
-        const button = group.locator(`[data-provider="${provider}"]`);
-        await expect(button).toBeVisible();
-        await expect(button).toContainText(provider === "google" ? "Google" : "Apple");
-        if (enabled[provider]) {
+      const configured = (["google", "apple"] as const).filter((provider) => enabled[provider]);
+      if (!configured.length) {
+        // Nothing to offer, so nothing is drawn: no divider, no buttons, no "coming soon" placeholders.
+        await expect(page.locator(".auth-social")).toHaveCount(0);
+        await expect(page.locator(".access-page__or")).toHaveCount(0);
+        await expect(page.locator("#access-panel")).not.toContainText(/Google|Apple/);
+      } else {
+        const group = page.locator(".auth-social");
+        await expect(group).toBeVisible();
+        await expect(group.locator(".auth-social__btn")).toHaveCount(configured.length);
+        for (const provider of ["google", "apple"] as const) {
+          const button = group.locator(`[data-provider="${provider}"]`);
+          if (!enabled[provider]) {
+            await expect(button).toHaveCount(0);
+            continue;
+          }
+          await expect(button).toBeVisible();
+          await expect(button).toContainText(provider === "google" ? "Google" : "Apple");
           await expect(button).toHaveJSProperty("tagName", "A");
-          await expect(button).toHaveAttribute(
-            "href",
-            `/api/auth/oauth/${provider}/start?from=${entry}&next=%2Fprojects`,
-          );
-        } else {
-          await expect(button).toBeDisabled();
-          await expect(button).toContainText(copy[locale].soon);
+          await expect(button).toHaveAttribute("href", `/api/auth/oauth/${provider}/start?from=${entry}&next=%2Fprojects`);
         }
       }
 
-      // the row sits fully inside the card, between the divider and the other-panel link
-      const boxes = await page.evaluate(() => {
-        const rect = (selector: string) => document.querySelector<HTMLElement>(selector)!.getBoundingClientRect();
-        const panel = rect("#access-panel");
-        const social = rect(".auth-social");
-        const alt = rect(".access-page__alt-link");
-        const or = rect(".access-page__or");
-        return {
-          insidePanel: social.left >= panel.left && social.right <= panel.right && alt.bottom <= panel.bottom,
-          ordered: or.bottom <= social.top + 1 && social.bottom <= alt.top + 1,
-          inViewport: panel.top >= 0 && panel.bottom <= innerHeight,
-        };
-      });
-      expect(boxes).toEqual({ insidePanel: true, ordered: true, inViewport: true });
+      // what remains sits fully inside the card, in order, with the other-panel link at its place (polled: the card is still easing in when it first becomes visible)
+      await expect
+        .poll(
+          () =>
+            page.evaluate(() => {
+              const rect = (selector: string) => document.querySelector<HTMLElement>(selector)?.getBoundingClientRect() ?? null;
+              const panel = rect("#access-panel")!;
+              const social = rect(".auth-social");
+              const alt = rect(".access-page__alt-link")!;
+              const or = rect(".access-page__or");
+              return {
+                insidePanel: alt.left >= panel.left && alt.right <= panel.right && alt.bottom <= panel.bottom && (!social || (social.left >= panel.left && social.right <= panel.right)),
+                ordered: !social || !or || (or.bottom <= social.top + 1 && social.bottom <= alt.top + 1),
+                inViewport: panel.top >= 0 && panel.bottom <= innerHeight,
+              };
+            }),
+          { timeout: 10_000 },
+        )
+        .toEqual({ insidePanel: true, ordered: true, inViewport: true });
     });
   }
 }

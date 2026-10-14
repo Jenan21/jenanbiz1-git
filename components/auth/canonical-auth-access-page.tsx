@@ -18,7 +18,7 @@ import {
   JenanLeafMark,
 } from "@/components/auth/auth-icons";
 import { PasswordRecoveryForm } from "@/components/auth/password-recovery-form";
-import { SocialAuth } from "@/components/auth/social-auth";
+import { hasSocialProviders, SocialAuth } from "@/components/auth/social-auth";
 import { GlobalCommandHome } from "@/components/home/global-command-home";
 import type { OAuthProviderId } from "@/lib/auth/oauth/shared";
 import type { PlatformModuleDefinition } from "@/lib/platform/catalog";
@@ -66,6 +66,7 @@ export function CanonicalAuthAccessPage({
   const slotRef = useRef<HTMLDivElement>(null);
   const panelRef = useRef<HTMLElement>(null);
   const recovering = recovery || pathname === "/auth/forgot";
+  const socialAvailable = hasSocialProviders(oauth);
 
   const closePanel = useCallback(() => {
     router.replace("/");
@@ -327,21 +328,25 @@ export function CanonicalAuthAccessPage({
               <AuthForm mode={mode} locale={locale} labels={labels!} />
             )}
             {!recovering ? (
-              <div className="access-page__alternate">
-                <span className="access-page__or">
-                  {registering
-                    ? ar
-                      ? "أو التسجيل عبر"
-                      : "or sign up with"
-                    : ar
-                      ? "أو المتابعة عبر"
-                      : "or continue with"}
-                </span>
-                <SocialAuth
-                  locale={locale}
-                  entry={registering ? "register" : "login"}
-                  availability={oauth}
-                />
+              <div className="access-page__alternate" data-social={socialAvailable ? "on" : "off"}>
+                {socialAvailable ? (
+                  <>
+                    <span className="access-page__or">
+                      {registering
+                        ? ar
+                          ? "أو التسجيل عبر"
+                          : "or sign up with"
+                        : ar
+                          ? "أو المتابعة عبر"
+                          : "or continue with"}
+                    </span>
+                    <SocialAuth
+                      locale={locale}
+                      entry={registering ? "register" : "login"}
+                      availability={oauth}
+                    />
+                  </>
+                ) : null}
                 <Link
                   className="access-page__alt-link"
                   href={registering ? "/auth" : "/register"}
