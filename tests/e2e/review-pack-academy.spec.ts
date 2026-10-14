@@ -167,9 +167,10 @@ test("switches the full academy copy to English", async ({ context, page, baseUR
     await expect(page.getByText("دراسات مؤسسية", { exact: true })).toBeVisible();
   });
 
-  test("switches the studies experience fully to English", async ({ context, page }) => {
+  test("switches the studies experience fully to English", async ({ context, page, baseURL }) => {
+    if (!baseURL) throw new Error("Playwright baseURL is required");
     await context.addCookies([
-      { name: "locale", value: "en", domain: "localhost", path: "/" },
+      { name: "locale", value: "en", url: baseURL },
     ]);
     await page.goto("/academy-studies-review");
     await expect(page.getByRole("heading", { name: "From knowledge to decision." })).toBeVisible();
@@ -212,8 +213,9 @@ test("switches the full academy copy to English", async ({ context, page, baseUR
     }
   });
 
-  test("switches every remaining academy path to English", async ({ context, page }) => {
-    await context.addCookies([{ name: "locale", value: "en", domain: "localhost", path: "/" }]);
+  test("switches every remaining academy path to English", async ({ context, page, baseURL }) => {
+    if (!baseURL) throw new Error("Playwright baseURL is required");
+    await context.addCookies([{ name: "locale", value: "en", url: baseURL }]);
     const paths = [
       ["seminars", "Ideas become dialogue."],
       ["research", "Questions become knowledge."],
