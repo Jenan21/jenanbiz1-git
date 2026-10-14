@@ -156,6 +156,9 @@ jobs:
       - name: Install Chromium and its system libraries
         run: npx playwright install --with-deps chromium
       - name: Run the browser tests
+        # The sign-in redirects are built from the public origin, so it must be the address the test server listens on.
+        env:
+          NEXT_PUBLIC_APP_URL: http://127.0.0.1:3101
         run: npm run test:e2e -- ${{ matrix.group.projects }}
       - name: Keep failure evidence
         if: failure()

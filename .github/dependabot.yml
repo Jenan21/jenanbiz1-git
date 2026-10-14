@@ -19,6 +19,21 @@ updates:
         update-types: [version-update:semver-major]
       - dependency-name: "@prisma/adapter-pg"
         update-types: [version-update:semver-major]
+      # Toolchain majors change the compiler, linter and test runner together with the framework; do those by hand.
+      - dependency-name: "typescript"
+        update-types: [version-update:semver-major]
+      - dependency-name: "eslint"
+        update-types: [version-update:semver-major]
+      - dependency-name: "vitest"
+        update-types: [version-update:semver-major]
+      - dependency-name: "@types/node"
+        update-types: [version-update:semver-major]
+      - dependency-name: "next"
+        update-types: [version-update:semver-major]
+      - dependency-name: "react"
+        update-types: [version-update:semver-major]
+      - dependency-name: "react-dom"
+        update-types: [version-update:semver-major]
 
   - package-ecosystem: github-actions
     directory: /
@@ -34,3 +49,7 @@ updates:
     schedule:
       interval: weekly
       day: monday
+    ignore:
+      # The runtime matches Vercel's Node 24 and the engines range; move it deliberately, not through a bot.
+      - dependency-name: "node"
+        update-types: [version-update:semver-major]
