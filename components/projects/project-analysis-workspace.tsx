@@ -13,6 +13,7 @@ import {
 } from "react";
 import { ProjectsCommandHeader } from "@/components/projects/projects-command-header";
 import { Icon, type IconName } from "@/components/ui/icons";
+import { textProblem, textProblemMessage } from "@/lib/projects/text-quality";
 import type { ProjectFlowDefinition } from "@/lib/projects/project-flow-routes";
 import type { Locale } from "@/types/i18n";
 
@@ -155,7 +156,7 @@ function asArray(value: unknown) {
   return Array.isArray(value) ? value : [];
 }
 
-function readStudy(value: unknown): AnalysisStudy {
+export function readStudy(value: unknown): AnalysisStudy {
   const record = asRecord(value);
   const status = ["PENDING", "PROCESSING", "COMPLETED", "FAILED"].includes(
     String(record?.status),
@@ -184,10 +185,15 @@ function readStudy(value: unknown): AnalysisStudy {
             typeof resultRecord.generatedAt === "string"
               ? resultRecord.generatedAt
               : "",
-          evidenceCompleteness: resultRecord.evidenceCompleteness,
-          competitionLevel: String(
-            resultRecord.competitionLevel,
-          ) as AnalysisResult["competitionLevel"],
+          // Results saved before the competitor fix counted an empty search as "0 competitors, low": that is a gap in
+          // the map data, so it is shown as unavailable and no longer earns the competitor share of the score.
+          evidenceCompleteness:
+            resultRecord.competitorCount === 0 && resultRecord.competitionLevel === "LOW"
+              ? Math.max(0, resultRecord.evidenceCompleteness - 15)
+              : resultRecord.evidenceCompleteness,
+          competitionLevel: (resultRecord.competitorCount === 0 && resultRecord.competitionLevel === "LOW"
+            ? "UNAVAILABLE"
+            : String(resultRecord.competitionLevel)) as AnalysisResult["competitionLevel"],
           purchasingPowerLevel: String(
             resultRecord.purchasingPowerLevel,
           ) as AnalysisResult["purchasingPowerLevel"],
@@ -195,7 +201,7 @@ function readStudy(value: unknown): AnalysisStudy {
             resultRecord.dataRiskLevel,
           ) as AnalysisResult["dataRiskLevel"],
           competitorCount:
-            typeof resultRecord.competitorCount === "number"
+            typeof resultRecord.competitorCount === "number" && resultRecord.competitorCount > 0
               ? resultRecord.competitorCount
               : null,
           sourceCount:
@@ -221,12 +227,13 @@ function readStudy(value: unknown): AnalysisStudy {
   };
 }
 
-function readMetric(value: unknown): IntelligenceMetric {
+export function readMetric(value: unknown): IntelligenceMetric {
   const record = asRecord(value);
+  // Snapshots store the year as `year` and the unit as `metric`; `period` and `unit` are accepted for older shapes.
   return {
     value: typeof record?.value === "number" ? record.value : null,
-    unit: typeof record?.unit === "string" ? record.unit : undefined,
-    period: typeof record?.period === "string" ? record.period : undefined,
+    unit: typeof record?.unit === "string" ? record.unit : typeof record?.metric === "string" ? record.metric : undefined,
+    period: typeof record?.period === "string" ? record.period : typeof record?.year === "number" ? String(record.year) : undefined,
   };
 }
 
@@ -292,6 +299,29 @@ function formatDate(value: string | undefined, locale: Locale) {
     dateStyle: "medium",
     timeStyle: "short",
   }).format(new Date(value));
+}
+
+/** Shown once above the results: what the figures are, and a warning when the saved idea is not understandable. */
+export function AnalysisNotices({ ar, study }: { ar: boolean; study: AnalysisStudy }) {
+  const problem = study.input ? textProblem(study.input.idea) : null;
+  return (
+    <>
+      {problem ? (
+        <p className="pa-scope-notice is-danger" data-testid="analysis-unreadable-idea" role="alert">
+          <Icon name="shield" />
+          <span>
+            {t(
+              ar,
+              `فكرة هذا المشروع غير مفهومة: ${textProblemMessage(problem, "ar")} الأرقام أدناه تخص الموقع فقط ولا تمثل مشروعًا حقيقيًا، فلا تعتمد عليها. ابدأ تحليلًا جديدًا بوصف حقيقي لفكرتك.`,
+              `This project's idea is not understandable: ${textProblemMessage(problem, "en")} The figures below describe the location only and do not represent a real project, so do not rely on them. Start a new analysis with a real description.`,
+            )}{" "}
+            <Link href="/projects/analysis">{t(ar, "تحليل جديد", "New analysis")}</Link>
+          </span>
+        </p>
+      ) : null}
+      {study.result ? <ScopeNotice ar={ar} /> : null}
+    </>
+  );
 }
 
 function ScopeNotice({ ar }: { ar: boolean }) {
@@ -695,7 +725,7 @@ function EvidenceMap({
       <footer>
         <Icon name="globe" />
         <span>{typeof location?.displayName === "string" ? location.displayName : typeof location?.label === "string" ? location.label : t(ar, "لا يتوفر وصف للموقع", "No location description is available")}</span>
-        <b>{t(ar, `${competitors.length} منافسًا مرصودًا`, `${competitors.length} competitors observed`)}</b>
+        <b>{competitors.length ? t(ar, `${competitors.length} منافسًا مرصودًا`, `${competitors.length} competitors observed`) : t(ar, "لم يُرصد منافسون (ليس دليلًا على غياب المنافسة)", "No competitors observed (not evidence of no competition)")}</b>
       </footer>
     </div>
   );
@@ -810,7 +840,6 @@ function ResultScreen({
         </div>
         <Link className="pa-primary-button" href={`/projects/analysis/report?project=${project.id}`}><Icon name="eye" />{t(ar, "عرض التقرير الكامل", "View full report")}</Link>
       </header>
-      <ScopeNotice ar={ar} />
       <div className="pa-result-metrics">
         <article className={`tone-${result.competitionLevel.toLowerCase()}`}><Icon name="people" /><span>{t(ar, "مستوى المنافسة", "Competition level")}</span><strong>{levelLabel(result.competitionLevel, ar)}</strong><small>{result.competitorCount === null ? t(ar, "تغطية المنافسين غير متاحة", "Competitor coverage unavailable") : t(ar, `${result.competitorCount} نتيجة مرصودة`, `${result.competitorCount} observed results`)}</small></article>
         <article className={`tone-${result.purchasingPowerLevel.toLowerCase()}`}><Icon name="wallet" /><span>{t(ar, "القوة الشرائية", "Purchasing power")}</span><strong>{levelLabel(result.purchasingPowerLevel, ar)}</strong><small>{t(ar, "وفق مؤشر البنك الدولي المتاح", "Based on available World Bank indicator")}</small></article>
@@ -871,7 +900,7 @@ function ReportScreen({
   } else if (section === "recommendations") {
     content = <><h2>{t(ar, "التوصيات العملية", "Actionable recommendations")}</h2><ol>{result.recommendations.map((code) => resultRecommendations[code] ? <li key={code}>{t(ar, ...resultRecommendations[code])}</li> : null)}</ol></>;
   } else {
-    content = <><span className="pa-report-kicker">{t(ar, "تقرير تحليل مشروع", "Project analysis report")}</span><h1>{project.name}</h1><p>{study.input?.idea}</p><div className="pa-report-score"><strong>{result.evidenceCompleteness}%</strong><span><b>{t(ar, "اكتمال الأدلة", "Evidence completeness")}</b><small>{t(ar, "ليس مقياسًا لفرصة النجاح", "Not a success-probability metric")}</small></span></div><div className="pa-report-summary-cards"><span><small>{t(ar, "المنافسة", "Competition")}</small><b>{levelLabel(result.competitionLevel, ar)}</b></span><span><small>{t(ar, "القوة الشرائية", "Purchasing power")}</small><b>{levelLabel(result.purchasingPowerLevel, ar)}</b></span><span><small>{t(ar, "مخاطر البيانات", "Data risk")}</small><b>{levelLabel(result.dataRiskLevel, ar, false)}</b></span></div><ScopeNotice ar={ar} /></>;
+    content = <><span className="pa-report-kicker">{t(ar, "تقرير تحليل مشروع", "Project analysis report")}</span><h1>{project.name}</h1><p>{study.input?.idea}</p><div className="pa-report-score"><strong>{result.evidenceCompleteness}%</strong><span><b>{t(ar, "اكتمال الأدلة", "Evidence completeness")}</b><small>{t(ar, "ليس مقياسًا لفرصة النجاح", "Not a success-probability metric")}</small></span></div><div className="pa-report-summary-cards"><span><small>{t(ar, "المنافسة", "Competition")}</small><b>{levelLabel(result.competitionLevel, ar)}</b></span><span><small>{t(ar, "القوة الشرائية", "Purchasing power")}</small><b>{levelLabel(result.purchasingPowerLevel, ar)}</b></span><span><small>{t(ar, "مخاطر البيانات", "Data risk")}</small><b>{levelLabel(result.dataRiskLevel, ar, false)}</b></span></div></>;
   }
   return (
     <section className="pa-page pa-report-page" data-testid="analysis-report">
@@ -1074,7 +1103,6 @@ export function ProjectAnalysisWorkspace({
   return (
     <main className="project-analysis-workspace" data-analysis-route={route} dir={ar ? "rtl" : "ltr"}>
       <ProjectsCommandHeader active="analysis" compact locale={locale} userLabel={userLabel} />
-      {loading ? <div className="pa-loading"><Icon name="activity" />{t(ar, "جارٍ تحميل مساحة التحليل...", "Loading analysis workspace...")}</div> : projects.length === 0 ? <div className="pa-empty-state is-page"><Icon name="sparkles" /><h1>{t(ar, "ابدأ بأول تحليل مشروع", "Start your first project analysis")}</h1><p>{t(ar, "أدخل فكرة المشروع لإنشاء سجل تحليل حقيقي.", "Enter a project idea to create a real analysis record.")}</p><Link className="pa-primary-button" href="/projects/analysis">{t(ar, "البدء الآن", "Start now")}</Link></div> : selected ? <><ProjectToolbar ar={ar} onProjectChange={changeProject} projects={projects} selectedId={selectedId} /><StageNavigation active={activeStage} ar={ar} projectId={selected.id} />{message ? <p className="pa-global-message" role="alert">{message}</p> : null}{screen}</> : null}
-    </main>
+      {loading ? <div className="pa-loading"><Icon name="activity" />{t(ar, "جارٍ تحميل مساحة التحليل...", "Loading analysis workspace...")}</div> : projects.length === 0 ? <div className="pa-empty-state is-page"><Icon name="sparkles" /><h1>{t(ar, "ابدأ بأول تحليل مشروع", "Start your first project analysis")}</h1><p>{t(ar, "أدخل فكرة المشروع لإنشاء سجل تحليل حقيقي.", "Enter a project idea to create a real analysis record.")}</p><Link className="pa-primary-button" href="/projects/analysis">{t(ar, "البدء الآن", "Start now")}</Link></div> : selected ? <><ProjectToolbar ar={ar} onProjectChange={changeProject} projects={projects} selectedId={selectedId} /><StageNavigation active={activeStage} ar={ar} projectId={selected.id} />      {message ? <p className="pa-global-message" role="alert">{message}</p> : null}<AnalysisNotices ar={ar} study={study} />{screen}</> : null}    </main>
   );
 }

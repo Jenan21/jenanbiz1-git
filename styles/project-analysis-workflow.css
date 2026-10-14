@@ -259,6 +259,18 @@
   margin-top: 4px;
 }
 
+.pa-scope-notice.is-danger {
+  border-color: rgba(255, 99, 99, 0.6);
+  color: #ffd0d0;
+  background: rgba(88, 16, 16, 0.66);
+}
+
+.pa-scope-notice a {
+  color: inherit;
+  font-weight: 700;
+  text-decoration: underline;
+}
+
 .pa-loading {
   display: flex;
   min-height: 55dvh;
