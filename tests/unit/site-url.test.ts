@@ -19,4 +19,10 @@ describe("resolveSiteUrl", () => {
     }
     expect(resolveSiteUrl({}).href).toBe("http://localhost:3000/");
   });
+
+  it("uses the official domain for a production deployment that was given no origin", () => {
+    expect(resolveSiteUrl({ VERCEL_ENV: "production" }).href).toBe("https://jenanpro.sa/");
+    expect(resolveSiteUrl({ NEXT_PUBLIC_APP_URL: "not a url", VERCEL_ENV: "production" }).href).toBe("https://jenanpro.sa/");
+    expect(resolveSiteUrl({ VERCEL_ENV: "preview" }).href).toBe("http://localhost:3000/");
+  });
 });
