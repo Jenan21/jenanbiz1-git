@@ -5,6 +5,9 @@ on:
     - cron: "*/5 * * * *"
   workflow_dispatch:
 
+# The probe only needs the network; it never touches the repository or the token.
+permissions: {}
+
 jobs:
   readiness:
     runs-on: ubuntu-latest

@@ -10,10 +10,21 @@ concurrency:
   group: verification-${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 
+# Jobs only read the repository; nothing here needs to write to it or to the checks API.
+permissions:
+  contents: read
+
+env:
+  AUTH_SECRET: ci-auth-secret-not-for-production
+  DATABASE_URL: postgresql://jenanbiz_app:ci-postgres-password@127.0.0.1:5432/jenanbiz?schema=public
+  METRICS_TOKEN: ci-metrics-token-not-for-production
+  REDIS_URL: redis://127.0.0.1:6379
+
 jobs:
   verify:
+    name: Typecheck, lint, tests and build
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    timeout-minutes: 20
     services:
       postgres:
         image: postgres:17-bookworm
@@ -37,14 +48,11 @@ jobs:
           --health-retries 12
         ports:
           - 6379:6379
-    env:
-      AUTH_SECRET: ci-auth-secret-not-for-production
-      DATABASE_URL: postgresql://jenanbiz_app:ci-postgres-password@127.0.0.1:5432/jenanbiz?schema=public
-      METRICS_TOKEN: ci-metrics-token-not-for-production
-      REDIS_URL: redis://127.0.0.1:6379
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
           node-version: 24
           cache: npm
@@ -58,5 +66,102 @@ jobs:
       - run: npm run lint
       - run: npm run test
       - run: npm run build
-      - run: npx playwright install --with-deps chromium
-      - run: npm run test:e2e
+      # Shipped dependencies must be clean. Development tooling may carry advisories that have no patch yet
+      # (see SECURITY.md); only a critical one fails the build there.
+      - name: Audit production dependencies
+        run: npm audit --omit=dev --audit-level=low
+      - name: Audit all dependencies
+        run: npm audit --audit-level=critical
+
+  # Every group starts its own application server, database and cache, so the groups run side by side and the whole
+  # suite finishes in the time of the slowest group instead of the sum of all of them.
+  e2e:
+    name: E2E (${{ matrix.group.name }})
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    strategy:
+      fail-fast: false
+      matrix:
+        group:
+          - name: home-and-layout
+            projects: >-
+              --project=home-visual --project=home-panel-links --project=social-auth
+              --project=visual-desktop-ar --project=visual-desktop-en --project=visual-laptop-ar --project=visual-laptop-en
+              --project=visual-tablet-ar --project=visual-tablet-en --project=visual-mobile-ar --project=visual-mobile-en
+          - name: auth
+            projects: >-
+              --project=auth-visual-acceptance --project=auth-flow-responsive --project=user-center-responsive
+              --project=auth-chromium
+          - name: admin
+            projects: >-
+              --project=admin-control-panel --project=admin-operations-full-flow --project=mission-engine
+              --project=knowledge-versioning --project=model-tool-governance --project=operations-observability
+              --project=report-pages
+          - name: projects-and-academy
+            projects: >-
+              --project=projects-section --project=projects-flow-routes --project=academy-flow-routes
+              --project=academy-content-library
+          - name: market-talent-marketing
+            projects: >-
+              --project=market-full-flow --project=talent-full-flow --project=marketing-full-flow
+          - name: studio-software-programs
+            projects: >-
+              --project=studio-full-flow --project=software-full-flow --project=programs-full-flow
+              --project=robotics-full-flow
+          - name: routes-and-journey
+            projects: >-
+              --project=supplemental-pages --project=authoritative-ui-routes --project=platform-user-journey
+              --project=link-integrity
+    services:
+      postgres:
+        image: postgres:17-bookworm
+        env:
+          POSTGRES_DB: jenanbiz
+          POSTGRES_USER: jenanbiz_app
+          POSTGRES_PASSWORD: ci-postgres-password
+        options: >-
+          --health-cmd "pg_isready -U jenanbiz_app -d jenanbiz"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 12
+        ports:
+          - 5432:5432
+      redis:
+        image: redis:7.4-alpine
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 12
+        ports:
+          - 6379:6379
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+      - run: cp .env.example .env
+      - run: npx prisma generate
+      - run: npm run db:migrate
+      - run: npm run academy:seed
+      - name: Cache Playwright browsers
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ~/.cache/ms-playwright
+          key: playwright-${{ runner.os }}-${{ hashFiles('package-lock.json') }}
+      - name: Install Chromium and its system libraries
+        run: npx playwright install --with-deps chromium
+      - name: Run the browser tests
+        run: npm run test:e2e -- ${{ matrix.group.projects }}
+      - name: Keep failure evidence
+        if: failure()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: playwright-${{ matrix.group.name }}
+          path: test-results/
+          retention-days: 7
+          if-no-files-found: ignore

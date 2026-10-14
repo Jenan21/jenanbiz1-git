@@ -81,6 +81,9 @@ services:
       SITE_ACCESS_USERNAME: ${SITE_ACCESS_USERNAME:-}
     ports:
       - "127.0.0.1:${APP_PORT:-3000}:3000"
+    volumes:
+      # documents are stored here when no object storage is configured
+      - jenanbiz_app_data:/app/.data
     depends_on:
       migrate:
         condition: service_completed_successfully
@@ -98,6 +101,8 @@ services:
       timeout: 5s
       retries: 6
       start_period: 30s
+    cap_drop:
+      - ALL
     security_opt:
       - no-new-privileges:true
 
@@ -143,6 +148,8 @@ services:
       - no-new-privileges:true
 
 volumes:
+  jenanbiz_app_data:
+    name: jenanbiz_app_data
   jenanbiz_postgres_data:
     name: jenanbiz_postgres_data
   jenanbiz_postgres_backups:

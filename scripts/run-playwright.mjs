@@ -16,7 +16,8 @@ const server = spawn(
   [fileURLToPath(nextBin), "dev", "--hostname", "127.0.0.1", "--port", port],
   {
     cwd: projectRoot,
-    env: { ...process.env, NODE_ENV: "development" },
+    // The crawler and the long flows compile most routes in one server, which outgrows Node's default heap.
+    env: { ...process.env, NODE_ENV: "development", NODE_OPTIONS: `${process.env.NODE_OPTIONS ?? ""} --max-old-space-size=4096`.trim() },
     stdio: "inherit",
     detached: !isWindows,
   },

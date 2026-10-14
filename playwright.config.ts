@@ -45,6 +45,12 @@ export default defineConfig({
       metadata: { appLocale: "en" },
     },
     {
+      name: "link-integrity",
+      testMatch: /link-integrity\.spec\.ts/,
+      use: { viewport: { width: 1440, height: 900 }, locale: "en-US" },
+      metadata: { appLocale: "en" },
+    },
+    {
       name: "auth-visual-acceptance",
       testMatch: /auth-visual\.spec\.ts/,
       use: { viewport: { width: 1661, height: 947 }, locale: "ar-SA" },

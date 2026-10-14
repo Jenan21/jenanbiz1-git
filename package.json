@@ -4,12 +4,12 @@
   "private": true,
   "scripts": {
     "dev": "next dev",
-    "build": "next build",
-    "vercel-build": "prisma generate && next build",
+    "build": "node scripts/next-build.mjs",
+    "vercel-build": "prisma generate && node scripts/next-build.mjs",
     "start": "next start",
     "lint": "eslint .",
     "lint:fix": "eslint . --fix",
-    "typecheck": "tsc --noEmit",
+    "typecheck": "node --max-old-space-size=4096 ./node_modules/typescript/bin/tsc --noEmit",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
     "prisma:generate": "prisma generate",
@@ -60,6 +60,7 @@
     "test:e2e:visual": "node --env-file=.env scripts/run-playwright.mjs tests/e2e/visual-layout.spec.ts",
     "test:e2e:home-visual": "node --env-file=.env scripts/run-playwright.mjs tests/e2e/home-visual.spec.ts --project=home-visual",
     "test:e2e:home-links": "node --env-file=.env scripts/run-playwright.mjs tests/e2e/home-panel-links.spec.ts --project=home-panel-links",
+    "test:e2e:links": "node --env-file=.env scripts/run-playwright.mjs tests/e2e/link-integrity.spec.ts --project=link-integrity",
     "test:e2e:auth-visual": "node --env-file=.env scripts/run-playwright.mjs tests/e2e/auth-visual.spec.ts --project=auth-visual-acceptance",
     "test:e2e:social-auth": "node --env-file=.env scripts/run-playwright.mjs tests/e2e/social-auth.spec.ts --project=social-auth",
     "test:e2e:auth-flow": "node --env-file=.env scripts/run-playwright.mjs tests/e2e/auth-flow-responsive.spec.ts --project=auth-flow-responsive",
@@ -83,9 +84,9 @@
     "leaflet": "^1.9.4",
     "mammoth": "^1.12.1",
     "next": "^16.3.6",
-    "node-vibrant": "^4.0.4",
     "pdf-lib": "^1.17.1",
     "pdfjs-dist": "^6.3.289",
+    "pg": "^8.23.1",
     "pptxgenjs": "^4.0.1",
     "react": "19.2.8",
     "react-dom": "19.2.8",
@@ -101,21 +102,40 @@
     "@tailwindcss/postcss": "4.3.3",
     "@types/leaflet": "^1.9.22",
     "@types/node": "^24.0.0",
+    "@types/pg": "^8.23.1",
     "@types/react": "^19.0.0",
     "@types/react-dom": "^19.0.0",
     "eslint": "^9.0.0",
-    "eslint-config-next": "^16.3.6",
+    "eslint-config-next": "^16.4.0",
     "prettier": "^3.0.0",
     "prettier-plugin-tailwindcss": "^0.7.0",
     "prisma": "7.9.1",
     "tailwindcss": "4.3.3",
     "typescript": "^5.9.0",
-    "vitest": "^3.2.0"
+    "vitest": "^4.1.11"
   },
   "overrides": {
     "pptxgenjs": {
       "image-size": "2.0.4"
+    },
+    "exceljs": {
+      "uuid": "^11.1.1"
+    },
+    "mammoth": {
+      "argparse": "^2.0.1"
+    },
+    "@prisma/config": {
+      "deepmerge-ts": "^8.0.2"
+    },
+    "prisma": {
+      "mysql2": "^3.24.6"
     }
+  },
+  "allowScripts": {
+    "@prisma/engines": true,
+    "prisma": true,
+    "fsevents": false,
+    "unrs-resolver": false
   },
   "browserslist": [
     "Chrome >= 111",

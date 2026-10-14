@@ -2,7 +2,7 @@ design-references/
 tests/
 .github/
 playwright.config.ts
-vitest.config.ts
+vitest.config.mts
 compose.yaml
 Dockerfile
 # local-only files must never be uploaded, even when deploying from a working tree
