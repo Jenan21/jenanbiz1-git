@@ -22,20 +22,22 @@ export function PageShortcuts() {
   const visible = showsShortcuts(pathname);
 
   // How many pages of the platform were opened before this one in this tab, so that "back" never leaves the platform.
+  // Only real history pushes count (a redirect replaces the entry), and every back or forward step subtracts one, so the
+  // estimate can fall short but never run ahead of the real history.
   const depth = useRef(0);
-  const first = useRef(true);
-  const poppedAt = useRef(0);
   useEffect(() => {
-    const onPop = () => { poppedAt.current = Date.now(); };
+    const original = window.history.pushState;
+    window.history.pushState = function pushState(...args: Parameters<History["pushState"]>) {
+      depth.current += 1;
+      return original.apply(this, args);
+    };
+    const onPop = () => { depth.current = Math.max(0, depth.current - 1); };
     window.addEventListener("popstate", onPop);
-    return () => window.removeEventListener("popstate", onPop);
+    return () => {
+      window.removeEventListener("popstate", onPop);
+      window.history.pushState = original;
+    };
   }, []);
-  useEffect(() => {
-    if (first.current) { first.current = false; return; }
-    const popped = Date.now() - poppedAt.current < 1500;
-    poppedAt.current = 0;
-    depth.current = popped ? Math.max(0, depth.current - 1) : depth.current + 1;
-  }, [pathname]);
 
   useEffect(() => {
     if (!visible) return;
