@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { cookies, headers } from "next/headers";
 import type { ReactNode } from "react";
 import { InterfaceVisibilityProvider } from "@/components/account/interface-visibility-provider";
+import { AdminEntryLink } from "@/components/admin/admin-entry-link";
 import { getDirection, resolveLocale } from "@/lib/i18n";
 import { resolveSiteUrl } from "@/lib/platform/site-url";
 import "@fontsource-variable/alexandria";
@@ -31,6 +32,7 @@ import "@/styles/reports.css";
 import "@/styles/auth-workflow.css";
 import "@/styles/user-center.css";
 import "@/styles/interface-visibility.css";
+import "@/styles/admin-entry.css";
 import "@/styles/user-investments-dashboard.css";
 import "@/styles/academy-flow.css";
 import "@/styles/market-flow.css";
@@ -91,6 +93,7 @@ export default async function RootLayout({
     >
       <body className="app-shell">
         <InterfaceVisibilityProvider />
+        <AdminEntryLink />
         {children}
       </body>
     </html>

@@ -1,0 +1,44 @@
+.admin-entry-link {
+  position: fixed;
+  z-index: 60;
+  inset-block-end: 16px;
+  inset-inline-end: 16px;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 40px;
+  padding: 0 16px;
+  border: 1px solid rgba(244, 192, 79, 0.7);
+  border-radius: 999px;
+  color: #ffe7ad;
+  background: rgba(34, 24, 4, 0.92);
+  box-shadow: 0 8px 26px rgba(0, 0, 0, 0.45);
+  font-size: 0.8rem;
+  font-weight: 700;
+  text-decoration: none;
+}
+
+.admin-entry-link:hover,
+.admin-entry-link:focus-visible {
+  border-color: #f4c04f;
+  background: rgba(58, 40, 6, 0.96);
+}
+
+.admin-entry-link .icon {
+  width: 17px;
+  height: 17px;
+}
+
+html[lang="ar"] .admin-entry-link [lang="en"],
+html[lang="en"] .admin-entry-link [lang="ar"] {
+  display: none;
+}
+
+@media (max-width: 700px) {
+  .admin-entry-link {
+    inset-block-end: 12px;
+    inset-inline-end: 12px;
+    min-height: 38px;
+    padding: 0 14px;
+  }
+}
