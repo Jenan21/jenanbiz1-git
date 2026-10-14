@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { PASSWORD_MIN_LENGTH, passwordProblem, passwordProblemMessage } from "@/lib/auth/password-policy";
 import {
   useEffect,
   useRef,
@@ -266,6 +267,11 @@ export function AuthForm({ mode, locale, labels }: AuthFormProps) {
         setError(copy.mismatch);
         return;
       }
+      const problem = passwordProblem(String(form.get("password") ?? ""));
+      if (problem) {
+        setError(passwordProblemMessage(problem, locale));
+        return;
+      }
       if (phone && !/^\+[1-9]\d{6,14}$/.test(phone)) {
         setError(copy.badPhone);
         return;
@@ -509,7 +515,7 @@ export function AuthForm({ mode, locale, labels }: AuthFormProps) {
         hideLabel={copy.hide}
         icon={<AuthLockIcon />}
         label={labels.password}
-        minLength={12}
+        minLength={PASSWORD_MIN_LENGTH}
         name="password"
         placeholder={labels.password}
         showLabel={copy.show}
@@ -521,7 +527,7 @@ export function AuthForm({ mode, locale, labels }: AuthFormProps) {
         hideLabel={copy.hide}
         icon={<AuthLockIcon />}
         label={copy.confirm}
-        minLength={12}
+        minLength={PASSWORD_MIN_LENGTH}
         name="confirmPassword"
         placeholder={copy.confirm}
         showLabel={copy.show}

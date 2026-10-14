@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse, after } from "next/server";
 import { z, ZodError } from "zod";
+import { PASSWORD_MAX_LENGTH, passwordProblem } from "@/lib/auth/password-policy";
 import { getRequestContext, hasValidOrigin } from "@/lib/auth/request";
 import { busyResponse } from "@/lib/auth/busy-response";
 import { PasswordWorkBusyError } from "@/lib/auth/password";
@@ -12,7 +13,7 @@ const confirmSchema = z.object({
   action: z.literal("confirm"),
   code: z.string().trim().regex(/^\d{6}$/),
   email: z.string().trim().email().max(320),
-  password: z.string().min(12).max(128),
+  password: z.string().max(PASSWORD_MAX_LENGTH).refine((value) => passwordProblem(value) === null),
 });
 
 export async function POST(request: NextRequest) {

@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { FormEvent, useState } from "react";
 import { useRouter } from "next/navigation";
+import { PASSWORD_MAX_LENGTH, PASSWORD_MIN_LENGTH, passwordProblem, passwordProblemMessage } from "@/lib/auth/password-policy";
 import type { Locale } from "@/types/i18n";
 
 interface RecoveryResponse {
@@ -95,6 +96,11 @@ export function PasswordRecoveryForm({ locale }: { locale: Locale }) {
       setError(ar ? "كلمتا المرور غير متطابقتين." : "Passwords do not match.");
       return;
     }
+    const problem = passwordProblem(password);
+    if (problem) {
+      setError(passwordProblemMessage(problem, ar ? "ar" : "en"));
+      return;
+    }
     setBusy(true);
     try {
       const response = await fetch("/api/auth/forgot", {
@@ -184,8 +190,8 @@ export function PasswordRecoveryForm({ locale }: { locale: Locale }) {
             {ar ? "كلمة المرور الجديدة" : "New password"}
             <input
               required
-              minLength={12}
-              maxLength={128}
+              minLength={PASSWORD_MIN_LENGTH}
+              maxLength={PASSWORD_MAX_LENGTH}
               type="password"
               autoComplete="new-password"
               value={password}
@@ -196,8 +202,8 @@ export function PasswordRecoveryForm({ locale }: { locale: Locale }) {
             {ar ? "تأكيد كلمة المرور" : "Confirm password"}
             <input
               required
-              minLength={12}
-              maxLength={128}
+              minLength={PASSWORD_MIN_LENGTH}
+              maxLength={PASSWORD_MAX_LENGTH}
               type="password"
               autoComplete="new-password"
               value={confirmPassword}

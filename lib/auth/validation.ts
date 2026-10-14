@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { PASSWORD_MAX_LENGTH, passwordProblem } from "@/lib/auth/password-policy";
 
 const email = z
   .string()
@@ -6,7 +7,11 @@ const email = z
   .email()
   .max(254)
   .transform((value) => value.toLowerCase());
-const password = z.string().min(12).max(128);
+// The owner's rule: at least four characters and one capital letter (lib/auth/password-policy.ts).
+const password = z
+  .string()
+  .max(PASSWORD_MAX_LENGTH)
+  .refine((value) => passwordProblem(value) === null, { message: "Password does not meet the rule" });
 
 export const registerSchema = z.object({
   displayName: z.string().trim().min(2).max(80),

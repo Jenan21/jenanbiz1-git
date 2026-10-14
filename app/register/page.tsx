@@ -25,8 +25,8 @@ export default async function RegisterPage() {
         forgot: "",
         loading: ar ? "جارٍ إنشاء الحساب..." : "Creating account...",
         note: ar
-          ? "كلمة المرور 12 حرفًا على الأقل"
-          : "Password must contain at least 12 characters",
+          ? "4 أحرف على الأقل مع حرف كبير واحد"
+          : "At least 4 characters, including one capital letter",
         errors: {
           DUPLICATE_EMAIL: ar
             ? "البريد الإلكتروني مستخدم بالفعل."

@@ -103,6 +103,10 @@ npm run auth:bootstrap-super-admin -- --email=owner@example.com --name="Site Own
 
 The password is never read from a file and never written anywhere: leave `SUPER_ADMIN_PASSWORD` unset in an interactive terminal and the command generates a strong password (24 characters) and shows it **once** at the end; or supply your own `SUPER_ADMIN_PASSWORD` (16 to 128 characters). A database that is not local needs a typed confirmation of its host name (`--yes` in automation). The address is stored as **not verified** unless `--mark-verified` is passed (use it only when you own the inbox); verify it from the account after signing in once e-mail is set up (`docs/email-setup.md`). The command uses Argon2id, a serializable PostgreSQL transaction and an advisory lock; it refuses to run when any `SUPER_ADMIN` already exists or the address is already assigned, so there is exactly one bootstrap, and it writes `super_admin.bootstrapped` to `AuditLog`. Never place real values in Git. Any later SUPER_ADMIN creation must use a separately authorized administrative workflow.
 
+## Password rule
+
+Owner decision (2026-10-14): a password needs **at least four characters and at least one capital letter**; its length beyond that, digits and symbols are the person's choice. The rule lives in `lib/auth/password-policy.ts` and is shared by the sign-up form, the recovery form and both API schemas (`lib/auth/validation.ts`, `app/api/auth/forgot/route.ts`); the upper bound of 128 characters stays so hashing work is bounded. Sign-in accepts any existing password. The Super Admin CLI still asks for 16+ characters. See `SECURITY.md` (item 11) for the risk of short passwords.
+
 ## Authentication rate limiting
 
 `login`, `register`, `oauth`, and sensitive project operations use a vendor-neutral `RateLimitProvider` contract. Development and tests default to the documented in-memory adapter. When `REDIS_URL` is configured, the application uses Redis with atomic increment and expiry semantics across instances. Production fails closed if no distributed provider is configured.

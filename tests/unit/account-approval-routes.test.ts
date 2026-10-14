@@ -73,6 +73,7 @@ describe("registration while approval is required", () => {
     mocks.registerPending.mockRejectedValue(new AuthenticationError("DUPLICATE_EMAIL"));
     expect((await register(json("/api/auth/register", body))).status).toBe(409);
     expect((await register(json("/api/auth/register", { ...body, password: "short" }))).status).toBe(400);
+    expect((await register(json("/api/auth/register", { ...body, password: "Abc" }))).status).toBe(400);
     expect(mocks.notify).not.toHaveBeenCalled();
   });
 
