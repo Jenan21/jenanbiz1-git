@@ -1806,6 +1806,13 @@
   color: var(--studio-slide-muted);
 }
 
+/* A 16:9 slide that is stretched to the row height would take its width from that height and spill out of its column. */
+.studio-slides-layout > .studio-slide {
+  align-self: start;
+  width: 100%;
+  max-width: 100%;
+}
+
 .studio-slide__media {
   min-width: 0;
   display: grid;

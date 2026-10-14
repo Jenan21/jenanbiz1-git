@@ -95,7 +95,7 @@ export async function listMarketListings(userId: string, filters: MarketListingF
       files: { orderBy: { createdAt: "desc" } },
       ndaAcceptances: { where: { userId }, select: { acceptedAt: true, termsVersion: true } },
     },
-    orderBy: [{ qualityScore: "desc" }, { updatedAt: "desc" }],
+    orderBy: [{ qualityScore: "desc" }, { updatedAt: "desc" }, { id: "asc" }],
     skip: offset,
     take: limit,
   });

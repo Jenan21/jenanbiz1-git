@@ -1,4 +1,4 @@
-import { createHash, createHmac, timingSafeEqual } from "node:crypto";
+import { createHash, createHmac, randomBytes, scryptSync, timingSafeEqual } from "node:crypto";
 
 export const GATE_COOKIE = "jenan_gate";
 export const GATE_COOKIE_MAX_AGE_SECONDS = 12 * 60 * 60;
@@ -6,7 +6,10 @@ export const GATE_COOKIE_MAX_AGE_SECONDS = 12 * 60 * 60;
 export const GATE_FAILURE_LIMIT = 10;
 export const GATE_FAILURE_WINDOW_MS = 10 * 60_000;
 
-const digest = (value: string) => createHash("sha256").update(value).digest();
+// A keyed digest with a secret that exists only in this process: it brings both sides of a comparison to the same
+// length without giving an observer anything to test guesses against.
+const comparisonKey = randomBytes(32);
+const digest = (value: string) => createHmac("sha256", comparisonKey).update(value).digest();
 
 /** Compares two strings in constant time, whatever their lengths. */
 export function safeEqual(left: string, right: string) {
@@ -26,9 +29,20 @@ export function credentialsMatchToken(header: string | null | undefined, token: 
   return typeof header === "string" && safeEqual(header, ["Bearer", token].join(" "));
 }
 
-/** Key for the gate cookie; it is derived from the credentials, so rotating the password revokes every cookie at once. */
+/**
+ * Key for the gate cookie. It is derived from the credentials with scrypt, so rotating the password revokes every
+ * cookie at once and a cookie someone has seen cannot be used to guess the password offline at hashing speed.
+ * The derivation costs tens of milliseconds, so the result is kept for the life of the process.
+ */
+const derivedKeys = new Map<string, Buffer>();
 export function gateKey(username: string, password: string) {
-  return createHmac("sha256", "jenan-gate:v1").update(`${username}\u0000${password}`).digest();
+  const id = `${username}\u0000${password}`;
+  const known = derivedKeys.get(id);
+  if (known) return known;
+  const key = scryptSync(id, "jenan-gate:v2", 32, { N: 16_384, r: 8, p: 1 });
+  if (derivedKeys.size >= 8) derivedKeys.clear();
+  derivedKeys.set(id, key);
+  return key;
 }
 
 function sign(key: Buffer, issuedAtSeconds: number) {

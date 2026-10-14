@@ -51,6 +51,16 @@ export default defineConfig({
       metadata: { appLocale: "en" },
     },
     {
+      name: "security-sweep",
+      testMatch: /security-sweep\.spec\.ts/,
+    },
+    {
+      // Needs a production server (see the file); not part of the dev-server groups in CI.
+      name: "csp-audit",
+      testMatch: /csp-audit\.spec\.ts/,
+      use: { viewport: { width: 1440, height: 900 }, locale: "en-US" },
+    },
+    {
       name: "auth-visual-acceptance",
       testMatch: /auth-visual\.spec\.ts/,
       use: { viewport: { width: 1661, height: 947 }, locale: "ar-SA" },

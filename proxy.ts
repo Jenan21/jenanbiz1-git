@@ -15,17 +15,19 @@ import {
 } from "@/lib/security/site-gate";
 
 /**
- * Lets the request through. In production every page also gets a fresh nonce and the full content security policy in
- * report-only mode: Next reads the nonce from the request header and stamps it on its own scripts, while the
- * response header makes browsers report (not block) anything the policy would forbid.
+ * Lets the request through. In production every page also gets a fresh nonce and the full content security policy:
+ * Next reads the nonce from the request header and stamps it on its own scripts, and the response header makes browsers
+ * refuse any script, image, connection or frame the policy does not allow. `CSP_REPORT_ONLY=1` switches back to
+ * report-only (violations are logged, nothing is blocked) if a release ever needs it.
  */
 function proceed(request: NextRequest) {
   if (process.env.NODE_ENV !== "production") return NextResponse.next();
   const policy = buildContentSecurityPolicy({ nonce: createNonce(), mapTileUrl: process.env.NEXT_PUBLIC_MAP_TILE_URL });
+  const reportOnly = process.env.CSP_REPORT_ONLY === "1";
   const requestHeaders = new Headers(request.headers);
-  requestHeaders.set("content-security-policy-report-only", policy);
+  requestHeaders.set(reportOnly ? "content-security-policy-report-only" : "content-security-policy", policy);
   const response = NextResponse.next({ request: { headers: requestHeaders } });
-  response.headers.set("Content-Security-Policy-Report-Only", policy);
+  response.headers.set(reportOnly ? "Content-Security-Policy-Report-Only" : "Content-Security-Policy", policy);
   return response;
 }
 

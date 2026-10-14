@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { ZodError } from "zod";
 import { getRequestContext, hasValidOrigin } from "@/lib/auth/request";
+import { busyResponse } from "@/lib/auth/busy-response";
+import { PasswordWorkBusyError } from "@/lib/auth/password";
 import { setSessionCookie } from "@/lib/auth/session";
 import { loginSchema } from "@/lib/auth/validation";
 import { AuthenticationError, loginUser } from "@/services/auth/auth.service";
@@ -40,6 +42,7 @@ export async function POST(request: NextRequest) {
       const status = error.code === "ACCOUNT_DISABLED" ? 403 : 401;
       return NextResponse.json({ error: error.code }, { status });
     }
+    if (error instanceof PasswordWorkBusyError) return busyResponse();
     console.error("Login failed without exposing request data");
     return NextResponse.json({ error: "LOGIN_FAILED" }, { status: 500 });
   }

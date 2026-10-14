@@ -7,6 +7,8 @@ import { Icon } from "@/components/ui/icons";
 
 type RobotRow = {
   id: string;
+  /** The short form shown to people; the full `id` is what identifies the row. */
+  label: string;
   name: string;
   team: string;
   intelligence: number;
@@ -85,7 +87,8 @@ export default function RobotRankingPage() {
       const refreshedPayload = await refreshed.json();
       if (refreshedPayload?.success && Array.isArray(refreshedPayload.snapshot?.robots)) {
         setRows((refreshedPayload.snapshot.robots as RobotApiRecord[]).map((bot) => ({
-          id: bot.id.slice(0, 8).toUpperCase(),
+          id: bot.id,
+          label: bot.id.slice(0, 8).toUpperCase(),
           name: bot.name,
           team: bot.team ?? "Platform",
           intelligence: Number(bot.intelligence ?? 0),
@@ -110,7 +113,8 @@ export default function RobotRankingPage() {
         if (!active || !payload?.success || !Array.isArray(payload.snapshot?.robots)) return;
 
         const nextRows = (payload.snapshot.robots as RobotApiRecord[]).map((bot) => ({
-          id: bot.id.slice(0, 8).toUpperCase(),
+          id: bot.id,
+          label: bot.id.slice(0, 8).toUpperCase(),
           name: bot.name,
           team: bot.team ?? "Platform",
           intelligence: Number(bot.intelligence ?? 0),
@@ -192,7 +196,7 @@ export default function RobotRankingPage() {
                   <div className="rank-badge">#{index + 1}</div>
                   <div className="rank-info">
                     <strong>{bot.name}</strong>
-                    <small>{bot.team} · {bot.id}</small>
+                    <small>{bot.team} · {bot.label}</small>
                   </div>
                   <div className="rank-metrics">
                     <span>{bot.intelligence}%</span>

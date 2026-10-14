@@ -33,7 +33,7 @@ function summarize(payload: unknown): Report[] {
   });
 }
 
-// Browsers post violation reports here while the full content security policy is in report-only mode.
+// Browsers post violation reports here: the policy carries `report-uri`, so a blocked resource is logged as well as refused.
 export async function POST(request: NextRequest) {
   const limited = await enforceRouteRateLimit(request, { scope: "csp-report", limit: 60, windowMs: 60_000 });
   if (limited) return limited;

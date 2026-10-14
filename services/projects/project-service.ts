@@ -136,7 +136,7 @@ export async function listUserProjectsPage(
     ],
   };
   const [projects, total] = await db.$transaction([
-    db.project.findMany({ where, include: projectInclude(), orderBy: { updatedAt: "desc" }, skip: input.offset, take: input.limit }),
+    db.project.findMany({ where, include: projectInclude(), orderBy: [{ updatedAt: "desc" }, { id: "asc" }], skip: input.offset, take: input.limit }),
     db.project.count({ where }),
   ]);
   return {

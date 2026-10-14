@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse, after } from "next/server";
 import { z, ZodError } from "zod";
 import { getRequestContext, hasValidOrigin } from "@/lib/auth/request";
+import { busyResponse } from "@/lib/auth/busy-response";
+import { PasswordWorkBusyError } from "@/lib/auth/password";
 import { checkAuthRateLimit } from "@/lib/rate-limit/auth-rate-limit";
 import { confirmPasswordReset, PasswordRecoveryError, requestPasswordReset } from "@/services/auth/password-recovery-service";
 import { getPasswordRecoveryEmailProvider } from "@/services/auth/recovery-email-provider";
@@ -40,6 +42,7 @@ export async function POST(request: NextRequest) {
     if (error instanceof PasswordRecoveryError) {
       return NextResponse.json({ error: error.code }, { status: 400 });
     }
+    if (error instanceof PasswordWorkBusyError) return busyResponse();
     console.error("Password recovery failed without exposing request data");
     return NextResponse.json({ error: "RECOVERY_FAILED" }, { status: 500 });
   }

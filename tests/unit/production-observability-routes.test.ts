@@ -32,6 +32,7 @@ const originalMetricsToken = process.env.METRICS_TOKEN;
 
 beforeEach(() => {
   vi.clearAllMocks();
+  vi.useFakeTimers({ toFake: ["Date"] });
   process.env.METRICS_TOKEN = "test-metrics-token";
   mocks.databaseQuery.mockResolvedValue([{ healthy: 1 }]);
   mocks.rateLimitReady.mockResolvedValue(true);
@@ -42,6 +43,7 @@ beforeEach(() => {
 });
 
 afterEach(() => {
+  vi.useRealTimers();
   if (originalMetricsToken) process.env.METRICS_TOKEN = originalMetricsToken;
   else delete process.env.METRICS_TOKEN;
 });
@@ -56,6 +58,8 @@ describe("production observability routes", () => {
     });
 
     mocks.rateLimitReady.mockResolvedValue(false);
+    // The probe shares its answer for a few seconds; move past that window before asking again.
+    vi.setSystemTime(Date.now() + 10_000);
     const notReadyResponse = await getReady();
     expect(notReadyResponse.status).toBe(503);
     await expect(notReadyResponse.json()).resolves.toEqual({

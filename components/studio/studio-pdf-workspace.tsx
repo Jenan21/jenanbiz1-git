@@ -32,7 +32,8 @@ function usePreviewUrl(file: File | null) {
   const [url, setUrl] = useState("");
 
   useEffect(() => {
-    const nextUrl = file ? URL.createObjectURL(file) : "";
+    // The blob is always typed as a PDF, so a file that is really HTML or SVG is never rendered as a page of this origin.
+    const nextUrl = file ? URL.createObjectURL(new Blob([file], { type: "application/pdf" })) : "";
     const update = requestAnimationFrame(() => setUrl(nextUrl));
     return () => {
       cancelAnimationFrame(update);

@@ -16,9 +16,15 @@ The production site is private while it is being tested. Do not probe it without
 - The private-preview gate compares credentials in constant time, stops evaluating them after ten wrong guesses from
   one client in ten minutes, and fails closed when it is half configured.
 - Every state-changing request is checked for a same-site origin; responses carry framing, content-type, referrer and
-  transport-security headers, and a full content security policy is being collected in report-only mode.
+  transport-security headers and an enforced, nonce-based content security policy.
 - The password hash never leaves the database unless a query asks for it explicitly; other users only ever see a
   display name.
+- Expensive or abusable work is bounded: password hashing is limited per instance and refused quickly under a flood,
+  uploads are checked by content and size, exports and PDF/OOXML processing have page, pixel and archive ceilings, and
+  the database pool and queries have timeouts (see `docs/load-testing.md`).
+- A black-box sweep of every API route runs in CI: no route is reachable without a session unless it is on a reasoned
+  public list, members cannot reach administrator routes, cross-site writes are refused, and hostile input never
+  produces a server error or leaks internals.
 
 ## Known and accepted advisories
 

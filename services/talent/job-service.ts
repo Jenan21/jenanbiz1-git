@@ -123,7 +123,7 @@ export async function listJobPostings(userId: string, filters: JobPostingFilters
       ],
     },
     include: postingInclude,
-    orderBy: [{ qualityScore: "desc" }, { updatedAt: "desc" }],
+    orderBy: [{ qualityScore: "desc" }, { updatedAt: "desc" }, { id: "asc" }],
     skip: offset,
     take: limit,
   });

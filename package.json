@@ -61,6 +61,9 @@
     "test:e2e:home-visual": "node --env-file=.env scripts/run-playwright.mjs tests/e2e/home-visual.spec.ts --project=home-visual",
     "test:e2e:home-links": "node --env-file=.env scripts/run-playwright.mjs tests/e2e/home-panel-links.spec.ts --project=home-panel-links",
     "test:e2e:links": "node --env-file=.env scripts/run-playwright.mjs tests/e2e/link-integrity.spec.ts --project=link-integrity",
+    "test:e2e:security": "node --env-file=.env scripts/run-playwright.mjs tests/e2e/security-sweep.spec.ts --project=security-sweep",
+    "test:e2e:csp": "node --env-file=.env node_modules/@playwright/test/cli.js test --project=csp-audit",
+    "loadtest": "node --env-file=.env scripts/loadtest.mjs",
     "test:e2e:auth-visual": "node --env-file=.env scripts/run-playwright.mjs tests/e2e/auth-visual.spec.ts --project=auth-visual-acceptance",
     "test:e2e:social-auth": "node --env-file=.env scripts/run-playwright.mjs tests/e2e/social-auth.spec.ts --project=social-auth",
     "test:e2e:auth-flow": "node --env-file=.env scripts/run-playwright.mjs tests/e2e/auth-flow-responsive.spec.ts --project=auth-flow-responsive",
@@ -105,6 +108,7 @@
     "@types/pg": "^8.23.1",
     "@types/react": "^19.0.0",
     "@types/react-dom": "^19.0.0",
+    "autocannon": "^8.0.0",
     "eslint": "^9.0.0",
     "eslint-config-next": "^16.4.0",
     "prettier": "^3.0.0",
@@ -119,6 +123,9 @@
       "image-size": "2.0.4"
     },
     "exceljs": {
+      "uuid": "^11.1.1"
+    },
+    "hyperid": {
       "uuid": "^11.1.1"
     },
     "mammoth": {

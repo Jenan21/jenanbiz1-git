@@ -33,8 +33,9 @@ export function createNonce() {
 }
 
 /**
- * The full, nonce-based policy. It is delivered as `Content-Security-Policy-Report-Only` first, so every violation is
- * reported (and logged) without breaking a page; the enforced directives above already apply.
+ * The full, nonce-based policy. The proxy sends it as `Content-Security-Policy` in production (an audit of every reachable
+ * page, the PDF preview and the Visual DNA tool found no violations); `CSP_REPORT_ONLY=1` downgrades it to
+ * `Content-Security-Policy-Report-Only`, which reports every violation without breaking a page.
  */
 export function buildContentSecurityPolicy({
   nonce,

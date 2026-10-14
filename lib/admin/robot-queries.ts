@@ -5,7 +5,7 @@ export async function getRobotDashboardSnapshot({ limit = 20, offset = 0 }: { li
   const createdSince = new Date(Date.now() - 86_400_000);
   const [robots, totalRobots, activeRobots, reviewRobots, hiddenRobots, dailyGeneration, averageIntelligence] = await Promise.all([
     db.robot.findMany({
-      orderBy: { intelligence: "desc" },
+      orderBy: [{ intelligence: "desc" }, { id: "asc" }],
       skip: offset,
       take: limit,
     }),

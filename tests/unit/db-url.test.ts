@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { normalizeDatabaseUrl } from "@/lib/db-url";
+import { databasePoolSettings, normalizeDatabaseUrl } from "@/lib/db-url";
 
 describe("normalizeDatabaseUrl", () => {
   it("pins the verifying mode for the modes pg is about to weaken", () => {
@@ -35,5 +35,28 @@ describe("normalizeDatabaseUrl", () => {
     for (const value of ["not a url", "mysql://u:p@h/db?sslmode=require", ""]) {
       expect(normalizeDatabaseUrl(value), value).toBe(value);
     }
+  });
+});
+
+describe("databasePoolSettings", () => {
+  it("keeps a small pool on serverless and a larger one on a long-running server", () => {
+    expect(databasePoolSettings({ VERCEL: "1" }).max).toBe(5);
+    expect(databasePoolSettings({}).max).toBe(20);
+    expect(databasePoolSettings({ VERCEL: "1" }).allowExitOnIdle).toBe(true);
+  });
+
+  it("always bounds waiting and running time", () => {
+    const settings = databasePoolSettings({});
+    expect(settings.connectionTimeoutMillis).toBeGreaterThan(0);
+    expect(settings.statement_timeout).toBeGreaterThan(0);
+    expect(settings.query_timeout).toBeGreaterThan(0);
+    expect(settings.idle_in_transaction_session_timeout).toBeGreaterThan(0);
+  });
+
+  it("accepts overrides inside the allowed range and ignores everything else", () => {
+    expect(databasePoolSettings({ DATABASE_POOL_MAX: "12" }).max).toBe(12);
+    for (const bad of ["0", "-3", "1000", "abc", "", "2.5"]) expect(databasePoolSettings({ DATABASE_POOL_MAX: bad }).max, bad).toBe(20);
+    expect(databasePoolSettings({ DATABASE_CONNECT_TIMEOUT_MS: "100" }).connectionTimeoutMillis).toBe(8_000);
+    expect(databasePoolSettings({ DATABASE_QUERY_TIMEOUT_MS: "5000" }).statement_timeout).toBe(5_000);
   });
 });

@@ -23,6 +23,12 @@ function jsonText(value: unknown) {
     : "-";
 }
 
+/** A unit is only appended to a value that exists, so a missing figure reads "-" and never "-%". */
+function withUnit(value: unknown, unit: string) {
+  const text = jsonText(value);
+  return text === "-" ? text : `${text}${unit}`;
+}
+
 export async function createProjectReport(projectId: string, userId: string, intelligence?: ProjectIntelligenceResult) {
   const project = await getUserProject(projectId, userId);
   if (!project) throw new Error("Project not found");
@@ -146,7 +152,7 @@ export async function createProjectReport(projectId: string, userId: string, int
       ["City", jsonText(analysisInput?.city)],
       ["Target audience", jsonText(analysisInput?.targetAudience)],
       ["Budget range", jsonText(analysisInput?.budgetRange)],
-      ["Evidence completeness", `${jsonText(analysisResult?.evidenceCompleteness)}%`],
+      ["Evidence completeness", withUnit(analysisResult?.evidenceCompleteness, "%")],
       ["Competition level", jsonText(analysisResult?.competitionLevel)],
       ["Observed competitors", jsonText(analysisResult?.competitorCount)],
       ["Purchasing power level", jsonText(analysisResult?.purchasingPowerLevel)],
@@ -193,7 +199,7 @@ export async function createProjectReport(projectId: string, userId: string, int
     addText(`Workforce plan: ${jsonText(technical?.staffingPlan)}`);
     addText(`SWOT recommendation: ${jsonText(swot?.recommendation)}`);
     addText(`Delivery start: ${jsonText(timeline?.startDate)}`);
-    addText(`Delivery duration: ${jsonText(timeline?.durationMonths)} months`);
+    addText(`Delivery duration: ${withUnit(timeline?.durationMonths, " months")}`);
     addText(`Key milestones: ${jsonText(timeline?.milestones)}`);
   }
   const launchPlan = jsonRecord(project.launchPlan);
@@ -214,10 +220,10 @@ export async function createProjectReport(projectId: string, userId: string, int
       ["Launch city", jsonText(basics?.city)],
       ["Target audience", jsonText(basics?.targetAudience)],
       ["Initial capital", jsonText(basics?.initialCapital)],
-      ["Delivery duration", `${jsonText(basics?.durationMonths)} months`],
+      ["Delivery duration", withUnit(basics?.durationMonths, " months")],
       ["Planned team size", jsonText(basics?.teamSize)],
       ["Budget total", jsonText(budget?.totalBudget)],
-      ["Contingency percent", `${jsonText(budget?.contingencyPercent)}%`],
+      ["Contingency percent", withUnit(budget?.contingencyPercent, "%")],
       ["Plan start date", jsonText(timeline?.startDate)],
       ["Target launch date", jsonText(timeline?.targetLaunchDate)],
       ["Role requirements", String(Array.isArray(team?.roles) ? team.roles.length : 0)],

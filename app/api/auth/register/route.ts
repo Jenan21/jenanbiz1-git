@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from "next/server";
 import { ZodError } from "zod";
 import { isPublicRegistrationAllowed } from "@/lib/auth/registration-policy";
 import { getRequestContext, hasValidOrigin } from "@/lib/auth/request";
+import { busyResponse } from "@/lib/auth/busy-response";
+import { PasswordWorkBusyError } from "@/lib/auth/password";
 import { setSessionCookie } from "@/lib/auth/session";
 import { registerSchema } from "@/lib/auth/validation";
 import {
@@ -54,6 +56,7 @@ export async function POST(request: NextRequest) {
       error.code === "DUPLICATE_EMAIL"
     )
       return NextResponse.json({ error: error.code }, { status: 409 });
+    if (error instanceof PasswordWorkBusyError) return busyResponse();
     console.error("Registration failed without exposing request data");
     return NextResponse.json({ error: "REGISTRATION_FAILED" }, { status: 500 });
   }

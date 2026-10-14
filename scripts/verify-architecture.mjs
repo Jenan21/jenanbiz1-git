@@ -1,4 +1,4 @@
-import { existsSync, readFileSync, readdirSync, statSync } from "node:fs";
+import { existsSync, readFileSync, readdirSync } from "node:fs";
 import { resolve } from "node:path";
 
 function pass(label, value) {
@@ -88,11 +88,11 @@ for (const filePath of filesToScan) {
   if (filePath.endsWith("scripts/verify-architecture.mjs")) continue;
   let content = "";
   try {
-    if (statSync(filePath).size > 1_500_000) continue;
     content = readFileSync(filePath, "utf8");
   } catch {
     continue;
   }
+  if (content.length > 1_500_000) continue;
   if (providerPattern.test(content)) {
     matches.push(filePath);
   }
