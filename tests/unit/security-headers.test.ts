@@ -36,12 +36,12 @@ describe("content security policy", () => {
     expect(directive(buildContentSecurityPolicy({ nonce: "n" }), "script-src")).not.toContain("'unsafe-eval'");
   });
 
-  it("allows the map tile provider's origin for images and nothing else external", () => {
+  it("allows map images and only Sentry ingestion for external connections", () => {
     const policy = buildContentSecurityPolicy({ nonce: "n", mapTileUrl: "https://tiles.example.com/{z}/{x}/{y}.png" });
     const images = directive(policy, "img-src")!;
     expect(images).toContain("https://tiles.example.com");
     expect(images).toContain("https://*.tile.openstreetmap.org");
-    expect(directive(policy, "connect-src")).toBe("connect-src 'self'");
+    expect(directive(policy, "connect-src")).toBe("connect-src 'self' https://*.ingest.sentry.io https://*.ingest.us.sentry.io https://*.ingest.de.sentry.io");
     expect(directive(buildContentSecurityPolicy({ nonce: "n", mapTileUrl: "garbage" }), "img-src")).not.toContain("garbage");
   });
 });

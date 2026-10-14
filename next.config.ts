@@ -1,4 +1,5 @@
 import type { NextConfig } from "next";
+import { withSentryConfig } from "@sentry/nextjs/config";
 import { ENFORCED_CSP_DIRECTIVES } from "./lib/security/csp";
 import { securityHeaders } from "./lib/security/headers";
 
@@ -39,4 +40,21 @@ const nextConfig: NextConfig = {
   },
 };
 
-export default nextConfig;
+const uploadSourceMaps = Boolean(process.env.SENTRY_AUTH_TOKEN && process.env.SENTRY_PROJECT);
+
+export default withSentryConfig(nextConfig, {
+  org: "jenanpro",
+  project: process.env.SENTRY_PROJECT,
+  authToken: process.env.SENTRY_AUTH_TOKEN,
+  telemetry: false,
+  silent: !process.env.CI,
+  sourcemaps: {
+    disable: !uploadSourceMaps,
+    deleteSourcemapsAfterUpload: true,
+  },
+  release: {
+    name: process.env.SENTRY_RELEASE,
+    create: uploadSourceMaps,
+    finalize: uploadSourceMaps,
+  },
+});
