@@ -6,6 +6,7 @@ export function sanitizeSentryEvent(event: ErrorEvent): ErrorEvent {
   delete event.user;
   delete event.breadcrumbs;
   delete event.extra;
+  if (event.contexts?.nextjs) delete event.contexts.nextjs.request_path;
   return event;
 }
 
@@ -14,6 +15,19 @@ export function sentryOptions(dsn: string | undefined) {
     dsn,
     enabled: process.env.NODE_ENV === "production" && Boolean(dsn),
     sendDefaultPii: false,
+    dataCollection: {
+      userInfo: false,
+      cookies: false,
+      httpHeaders: false,
+      httpBodies: [],
+      urlQueryParams: false,
+      graphQL: { document: false, variables: false },
+      genAI: { inputs: false, outputs: false },
+      databaseQueryData: false,
+      queues: false,
+      stackFrameVariables: false,
+      frameContextLines: 0,
+    },
     tracesSampleRate: 0,
     beforeSend: sanitizeSentryEvent,
   };

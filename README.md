@@ -36,7 +36,7 @@ To finish setup:
 
 The CSP permits only Sentry's HTTPS ingestion domains in addition to same-origin connections; no tunnel, access-gate bypass, or general network wildcard is added. Self-hosted Sentry requires a separately reviewed CSP origin.
 
-`sendDefaultPii` is off, and the shared event filter removes request metadata (including URLs, headers, cookies and bodies), user details, breadcrumbs, and extra data before transmission. Error messages, stacks, tags, and other SDK context can still contain application-supplied data: review Sentry's server-side data-scrubbing rules and retention/access controls before enabling production DSNs. Never include credentials or private business inputs in exception messages or custom context.
+`sendDefaultPii` is off. SDK data collection disables user information, cookies, HTTP headers/bodies, URL query parameters, GraphQL documents/variables, AI inputs/outputs, database query data, queue arguments, stack-frame variables, and source context lines. The shared event filter also removes request metadata, Next.js request paths, user details, breadcrumbs, and extra data before transmission. Error messages, stacks, tags, and other SDK context can still contain application-supplied data: review Sentry's server-side data-scrubbing rules and retention/access controls before enabling production DSNs. Never include credentials or private business inputs in exception messages or custom context.
 
 ## Structure
 
