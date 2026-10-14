@@ -34,6 +34,8 @@ export type IconName =
   | "trend"
   | "barChart"
   | "pieChart"
+  | "lightbulb"
+  | "cube"
   | "x";
 
 const paths: Record<IconName, React.ReactNode> = {
@@ -168,6 +170,8 @@ const paths: Record<IconName, React.ReactNode> = {
   barChart: <><path d="M5 20V10M12 20V4M19 20v-7" /></>,
   pieChart: <><path d="M12 3v9h9A9 9 0 1 1 12 3Z" /><path d="M15 3a6 6 0 0 1 6 6h-6V3Z" /></>,
   x: <path d="m6 6 12 12M18 6 6 18" />,
+  lightbulb: <><path d="M9 18h6M10 21h4" /><path d="M12 3a6 6 0 0 0-3.5 10.9c.6.5 1 1.2 1 2V16h5v-.1c0-.8.4-1.5 1-2A6 6 0 0 0 12 3Z" /></>,
+  cube: <><path d="m12 3 8 4.5v9L12 21l-8-4.5v-9L12 3Z" /><path d="m4 7.5 8 4.5 8-4.5M12 12v9" /></>,
 };
 
 export function Icon({

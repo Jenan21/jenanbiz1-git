@@ -2,6 +2,7 @@ import Link from "next/link";
 import { LogoutButton } from "@/components/auth/logout-button";
 import { Icon, type IconName } from "@/components/ui/icons";
 import { LanguageSwitcher } from "@/components/ui/language-switcher";
+import type { SystemRole } from "@/generated/prisma/client";
 import type { Locale } from "@/types/i18n";
 
 type Copy = readonly [string, string];
@@ -15,65 +16,81 @@ const services: ReadonlyArray<{
 }> = [
   {
     href: "/projects",
-    icon: "barChart",
+    icon: "lightbulb",
     title: ["المشاريع", "Projects"],
-    description: ["تحليل ودراسة وتقييم وبدء مشروعك", "Analyze, assess, and launch projects"],
+    description: ["تحليل · تقييم · دراسة جدوى · بدء مشروعك", "Analysis · evaluation · feasibility · launch"],
     tone: "blue",
   },
   {
     href: "/academy",
     icon: "graduation",
     title: ["الأكاديمية", "Academy"],
-    description: ["دروس ودورات وأبحاث في مجال الأعمال", "Business courses, studies, and research"],
+    description: ["دورات ودراسات وأبحاث متخصصة", "Courses, studies, and focused research"],
     tone: "cyan",
   },
   {
     href: "/software",
-    icon: "grid",
-    title: ["البرمجيات والأدوات", "Software & tools"],
-    description: ["أدوات ذكية للإدارة وتنمية أعمالك", "Smart tools to operate and grow"],
+    icon: "cube",
+    title: ["البرمجيات", "Software"],
+    description: ["أدوات تشغيل ونمو الأعمال", "Tools to run and grow a business"],
     tone: "gold",
   },
   {
     href: "/market",
-    icon: "cart",
-    title: ["سوق جنان", "Jenan Market"],
-    description: ["بيع وشراء الأعمال والمتاجر والعقارات", "Buy and sell businesses and assets"],
+    icon: "barChart",
+    title: ["السوق", "Market"],
+    description: ["بيع وشراء الأعمال والمتاجر والعقارات", "Buy and sell businesses, stores, and assets"],
     tone: "sky",
   },
   {
     href: "/talent",
     icon: "people",
-    title: ["التوظيف", "Talent"],
-    description: ["فرص وظيفية وكفاءات عالية", "Jobs and high-quality talent"],
+    title: ["الوظائف", "Talent"],
+    description: ["مواهب وفرص عمل في مختلف المجالات", "Talent and job opportunities across fields"],
     tone: "violet",
   },
   {
-    href: "/marketing",
-    icon: "megaphone",
-    title: ["التسويق", "Marketing"],
-    description: ["حملات وتسويق لجذب العملاء", "Campaigns that attract customers"],
+    href: "/user/investments",
+    icon: "wallet",
+    title: ["بياناتي الاستثمارية", "My investment data"],
+    description: ["متابعة مشاريعك الاستثمارية وتقاريرك في مكان واحد", "Follow your investment projects and reports in one place"],
     tone: "emerald",
   },
 ];
 
-const nav: ReadonlyArray<{ href: string; icon: IconName; label: Copy }> = [
-  { href: "/dashboard", icon: "dashboard", label: ["الرئيسية", "Home"] },
-  { href: "/talent", icon: "briefcase", label: ["التوظيف", "Talent"] },
-  { href: "/software", icon: "grid", label: ["البرمجيات والأدوات", "Software & tools"] },
-  { href: "/projects", icon: "briefcase", label: ["المشاريع", "Projects"] },
-  { href: "/academy", icon: "graduation", label: ["الأكاديمية", "Academy"] },
-  { href: "/market", icon: "cart", label: ["المنصة", "Market"] },
+const nav: ReadonlyArray<{ href: string; label: Copy }> = [
+  { href: "/dashboard", label: ["الرئيسية", "Home"] },
+  { href: "/projects", label: ["المشاريع", "Projects"] },
+  { href: "/academy", label: ["الأكاديمية", "Academy"] },
+  { href: "/software", label: ["البرمجيات", "Software"] },
+  { href: "/market", label: ["السوق", "Market"] },
+  { href: "/talent", label: ["الوظائف", "Talent"] },
+  { href: "/marketing", label: ["التسويق", "Marketing"] },
+  { href: "/benefits", label: ["من نحن", "About"] },
 ];
 
-const assurances: ReadonlyArray<{ icon: IconName; title: Copy; note: Copy }> = [
-  { icon: "brain", title: ["ذكاء اصطناعي متقدم", "Advanced AI"], note: ["يدعم قرارك", "Decision support"] },
-  { icon: "globe", title: ["شبكة فرص عالمية", "Global opportunity"], note: ["في مختلف القطاعات", "Across sectors"] },
-  { icon: "shield", title: ["شبكة وخصوصية عالية", "Private and secure"], note: ["لحماية بياناتك", "Protecting your data"] },
-  { icon: "shield", title: ["أمان فرص عالمية", "Trusted opportunity"], note: ["في مختلف القطاعات", "Across sectors"] },
-  { icon: "settings", title: ["دعم فني متخصص", "Expert support"], note: ["من مصادر عالمية", "From trusted sources"] },
-  { icon: "sparkles", title: ["تحديثات مستمرة", "Continuous updates"], note: ["وخدمات متطورة", "Evolving services"] },
+const strengths: ReadonlyArray<{ icon: IconName; title: Copy; note: Copy }> = [
+  { icon: "shield", title: ["مصادر موثّقة", "Sourced data"], note: ["كل رقم يظهر مع مصدره وتاريخه", "Every figure shows its source and date"] },
+  { icon: "rocket", title: ["أدوات عملية", "Practical tools"], note: ["لتطوير مشروعك خطوة بخطوة", "To build your project step by step"] },
+  { icon: "lock", title: ["حماية لحسابك", "Account protection"], note: ["جلسات آمنة وصلاحيات واضحة", "Secure sessions and clear permissions"] },
+  { icon: "grid", title: ["أقسام مترابطة", "Connected sections"], note: ["من الفكرة إلى التنفيذ في مكان واحد", "From idea to execution in one place"] },
 ];
+
+const markets: ReadonlyArray<{ icon: IconName; title: Copy; symbol: string }> = [
+  { icon: "barChart", title: ["الأسهم العالمية", "Global equities"], symbol: "S&P 500" },
+  { icon: "cube", title: ["المعادن النفيسة", "Precious metals"], symbol: "XAU/USD" },
+  { icon: "wallet", title: ["العملات الرقمية", "Digital currencies"], symbol: "BTC/USD" },
+];
+
+const roleLabels: Partial<Record<SystemRole, Copy>> = {
+  SUPER_ADMIN: ["مالك المنصة", "Platform owner"],
+  ADMIN: ["مدير النظام", "Administrator"],
+  ELITE_COMMITTEE: ["فريق المنصة", "Platform team"],
+  MANAGER: ["فريق المنصة", "Platform team"],
+  SUPERVISOR: ["فريق المنصة", "Platform team"],
+  EMPLOYEE: ["فريق المنصة", "Platform team"],
+};
+const memberLabel: Copy = ["عضو", "Member"];
 
 function copy(value: Copy, locale: Locale) {
   return locale === "ar" ? value[0] : value[1];
@@ -81,12 +98,16 @@ function copy(value: Copy, locale: Locale) {
 
 export function AuthenticatedHome({
   locale,
+  systemRole,
   userLabel,
 }: {
   locale: Locale;
+  systemRole: SystemRole;
   userLabel: string;
 }) {
   const ar = locale === "ar";
+  const canAdminister = systemRole === "ADMIN" || systemRole === "SUPER_ADMIN";
+  const initial = Array.from(userLabel.trim())[0]?.toUpperCase() ?? "";
 
   return (
     <main
@@ -103,91 +124,133 @@ export function AuthenticatedHome({
         <nav aria-label={ar ? "التنقل الرئيسي" : "Main navigation"}>
           {nav.map((item) => (
             <Link
+              aria-current={item.href === "/dashboard" ? "page" : undefined}
               className={item.href === "/dashboard" ? "is-active" : undefined}
               href={item.href}
               key={item.href}
             >
-              <Icon name={item.icon} />
               {copy(item.label, locale)}
             </Link>
           ))}
+          {canAdminister ? (
+            <Link className="is-admin" data-testid="home-admin-link" href="/admin">
+              <Icon name="shield" />
+              {ar ? "الإدارة" : "Admin"}
+            </Link>
+          ) : null}
         </nav>
         <div className="authenticated-home__tools">
-          <button type="button" disabled aria-label={ar ? "البحث غير متاح حاليًا" : "Search is currently unavailable"}><Icon name="search" /></button>
+          <label className="authenticated-home__search">
+            <Icon name="search" />
+            <input
+              disabled
+              placeholder={ar ? "البحث غير متاح حاليًا" : "Search unavailable"}
+              type="search"
+              aria-label={ar ? "البحث غير متاح حاليًا" : "Search is currently unavailable"}
+            />
+          </label>
           <LanguageSwitcher locale={locale} label={ar ? "Switch to English" : "التبديل إلى العربية"} />
-          <span className="user-chip" title={userLabel}>{userLabel}</span>
+          <button
+            aria-label={ar ? "الإشعارات غير متاحة حاليًا" : "Notifications are currently unavailable"}
+            className="authenticated-home__bell"
+            disabled
+            type="button"
+          >
+            <Icon name="bell" />
+          </button>
+          <div className="authenticated-home__profile">
+            <span aria-hidden="true" className="authenticated-home__avatar">{initial}</span>
+            <span className="authenticated-home__identity">
+              <span className="user-chip" title={userLabel}>{userLabel}</span>
+              <small data-testid="home-role-label">{copy(roleLabels[systemRole] ?? memberLabel, locale)}</small>
+            </span>
+          </div>
           <LogoutButton label={ar ? "خروج" : "Logout"} />
         </div>
       </header>
 
       <section className="authenticated-home__hero">
-        <div className="authenticated-home__opportunities">
-          <h2>{ar ? "فرص عالمية اليوم" : "Global opportunities today"}</h2>
-          {[ar ? "فرص جديدة" : "New opportunities", ar ? "مستثمرون نشطون" : "Active investors", ar ? "شراكات استراتيجية" : "Strategic partnerships"].map((label, index) => (
-            <article key={label}>
-              <Icon name={index === 0 ? "rocket" : index === 1 ? "people" : "briefcase"} />
-              <strong>—</strong>
-              <span>{label}</span>
-              <small>{ar ? "غير متاح حاليًا" : "Currently unavailable"}</small>
-            </article>
-          ))}
-        </div>
-        <div className="authenticated-home__globe" aria-hidden="true">
-          {[
-            ["أوروبا", "+18%"],
-            ["آسيا", "+24%"],
-            ["الشرق الأوسط", "+32%"],
-            ["أفريقيا", "+16%"],
-            ["أمريكا", "+12%"],
-          ].map(([region, value]) => <span key={region}><b>{region}</b><strong>{value}</strong></span>)}
+        <div className="authenticated-home__scene" aria-hidden="true">
+          <svg viewBox="0 0 800 360" preserveAspectRatio="xMidYMid slice" focusable="false">
+            <path d="M40 250 C 190 40, 420 20, 560 150" />
+            <path d="M120 300 C 280 120, 520 90, 720 210" />
+            <path d="M210 120 C 330 20, 500 30, 640 70" />
+            <circle cx="40" cy="250" r="4" />
+            <circle cx="560" cy="150" r="4" />
+            <circle cx="120" cy="300" r="4" />
+            <circle cx="720" cy="210" r="4" />
+            <circle cx="210" cy="120" r="4" />
+            <circle cx="640" cy="70" r="4" />
+          </svg>
         </div>
         <div className="authenticated-home__hero-copy">
-          <h1>{ar ? <>فرص عالمية<br /><em>لأعمال أكبر</em></> : <>Global opportunities<br /><em>for bigger business</em></>}</h1>
-          <strong>{ar ? "أدوات ذكية · تحليلات دقيقة · شراكات حقيقية" : "Smart tools · accurate insights · real partnerships"}</strong>
-          <p>{ar ? "حوّل أفكارك إلى فرص عالمية عبر منظومة أعمال مترابطة." : "Turn your ideas into global opportunities through one connected business ecosystem."}</p>
-          <Link href="/projects">{ar ? "ابدأ مشروعك" : "Start a project"} <Icon name="arrow" /></Link>
+          <h1>
+            {ar ? (
+              <><span className="is-cyan">مستقبل</span> الأعمال <span className="is-gradient">يبدأ</span> من هنا</>
+            ) : (
+              <>The <span className="is-cyan">future</span> of business <span className="is-gradient">starts</span> here</>
+            )}
+          </h1>
+          <strong>{ar ? "خدمات متكاملة • تحليلات موثّقة • فرص عالمية" : "Complete services • sourced analysis • global opportunities"}</strong>
+          <p>
+            {ar
+              ? "منصة Jenan PRO لتمكين الأفراد والشركات من المشاريع والاستثمار والتعليم والبرمجيات، مع بيانات موثّقة المصدر وأدوات عملية للنمو في اقتصاد عالمي متصل."
+              : "Jenan PRO equips individuals and companies with projects, investment, education, and software, using sourced data and practical tools to grow in a connected global economy."}
+          </p>
+          <div className="authenticated-home__actions">
+            <Link className="is-primary" href="#services"><Icon name="grid" />{ar ? "استكشف الخدمات" : "Explore services"}</Link>
+            <Link href="/user"><Icon name="barChart" />{ar ? "لوحة بياناتي" : "My dashboard"}</Link>
+            <Link href="/projects"><Icon name="rocket" />{ar ? "ابدأ الآن" : "Start now"}</Link>
+          </div>
         </div>
       </section>
 
-      <section className="authenticated-home__primary">
-        <section className="authenticated-home__services" aria-label={ar ? "خدمات المنصة" : "Platform services"}>
-          {services.map((service) => (
-            <Link className={`authenticated-home__service tone-${service.tone}`} href={service.href} key={service.href}>
-              <span><Icon name={service.icon} /></span>
-              <h2>{copy(service.title, locale)}</h2>
-              <p>{copy(service.description, locale)}</p>
-              <b>{ar ? "اكتشف المزيد" : "Discover more"} <Icon name="arrow" /></b>
-            </Link>
+      <section className="authenticated-home__services" id="services" aria-label={ar ? "خدمات المنصة" : "Platform services"}>
+        {services.map((service) => (
+          <Link className={`authenticated-home__service tone-${service.tone}`} href={service.href} key={service.href}>
+            <span><Icon name={service.icon} /></span>
+            <h2>{copy(service.title, locale)}</h2>
+            <p>{copy(service.description, locale)}</p>
+            <b>{ar ? "استكشف المزيد" : "Explore more"} <Icon name="arrow" /></b>
+          </Link>
+        ))}
+      </section>
+
+      <section className="authenticated-home__partner" aria-label={ar ? "عن المنصة" : "About the platform"}>
+        <div className="authenticated-home__partner-copy">
+          <small>{ar ? "استكشف عوالم Jenan PRO" : "Explore the worlds of Jenan PRO"}</small>
+          <h2>{ar ? "شريك استراتيجي لنمو أعمالك" : "A strategic partner for your growth"}</h2>
+          <p>{ar ? "من الفكرة إلى التوسع .. في منصة واحدة." : "From idea to expansion .. on one platform."}</p>
+        </div>
+        <ul className="authenticated-home__strengths">
+          {strengths.map((item) => (
+            <li key={item.title[0]}>
+              <Icon name={item.icon} />
+              <span><b>{copy(item.title, locale)}</b><small>{copy(item.note, locale)}</small></span>
+            </li>
           ))}
-        </section>
-        <article className="authenticated-home__market">
-          <header><h2>{ar ? "نبض الأسواق العالمية" : "Global market pulse"}</h2><span>{ar ? "بيانات مباشرة غير متاحة" : "Live data unavailable"}</span></header>
-          <div className="authenticated-home__market-empty"><Icon name="barChart" /><strong>—</strong><p>{ar ? "سيظهر السوق عند اتصال مصدر بيانات معتمد." : "Market data appears when an approved source is connected."}</p></div>
-        </article>
+        </ul>
+        <Link className="authenticated-home__analysis" href="/projects/analysis">
+          <Icon name="sparkles" />
+          <span><b>{ar ? "حلّل فكرة مشروعك" : "Analyze your project idea"}</b><small>{ar ? "مؤشرات الموقع والمصادر والقيود" : "Location indicators, sources, and limits"}</small></span>
+          <Icon name="arrow" />
+        </Link>
       </section>
 
-      <section className="authenticated-home__insights">
-        <article className="authenticated-home__success">
-          <header><h2>{ar ? "فرص نجاح" : "Success opportunities"}</h2><Link href="/projects">{ar ? "عرض الكل" : "View all"}</Link></header>
-          <div><Icon name="globe" /><strong>{ar ? "ابدأ قصتك العالمية" : "Start your global story"}</strong><p>{ar ? "استكشف المشاريع والفرص المتاحة داخل أقسام المنصة." : "Explore projects and opportunities across the platform."}</p><Link href="/projects">{ar ? "استكشف" : "Explore"} <Icon name="arrow" /></Link></div>
-        </article>
-        <article className="authenticated-home__distribution">
-          <h2>{ar ? "توزيع المستخدمين" : "User distribution"}</h2>
-          <div className="authenticated-home__donut"><span>—<small>{ar ? "غير متاح" : "Unavailable"}</small></span></div>
-          <p>{ar ? "تظهر البيانات بعد توفر نشاط موثوق." : "Data appears after verified activity is available."}</p>
-        </article>
-        <article className="authenticated-home__stats">
-          <h2>{ar ? "إحصائيات المنصة" : "Platform statistics"}</h2>
-          <div>{[ar ? "مستخدم نشط" : "Active users", ar ? "نمو شهري" : "Monthly growth", ar ? "مشروع جديد" : "New projects", ar ? "قيمة الفرص" : "Opportunity value"].map((label) => <span key={label}><Icon name="trend" /><b>—</b><small>{label}</small></span>)}</div>
-        </article>
-        <article className="authenticated-home__news">
-          <header><h2>{ar ? "أحدث الأخبار والتحديثات" : "Latest news and updates"}</h2><Link href="/benefits">{ar ? "عرض الكل" : "View all"}</Link></header>
-          <div><Icon name="sparkles" /><strong>{ar ? "لا توجد أخبار منشورة حاليًا" : "No published news yet"}</strong><p>{ar ? "ستظهر التحديثات المعتمدة هنا." : "Approved updates will appear here."}</p></div>
-        </article>
-      </section>
-
-      <section className="authenticated-home__assurances">
-        {assurances.map((item) => <span key={item.title[0]}><Icon name={item.icon} /><i><b>{copy(item.title, locale)}</b><small>{copy(item.note, locale)}</small></i></span>)}
+      <section className="authenticated-home__markets" aria-label={ar ? "الأسواق العالمية" : "Global markets"}>
+        {markets.map((market) => (
+          <article key={market.symbol}>
+            <span aria-hidden="true"><Icon name={market.icon} /></span>
+            <div>
+              <h2>{copy(market.title, locale)}</h2>
+              <small dir="ltr">{market.symbol}</small>
+            </div>
+            <div className="authenticated-home__quote">
+              <strong>—</strong>
+              <small>{ar ? "غير متاح: لا يوجد مصدر بيانات مباشر" : "Unavailable: no live data source"}</small>
+            </div>
+          </article>
+        ))}
       </section>
 
       <footer className="authenticated-home__footer">

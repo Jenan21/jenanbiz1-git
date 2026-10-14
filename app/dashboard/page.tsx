@@ -11,6 +11,7 @@ export default async function Page() {
   return (
     <AuthenticatedHome
       locale={locale}
+      systemRole={user.systemRole}
       userLabel={user.profile?.displayName ?? user.email}
     />
   );

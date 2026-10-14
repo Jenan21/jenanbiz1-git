@@ -67,6 +67,14 @@ Integration tests use the real local PostgreSQL database and clean up their reco
 npm run test:integration
 ```
 
+## Project Analysis: what it measures
+
+Project analysis reports indicators for the **location and country** of a project: population, purchasing power and inflation from the World Bank, and competitor venues mapped on OpenStreetMap near the chosen city. It does not evaluate the idea itself, because no AI provider is configured; the results screens and the report say so.
+
+- Idea, city and project name are checked before anything is stored (`lib/projects/text-quality.ts`, in the forms and again in `app/api/projects/route.ts`). Repeated letters ("ههههه"), keyboard mashing, repeated words and answers that are too short are refused with a readable reason. The check judges whether the text is understandable, not whether the idea is good.
+- Competitor discovery runs only for sectors with an honest map category (`lib/projects/competitor-sectors.ts`). A sector without one (for example technology, services or energy) gets no competitor count, and a search that returns nothing is shown as unavailable, never as low competition.
+- The signed-in home (`/dashboard`) shows no invented figures: market tiles stay "unavailable" until a real data source is connected.
+
 ## Jenan Digital Workforce
 
 `/admin/academy` is backed by the Academy registry, universal skill graph, academic profiles, certification gates, retraining queue, workforce demand and gaps, candidate batches, cohorts, curriculum versions, geography foundation, runtime allocation, and shared agent-genome packs. Seed the initial registry with:
