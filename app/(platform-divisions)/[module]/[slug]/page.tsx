@@ -25,6 +25,7 @@ export default async function DivisionPage({
     <DivisionWorkspace
       detail={detail}
       locale={locale}
+      userId={user.id}
       userLabel={user.profile?.displayName ?? user.email}
     />
   );

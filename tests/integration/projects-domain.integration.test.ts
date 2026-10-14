@@ -5,6 +5,7 @@ import {
   listUserProjects,
   recordProjectAssessment,
   startProject,
+  updateProjectDetails,
   updateProjectPhase,
 } from "@/services/projects/project-service";
 
@@ -39,6 +40,27 @@ describe("projects domain", () => {
     expect(project.phases[0]?.status).toBe("ACTIVE");
 
     await expect(startProject(project.id, user.id)).rejects.toThrow("Complete all project assessments");
+    const updatedProject = await updateProjectDetails(
+      project.id,
+      {
+        name: `Solar cold chain updated ${suffix}`,
+        description: "Cold storage logistics network",
+        sector: "Cold chain",
+        countryCode: "AE",
+        currency: "AED",
+      },
+      user.id,
+    );
+    expect(updatedProject).toMatchObject({
+      name: `Solar cold chain updated ${suffix}`,
+      description: "Cold storage logistics network",
+      sector: "Cold chain",
+      countryCode: "AE",
+      currency: "AED",
+    });
+    await expect(
+      updateProjectPhase(project.id, "FEASIBILITY", "ACTIVE", user.id),
+    ).rejects.toThrow("Complete earlier project phases");
     await updateProjectPhase(project.id, "ANALYSIS", "COMPLETED", user.id, "Inputs reviewed");
     await recordProjectAssessment(project.id, { type: "MARKET", score: 84, summary: "Demand evidence captured", source: "verified research" }, user.id);
 
