@@ -1,4 +1,4 @@
-import { expect, test } from "@playwright/test";
+﻿import { expect, test } from "@playwright/test";
 import { projectFlowDefinitions } from "@/lib/projects/project-flow-routes";
 import { cleanE2EIdentities, createE2ESession, seedE2EUser } from "./identity-fixture";
 import { e2eIdentity } from "./test-identities";
@@ -98,11 +98,11 @@ test.describe.serial("Projects full route flow", () => {
     for (const route of ["/projects", "/projects/analysis/map", "/projects/start/evaluation/risks", "/projects/feasibility/pro/financial", "/projects/start/team"]) {
       expect((await page.goto(route, { waitUntil: "domcontentloaded" }))?.status()).toBe(200);
       if (route === "/projects") {
-        await expect(page.locator(".projects-dashboard")).toHaveAttribute(
+        await expect(page.locator(".projects-stage")).toHaveAttribute(
           "data-projects-source",
           "ACCOUNT_PROJECT_RECORDS",
         );
-        await expect(page.locator(".projects-dashboard__services > a")).toHaveCount(3);
+        await expect(page.locator(".projects-stage__services > a")).toHaveCount(3);
       }
       const layout = await page.evaluate(() => ({ scrollWidth: document.documentElement.scrollWidth, viewportWidth: document.documentElement.clientWidth }));
       expect(layout.scrollWidth, route).toBeLessThanOrEqual(layout.viewportWidth + 1);

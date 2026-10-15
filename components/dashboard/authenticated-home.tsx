@@ -1,9 +1,8 @@
 ﻿import Link from "next/link";
-import { LogoutButton } from "@/components/auth/logout-button";
 import { HomeScene } from "@/components/dashboard/home-scene";
 import { HomeSearch } from "@/components/dashboard/home-search";
+import { JenanHeader } from "@/components/shell/jenan-header";
 import { Icon, type IconName } from "@/components/ui/icons";
-import { LanguageSwitcher } from "@/components/ui/language-switcher";
 import type { SystemRole } from "@/generated/prisma/client";
 import type { Locale } from "@/types/i18n";
 
@@ -60,17 +59,6 @@ const services: ReadonlyArray<{
   },
 ];
 
-const nav: ReadonlyArray<{ href: string; label: Copy }> = [
-  { href: "/dashboard", label: ["الرئيسية", "Home"] },
-  { href: "/projects", label: ["المشاريع", "Projects"] },
-  { href: "/academy", label: ["الأكاديمية", "Academy"] },
-  { href: "/software", label: ["البرمجيات", "Software"] },
-  { href: "/market", label: ["السوق", "Market"] },
-  { href: "/talent", label: ["الوظائف", "Talent"] },
-  { href: "/marketing", label: ["التسويق", "Marketing"] },
-  { href: "/benefits", label: ["من نحن", "About"] },
-];
-
 const strengths: ReadonlyArray<{ icon: IconName; title: Copy; note: Copy }> = [
   { icon: "link", title: ["أقسام مترابطة", "Connected sections"], note: ["تجربة موحدة لرحلة أعمال متكاملة", "One experience for a complete business journey"] },
   { icon: "bolt", title: ["حماية وأمان", "Protection and security"], note: ["خصوصية عالية وبيئة آمنة", "High privacy and a secure environment"] },
@@ -83,16 +71,6 @@ const markets: ReadonlyArray<{ kind: "btc" | "gold" | "stocks"; title: Copy; sym
   { kind: "gold", title: ["المعادن النفيسة", "Precious metals"], symbol: "XAU/USD" },
   { kind: "btc", title: ["العملات الرقمية", "Digital currencies"], symbol: "BTC/USD" },
 ];
-
-const roleLabels: Partial<Record<SystemRole, Copy>> = {
-  SUPER_ADMIN: ["مالك المنصة", "Platform owner"],
-  ADMIN: ["مدير النظام", "Administrator"],
-  ELITE_COMMITTEE: ["فريق المنصة", "Platform team"],
-  MANAGER: ["فريق المنصة", "Platform team"],
-  SUPERVISOR: ["فريق المنصة", "Platform team"],
-  EMPLOYEE: ["فريق المنصة", "Platform team"],
-};
-const memberLabel: Copy = ["عضو", "Member"];
 
 function copy(value: Copy, locale: Locale) {
   return locale === "ar" ? value[0] : value[1];
@@ -134,8 +112,6 @@ export function AuthenticatedHome({
   userLabel: string;
 }) {
   const ar = locale === "ar";
-  const canAdminister = systemRole === "ADMIN" || systemRole === "SUPER_ADMIN";
-  const initial = Array.from(userLabel.trim())[0]?.toUpperCase() ?? "";
   const unavailable = ar ? "غير متاح" : "Unavailable";
 
   return (
@@ -145,49 +121,7 @@ export function AuthenticatedHome({
       data-dashboard-source="AUTHENTICATED_PLATFORM"
       dir={ar ? "rtl" : "ltr"}
     >
-      <header className="authenticated-home__header">
-        <Link className="authenticated-home__brand" href="/dashboard" aria-label="Jenan PRO">
-          <span aria-hidden="true"><i /><i /></span>
-          <strong>Jenan <b>PRO</b></strong>
-        </Link>
-        <nav aria-label={ar ? "التنقل الرئيسي" : "Main navigation"}>
-          {nav.map((item) => (
-            <Link
-              aria-current={item.href === "/dashboard" ? "page" : undefined}
-              className={item.href === "/dashboard" ? "is-active" : undefined}
-              href={item.href}
-              key={item.href}
-            >
-              {copy(item.label, locale)}
-            </Link>
-          ))}
-          {canAdminister ? (
-            <Link className="is-admin" data-testid="home-admin-link" href="/admin">
-              <Icon name="shield" />
-              {ar ? "الإدارة" : "Admin"}
-            </Link>
-          ) : null}
-        </nav>
-        <div className="authenticated-home__tools">
-          <LanguageSwitcher locale={locale} label={ar ? "Switch to English" : "التبديل إلى العربية"} />
-          <button
-            aria-label={ar ? "الإشعارات غير متاحة حاليًا" : "Notifications are currently unavailable"}
-            className="authenticated-home__bell"
-            disabled
-            type="button"
-          >
-            <Icon name="bell" />
-          </button>
-          <Link className="authenticated-home__profile" href="/user" aria-label={ar ? "حسابي" : "My account"}>
-            <span aria-hidden="true" className="authenticated-home__avatar">{initial}</span>
-            <span className="authenticated-home__identity">
-              <span className="user-chip" title={userLabel}>{userLabel}</span>
-              <small data-testid="home-role-label">{copy(roleLabels[systemRole] ?? memberLabel, locale)}</small>
-            </span>
-          </Link>
-          <LogoutButton label={ar ? "خروج" : "Logout"} />
-        </div>
-      </header>
+      <JenanHeader locale={locale} systemRole={systemRole} userLabel={userLabel} />
 
       <section className="authenticated-home__hero">
         <HomeScene locale={locale} />

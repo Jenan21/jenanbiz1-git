@@ -5,7 +5,7 @@ import { describe, expect, it, vi } from "vitest";
 vi.mock("next/link", () => ({
   default: ({ href, children, ...rest }: { href: string; children: React.ReactNode } & Record<string, unknown>) => createElement("a", { href, ...rest }, children),
 }));
-vi.mock("next/navigation", () => ({ useRouter: () => ({ push: () => undefined }) }));
+vi.mock("next/navigation", () => ({ useRouter: () => ({ push: () => undefined }), usePathname: () => "/dashboard" }));
 vi.mock("@/components/auth/logout-button", () => ({
   LogoutButton: ({ label }: { label: string }) => createElement("button", { className: "logout-button", type: "button" }, label),
 }));
@@ -78,7 +78,7 @@ describe("signed-in home", () => {
 
   it("disables the notifications, which have no feature behind them", () => {
     const html = render("USER");
-    expect(html).toMatch(/<button[^>]*authenticated-home__bell[^>]*disabled|<button[^>]*disabled[^>]*authenticated-home__bell/);
+    expect(html).toMatch(/<button[^>]*jenan-header__bell[^>]*disabled|<button[^>]*disabled[^>]*jenan-header__bell/);
   });
 
   it("has the headline, the two actions and a working search in the hero", () => {

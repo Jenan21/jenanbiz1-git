@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+﻿import type { Metadata } from "next";
 import { cookies, headers } from "next/headers";
 import type { ReactNode } from "react";
 import { InterfaceVisibilityProvider } from "@/components/account/interface-visibility-provider";
@@ -10,10 +10,11 @@ import "@/styles/globals.css";
 import "@/styles/global-home.css";
 import "@/styles/cinematic-home.css";
 import "@/styles/canonical-auth.css";
+import "@/styles/jenan-shell.css";
 import "@/styles/authenticated-home.css";
 import "@/styles/market-stage.css";
 import "@/styles/projects-stage.css";
-import "@/styles/projects-dashboard.css";
+import "@/styles/projects-hub.css";
 import "@/styles/project-analysis-dashboard.css";
 import "@/styles/project-analysis-workflow.css";
 import "@/styles/project-feasibility-dashboard.css";

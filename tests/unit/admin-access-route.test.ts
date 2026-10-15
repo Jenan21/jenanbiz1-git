@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from "vitest";
+﻿import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const mocks = vi.hoisted(() => ({ user: null as { systemRole: string } | null }));
 
@@ -21,12 +21,12 @@ describe("admin access probe", () => {
   it("is true only for administrators and the platform owner", async () => {
     for (const [role, expected] of [["USER", false], ["EMPLOYEE", false], ["MANAGER", false], ["ELITE_COMMITTEE", false], ["ADMIN", true], ["SUPER_ADMIN", true]] as const) {
       mocks.user = { systemRole: role };
-      await expect((await GET()).json(), role).resolves.toEqual({ admin: expected });
+      await expect((await GET()).json(), role).resolves.toEqual({ admin: expected, role });
     }
   });
 
-  it("reveals nothing but the yes or no", async () => {
+  it("reveals nothing but the yes or no and the account's own role", async () => {
     mocks.user = { systemRole: "SUPER_ADMIN" };
-    expect(Object.keys(await (await GET()).json() as object)).toEqual(["admin"]);
+    expect(Object.keys(await (await GET()).json() as object)).toEqual(["admin", "role"]);
   });
 });

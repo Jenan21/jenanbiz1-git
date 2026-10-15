@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import Image from "next/image";
 import Link from "next/link";
@@ -8,6 +8,7 @@ import { EmailVerificationNotice } from "@/components/auth/email-verification-no
 import { LogoutButton } from "@/components/auth/logout-button";
 import { Icon, type IconName } from "@/components/ui/icons";
 import { LanguageSwitcher } from "@/components/ui/language-switcher";
+import { JenanHeader } from "@/components/shell/jenan-header";
 import type { Locale } from "@/types/i18n";
 
 export function JenanLogo({ compact = false }: { compact?: boolean }) {
@@ -87,47 +88,53 @@ export function PlatformShell({
   return (
     <div className="custom-platform">
       <div className="shell custom-shell">
-        <header className="platform-header glass">
-          <JenanLogo />
+        {admin ? (
+          <header className="platform-header glass">
+            <JenanLogo />
 
-          <nav className="main-nav" aria-label={ar ? "التنقل الرئيسي" : "Main navigation"}>
-            {navigation.map(([href, arabic, english]) => (
-              <Link
-                href={href}
-                key={href}
-                className={`nav-link ${activeRoute === href ? "active" : ""}`}
-                aria-current={activeRoute === href ? "page" : undefined}
-              >
-                {ar ? arabic : english}
-              </Link>
-            ))}
-          </nav>
+            <nav className="main-nav" aria-label={ar ? "التنقل الرئيسي" : "Main navigation"}>
+              {navigation.map(([href, arabic, english]) => (
+                <Link
+                  href={href}
+                  key={href}
+                  className={`nav-link ${activeRoute === href ? "active" : ""}`}
+                  aria-current={activeRoute === href ? "page" : undefined}
+                >
+                  {ar ? arabic : english}
+                </Link>
+              ))}
+            </nav>
 
-          <div className="top-tools">
-            <ThemeToggle label={ar ? "المظهر" : "Theme"} />
-            <LanguageSwitcher locale={locale} label={ar ? "Switch to English" : "التبديل إلى العربية"} />
-            <span className="user-chip">{userLabel}</span>
-            <LogoutButton label={ar ? "خروج" : "Logout"} />
-          </div>
-        </header>
+            <div className="top-tools">
+              <ThemeToggle label={ar ? "المظهر" : "Theme"} />
+              <LanguageSwitcher locale={locale} label={ar ? "Switch to English" : "التبديل إلى العربية"} />
+              <span className="user-chip">{userLabel}</span>
+              <LogoutButton label={ar ? "خروج" : "Logout"} />
+            </div>
+          </header>
+        ) : (
+          <JenanHeader locale={locale} userLabel={userLabel} />
+        )}
 
         <EmailVerificationNotice locale={locale} />
         <main className="platform-body">{children}</main>
 
-        <div className="bottom-ticker glass market-unavailable">
-          <div className="ticker-label">
-            {ar ? "المنصة" : "Platform"}
-            <span>{ar ? "واجهة مخصصة" : "Custom interface"}</span>
+        {admin ? (
+          <div className="bottom-ticker glass market-unavailable">
+            <div className="ticker-label">
+              {ar ? "المنصة" : "Platform"}
+              <span>{ar ? "واجهة مخصصة" : "Custom interface"}</span>
+            </div>
+            <div className="ticker-track">
+              {["Jenan Pro", "Operations", "AI", "Growth", "Finance"].map((item) => (
+                <div className="ticker-item" key={item}>
+                  <strong>{item}</strong>
+                  <span>•</span>
+                </div>
+              ))}
+            </div>
           </div>
-          <div className="ticker-track">
-            {["Jenan Pro", "Operations", "AI", "Growth", "Finance"].map((item) => (
-              <div className="ticker-item" key={item}>
-                <strong>{item}</strong>
-                <span>•</span>
-              </div>
-            ))}
-          </div>
-        </div>
+        ) : null}
       </div>
     </div>
   );
