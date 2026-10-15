@@ -30,10 +30,11 @@ describe("signed-in home", () => {
     expect(html).toContain('data-dashboard-route="/dashboard"');
   });
 
-  it("gives every card an icon and its own illustration", () => {
+  it("gives every card an icon, a watermark of the city photo and a large faint icon", () => {
     const html = render("USER");
     expect(html.match(/authenticated-home__service-icon/g)).toHaveLength(6);
-    expect(html.match(/authenticated-home__art/g)).toHaveLength(6);
+    expect(html.match(/authenticated-home__photo/g)).toHaveLength(6);
+    expect(html.match(/authenticated-home__watermark/g)).toHaveLength(6);
   });
 
   it("shows the admin entry and an owner label only to administrators", () => {

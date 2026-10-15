@@ -1,6 +1,5 @@
 ﻿import Link from "next/link";
 import { LogoutButton } from "@/components/auth/logout-button";
-import { BooksArt, BuildingsArt, InvestmentsArt, LaptopArt, MarketArt, PeopleArt } from "@/components/dashboard/home-card-art";
 import { HomeScene } from "@/components/dashboard/home-scene";
 import { HomeSearch } from "@/components/dashboard/home-search";
 import { Icon, type IconName } from "@/components/ui/icons";
@@ -16,7 +15,6 @@ const services: ReadonlyArray<{
   title: Copy;
   description: Copy;
   tone: string;
-  Art: () => React.JSX.Element;
 }> = [
   {
     href: "/projects",
@@ -24,7 +22,6 @@ const services: ReadonlyArray<{
     title: ["المشاريع", "Projects"],
     description: ["تحليل وتقييم ودراسات جدوى لبدء مشروعك.", "Analysis, evaluation, and feasibility to start your project."],
     tone: "blue",
-    Art: BuildingsArt,
   },
   {
     href: "/academy",
@@ -32,7 +29,6 @@ const services: ReadonlyArray<{
     title: ["الأكاديمية", "Academy"],
     description: ["دورات ودراسات وأبحاث متخصصة", "Courses, studies, and focused research"],
     tone: "cyan",
-    Art: BooksArt,
   },
   {
     href: "/software",
@@ -40,7 +36,6 @@ const services: ReadonlyArray<{
     title: ["البرمجيات", "Software"],
     description: ["أدوات تشغيل ونمو الأعمال بجودة احترافية.", "Professional tools to run and grow a business."],
     tone: "gold",
-    Art: LaptopArt,
   },
   {
     href: "/market",
@@ -48,7 +43,6 @@ const services: ReadonlyArray<{
     title: ["السوق", "Market"],
     description: ["بيع وشراء الأعمال والمتاجر والعقارات.", "Buy and sell businesses, stores, and property."],
     tone: "sky",
-    Art: MarketArt,
   },
   {
     href: "/talent",
@@ -56,7 +50,6 @@ const services: ReadonlyArray<{
     title: ["الوظائف", "Talent"],
     description: ["مواهب وفرص عمل في مختلف المجالات.", "Talent and job opportunities across fields."],
     tone: "violet",
-    Art: PeopleArt,
   },
   {
     href: "/user/investments",
@@ -64,7 +57,6 @@ const services: ReadonlyArray<{
     title: ["بياناتي الاستثمارية", "My investments"],
     description: ["متابعة استثماراتك وتقاريرك في مكان واحد.", "Track your investments and reports in one place."],
     tone: "emerald",
-    Art: InvestmentsArt,
   },
 ];
 
@@ -229,7 +221,8 @@ export function AuthenticatedHome({
       <section className="authenticated-home__services" id="services" aria-label={ar ? "خدمات المنصة" : "Platform services"}>
         {services.map((service) => (
           <Link className={`authenticated-home__service tone-${service.tone}`} href={service.href} key={service.href}>
-            <span aria-hidden="true" className="authenticated-home__art"><service.Art /></span>
+            <span aria-hidden="true" className="authenticated-home__photo" />
+            <Icon aria-hidden="true" className="authenticated-home__watermark" name={service.icon} />
             <span className="authenticated-home__service-icon"><Icon name={service.icon} /></span>
             <h2>{copy(service.title, locale)}</h2>
             <p>{copy(service.description, locale)}</p>

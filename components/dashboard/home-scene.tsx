@@ -1,6 +1,6 @@
-import type { Locale } from "@/types/i18n";
+﻿import type { Locale } from "@/types/i18n";
 
-/** The skyline itself is public/assets/home-skyline.svg; this overlay draws the glowing links and labels on top of it. */
+/** The photograph is drawn by the stylesheet (public/assets/home-hero.webp); this overlay adds the glowing links and labels. */
 const LABELS = {
   ar: { ideas: "أفكار", projects: "مشاريع", opportunities: "فرص", growth: "نمو" },
   en: { ideas: "Ideas", projects: "Projects", opportunities: "Opportunities", growth: "Growth" },
@@ -46,6 +46,7 @@ export function HomeScene({ locale }: { locale: Locale }) {
   const width = WIDTHS[locale];
   return (
     <div aria-hidden="true" className="authenticated-home__scene">
+      <div className="authenticated-home__grade" />
       <svg focusable="false" preserveAspectRatio="xMinYMax slice" viewBox="0 0 1672 369">
         <defs>
           <filter id="ah-glow" height="300%" width="300%" x="-100%" y="-100%">
@@ -63,7 +64,7 @@ export function HomeScene({ locale }: { locale: Locale }) {
         {DOTS.map(([x, y]) => (
           <g key={`${x}-${y}`}>
             <circle cx={x} cy={y} fill="#9af4ff" filter="url(#ah-glow)" r="4.2" />
-            <circle cx={x} cy={y} fill="none" r="9" stroke="#33d6ff" strokeOpacity=".45" />
+            <circle className="authenticated-home__node-ring" cx={x} cy={y} fill="none" r="9" stroke="#33d6ff" strokeOpacity=".7" />
           </g>
         ))}
         <Chip label={text.ideas} width={width.ideas} x={147} y={112} />
