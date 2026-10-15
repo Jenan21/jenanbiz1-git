@@ -36,6 +36,10 @@ export type IconName =
   | "pieChart"
   | "lightbulb"
   | "cube"
+  | "logout"
+  | "wrench"
+  | "network"
+  | "play"
   | "x";
 
 const paths: Record<IconName, React.ReactNode> = {
@@ -172,6 +176,10 @@ const paths: Record<IconName, React.ReactNode> = {
   x: <path d="m6 6 12 12M18 6 6 18" />,
   lightbulb: <><path d="M9 18h6M10 21h4" /><path d="M12 3a6 6 0 0 0-3.5 10.9c.6.5 1 1.2 1 2V16h5v-.1c0-.8.4-1.5 1-2A6 6 0 0 0 12 3Z" /></>,
   cube: <><path d="m12 3 8 4.5v9L12 21l-8-4.5v-9L12 3Z" /><path d="m4 7.5 8 4.5 8-4.5M12 12v9" /></>,
+  logout: <><path d="M10 4H5a1 1 0 0 0-1 1v14a1 1 0 0 0 1 1h5" /><path d="M16 8l4 4-4 4M20 12H9" /></>,
+  wrench: <><path d="M14.5 5.5a4 4 0 0 0-5.2 5.2L4 16v4h4l5.3-5.3a4 4 0 0 0 5.2-5.2l-2.6 2.6-2.4-.6-.6-2.4 2.6-2.6Z" /></>,
+  network: <><circle cx="6" cy="12" r="2.2" /><circle cx="17" cy="6" r="2.2" /><circle cx="17" cy="18" r="2.2" /><path d="m8 11 7-4M8 13l7 4" /></>,
+  play: <><circle cx="12" cy="12" r="9" /><path d="m10 8.5 5 3.5-5 3.5v-7Z" /></>,
 };
 
 export function Icon({

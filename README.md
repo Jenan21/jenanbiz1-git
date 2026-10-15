@@ -1,4 +1,4 @@
-# Jenan Pro Core
+﻿# Jenan Pro Core
 
 Production-oriented foundation and visual application shell for Jenan Pro. Core workflows cover internal tools, AI Gateway execution, organization programs, academy learning, projects, market listings, talent, notifications, and local file storage. Real payments, external authentication providers, and third-party channel integrations remain separately configurable.
 
@@ -91,7 +91,7 @@ Project analysis reports indicators for the **location and country** of a projec
 
 - Idea, city and project name are checked before anything is stored (`lib/projects/text-quality.ts`, in the forms and again in `app/api/projects/route.ts`). Repeated letters ("ههههه"), keyboard mashing, repeated words and answers that are too short are refused with a readable reason. The check judges whether the text is understandable, not whether the idea is good.
 - Competitor discovery runs only for sectors with an honest map category (`lib/projects/competitor-sectors.ts`). A sector without one (for example technology, services or energy) gets no competitor count, and a search that returns nothing is shown as unavailable, never as low competition.
-- The signed-in home (`/dashboard`) shows no invented figures: market tiles stay "unavailable" until a real data source is connected.
+- The signed-in home (`/dashboard`) follows the owner's reference design but shows no invented figures: only the active-member count (last 15 minutes) and the non-archived project count come from the platform's own records (`services/platform/home-stats-service.ts`); growth, opportunities, investments, countries and the market quotes show "—" and "unavailable" until a real data source is connected, and the video and notification controls are disabled.
 
 ## Jenan Digital Workforce
 

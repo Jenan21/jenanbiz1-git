@@ -13,11 +13,12 @@ vi.mock("@/components/ui/language-switcher", () => ({
 }));
 
 import { AuthenticatedHome } from "@/components/dashboard/authenticated-home";
+import type { HomeStats } from "@/services/platform/home-stats-service";
 
 type Role = Parameters<typeof AuthenticatedHome>[0]["systemRole"];
 
-function render(role: Role, locale: "ar" | "en" = "ar", label = "Jane Founder") {
-  return renderToStaticMarkup(createElement(AuthenticatedHome, { locale, systemRole: role, userLabel: label }));
+function render(role: Role, locale: "ar" | "en" = "ar", label = "Jane Founder", stats: HomeStats = { activeUsers: 1, projects: 3 }) {
+  return renderToStaticMarkup(createElement(AuthenticatedHome, { locale, stats, systemRole: role, userLabel: label }));
 }
 
 describe("signed-in home", () => {
@@ -42,33 +43,56 @@ describe("signed-in home", () => {
     expect(render("USER", "en")).toContain(">Member<");
   });
 
-  it("keeps one profile name and one logout button", () => {
+  it("keeps one profile name that opens the account, and one logout button", () => {
     const html = render("USER", "en", "Jane Founder");
     expect(html.match(/class="user-chip"/g)).toHaveLength(1);
     expect(html).toContain(">Jane Founder<");
+    expect(html).toContain('href="/user"');
     expect(html.match(/logout-button/g)).toHaveLength(1);
   });
 
-  it("invents no figures: no percentages, no signs, no live prices, and the unsupported controls are disabled", () => {
+  it("shows only the two real counts and a dash everywhere else, with no invented figures", () => {
     for (const locale of ["ar", "en"] as const) {
-      const html = render("SUPER_ADMIN", locale);
-      expect(html).not.toMatch(/[+-]\d+(\.\d+)?%|\d%|7,659|83,902/);
+      const html = render("SUPER_ADMIN", locale, "Owner", { activeUsers: 7, projects: 1320 });
+      expect(html).toMatch(/data-testid="home-active-users">7</);
+      expect(html).toMatch(/data-testid="home-active-projects">1,320</);
+      // Growth, opportunities, investments, countries and the three market quotes have no source.
+      expect(html.match(/<strong class="is-empty">—<\/strong>/g)).toHaveLength(4);
       expect(html.match(/<strong>—<\/strong>/g)).toHaveLength(3);
-      expect(html).toMatch(/<input[^>]*disabled/);
-      expect(html).toMatch(/<button[^>]*authenticated-home__bell[^>]*disabled|<button[^>]*disabled[^>]*authenticated-home__bell/);
+      for (const invented of ["+32%", "+18%", "12,450", "248", "12.4M", "5,021", "+2.18%", "+0.62%", "+1.24%"]) {
+        expect(html, invented).not.toContain(invented);
+      }
+      expect(html).not.toMatch(/[+-]\d+(\.\d+)?%/);
       expect(html).not.toContain("<video");
       expect(html).not.toMatch(/funding/i);
     }
   });
 
-  it("states the heading and the three actions of the reference", () => {
+  it("says a count is unavailable when it could not be read", () => {
+    const html = render("USER", "en", "Jane", { activeUsers: null, projects: null });
+    expect(html).toMatch(/data-testid="home-active-users">—</);
+    expect(html).toMatch(/data-testid="home-active-projects">—</);
+    expect(html.match(/Unavailable/g)?.length).toBeGreaterThanOrEqual(6);
+  });
+
+  it("disables what has no feature behind it: notifications and the video", () => {
+    for (const locale of ["ar", "en"] as const) {
+      const html = render("USER", locale);
+      expect(html).toMatch(/<button[^>]*authenticated-home__bell[^>]*disabled|<button[^>]*disabled[^>]*authenticated-home__bell/);
+      expect(html).toMatch(/<button[^>]*disabled=""[^>]*>[^]*?(شاهد الفيديو|Watch the video)/);
+      expect(html).not.toMatch(/<input/);
+    }
+  });
+
+  it("states the heading and the actions of the reference", () => {
     const html = render("USER");
     expect(html).toContain("مستقبل");
     expect(html).toContain("يبدأ");
+    expect(html).toContain("من الفكرة إلى النمو ... معك في كل خطوة");
     expect(html).toContain("استكشف الخدمات");
-    expect(html).toContain("لوحة بياناتي");
     expect(html).toContain("ابدأ الآن");
-    expect(html).toContain('href="/user"');
+    expect(html).toContain("شاهد الفيديو");
     expect(html).toContain('id="services"');
+    expect(html).toContain('href="/projects/analysis"');
   });
 });

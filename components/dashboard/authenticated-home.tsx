@@ -3,6 +3,7 @@ import { LogoutButton } from "@/components/auth/logout-button";
 import { Icon, type IconName } from "@/components/ui/icons";
 import { LanguageSwitcher } from "@/components/ui/language-switcher";
 import type { SystemRole } from "@/generated/prisma/client";
+import type { HomeStats } from "@/services/platform/home-stats-service";
 import type { Locale } from "@/types/i18n";
 
 type Copy = readonly [string, string];
@@ -18,28 +19,28 @@ const services: ReadonlyArray<{
     href: "/projects",
     icon: "lightbulb",
     title: ["المشاريع", "Projects"],
-    description: ["تحليل · تقييم · دراسة جدوى · بدء مشروعك", "Analysis · evaluation · feasibility · launch"],
+    description: ["تحليل • تقييم • دراسة جدوى لبدء مشروعك بنجاح", "Analysis • evaluation • feasibility to launch your project well"],
     tone: "blue",
   },
   {
     href: "/academy",
     icon: "graduation",
     title: ["الأكاديمية", "Academy"],
-    description: ["دورات ودراسات وأبحاث متخصصة", "Courses, studies, and focused research"],
+    description: ["دورات ودراسات وأبحاث لصناعة قرار أفضل", "Courses, studies, and research for better decisions"],
     tone: "cyan",
   },
   {
     href: "/software",
     icon: "cube",
     title: ["البرمجيات", "Software"],
-    description: ["أدوات تشغيل ونمو الأعمال", "Tools to run and grow a business"],
+    description: ["أدوات تشغيل ونمو الأعمال لزيادة كفاءة مشروعك", "Tools to run and grow a business and raise its efficiency"],
     tone: "gold",
   },
   {
     href: "/market",
     icon: "barChart",
     title: ["السوق", "Market"],
-    description: ["بيع وشراء الأعمال والمتاجر والعقارات", "Buy and sell businesses, stores, and assets"],
+    description: ["بيع وشراء الأعمال والمتاجر والعقارات والفرص الاستثمارية", "Buy and sell businesses, stores, property, and opportunities"],
     tone: "sky",
   },
   {
@@ -53,7 +54,7 @@ const services: ReadonlyArray<{
     href: "/user/investments",
     icon: "wallet",
     title: ["بياناتي الاستثمارية", "My investment data"],
-    description: ["متابعة مشاريعك الاستثمارية وتقاريرك في مكان واحد", "Follow your investment projects and reports in one place"],
+    description: ["متابعة استثماراتك ومشاريعك وتقارير في مكان واحد", "Follow your investments, projects, and reports in one place"],
     tone: "emerald",
   },
 ];
@@ -64,22 +65,23 @@ const nav: ReadonlyArray<{ href: string; label: Copy }> = [
   { href: "/academy", label: ["الأكاديمية", "Academy"] },
   { href: "/software", label: ["البرمجيات", "Software"] },
   { href: "/market", label: ["السوق", "Market"] },
-  { href: "/talent", label: ["الوظائف", "Talent"] },
   { href: "/marketing", label: ["التسويق", "Marketing"] },
+  { href: "/talent", label: ["الوظائف", "Talent"] },
   { href: "/benefits", label: ["من نحن", "About"] },
 ];
 
-const strengths: ReadonlyArray<{ icon: IconName; title: Copy; note: Copy }> = [
-  { icon: "shield", title: ["مصادر موثّقة", "Sourced data"], note: ["كل رقم يظهر مع مصدره وتاريخه", "Every figure shows its source and date"] },
-  { icon: "rocket", title: ["أدوات عملية", "Practical tools"], note: ["لتطوير مشروعك خطوة بخطوة", "To build your project step by step"] },
-  { icon: "lock", title: ["حماية لحسابك", "Account protection"], note: ["جلسات آمنة وصلاحيات واضحة", "Secure sessions and clear permissions"] },
-  { icon: "grid", title: ["أقسام مترابطة", "Connected sections"], note: ["من الفكرة إلى التنفيذ في مكان واحد", "From idea to execution in one place"] },
+const strengths: ReadonlyArray<{ href?: string; icon: IconName; title: Copy; note: Copy; tone?: string }> = [
+  { icon: "shield", title: ["مصادر موثّقة", "Sourced data"], note: ["بيانات دقيقة من جهات عالمية", "Accurate data from global bodies"] },
+  { icon: "wrench", title: ["أدوات عملية", "Practical tools"], note: ["أدوات ونماذج جاهزة للتطبيق", "Ready-to-use tools and templates"] },
+  { icon: "lock", title: ["حماية حسابك", "Account protection"], note: ["أعلى معايير الأمان والخصوصية", "High security and privacy standards"] },
+  { icon: "network", title: ["أقسام مترابطة", "Connected sections"], note: ["جميع خدماتك في منصة واحدة", "All your services on one platform"] },
+  { href: "/projects/analysis", icon: "lightbulb", title: ["تحليل فكرة المشروع", "Analyze your idea"], note: ["من الفكرة إلى خطة عمل واضحة", "From idea to a clear action plan"], tone: "gold" },
 ];
 
-const markets: ReadonlyArray<{ icon: IconName; title: Copy; symbol: string }> = [
-  { icon: "barChart", title: ["الأسهم العالمية", "Global equities"], symbol: "S&P 500" },
-  { icon: "cube", title: ["المعادن النفيسة", "Precious metals"], symbol: "XAU/USD" },
-  { icon: "wallet", title: ["العملات الرقمية", "Digital currencies"], symbol: "BTC/USD" },
+const markets: ReadonlyArray<{ glyph: string; tone: string; title: Copy; symbol: string }> = [
+  { glyph: "₿", tone: "orange", title: ["العملات الرقمية", "Digital currencies"], symbol: "BTC/USD" },
+  { glyph: "Au", tone: "gold", title: ["المعادن النفيسة", "Precious metals"], symbol: "XAU/USD" },
+  { glyph: "S", tone: "green", title: ["الأسهم العالمية", "Global equities"], symbol: "S&P 500" },
 ];
 
 const roleLabels: Partial<Record<SystemRole, Copy>> = {
@@ -96,18 +98,50 @@ function copy(value: Copy, locale: Locale) {
   return locale === "ar" ? value[0] : value[1];
 }
 
+/** A real count, formatted like the reference ("1,320"), or the dash used everywhere a figure has no source. */
+function figure(value: number | null) {
+  return value === null ? "—" : value.toLocaleString("en-US");
+}
+
+function GlassCard({ className, children }: { className: string; children: React.ReactNode }) {
+  return <div className={`authenticated-home__glass ${className}`}>{children}</div>;
+}
+
+function LaptopScene() {
+  return (
+    <svg className="authenticated-home__laptop" viewBox="0 0 180 120" aria-hidden="true" focusable="false">
+      <defs>
+        <linearGradient id="ah-screen" x1="0" y1="0" x2="1" y2="1">
+          <stop offset="0" stopColor="#0b3a66" />
+          <stop offset="1" stopColor="#031427" />
+        </linearGradient>
+      </defs>
+      <path d="M30 86h120l14 14H16l14-14Z" fill="#0a1b2d" stroke="#2aa9d8" strokeOpacity=".55" />
+      <rect x="34" y="14" width="112" height="72" rx="4" fill="url(#ah-screen)" stroke="#33c3ef" strokeOpacity=".8" />
+      <path d="M78 42c3-10 11-14 17-14-1 8-6 18-17 14Zm0 0c-4 8-1 14 5 17" fill="none" stroke="#19f0f6" strokeWidth="3" strokeLinecap="round" />
+      <text x="90" y="72" textAnchor="middle" fontSize="11" fontWeight="800" fill="#eaffff" fontFamily="Segoe UI, sans-serif">Jenan <tspan fill="#19f0f6">PRO</tspan></text>
+      <rect x="150" y="82" width="16" height="14" rx="2" fill="#10263a" stroke="#2aa9d8" strokeOpacity=".5" />
+      <rect x="8" y="96" width="24" height="5" rx="1" fill="#16405f" />
+      <rect x="10" y="91" width="20" height="5" rx="1" fill="#1d5a82" />
+    </svg>
+  );
+}
+
 export function AuthenticatedHome({
   locale,
+  stats,
   systemRole,
   userLabel,
 }: {
   locale: Locale;
+  stats: HomeStats;
   systemRole: SystemRole;
   userLabel: string;
 }) {
   const ar = locale === "ar";
   const canAdminister = systemRole === "ADMIN" || systemRole === "SUPER_ADMIN";
   const initial = Array.from(userLabel.trim())[0]?.toUpperCase() ?? "";
+  const unavailable = ar ? "غير متاح" : "Unavailable";
 
   return (
     <main
@@ -140,16 +174,7 @@ export function AuthenticatedHome({
           ) : null}
         </nav>
         <div className="authenticated-home__tools">
-          <label className="authenticated-home__search">
-            <Icon name="search" />
-            <input
-              disabled
-              placeholder={ar ? "البحث غير متاح حاليًا" : "Search unavailable"}
-              type="search"
-              aria-label={ar ? "البحث غير متاح حاليًا" : "Search is currently unavailable"}
-            />
-          </label>
-          <LanguageSwitcher locale={locale} label={ar ? "Switch to English" : "التبديل إلى العربية"} />
+          <LanguageSwitcher locale={locale} label={ar ? "Switch to English" : "التبديل إلى العربية"} showChevron />
           <button
             aria-label={ar ? "الإشعارات غير متاحة حاليًا" : "Notifications are currently unavailable"}
             className="authenticated-home__bell"
@@ -158,50 +183,101 @@ export function AuthenticatedHome({
           >
             <Icon name="bell" />
           </button>
-          <div className="authenticated-home__profile">
+          <Link className="authenticated-home__profile" href="/user" aria-label={ar ? "حسابي" : "My account"}>
             <span aria-hidden="true" className="authenticated-home__avatar">{initial}</span>
             <span className="authenticated-home__identity">
               <span className="user-chip" title={userLabel}>{userLabel}</span>
               <small data-testid="home-role-label">{copy(roleLabels[systemRole] ?? memberLabel, locale)}</small>
             </span>
-          </div>
-          <LogoutButton label={ar ? "خروج" : "Logout"} />
+          </Link>
+          <span className="authenticated-home__logout"><LogoutButton label={ar ? "خروج" : "Logout"} /><Icon name="logout" /></span>
         </div>
       </header>
 
       <section className="authenticated-home__hero">
-        <div className="authenticated-home__scene" aria-hidden="true">
-          <svg viewBox="0 0 800 360" preserveAspectRatio="xMidYMid slice" focusable="false">
-            <path d="M40 250 C 190 40, 420 20, 560 150" />
-            <path d="M120 300 C 280 120, 520 90, 720 210" />
-            <path d="M210 120 C 330 20, 500 30, 640 70" />
-            <circle cx="40" cy="250" r="4" />
-            <circle cx="560" cy="150" r="4" />
-            <circle cx="120" cy="300" r="4" />
-            <circle cx="720" cy="210" r="4" />
-            <circle cx="210" cy="120" r="4" />
-            <circle cx="640" cy="70" r="4" />
-          </svg>
-        </div>
         <div className="authenticated-home__hero-copy">
+          <span className="authenticated-home__tagline">
+            <i aria-hidden="true" className="authenticated-home__tagline-mark" />
+            {ar ? "من الفكرة إلى النمو ... معك في كل خطوة" : "From idea to growth ... with you at every step"}
+            <Icon name="sparkles" />
+          </span>
           <h1>
             {ar ? (
-              <><span className="is-cyan">مستقبل</span> الأعمال <span className="is-gradient">يبدأ</span> من هنا</>
+              <>
+                <span className="is-line"><span className="is-cyan">مستقبل</span> الأعمال</span>
+                <span className="is-line"><span className="is-gradient">يبدأ</span> من هنا</span>
+              </>
             ) : (
-              <>The <span className="is-cyan">future</span> of business <span className="is-gradient">starts</span> here</>
+              <>
+                <span className="is-line">The <span className="is-cyan">future</span> of business</span>
+                <span className="is-line"><span className="is-gradient">starts</span> here</span>
+              </>
             )}
           </h1>
-          <strong>{ar ? "خدمات متكاملة • تحليلات موثّقة • فرص عالمية" : "Complete services • sourced analysis • global opportunities"}</strong>
           <p>
             {ar
-              ? "منصة Jenan PRO لتمكين الأفراد والشركات من المشاريع والاستثمار والتعليم والبرمجيات، مع بيانات موثّقة المصدر وأدوات عملية للنمو في اقتصاد عالمي متصل."
-              : "Jenan PRO equips individuals and companies with projects, investment, education, and software, using sourced data and practical tools to grow in a connected global economy."}
+              ? "منصة متكاملة تجمع لك فرص المشاريع والاستثمار والتعليم والبرمجيات، بيانات موثّقة وأدوات عملية لنمو أعمالك في اقتصاد عالمي متصل."
+              : "One platform that brings you project, investment, education, and software opportunities, with sourced data and practical tools to grow your business in a connected global economy."}
           </p>
           <div className="authenticated-home__actions">
             <Link className="is-primary" href="#services"><Icon name="grid" />{ar ? "استكشف الخدمات" : "Explore services"}</Link>
-            <Link href="/user"><Icon name="barChart" />{ar ? "لوحة بياناتي" : "My dashboard"}</Link>
             <Link href="/projects"><Icon name="rocket" />{ar ? "ابدأ الآن" : "Start now"}</Link>
+            <button disabled title={ar ? "الفيديو غير متاح حاليًا" : "The video is not available yet"} type="button">
+              <Icon name="play" />{ar ? "شاهد الفيديو" : "Watch the video"}
+            </button>
           </div>
+        </div>
+
+        <div className="authenticated-home__scene" aria-hidden="false">
+          <div className="authenticated-home__skyline" aria-hidden="true" />
+          <div className="authenticated-home__worldmap" aria-hidden="true" />
+          <svg className="authenticated-home__arcs" viewBox="0 0 900 300" preserveAspectRatio="none" aria-hidden="true" focusable="false">
+            <path d="M215 150 C 330 60, 420 70, 520 130" />
+            <path d="M520 130 C 600 90, 660 70, 760 100" />
+            <path d="M520 130 C 640 170, 700 180, 770 215" />
+            <path d="M150 215 C 300 190, 420 230, 540 215" />
+            <circle cx="215" cy="150" r="3.5" />
+            <circle cx="520" cy="130" r="3.5" />
+            <circle cx="760" cy="100" r="3.5" />
+            <circle cx="770" cy="215" r="3.5" />
+            <circle cx="540" cy="215" r="3.5" />
+          </svg>
+
+          <GlassCard className="is-growth">
+            <small>{ar ? "نمو المشاريع" : "Project growth"}</small>
+            <strong className="is-empty">—</strong>
+            <em>{unavailable}</em>
+          </GlassCard>
+          <GlassCard className="is-users">
+            <span className="authenticated-home__glass-icon"><Icon name="user" /></span>
+            <small>{ar ? "المستخدمون النشطون" : "Active users"}</small>
+            <strong className={stats.activeUsers === null ? "is-empty" : undefined} data-testid="home-active-users">{figure(stats.activeUsers)}</strong>
+            <em>{stats.activeUsers === null ? unavailable : ar ? "خلال آخر 15 دقيقة" : "In the last 15 minutes"}</em>
+          </GlassCard>
+          <GlassCard className="is-opportunities">
+            <span className="authenticated-home__glass-icon"><Icon name="barChart" /></span>
+            <small>{ar ? "فرص السوق اليوم" : "Market opportunities today"}</small>
+            <strong className="is-empty">—</strong>
+            <em>{unavailable}</em>
+          </GlassCard>
+          <GlassCard className="is-investments">
+            <small>{ar ? "إجمالي الاستثمارات" : "Total investments"}</small>
+            <strong className="is-empty">—</strong>
+            <em>{unavailable}</em>
+          </GlassCard>
+          <GlassCard className="is-projects">
+            <span className="authenticated-home__glass-icon"><Icon name="cube" /></span>
+            <small>{ar ? "المشاريع النشطة" : "Active projects"}</small>
+            <strong className={stats.projects === null ? "is-empty" : undefined} data-testid="home-active-projects">{figure(stats.projects)}</strong>
+            <em>{stats.projects === null ? unavailable : ar ? "غير مؤرشفة" : "Not archived"}</em>
+          </GlassCard>
+          <GlassCard className="is-countries">
+            <small>{ar ? "الدول المستهدفة" : "Target countries"}</small>
+            <strong className="is-empty">—</strong>
+            <em>{unavailable}</em>
+          </GlassCard>
+
+          <LaptopScene />
         </div>
       </section>
 
@@ -216,32 +292,27 @@ export function AuthenticatedHome({
         ))}
       </section>
 
-      <section className="authenticated-home__partner" aria-label={ar ? "عن المنصة" : "About the platform"}>
-        <div className="authenticated-home__partner-copy">
-          <small>{ar ? "استكشف عوالم Jenan PRO" : "Explore the worlds of Jenan PRO"}</small>
-          <h2>{ar ? "شريك استراتيجي لنمو أعمالك" : "A strategic partner for your growth"}</h2>
-          <p>{ar ? "من الفكرة إلى التوسع .. في منصة واحدة." : "From idea to expansion .. on one platform."}</p>
-        </div>
-        <ul className="authenticated-home__strengths">
-          {strengths.map((item) => (
-            <li key={item.title[0]}>
-              <Icon name={item.icon} />
-              <span><b>{copy(item.title, locale)}</b><small>{copy(item.note, locale)}</small></span>
-            </li>
-          ))}
-        </ul>
-        <Link className="authenticated-home__analysis" href="/projects/analysis">
-          <Icon name="sparkles" />
-          <span><b>{ar ? "حلّل فكرة مشروعك" : "Analyze your project idea"}</b><small>{ar ? "مؤشرات الموقع والمصادر والقيود" : "Location indicators, sources, and limits"}</small></span>
-          <Icon name="arrow" />
-        </Link>
+      <section className="authenticated-home__strengths" aria-label={ar ? "عن المنصة" : "About the platform"}>
+        {strengths.map((item) => {
+          const body = (
+            <>
+              <span className={`authenticated-home__strength-icon${item.tone ? ` is-${item.tone}` : ""}`}><Icon name={item.icon} /></span>
+              <i><b>{copy(item.title, locale)}</b><small>{copy(item.note, locale)}</small></i>
+            </>
+          );
+          return item.href ? (
+            <Link className="authenticated-home__strength" href={item.href} key={item.title[0]}>{body}</Link>
+          ) : (
+            <div className="authenticated-home__strength" key={item.title[0]}>{body}</div>
+          );
+        })}
       </section>
 
       <section className="authenticated-home__markets" aria-label={ar ? "الأسواق العالمية" : "Global markets"}>
         {markets.map((market) => (
           <article key={market.symbol}>
-            <span aria-hidden="true"><Icon name={market.icon} /></span>
-            <div>
+            <span className={`authenticated-home__coin is-${market.tone}`} aria-hidden="true">{market.glyph}</span>
+            <div className="authenticated-home__market-name">
               <h2>{copy(market.title, locale)}</h2>
               <small dir="ltr">{market.symbol}</small>
             </div>
@@ -254,9 +325,15 @@ export function AuthenticatedHome({
       </section>
 
       <footer className="authenticated-home__footer">
-        <strong>Jenan <b>PRO</b></strong>
-        <nav><Link href="/dashboard">{ar ? "الرئيسية" : "Home"}</Link><Link href="/benefits">{ar ? "عن المنصة" : "About"}</Link><Link href="/benefits">{ar ? "الشروط والأحكام" : "Terms"}</Link><Link href="/benefits">{ar ? "سياسة الخصوصية" : "Privacy"}</Link></nav>
-        <small>© 2026 Jenan PRO</small>
+        <strong className="authenticated-home__footer-brand"><span aria-hidden="true"><i /><i /></span>Jenan <b>PRO</b></strong>
+        <small>{ar ? "من الفكرة إلى التوسع ... منصة واحدة لعالم أكبر." : "From idea to expansion ... one platform for a bigger world."}</small>
+        <nav>
+          <Link href="/dashboard">{ar ? "الرئيسية" : "Home"}</Link>
+          <Link href="/benefits">{ar ? "عن المنصة" : "About"}</Link>
+          <Link href="/benefits">{ar ? "الشروط والأحكام" : "Terms"}</Link>
+          <Link href="/benefits">{ar ? "سياسة الخصوصية" : "Privacy"}</Link>
+        </nav>
+        <small>{ar ? "© 2026 Jenan PRO جميع الحقوق محفوظة." : "© 2026 Jenan PRO. All rights reserved."}</small>
       </footer>
     </main>
   );
