@@ -4545,6 +4545,23 @@ html[data-theme="light"] .toggle i {
   color: var(--muted);
   font-size: 9px;
 }
+.logout-error {
+  position: fixed;
+  z-index: 90;
+  inset-block-start: 74px;
+  inset-inline: 12px;
+  margin-inline: auto;
+  width: fit-content;
+  max-width: calc(100vw - 24px);
+  padding: 10px 16px;
+  border: 1px solid rgba(255, 99, 99, 0.6);
+  border-radius: 10px;
+  color: #ffd0d0;
+  background: rgba(88, 16, 16, 0.96);
+  font-size: 0.8rem;
+  line-height: 1.6;
+  text-align: center;
+}
 .market-unavailable {
   position: relative;
   inset: auto;
