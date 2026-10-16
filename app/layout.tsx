@@ -1,4 +1,4 @@
-﻿import type { Metadata } from "next";
+import type { Metadata } from "next";
 import { cookies, headers } from "next/headers";
 import type { ReactNode } from "react";
 import { InterfaceVisibilityProvider } from "@/components/account/interface-visibility-provider";
@@ -46,6 +46,7 @@ import "@/styles/approved-job-seeker-flows.css";
 import "@/styles/approved-talent-employer.css";
 import "@/styles/marketing-flow.css";
 import "@/styles/robotics-flow.css";
+import "@/styles/section-pages.css";
 
 export const metadata: Metadata = {
   metadataBase: resolveSiteUrl(),

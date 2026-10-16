@@ -1,4 +1,5 @@
 import { TalentFlowWorkspace } from "@/components/talent/talent-flow-workspace";
+import { JenanHeader } from "@/components/shell/jenan-header";
 import { requireUser } from "@/lib/auth/session";
 import { getRequestDictionary } from "@/lib/i18n/server";
 import type { TalentFlowRoute } from "@/lib/talent/talent-routes";
@@ -11,15 +12,15 @@ export async function TalentRoutePage({ applicationId, jobId, organizationId, ro
 
   if (!seekerRoute) {
     return (
-      <main className="approved-talent-employer" dir={locale === "ar" ? "rtl" : "ltr"}>
+      <><JenanHeader locale={locale} userLabel={userLabel} /><main className="approved-talent-employer" dir={locale === "ar" ? "rtl" : "ltr"}>
         {workspace}
-      </main>
+      </main></>
     );
   }
 
   return (
-    <main className="approved-job-seeker" dir={locale === "ar" ? "rtl" : "ltr"}>
+    <><JenanHeader locale={locale} userLabel={userLabel} /><main className="approved-job-seeker" dir={locale === "ar" ? "rtl" : "ltr"}>
       {workspace}
-    </main>
+    </main></>
   );
 }

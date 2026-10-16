@@ -1,0 +1,18 @@
+/* Pages of a section that sit under the shared header: a slim strip of the section's own links, and the page content below. */
+.section-subnav { position: relative; z-index: 30; display: flex; gap: 6px; padding: 8px var(--jn-pad); overflow-x: auto; border-bottom: 1px solid rgba(40, 190, 235, 0.16); background: rgba(3, 14, 30, 0.92); font-family: "Alexandria Variable", "Segoe UI", sans-serif; scrollbar-width: none; }
+.section-subnav a { display: inline-flex; flex: none; align-items: center; gap: 8px; min-height: 34px; padding: 0 14px; border: 1px solid rgba(40, 190, 235, 0.28); border-radius: 8px; color: #d4e8f1; background: rgba(5, 28, 48, 0.7); font-size: 0.82rem; font-weight: 600; text-decoration: none; white-space: nowrap; transition: border-color 0.15s ease, color 0.15s ease; }
+.section-subnav a:hover { border-color: var(--jn-cyan); color: #fff; }
+.section-subnav .icon { width: 16px; height: 16px; color: var(--jn-cyan); }
+
+/* Academy: the platform's header replaces the old sidebar and top bar */
+.academy-portal.academy-portal--shared { display: block; direction: ltr; }
+.academy-portal--shared[dir="rtl"] { direction: rtl; }
+.academy-portal--shared .academy-portal__main { grid-area: auto; }
+.academy-strip { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; padding: 8px var(--jn-pad); border-bottom: 1px solid rgba(40, 190, 235, 0.16); background: rgba(3, 14, 30, 0.92); font-family: "Alexandria Variable", "Segoe UI", sans-serif; }
+.academy-strip__search { display: flex; flex: 1 1 280px; align-items: center; gap: 10px; min-height: 36px; padding: 0 12px; border: 1px solid rgba(40, 190, 235, 0.34); border-radius: 8px; background: rgba(5, 28, 48, 0.8); }
+.academy-strip__search:focus-within { border-color: var(--jn-cyan); }
+.academy-strip__search .icon { width: 17px; height: 17px; color: var(--jn-cyan); }
+.academy-strip__search input { flex: 1; min-width: 0; height: 34px; border: 0; outline: 0; color: #f4fbff; background: transparent; font: inherit; font-size: 0.86rem; }
+.academy-strip > a { display: inline-flex; align-items: center; gap: 8px; min-height: 36px; padding: 0 14px; border: 1px solid rgba(40, 190, 235, 0.28); border-radius: 8px; color: #d4e8f1; background: rgba(5, 28, 48, 0.7); font-size: 0.82rem; font-weight: 600; text-decoration: none; }
+.academy-strip > a:hover { border-color: var(--jn-cyan); color: #fff; }
+.academy-strip > a .icon { width: 16px; height: 16px; color: var(--jn-cyan); }
