@@ -47,8 +47,6 @@ export const platformProfileSchema = z.object({
 
 export type PlatformProfile = z.infer<typeof platformProfileSchema>;
 
-export const emptyPlatformProfile: PlatformProfile = platformProfileSchema.parse({});
-
 /** Drops the blank list entries and achievements the form leaves behind, so what is stored is only what was written. */
 export function normalizePlatformProfile(input: PlatformProfile): PlatformProfile {
   return {

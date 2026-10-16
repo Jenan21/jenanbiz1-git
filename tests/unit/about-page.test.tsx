@@ -11,7 +11,8 @@ vi.mock("@/components/auth/logout-button", () => ({ LogoutButton: () => createEl
 vi.mock("@/components/ui/language-switcher", () => ({ LanguageSwitcher: () => createElement("button", { type: "button" }, "EN") }));
 
 import { AboutPage } from "@/components/shell/about-page";
-import { emptyPlatformProfile, normalizePlatformProfile, platformProfileSchema, profileText } from "@/lib/platform/platform-profile";
+import { normalizePlatformProfile, platformProfileSchema, profileText } from "@/lib/platform/platform-profile";
+import { emptyPlatformProfile } from "@/lib/platform/platform-profile-empty";
 
 const filled = platformProfileSchema.parse({
   name: { ar: "جنان برو", en: "Jenan PRO" },
@@ -26,7 +27,8 @@ function render(profile = filled, locale: "ar" | "en" = "en", extra: Partial<Par
 }
 
 describe("platform profile", () => {
-  it("accepts an empty profile and never invents values", () => {
+  it("the empty profile is valid and never invents values", () => {
+    expect(platformProfileSchema.parse({})).toEqual(emptyPlatformProfile);
     expect(emptyPlatformProfile.registration.commercialRegister).toBe("");
     expect(emptyPlatformProfile.achievements).toEqual([]);
   });

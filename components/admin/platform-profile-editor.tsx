@@ -1,7 +1,8 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { emptyPlatformProfile, type PlatformProfile } from "@/lib/platform/platform-profile";
+import { emptyPlatformProfile } from "@/lib/platform/platform-profile-empty";
+import type { PlatformProfile } from "@/lib/platform/platform-profile";
 
 type Bilingual = { ar: string; en: string };
 type Status = { kind: "idle" } | { kind: "loading" } | { kind: "saving" } | { kind: "saved"; at: string } | { kind: "error"; message: string };

@@ -1,10 +1,10 @@
 import { db } from "@/lib/db";
 import {
-  emptyPlatformProfile,
   normalizePlatformProfile,
   platformProfileSchema,
   type PlatformProfile,
 } from "@/lib/platform/platform-profile";
+import { emptyPlatformProfile } from "@/lib/platform/platform-profile-empty";
 
 const PROFILE_ID = "platform";
 
