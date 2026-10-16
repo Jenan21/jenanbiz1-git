@@ -34,6 +34,14 @@ test.describe.serial("supplemental platform pages", () => {
       await page.setViewportSize(viewport);
       for (const definition of SUPPLEMENTAL_ROUTES) {
         expect((await page.goto(definition.path, { waitUntil: "domcontentloaded" }))?.status(), definition.path).toBe(200);
+        if (definition.path === "/benefits") {
+          // "About us" is the page an administrator fills in, so it carries its own markers.
+          await expect(page.locator(".about")).toHaveAttribute("data-about-route", "/benefits");
+          await expect(page.locator(".about__watermark")).toHaveCount(1);
+          const aboutLayout = await page.evaluate(() => ({ scrollWidth: document.documentElement.scrollWidth, viewportWidth: document.documentElement.clientWidth }));
+          expect(aboutLayout.scrollWidth, `/benefits at ${viewport.width}x${viewport.height}`).toBeLessThanOrEqual(aboutLayout.viewportWidth + 1);
+          continue;
+        }
         const workspace = page.locator(".workspace-overview");
         await expect(workspace).toHaveAttribute("data-module-route", definition.path);
         await expect(workspace).toHaveAttribute("data-module-screen", definition.id);

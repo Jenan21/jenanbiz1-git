@@ -1563,6 +1563,13 @@ model PlatformSocialLink {
   updatedAt DateTime                @updatedAt
 }
 
+model PlatformProfile {
+  id          String   @id @default("platform")
+  content     Json
+  updatedById String?
+  updatedAt   DateTime @updatedAt
+}
+
 model AuditLog {
   id             String        @id @default(cuid())
   actorId        String?

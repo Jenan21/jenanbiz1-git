@@ -36,6 +36,11 @@ export const adminNavItems: readonly AdminNavItem[] = [
     icon: "building",
   },
   {
+    href: "/admin/platform-profile",
+    label: { ar: "صفحة من نحن", en: "About page" },
+    icon: "building",
+  },
+  {
     href: "/admin/users",
     label: { ar: "المستخدمون", en: "Users" },
     icon: "people",

@@ -1,0 +1,86 @@
+/* "About us" for members, and the administrator's form that feeds it. */
+.about { position: relative; min-height: 100dvh; overflow-x: clip; color: #f4fbff; background: radial-gradient(ellipse 70% 55% at 50% 38%, rgba(20, 110, 170, 0.2), transparent 70%), #030a1a; font-family: "Alexandria Variable", "Segoe UI", sans-serif; }
+.about *, .about *::before, .about *::after { box-sizing: border-box; }
+.about a { color: inherit; text-decoration: none; }
+.about .icon { width: 20px; height: 20px; }
+
+/* The logo behind the page, large and faint, centred in the design */
+.about__watermark { position: fixed; inset: 0; z-index: 0; display: grid; place-items: center; pointer-events: none; }
+.about__watermark img { width: min(78vmin, 640px); height: auto; opacity: 0.16; filter: saturate(1.25); }
+
+.about .jenan-header { position: sticky; inset-block-start: 0; }
+.about__body { position: relative; z-index: 2; display: grid; gap: clamp(12px, 2vh, 22px); width: min(100%, 1280px); margin: 0 auto; padding: clamp(14px, 3vh, 34px) var(--jn-pad) clamp(24px, 4vh, 48px); }
+
+.about__hero { display: grid; justify-items: start; gap: clamp(6px, 1.2vh, 12px); max-width: 900px; }
+.about__hero h1 { margin: 0; font-size: clamp(1.8rem, 3.6vw, 3.2rem); font-weight: 800; line-height: 1.15; background: linear-gradient(90deg, #f4fbff, #19f0f6); -webkit-background-clip: text; background-clip: text; color: transparent; }
+.about__hero p { margin: 0; color: #dbe8ef; font-size: clamp(0.9rem, 1.15vw, 1.1rem); line-height: 1.85; text-wrap: pretty; white-space: pre-line; }
+.about__hero p:empty { display: none; }
+.about__edit { display: inline-flex; align-items: center; gap: 8px; min-height: 34px; padding: 0 14px; border: 1px solid rgba(240, 196, 81, 0.6); border-radius: 8px; color: #f4c04f; background: rgba(34, 24, 4, 0.7); font-size: 0.82rem; font-weight: 600; }
+.about__edit .icon { width: 16px; height: 16px; }
+.about__notice { display: flex; align-items: center; gap: 10px; margin: 0; padding: 12px 16px; border: 1px solid rgba(255, 120, 120, 0.5); border-radius: 10px; color: #ffd0d0; background: rgba(60, 10, 14, 0.7); font-size: 0.88rem; }
+
+.about__pillars { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: clamp(10px, 1.2vw, 18px); }
+.about__grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: clamp(10px, 1.2vw, 18px); align-items: start; }
+.about-panel { min-width: 0; padding: clamp(14px, 2vh, 22px) clamp(14px, 1.4vw, 22px); border: 1px solid rgba(40, 200, 240, 0.4); border-radius: 12px; background: linear-gradient(130deg, rgba(4, 30, 54, 0.66), rgba(3, 14, 30, 0.74)); box-shadow: 0 0 22px rgba(25, 200, 240, 0.08); }
+.about-panel h2 { display: flex; align-items: center; gap: 12px; margin: 0 0 clamp(8px, 1.4vh, 14px); font-size: clamp(0.95rem, 1.2vw, 1.2rem); font-weight: 700; }
+.about-panel p { margin: 0; color: #d3e1e8; font-size: clamp(0.84rem, 1vw, 0.98rem); line-height: 1.8; white-space: pre-line; }
+.about__empty { color: #7f9aa8; font-size: 0.86rem; font-style: normal; }
+
+.about__rows { display: grid; gap: 2px; margin: 0; }
+.about__rows > div { display: grid; grid-template-columns: minmax(96px, 0.45fr) minmax(0, 1fr); gap: 10px; padding: 9px 0; border-bottom: 1px solid rgba(40, 190, 235, 0.14); }
+.about__rows > div:last-child { border-bottom: 0; }
+.about__rows dt { color: var(--jn-muted); font-size: 0.82rem; }
+.about__rows dd { display: grid; justify-items: start; gap: 4px; min-width: 0; margin: 0; overflow-wrap: anywhere; font-size: 0.92rem; font-weight: 600; text-align: start; }
+.about__rows dd a { color: #bff7fa; }
+.about__rows dd a:hover { color: var(--jn-cyan); text-decoration: underline; }
+
+.about__achievements { display: grid; gap: 10px; margin: 0; padding: 0; list-style: none; }
+.about__achievements li { display: grid; gap: 2px; padding: 10px 12px; border: 1px solid rgba(40, 190, 235, 0.25); border-inline-start: 3px solid var(--jn-cyan); border-radius: 8px; background: rgba(5, 28, 48, 0.6); }
+.about__achievements strong { color: var(--jn-cyan); font-size: clamp(1.3rem, 2vw, 1.9rem); font-weight: 800; line-height: 1.1; }
+.about__achievements b { font-size: 0.95rem; }
+.about__achievements small { color: #b9ccd6; font-size: 0.8rem; line-height: 1.6; }
+.about__foot { color: #7f9aa8; font-size: 0.76rem; text-align: center; }
+.about__foot:empty { display: none; }
+
+@media (max-width: 1000px) {
+  .about__grid { grid-template-columns: minmax(0, 1fr); }
+  .about__pillars { grid-template-columns: minmax(0, 1fr); }
+}
+
+/* Administrator's form */
+.profile-editor { display: grid; gap: 16px; max-width: 980px; margin: 0 auto; padding: 24px 16px 96px; color: #eaf6fb; font-family: "Alexandria Variable", "Segoe UI", sans-serif; }
+.profile-editor *, .profile-editor *::before, .profile-editor *::after { box-sizing: border-box; }
+.profile-editor__head { display: flex; flex-wrap: wrap; align-items: flex-start; justify-content: space-between; gap: 12px; }
+.profile-editor__kicker { color: #19f0f6; font-size: 0.8rem; font-weight: 600; }
+.profile-editor h1 { margin: 4px 0 6px; font-size: 1.7rem; }
+.profile-editor__head p { max-width: 620px; margin: 0; color: #a9bfc9; font-size: 0.88rem; line-height: 1.7; }
+.profile-editor__view { padding: 8px 16px; border: 1px solid rgba(40, 200, 240, 0.5); border-radius: 8px; color: #19f0f6; font-size: 0.84rem; text-decoration: none; }
+.profile-editor__card { display: grid; gap: 14px; padding: 18px; border: 1px solid rgba(40, 200, 240, 0.3); border-radius: 12px; background: rgba(5, 24, 42, 0.8); }
+.profile-editor__card h2 { margin: 0; font-size: 1.05rem; }
+.profile-editor__hint { margin: -6px 0 0; color: #a9bfc9; font-size: 0.8rem; }
+.profile-editor__grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; }
+.profile-editor__pair { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; min-width: 0; margin: 0; padding: 0; border: 0; }
+.profile-editor__pair legend { margin-bottom: 6px; padding: 0; color: #cfe3ec; font-size: 0.86rem; font-weight: 600; }
+.profile-editor label { display: grid; gap: 5px; min-width: 0; }
+.profile-editor label > span { color: #8fb0bf; font-size: 0.76rem; }
+.profile-editor input,
+.profile-editor textarea { width: 100%; padding: 10px 12px; border: 1px solid rgba(80, 180, 220, 0.35); border-radius: 8px; color: #f4fbff; background: rgba(2, 12, 24, 0.9); font: inherit; font-size: 0.9rem; }
+.profile-editor textarea { resize: vertical; }
+.profile-editor input:focus-visible,
+.profile-editor textarea:focus-visible { border-color: #19f0f6; outline: 0; box-shadow: 0 0 0 2px rgba(25, 240, 246, 0.2); }
+.profile-editor__list { display: grid; gap: 8px; align-content: start; }
+.profile-editor__list-title { color: #cfe3ec; font-size: 0.86rem; font-weight: 600; }
+.profile-editor__row { display: grid; grid-template-columns: minmax(0, 1fr) 38px; gap: 8px; }
+.profile-editor__row button { border: 1px solid rgba(255, 120, 120, 0.5); border-radius: 8px; color: #ffb4b4; background: transparent; font-size: 1.1rem; cursor: pointer; }
+.profile-editor__add,
+.profile-editor__remove { justify-self: start; padding: 8px 14px; border: 1px dashed rgba(40, 200, 240, 0.6); border-radius: 8px; color: #19f0f6; background: transparent; font: inherit; font-size: 0.84rem; cursor: pointer; }
+.profile-editor__remove { border-color: rgba(255, 120, 120, 0.5); color: #ffb4b4; }
+.profile-editor__achievement { display: grid; gap: 12px; padding: 14px; border: 1px solid rgba(40, 190, 235, 0.22); border-radius: 10px; background: rgba(3, 16, 30, 0.7); }
+.profile-editor__bar { position: fixed; inset-block-end: 0; inset-inline: 0; z-index: 40; display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 12px 24px; border-top: 1px solid rgba(40, 200, 240, 0.4); background: rgba(2, 10, 22, 0.96); font-size: 0.86rem; }
+.profile-editor__bar .is-error { color: #ffb4b4; }
+.profile-editor__save { padding: 10px 26px; border: 0; border-radius: 9px; color: #00131d; background: linear-gradient(90deg, #19f0f6, #19c3e8); font: inherit; font-size: 0.92rem; font-weight: 700; cursor: pointer; }
+.profile-editor__save:disabled { opacity: 0.55; cursor: progress; }
+@media (max-width: 700px) {
+  .profile-editor__grid,
+  .profile-editor__pair { grid-template-columns: minmax(0, 1fr); }
+}
