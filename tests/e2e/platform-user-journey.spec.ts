@@ -185,7 +185,7 @@ test.describe.serial("real Jenan Pro user journey", () => {
       await expect(page.getByRole("status")).toContainText("Course enrollment recorded.");
     }
 
-    await expectHealthyPage(page, "/market");
+    await expectHealthyPage(page, "/market/dashboard");
     const marketForm = page.locator(".market-form");
     await marketForm.getByPlaceholder("Sector").fill("Clean technology");
     await marketForm.getByPlaceholder("Country").fill("SA");
