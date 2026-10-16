@@ -139,7 +139,7 @@ export const MARKETING_SHOWCASE: SectionContent = {
   route: "/marketing",
   photo: "/assets/home-panels/marketing-scene.webp",
   tag: { icon: "megaphone", label: ["تسويق جنان", "Jenan Marketing"] },
-  title: [["التسويق والإعلان الذكي", "Smart marketing"], ["حملات تقيسها بأرقام حقيقية", "campaigns measured by real numbers"]],
+  title: [["التسويق والإعلان الذكي", "Smart marketing"], ["حملات تقيسها بأرقام حقيقية", "measured by real numbers"]],
   pitch: [
     "أنشئ حملتك، حدّد جمهورك وقنواتك وميزانيتك، وتابع العملاء المسجلين فعلًا. لا نعرض أي نتيجة لم تُسجَّل.",
     "Create your campaign, define your audience, channels and budget, and follow the leads actually recorded. We never show a result that was not recorded.",
@@ -183,7 +183,7 @@ export const MARKET_SHOWCASE: SectionContent = {
   route: "/market",
   photo: "/assets/home-panels/market-scene.webp",
   tag: { icon: "cart", label: ["سوق جنان", "Jenan Market"] },
-  title: [["سوق جنان", "Jenan Market"], ["بيع وشراء فرص ذكية في مكان واحد", "buy and sell opportunities in one place"]],
+  title: [["سوق جنان", "Jenan Market"], ["بيع وشراء فرص ذكية في مكان واحد", "Smart buying and selling"]],
   pitch: [
     "سوق للمشاريع والأنشطة التجارية: تصفّح الفرص، أبدِ اهتمامك، وانتقل من اتفاقية السرية إلى المعاينة والعرض والإغلاق في مسار واضح.",
     "A market for projects and businesses: browse opportunities, show interest, and move from the confidentiality agreement to viewing, offer and closing in one clear path.",

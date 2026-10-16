@@ -40,7 +40,8 @@
 .projects-stage__counts .stage-glass > .icon { position: absolute; inset-block-start: clamp(8px, 1.6vh, 16px); inset-inline-end: clamp(8px, 1vw, 14px); width: clamp(24px, 3vh, 32px); height: clamp(24px, 3vh, 32px); padding: clamp(5px, 0.7vh, 7px); border: 1px solid rgba(80, 200, 255, 0.55); box-sizing: border-box; border-radius: 8px 8px 8px 2px; color: var(--jn-cyan); background: rgba(5, 30, 54, 0.75); }
 
 /* The Projects section shows its own scene rather than the home's city */
-.projects-stage .stage__photo { background: url("/assets/home-panels/projects-scene.webp") 50% 50% / cover no-repeat; filter: saturate(1.08) contrast(1.06) brightness(0.96); }
+.projects-stage .stage__photo { inset: 0 auto 0 0; width: auto; height: 100%; aspect-ratio: 2.36; background: url("/assets/home-panels/projects-scene.webp") center / 100% 100% no-repeat; filter: none; transform: none; animation: none; -webkit-mask-image: linear-gradient(to left, transparent 0, #000 30%); mask-image: linear-gradient(to left, transparent 0, #000 30%); }
+.projects-stage[dir="ltr"] .stage__photo { inset: 0 0 0 auto; -webkit-mask-image: linear-gradient(to right, transparent 0, #000 30%); mask-image: linear-gradient(to right, transparent 0, #000 30%); }
 .projects-stage .stage__grade { opacity: 0.3; }
 
 /* Pending invitations appear over the hero only when there are some */

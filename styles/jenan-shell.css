@@ -30,13 +30,14 @@
 .jenan-header a:focus-visible,
 .jenan-header button:focus-visible { outline: 2px solid var(--jn-cyan); outline-offset: 2px; }
 
-.jenan-header__brand { display: flex; align-items: center; gap: 10px; }
-.jenan-header__brand > span { position: relative; display: inline-block; width: 40px; height: 46px; transform: rotate(8deg); }
-.jenan-header__brand i { position: absolute; width: 18px; height: 36px; border: 4px solid var(--jn-cyan); border-radius: 100% 0 100% 0; box-shadow: 0 0 16px rgba(25, 240, 246, 0.5); }
-.jenan-header__brand i:first-child { top: 0; right: 0; }
-.jenan-header__brand i:last-child { bottom: 0; left: 0; transform: rotate(180deg); }
-.jenan-header__brand strong { font-size: clamp(1.5rem, 2.1vw, 2.1rem); white-space: nowrap; }
-.jenan-header__brand b { color: var(--jn-cyan); }
+.jenan-header__brand { display: flex; align-items: center; }
+.jenan-header__brand img { width: auto; height: clamp(42px, 6vh, 56px); }
+
+
+
+
+
+
 
 .jenan-header nav { display: flex; align-items: stretch; justify-content: center; min-width: 0; min-height: var(--jn-header-h); }
 .jenan-header nav a { position: relative; display: flex; align-items: center; gap: 6px; padding: 0 clamp(6px, 0.95vw, 18px); color: #d4e2ea; font-size: clamp(0.74rem, 0.98vw, 1.05rem); font-weight: 500; white-space: nowrap; transition: color 0.15s ease; }
@@ -73,9 +74,9 @@ body:has(.jenan-header) .page-shortcuts { display: none; }
   .jenan-header nav a { flex: 0 0 auto; padding: 0 14px; }
 }
 @media (max-width: 700px) {
-  .jenan-header__brand strong { font-size: 1.3rem; }
-  .jenan-header__brand > span { width: 30px; height: 36px; }
-  .jenan-header__brand i { width: 13px; height: 28px; border-width: 3px; }
+
+
+
   .jenan-header__bell,
   .jenan-header__identity { display: none; }
   .jenan-header__tools { gap: 6px; }
@@ -105,8 +106,8 @@ body:has(.jenan-header) .page-shortcuts { display: none; }
 /* Very narrow phones: the tools shrink so that brand, Back, language, profile and sign-out share one row */
 @media (max-width: 480px) {
   .jenan-header { gap: 8px; }
-  .jenan-header__brand { gap: 6px; }
-  .jenan-header__brand strong { font-size: 1.1rem; }
+  .jenan-header__brand img { height: 38px; }
+
   .jenan-header__tools { gap: 4px; }
   .jenan-header__tools .language-switcher { min-width: 0; padding: 0 8px; gap: 4px; }
   .jenan-header__tools .language-switcher .icon { display: none; }

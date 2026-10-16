@@ -11,14 +11,10 @@ import { LanguageSwitcher } from "@/components/ui/language-switcher";
 import { JenanHeader } from "@/components/shell/jenan-header";
 import type { Locale } from "@/types/i18n";
 
-export function JenanLogo({ compact = false }: { compact?: boolean }) {
+export function JenanLogo() {
   return (
     <Link href="/" className="brandmark" aria-label="Jenan Pro home">
-      <Image className="brandmark__logo brandmark__logo--image" src="/assets/jenan-pro-logo.jpg" alt="" width={160} height={98} />
-      <span className="brandmark__text">
-        <strong>Jenan Pro</strong>
-        {!compact && <small>Global business platform</small>}
-      </span>
+      <Image className="brandmark__logo brandmark__logo--image" src="/assets/jenan-pro-mark.webp" alt="" width={300} height={230} />
     </Link>
   );
 }

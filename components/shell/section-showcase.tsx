@@ -153,7 +153,6 @@ export function SectionShowcase({
       <nav aria-label={pick(servicesLabel, locale)} className="showcase__tiles">
         {services.map((service) => (
           <Link className={`showcase__tile tone-${service.tone}`} href={service.href} key={service.href}>
-            <span aria-hidden="true" className="showcase__photo" />
             <span aria-hidden="true" className="showcase__mark"><Icon name={service.icon} /></span>
             <h2>{pick(service.title, locale)}</h2>
             <p>{pick(service.description, locale)}</p>

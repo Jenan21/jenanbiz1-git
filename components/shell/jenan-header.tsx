@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
@@ -47,8 +48,7 @@ export function JenanHeader({
   return (
     <header className="jenan-header" data-testid="jenan-header" dir="ltr">
       <Link className="jenan-header__brand" href="/dashboard" aria-label="Jenan PRO">
-        <span aria-hidden="true"><i /><i /></span>
-        <strong>Jenan <b>PRO</b></strong>
+        <Image alt="" height={230} priority src="/assets/jenan-pro-mark.webp" width={300} />
       </Link>
       <nav aria-label={ar ? "التنقل الرئيسي" : "Main navigation"} dir={ar ? "rtl" : "ltr"}>
         {MAIN_NAV.map((item) => (
