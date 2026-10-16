@@ -39,6 +39,10 @@
 .projects-stage__counts .stage-glass { min-height: clamp(70px, 14vh, 150px); padding-inline-end: clamp(42px, 4vw, 64px); }
 .projects-stage__counts .stage-glass > .icon { position: absolute; inset-block-start: clamp(8px, 1.6vh, 16px); inset-inline-end: clamp(8px, 1vw, 14px); width: clamp(24px, 3vh, 32px); height: clamp(24px, 3vh, 32px); padding: clamp(5px, 0.7vh, 7px); border: 1px solid rgba(80, 200, 255, 0.55); box-sizing: border-box; border-radius: 8px 8px 8px 2px; color: var(--jn-cyan); background: rgba(5, 30, 54, 0.75); }
 
+/* The Projects section shows its own scene rather than the home's city */
+.projects-stage .stage__photo { background: url("/assets/home-panels/projects-scene.webp") 50% 50% / cover no-repeat; filter: saturate(1.08) contrast(1.06) brightness(0.96); }
+.projects-stage .stage__grade { opacity: 0.3; }
+
 /* Pending invitations appear over the hero only when there are some */
 .projects-stage__invites { position: absolute; z-index: 30; inset-block-start: 12px; inset-inline-end: var(--jn-pad); width: min(420px, calc(100% - 28px)); max-height: 58%; overflow-y: auto; }
 .projects-stage__invites:empty { display: none; }

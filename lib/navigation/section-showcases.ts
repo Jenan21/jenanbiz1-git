@@ -6,6 +6,7 @@ type SectionContent = Omit<SectionShowcaseProps, "locale" | "userLabel">;
 export const SOFTWARE_SHOWCASE: SectionContent = {
   attributes: { "data-software-route": "/software" },
   route: "/software",
+  photo: "/assets/home-panels/software-scene.webp",
   tag: { icon: "cube", label: ["برمجيات جنان", "Jenan Software"] },
   title: [["أدوات عملك", "The tools of your work"], ["في مكان واحد", "in one place"]],
   pitch: [
@@ -32,6 +33,7 @@ export const SOFTWARE_SHOWCASE: SectionContent = {
 
 export const ACADEMY_SHOWCASE: SectionContent = {
   route: "/academy",
+  photo: "/assets/home-panels/academy-scene.webp",
   tag: { icon: "graduation", label: ["أكاديمية جنان", "Jenan Academy"] },
   title: [["تعلّم ما يبني", "Learn what builds"], ["مسارك المهني", "your career"]],
   pitch: [
@@ -58,6 +60,7 @@ export const ACADEMY_SHOWCASE: SectionContent = {
 
 export const TALENT_SHOWCASE: SectionContent = {
   route: "/talent",
+  photo: "/assets/home-panels/talent-scene.webp",
   tag: { icon: "people", label: ["توظيف جنان", "Jenan Talent"] },
   title: [["الوظيفة المناسبة", "The right job"], ["والكفاءة المناسبة", "and the right talent"]],
   pitch: [
@@ -84,6 +87,7 @@ export const TALENT_SHOWCASE: SectionContent = {
 
 export const MARKETING_SHOWCASE: SectionContent = {
   route: "/marketing",
+  photo: "/assets/home-panels/marketing-scene.webp",
   tag: { icon: "megaphone", label: ["تسويق جنان", "Jenan Marketing"] },
   title: [["حملات تسويقية", "Marketing campaigns"], ["تقيسها بأرقام حقيقية", "measured by real numbers"]],
   pitch: [
@@ -110,6 +114,7 @@ export const MARKETING_SHOWCASE: SectionContent = {
 
 export const MARKET_SHOWCASE: SectionContent = {
   route: "/market",
+  photo: "/assets/home-panels/market-scene.webp",
   tag: { icon: "cart", label: ["سوق جنان", "Jenan Market"] },
   title: [["اشترِ وبع المشاريع", "Buy and sell projects"], ["بثقة وشفافية", "with trust and clarity"]],
   pitch: [

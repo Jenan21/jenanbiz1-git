@@ -1,4 +1,5 @@
 import Link from "next/link";
+import type { CSSProperties } from "react";
 import { JenanHeader } from "@/components/shell/jenan-header";
 import { Icon, type IconName } from "@/components/ui/icons";
 import type { Locale } from "@/types/i18n";
@@ -20,6 +21,8 @@ export type SectionShowcaseProps = {
   attributes?: Record<`data-${string}`, string>;
   facts: readonly ShowcaseFact[];
   locale: Locale;
+  /** The section's own scene, shown over the stage and again, faintly, inside the tiles. */
+  photo: string;
   pitch: Copy;
   primary: { href: string; icon: IconName; label: Copy };
   route: string;
@@ -44,6 +47,7 @@ export function SectionShowcase({
   attributes,
   facts,
   locale,
+  photo,
   pitch,
   primary,
   route,
@@ -56,7 +60,7 @@ export function SectionShowcase({
 }: SectionShowcaseProps) {
   const ar = locale === "ar";
   return (
-    <main className="showcase" data-showcase-route={route} dir={ar ? "rtl" : "ltr"} {...attributes}>
+    <main className="showcase" data-showcase-route={route} dir={ar ? "rtl" : "ltr"} style={{ "--stage-photo": `url("${photo}")` } as CSSProperties} {...attributes}>
       <JenanHeader locale={locale} userLabel={userLabel} />
 
       <section className="showcase__hero stage">
