@@ -76,9 +76,9 @@ describe("signed-in home", () => {
     }
   });
 
-  it("disables the notifications, which have no feature behind them", () => {
+  it("links the bell to the notifications page", () => {
     const html = render("USER");
-    expect(html).toMatch(/<button[^>]*jenan-header__bell[^>]*disabled|<button[^>]*disabled[^>]*jenan-header__bell/);
+    expect(html).toMatch(/<a[^>]*href="\/notifications"[^>]*jenan-header__bell|<a[^>]*jenan-header__bell[^>]*href="\/notifications"/);
   });
 
   it("has the headline, the two actions and a working search in the hero", () => {

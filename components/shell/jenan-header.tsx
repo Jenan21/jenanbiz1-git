@@ -81,14 +81,13 @@ export function JenanHeader({
           </button>
         )}
         <LanguageSwitcher locale={locale} label={ar ? "Switch to English" : "التبديل إلى العربية"} />
-        <button
-          aria-label={ar ? "الإشعارات غير متاحة حاليًا" : "Notifications are currently unavailable"}
+        <Link
+          aria-label={ar ? "الإشعارات" : "Notifications"}
           className="jenan-header__bell"
-          disabled
-          type="button"
+          href="/notifications"
         >
           <Icon name="bell" />
-        </button>
+        </Link>
         <Link className="jenan-header__profile" href="/user" aria-label={ar ? "حسابي" : "My account"}>
           <span aria-hidden="true" className="jenan-header__avatar">{initial}</span>
           <span className="jenan-header__identity" dir={ar ? "rtl" : "ltr"}>

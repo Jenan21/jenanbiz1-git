@@ -16,6 +16,8 @@ const OWN_GROUP: Copy = ["حسابي", "My account"];
 const EXTRA_PAGES: ReadonlyArray<{ path: string; label: Copy; group: Copy }> = [
   { path: "/user", label: ["لوحة بياناتي", "My dashboard"], group: OWN_GROUP },
   { path: "/user/investments", label: ["بياناتي الاستثمارية", "My investment data"], group: OWN_GROUP },
+  { path: "/business", label: ["منظومة الأعمال", "Business ecosystem"], group: ["المنصة", "Platform"] },
+  { path: "/notifications", label: ["الإشعارات", "Notifications"], group: OWN_GROUP },
   { path: "/account", label: ["إعدادات الحساب", "Account settings"], group: OWN_GROUP },
   { path: "/pricing", label: ["الأسعار والباقات", "Pricing"], group: ["المنصة", "Platform"] },
   { path: "/benefits", label: ["من نحن ومزايا المنصة", "About and benefits"], group: ["المنصة", "Platform"] },

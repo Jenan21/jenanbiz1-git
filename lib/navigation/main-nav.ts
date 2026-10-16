@@ -5,34 +5,45 @@ export interface NavItem {
   label: Copy;
 }
 
-/** The sections of the platform, in the order they appear in the header. */
+/** The main sections of the platform, in the order they appear in the header. */
 export const MAIN_NAV: readonly NavItem[] = [
   { href: "/dashboard", label: ["الرئيسية", "Home"] },
-  { href: "/projects", label: ["المشاريع", "Projects"] },
-  { href: "/academy", label: ["الأكاديمية", "Academy"] },
-  { href: "/software", label: ["البرمجيات", "Software"] },
-  { href: "/market", label: ["السوق", "Market"] },
-  { href: "/talent", label: ["الوظائف", "Talent"] },
-  { href: "/marketing", label: ["التسويق", "Marketing"] },
-  { href: "/benefits", label: ["من نحن", "About"] },
+  { href: "/projects", label: ["المشاريع والاستثمار", "Projects and investment"] },
+  { href: "/software", label: ["البرمجيات والحلول", "Software and solutions"] },
+  { href: "/business", label: ["منظومة الأعمال", "Business ecosystem"] },
+  { href: "/user", label: ["بياناتي", "My data"] },
+  { href: "/notifications", label: ["الإشعارات", "Notifications"] },
+  { href: "/benefits", label: ["من نحن", "About us"] },
 ];
 
-/** Pages that belong to a section without living under its path. */
+/**
+ * Which header item a page belongs to. The first matching prefix wins, so a page that lives under another path
+ * (investments under /user, the studio under software) is listed before the section that would otherwise claim it.
+ */
 const BELONGS_TO: ReadonlyArray<readonly [string, string]> = [
-  ["/user", "/dashboard"],
-  ["/account", "/dashboard"],
-  ["/programs", "/dashboard"],
+  ["/user/investment", "/projects"],
+  ["/user/investments", "/projects"],
+  ["/projects", "/projects"],
+  ["/software", "/software"],
   ["/studio", "/software"],
+  ["/academy", "/business"],
+  ["/market", "/business"],
+  ["/talent", "/business"],
+  ["/marketing", "/business"],
+  ["/business", "/business"],
+  ["/user", "/user"],
+  ["/account", "/user"],
+  ["/notifications", "/notifications"],
   ["/pricing", "/benefits"],
+  ["/benefits", "/benefits"],
+  ["/programs", "/dashboard"],
+  ["/dashboard", "/dashboard"],
 ];
 
 /** The header item that stands for the page being shown, or undefined when no item does. */
 export function activeNavHref(pathname: string): string | undefined {
-  const own = MAIN_NAV.find((item) => pathname === item.href || pathname.startsWith(`${item.href}/`));
-  if (own) return own.href;
   return BELONGS_TO.find(([prefix]) => pathname === prefix || pathname.startsWith(`${prefix}/`))?.[1];
 }
-
 const ROLE_LABELS: Record<string, Copy> = {
   SUPER_ADMIN: ["مالك المنصة", "Platform owner"],
   ADMIN: ["مدير النظام", "Administrator"],

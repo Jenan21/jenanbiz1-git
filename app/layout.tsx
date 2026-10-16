@@ -48,6 +48,7 @@ import "@/styles/marketing-flow.css";
 import "@/styles/robotics-flow.css";
 import "@/styles/section-pages.css";
 import "@/styles/about-page.css";
+import "@/styles/notifications-page.css";
 
 export const metadata: Metadata = {
   metadataBase: resolveSiteUrl(),

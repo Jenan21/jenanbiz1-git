@@ -1,4 +1,4 @@
-﻿import { describe, expect, it } from "vitest";
+import { describe, expect, it } from "vitest";
 import { MAIN_NAV, activeNavHref, roleLabel } from "@/lib/navigation/main-nav";
 
 describe("main navigation", () => {
@@ -15,9 +15,16 @@ describe("main navigation", () => {
   it("marks the section a page belongs to, including pages that live under another path", () => {
     expect(activeNavHref("/projects")).toBe("/projects");
     expect(activeNavHref("/projects/analysis/result")).toBe("/projects");
-    expect(activeNavHref("/academy/courses/c1/lesson/1")).toBe("/academy");
+    expect(activeNavHref("/academy/courses/c1/lesson/1")).toBe("/business");
+    expect(activeNavHref("/market/listings")).toBe("/business");
+    expect(activeNavHref("/talent/jobs")).toBe("/business");
+    expect(activeNavHref("/marketing/leads")).toBe("/business");
+    expect(activeNavHref("/software/files")).toBe("/software");
+    expect(activeNavHref("/notifications")).toBe("/notifications");
+    expect(activeNavHref("/user/onboarding")).toBe("/user");
     expect(activeNavHref("/dashboard")).toBe("/dashboard");
-    expect(activeNavHref("/user/investments")).toBe("/dashboard");
+    expect(activeNavHref("/user/investments")).toBe("/projects");
+    expect(activeNavHref("/programs")).toBe("/dashboard");
     expect(activeNavHref("/studio/pdf")).toBe("/software");
     expect(activeNavHref("/pricing")).toBe("/benefits");
   });
@@ -25,8 +32,8 @@ describe("main navigation", () => {
   it("does not match a section by a shared prefix of its name", () => {
     expect(activeNavHref("/projectsarchive")).toBeUndefined();
     expect(activeNavHref("/marketing-x")).toBeUndefined();
-    expect(activeNavHref("/marketing")).toBe("/marketing");
-    expect(activeNavHref("/market")).toBe("/market");
+    expect(activeNavHref("/marketing")).toBe("/business");
+    expect(activeNavHref("/market")).toBe("/business");
   });
 
   it("labels the account by role and falls back to member", () => {

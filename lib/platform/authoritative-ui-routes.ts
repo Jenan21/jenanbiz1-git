@@ -34,6 +34,8 @@ const legacyTalentPaths = [
 export const AUTHORITATIVE_UI_ROUTES: readonly AuthoritativeUiRoute[] = [
   ...["/auth", "/login", "/register", "/auth/forgot", "/user/onboarding"].map((path) => define(path, "auth")),
   define("/home", "home"),
+  define("/business", "home"),
+  define("/notifications", "user"),
   ...USER_CENTER_ROUTES.filter((route) => route.path.startsWith("/user")).map((route) => define(route.path, "user")),
   define("/projects", "projects"),
   ...projectFlowDefinitions.map((route) => define(route.route, "projects")),

@@ -17,13 +17,14 @@ import { SectionShowcase } from "@/components/shell/section-showcase";
 import { AUTHORITATIVE_UI_ROUTES } from "@/lib/platform/authoritative-ui-routes";
 import {
   ACADEMY_SHOWCASE,
+  BUSINESS_SHOWCASE,
   MARKET_SHOWCASE,
   MARKETING_SHOWCASE,
   SOFTWARE_SHOWCASE,
   TALENT_SHOWCASE,
 } from "@/lib/navigation/section-showcases";
 
-const showcases = { ACADEMY_SHOWCASE, MARKET_SHOWCASE, MARKETING_SHOWCASE, SOFTWARE_SHOWCASE, TALENT_SHOWCASE };
+const showcases = { ACADEMY_SHOWCASE, BUSINESS_SHOWCASE, MARKET_SHOWCASE, MARKETING_SHOWCASE, SOFTWARE_SHOWCASE, TALENT_SHOWCASE };
 const known = new Set(AUTHORITATIVE_UI_ROUTES.map((route) => route.path));
 
 describe("section showcase pages", () => {

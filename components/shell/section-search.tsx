@@ -6,7 +6,7 @@ import { useId, useMemo, useState, type FocusEvent, type KeyboardEvent } from "r
 import { Icon } from "@/components/ui/icons";
 import { searchPages } from "@/lib/navigation/home-search";
 
-/** Searches only the pages of one section, from the list of pages already in the browser. */
+/** Searches the pages of one section (or all of them with scope "*"), from the list of pages already in the browser. */
 export function SectionSearch({ locale, placeholder, scope }: { locale: "ar" | "en"; placeholder: string; scope: string }) {
   const ar = locale === "ar";
   const router = useRouter();
@@ -15,7 +15,7 @@ export function SectionSearch({ locale, placeholder, scope }: { locale: "ar" | "
   const [open, setOpen] = useState(false);
   const [active, setActive] = useState(0);
   const results = useMemo(
-    () => searchPages(query, locale, 120).filter((entry) => entry.path === scope || entry.path.startsWith(`${scope}/`)).slice(0, 7),
+    () => searchPages(query, locale, 120).filter((entry) => scope === "*" || entry.path === scope || entry.path.startsWith(`${scope}/`)).slice(0, 7),
     [query, locale, scope],
   );
   const showList = open && query.trim().length > 0;

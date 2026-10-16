@@ -221,3 +221,49 @@ export const MARKET_SHOWCASE: SectionContent = {
     ] },
   ],
 };
+
+export const BUSINESS_SHOWCASE: SectionContent = {
+  route: "/business",
+  photo: "/assets/home-panels/business-scene.webp",
+  tag: { icon: "link", label: ["منظومة الأعمال", "Business ecosystem"] },
+  title: [["أقسام مترابطة", "Connected sections"], ["لرحلة أعمال متكاملة", "for a complete business journey"]],
+  pitch: [
+    "تعلّم في الأكاديمية، وظّف من سوق الكفاءات، سوّق لحملتك، وبِع أو اشترِ مشروعًا في السوق. كل قسم يعمل وحده ويكمل الآخر.",
+    "Learn in the academy, hire from the talent pool, promote your campaign, and buy or sell a project in the market. Each section works alone and completes the others.",
+  ],
+  search: { scope: "*", placeholder: ["ابحث في المنصة: دورة، وظيفة، حملة، فرصة...", "Search the platform: a course, a job, a campaign, a listing..."] },
+  primary: { href: "/market/listings", icon: "cart", label: ["استكشف السوق", "Explore the market"] },
+  secondary: { href: "/academy/courses", icon: "graduation", label: ["تصفح الدورات", "Browse courses"] },
+  cta: ["ادخل القسم", "Enter"],
+  facts: [
+    { icon: "link", title: ["تجربة موحدة", "One experience"], text: ["حساب واحد وترويسة واحدة لكل الأقسام", "One account and one header across the sections"] },
+    { icon: "lock", title: ["خصوصية بموافقتك", "Privacy by consent"], text: ["لا تُشارك بياناتك دون إذنك", "Your data is shared only with your permission"] },
+    { icon: "shield", title: ["بيانات حقيقية فقط", "Real data only"], text: ["نقول «غير متاح» بدل أن نختلق رقمًا", "We say \"unavailable\" instead of inventing a figure"] },
+  ],
+  servicesLabel: ["أقسام منظومة الأعمال", "Business ecosystem sections"],
+  services: [
+    { href: "/academy", icon: "graduation", tone: "gold", title: ["الأكاديمية", "Academy"], description: ["دورات ومسارات وأبحاث وشهادات قابلة للتحقق.", "Courses, paths, research and verifiable certificates."] },
+    { href: "/market", icon: "cart", tone: "cyan", title: ["السوق", "Market"], description: ["بيع وشراء المشاريع والأنشطة التجارية بمسار واضح.", "Buy and sell projects and businesses in a clear path."] },
+    { href: "/talent", icon: "people", tone: "violet", title: ["الوظائف", "Jobs"], description: ["وظائف وملف مهني وتتبع للطلبات وتوظيف المرشحين.", "Jobs, a professional profile, application tracking and hiring."] },
+    { href: "/marketing", icon: "megaphone", tone: "pink", title: ["التسويق", "Marketing"], description: ["حملات بجمهور وقنوات وميزانية، وعملاء مسجلون.", "Campaigns with audience, channels and budget, and recorded leads."] },
+  ],
+  panels: [
+    { kind: "links", icon: "bolt", title: ["ابدأ من هنا", "Start here"], items: [
+      { href: "/academy/courses", icon: "graduation", title: ["تصفح الدورات", "Browse courses"] },
+      { href: "/talent/jobs", icon: "briefcase", title: ["ابحث عن وظيفة", "Find a job"] },
+      { href: "/marketing/campaign/new", icon: "plus", title: ["أنشئ حملة", "Create a campaign"] },
+      { href: "/market/sell", icon: "cart", title: ["أعلن للبيع", "List for sale"] },
+    ] },
+    { kind: "steps", icon: "link", title: ["كيف تترابط الأقسام", "How the sections connect"], steps: [
+      { title: ["تعلّم", "Learn"], text: ["مهارات وشهادات", "Skills and certificates"] },
+      { title: ["اعمل أو وظّف", "Work or hire"], text: ["فرص وكفاءات", "Roles and talent"] },
+      { title: ["سوّق", "Promote"], text: ["حملات بنتائج مسجلة", "Campaigns with recorded results"] },
+      { title: ["بِع أو اشترِ", "Buy or sell"], text: ["في السوق", "In the market"] },
+    ] },
+    { kind: "tips", icon: "lightbulb", title: ["نصائح للبداية", "Tips to begin"], tips: [
+      { icon: "user", title: ["أكمل ملفك", "Complete your profile"], text: ["يحسّن ترشيحات الوظائف", "It improves job suggestions"] },
+      { icon: "search", title: ["ابحث أولًا", "Search first"], text: ["قبل أن تنشئ أو تعلن", "Before you create or list"] },
+      { icon: "shield", title: ["وثّق بريدك", "Verify your e-mail"], text: ["لتفعيل الدعوات والإشعارات", "To turn on invitations and notices"] },
+    ] },
+  ],
+};
