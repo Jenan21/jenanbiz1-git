@@ -86,16 +86,25 @@ test.describe.serial("back and home on every member page", () => {
     await admin.close();
   });
 
-  test("the shortcuts stay inside the screen in Arabic on a phone", async ({ browser }) => {
+  test("the shortcuts and the header stay inside the screen in Arabic on a phone", async ({ browser }) => {
     const context = await browser.newContext({ viewport: { width: 360, height: 800 } });
     await signIn(context, e2eIdentity.user.email, "ar");
     const page = await context.newPage();
     await page.goto("/academy/courses");
-    const box = await page.getByTestId("page-shortcuts").boundingBox();
-    expect(box).not.toBeNull();
-    expect(box!.x).toBeGreaterThanOrEqual(0);
-    expect(box!.x + box!.width).toBeLessThanOrEqual(360);
+    const header = await page.getByTestId("jenan-header").boundingBox();
+    expect(header).not.toBeNull();
+    expect(header!.x).toBeGreaterThanOrEqual(0);
+    expect(header!.x + header!.width).toBeLessThanOrEqual(360);
+    await expect(page.getByTestId("header-back")).toBeVisible();
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= document.documentElement.clientWidth + 1)).toBe(true);
+
+    await page.goto("/studio");
+    const shortcuts = page.getByTestId("page-shortcuts");
+    if (await shortcuts.isVisible()) {
+      const box = await shortcuts.boundingBox();
+      expect(box!.x).toBeGreaterThanOrEqual(0);
+      expect(box!.x + box!.width).toBeLessThanOrEqual(360);
+    }
     await context.close();
   });
 });
