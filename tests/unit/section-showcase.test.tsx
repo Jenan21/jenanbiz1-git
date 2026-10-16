@@ -29,7 +29,8 @@ const known = new Set(AUTHORITATIVE_UI_ROUTES.map((route) => route.path));
 describe("section showcase pages", () => {
   for (const [name, content] of Object.entries(showcases)) {
     it(`${name} links only to pages that exist, once each`, () => {
-      const hrefs = [content.primary.href, content.secondary?.href, ...content.services.map((service) => service.href)].filter((href): href is string => Boolean(href));
+      const panelHrefs = content.panels.flatMap((panel) => (panel.kind === "live" ? [panel.href] : panel.kind === "links" ? panel.items.map((item) => item.href) : []));
+      const hrefs = [content.primary.href, content.secondary?.href, ...content.services.map((service) => service.href), ...panelHrefs].filter((href): href is string => Boolean(href));
       for (const href of hrefs) expect(known.has(href), href).toBe(true);
       const tiles = content.services.map((service) => service.href);
       expect(new Set(tiles).size).toBe(tiles.length);
