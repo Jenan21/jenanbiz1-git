@@ -5,7 +5,7 @@ import { TALENT_FLOW_ROUTES, resolveTalentFlow } from "@/lib/talent/talent-route
 describe("Talent route manifest", () => {
   it("matches all authoritative route surfaces", () => {
     expect(TALENT_FLOW_ROUTES.map((definition) => definition.route)).toEqual([
-      "/talent",
+      "/talent/dashboard",
       "/talent/jobs",
       "/talent/jobs/saved",
       "/talent/jobs/[jobId]",

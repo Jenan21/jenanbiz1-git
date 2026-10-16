@@ -1,5 +1,5 @@
 export const TALENT_FLOW_ROUTES = [
-  { id: "dashboard", route: "/talent", title: ["التوظيف الذكي", "Smart employment"] },
+  { id: "dashboard", route: "/talent/dashboard", title: ["التوظيف الذكي", "Smart employment"] },
   { id: "jobs", route: "/talent/jobs", title: ["الوظائف المناسبة لك", "Jobs for you"] },
   { id: "saved-jobs", route: "/talent/jobs/saved", title: ["الوظائف المحفوظة", "Saved jobs"] },
   { id: "job-detail", route: "/talent/jobs/[jobId]", title: ["تفاصيل الوظيفة", "Job details"] },

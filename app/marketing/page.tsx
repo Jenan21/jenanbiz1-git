@@ -1,6 +1,9 @@
-import { MarketingRoutePage } from "@/components/marketing/marketing-route-page";
-import { MARKETING_FLOW_ROUTES } from "@/lib/marketing/marketing-routes";
+import { SectionShowcase } from "@/components/shell/section-showcase";
+import { requireUser } from "@/lib/auth/session";
+import { getRequestDictionary } from "@/lib/i18n/server";
+import { MARKETING_SHOWCASE } from "@/lib/navigation/section-showcases";
 
-export default function Page() {
-  return <MarketingRoutePage route={MARKETING_FLOW_ROUTES[0]} />;
+export default async function Page() {
+  const [{ locale }, user] = await Promise.all([getRequestDictionary(), requireUser("/marketing")]);
+  return <SectionShowcase locale={locale} userLabel={user.profile?.displayName ?? user.email} {...MARKETING_SHOWCASE} />;
 }

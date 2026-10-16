@@ -5,7 +5,7 @@ import { MARKETING_FLOW_ROUTES, resolveMarketingFlow } from "@/lib/marketing/mar
 describe("Marketing route manifest", () => {
   it("matches all nine authoritative routes", () => {
     expect(MARKETING_FLOW_ROUTES.map((definition) => definition.route)).toEqual([
-      "/marketing", "/marketing/campaigns", "/marketing/campaign/new", "/marketing/campaign/sample",
+      "/marketing/dashboard", "/marketing/campaigns", "/marketing/campaign/new", "/marketing/campaign/sample",
       "/marketing/audience", "/marketing/channels", "/marketing/leads", "/marketing/analytics", "/marketing/report/sample",
     ]);
   });

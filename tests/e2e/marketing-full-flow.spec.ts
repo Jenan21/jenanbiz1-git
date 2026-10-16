@@ -78,7 +78,7 @@ test.describe.serial("Jenan Marketing full flow", () => {
     const queue = await (await adminPage.request.get("/api/marketing/payment-requests")).json();
     expect(queue.requests.some((item: { id: string; payment: { status: string } }) => item.id === campaignId && item.payment.status === "PENDING")).toBe(true);
     expect((await adminPage.request.post("/api/marketing/payment-requests", { headers: { origin }, data: { action: "confirmPaymentReceived", campaignId, amountMinor: 1, reference: "E2E-WRONG-AMOUNT" } })).status()).toBe(409);
-    await adminPage.goto("/marketing", { waitUntil: "domcontentloaded" });
+    await adminPage.goto("/marketing/dashboard", { waitUntil: "domcontentloaded" });
     const reviewRow = adminPage.locator(".marketing-payment-review form").filter({ hasText: "E2E Sourced Growth Campaign" });
     await reviewRow.getByPlaceholder("Transfer or receipt reference").fill("E2E-TRX-0001");
     const confirmResponse = adminPage.waitForResponse((response) => response.url().endsWith("/api/marketing/payment-requests") && response.request().method() === "POST");

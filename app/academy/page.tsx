@@ -1,17 +1,9 @@
-import { AcademyLibrary } from "@/components/academy/academy-library";
-import { AcademyShell } from "@/components/academy/academy-shell";
+import { SectionShowcase } from "@/components/shell/section-showcase";
 import { requireUser } from "@/lib/auth/session";
 import { getRequestDictionary } from "@/lib/i18n/server";
-import type { Locale } from "@/types/i18n";
+import { ACADEMY_SHOWCASE } from "@/lib/navigation/section-showcases";
 
 export default async function Page() {
-  const [{ locale }, user] = await Promise.all([
-    getRequestDictionary(),
-    requireUser("/academy"),
-  ]);
-  return (
-    <AcademyShell locale={locale as Locale} activeRoute="/academy" userLabel={user.profile?.displayName ?? user.email}>
-      <AcademyLibrary locale={locale as Locale} />
-    </AcademyShell>
-  );
+  const [{ locale }, user] = await Promise.all([getRequestDictionary(), requireUser("/academy")]);
+  return <SectionShowcase locale={locale} userLabel={user.profile?.displayName ?? user.email} {...ACADEMY_SHOWCASE} />;
 }

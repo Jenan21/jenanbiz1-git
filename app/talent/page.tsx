@@ -1,6 +1,9 @@
-import { TalentRoutePage } from "@/components/talent/talent-route-page";
-import { TALENT_FLOW_ROUTES } from "@/lib/talent/talent-routes";
+import { SectionShowcase } from "@/components/shell/section-showcase";
+import { requireUser } from "@/lib/auth/session";
+import { getRequestDictionary } from "@/lib/i18n/server";
+import { TALENT_SHOWCASE } from "@/lib/navigation/section-showcases";
 
-export default function Page() {
-  return <TalentRoutePage route={TALENT_FLOW_ROUTES[0]} />;
+export default async function Page() {
+  const [{ locale }, user] = await Promise.all([getRequestDictionary(), requireUser("/talent")]);
+  return <SectionShowcase locale={locale} userLabel={user.profile?.displayName ?? user.email} {...TALENT_SHOWCASE} />;
 }

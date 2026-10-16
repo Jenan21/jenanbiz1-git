@@ -1,5 +1,5 @@
 export const MARKETING_FLOW_ROUTES = [
-  { id: "dashboard", route: "/marketing", title: ["التسويق والإعلانات", "Marketing and advertising"] },
+  { id: "dashboard", route: "/marketing/dashboard", title: ["التسويق والإعلانات", "Marketing and advertising"] },
   { id: "campaigns", route: "/marketing/campaigns", title: ["الحملات", "Campaigns"] },
   { id: "campaign-new", route: "/marketing/campaign/new", title: ["إنشاء حملة", "Create campaign"] },
   { id: "campaign-detail", route: "/marketing/campaign/sample", title: ["تفاصيل الحملة", "Campaign details"] },

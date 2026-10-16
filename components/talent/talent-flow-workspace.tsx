@@ -723,7 +723,7 @@ export function TalentFlowWorkspace({
             <small>{ar ? "مركز الأعمال الذكي" : "Intelligent Business Center"}</small>
           </Link>
           <nav aria-label={ar ? "مساحة الباحث عن وظيفة" : "Job seeker workspace"}>
-            <Link className={route.id === "dashboard" ? "is-active" : undefined} href="/talent">
+            <Link className={route.id === "dashboard" ? "is-active" : undefined} href="/talent/dashboard">
               <Icon name="dashboard" />
               {ar ? "الرئيسية" : "Overview"}
             </Link>

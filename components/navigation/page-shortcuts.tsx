@@ -2,8 +2,9 @@
 
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import { Icon } from "@/components/ui/icons";
+import { hasPlatformHistory, trackHistoryDepth } from "@/lib/navigation/history-depth";
 import { backFallback, homePath, showsAdminEntry, showsShortcuts } from "@/lib/navigation/page-shortcuts";
 
 interface Access {
@@ -21,23 +22,7 @@ export function PageShortcuts() {
   const [access, setAccess] = useState<Access>({ signedIn: null, admin: false });
   const visible = showsShortcuts(pathname);
 
-  // How many pages of the platform were opened before this one in this tab, so that "back" never leaves the platform.
-  // Only real history pushes count (a redirect replaces the entry), and every back or forward step subtracts one, so the
-  // estimate can fall short but never run ahead of the real history.
-  const depth = useRef(0);
-  useEffect(() => {
-    const original = window.history.pushState;
-    window.history.pushState = function pushState(...args: Parameters<History["pushState"]>) {
-      depth.current += 1;
-      return original.apply(this, args);
-    };
-    const onPop = () => { depth.current = Math.max(0, depth.current - 1); };
-    window.addEventListener("popstate", onPop);
-    return () => {
-      window.removeEventListener("popstate", onPop);
-      window.history.pushState = original;
-    };
-  }, []);
+  useEffect(() => trackHistoryDepth(), []);
 
   useEffect(() => {
     if (!visible) return;
@@ -57,7 +42,7 @@ export function PageShortcuts() {
   if (!visible) return null;
 
   function goBack() {
-    if (depth.current > 0) router.back();
+    if (hasPlatformHistory()) router.back();
     else router.push(backFallback(pathname, access.signedIn));
   }
 

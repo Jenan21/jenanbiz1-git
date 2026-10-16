@@ -1,5 +1,7 @@
 import { SoftwareExperienceWorkspace } from "@/components/software/software-experience-workspace";
 import { SoftwareSuiteShell } from "@/components/software/software-suite-shell";
+import { SectionShowcase } from "@/components/shell/section-showcase";
+import { SOFTWARE_SHOWCASE } from "@/lib/navigation/section-showcases";
 import { StudioWorkspace } from "@/components/studio/studio-workspace";
 import { requireUser } from "@/lib/auth/session";
 import type { SoftwareExperienceRoute } from "@/lib/software/software-experience-routes";
@@ -23,10 +25,12 @@ export async function SoftwareExperiencePage({
   route: SoftwareExperienceRoute;
 }) {
   const [{ locale }, user] = await Promise.all([getRequestDictionary(), requireUser(route.route)]);
+  const userLabel = user.profile?.displayName ?? user.email;
+  if (route.kind === "portal") return <SectionShowcase locale={locale} userLabel={userLabel} {...SOFTWARE_SHOWCASE} />;
   const studioId = "studioId" in route ? route.studioId : null;
   const studioRoute = studioId ? STUDIO_FLOW_ROUTES.find((candidate) => candidate.id === studioId) : null;
   return (
-    <SoftwareSuiteShell locale={locale} userLabel={user.profile?.displayName ?? user.email}>
+    <SoftwareSuiteShell locale={locale} userLabel={userLabel}>
       {studioRoute ? (
         <StudioWorkspace
           historyHref="/software/design/history"

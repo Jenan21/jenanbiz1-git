@@ -100,8 +100,8 @@ test.describe.serial("Jenan Market buyer and seller flow", () => {
 
     for (const viewport of viewports) {
       await buyerPage.setViewportSize(viewport);
-      expect((await buyerPage.goto("/market", { waitUntil: "domcontentloaded" }))?.status()).toBe(200);
-      await expect(buyerPage.locator(".market-workspace")).toHaveAttribute("data-market-route", "/market");
+      expect((await buyerPage.goto("/market/dashboard", { waitUntil: "domcontentloaded" }))?.status()).toBe(200);
+      await expect(buyerPage.locator(".market-workspace")).toHaveAttribute("data-market-route", "/market/dashboard");
       expect(await buyerPage.evaluate(() => document.documentElement.scrollWidth <= document.documentElement.clientWidth + 1), `/market at ${viewport.width}x${viewport.height}`).toBe(true);
       for (const definition of marketFlowDefinitions) {
         const page = definition.route.startsWith("/market/sell") ? ownerPage : buyerPage;

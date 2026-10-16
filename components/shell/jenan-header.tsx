@@ -1,12 +1,14 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { LogoutButton } from "@/components/auth/logout-button";
 import { Icon } from "@/components/ui/icons";
 import { LanguageSwitcher } from "@/components/ui/language-switcher";
+import { hasPlatformHistory } from "@/lib/navigation/history-depth";
 import { MAIN_NAV, activeNavHref, roleLabel } from "@/lib/navigation/main-nav";
+import { backFallback } from "@/lib/navigation/page-shortcuts";
 import type { Locale } from "@/types/i18n";
 
 /**
@@ -24,6 +26,7 @@ export function JenanHeader({
 }) {
   const ar = locale === "ar";
   const pathname = usePathname();
+  const router = useRouter();
   const [fetchedRole, setFetchedRole] = useState<string | undefined>(undefined);
   const role = systemRole ?? fetchedRole;
 
@@ -66,6 +69,17 @@ export function JenanHeader({
         ) : null}
       </nav>
       <div className="jenan-header__tools">
+        {pathname === "/dashboard" ? null : (
+          <button
+            className="jenan-header__back"
+            data-testid="header-back"
+            onClick={() => (hasPlatformHistory() ? router.back() : router.push(backFallback(pathname, true)))}
+            type="button"
+          >
+            <Icon name="arrow" />
+            <span>{ar ? "رجوع" : "Back"}</span>
+          </button>
+        )}
         <LanguageSwitcher locale={locale} label={ar ? "Switch to English" : "التبديل إلى العربية"} />
         <button
           aria-label={ar ? "الإشعارات غير متاحة حاليًا" : "Notifications are currently unavailable"}

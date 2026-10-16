@@ -15,6 +15,7 @@ import "@/styles/authenticated-home.css";
 import "@/styles/market-stage.css";
 import "@/styles/projects-stage.css";
 import "@/styles/projects-hub.css";
+import "@/styles/section-showcase.css";
 import "@/styles/project-analysis-dashboard.css";
 import "@/styles/project-analysis-workflow.css";
 import "@/styles/project-feasibility-dashboard.css";
