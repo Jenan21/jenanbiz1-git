@@ -3,7 +3,16 @@
 import dynamic from "next/dynamic";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useCallback, useEffect, useRef, useState, type FormEvent } from "react";
+import { useCallback, useRef, useState, type FormEvent } from "react";
+import {
+  AnalysisModal,
+  AnalysisScene,
+  AnalysisStatus,
+  AnalysisSteps,
+  pick,
+  type AnalysisStep as Step,
+  type Copy,
+} from "@/components/projects/project-analysis-dialogs";
 import { JenanHeader } from "@/components/shell/jenan-header";
 import { Icon, type IconName } from "@/components/ui/icons";
 import type { PickedPoint } from "@/components/projects/project-location-picker";
@@ -14,17 +23,6 @@ const ProjectLocationPicker = dynamic(
   () => import("@/components/projects/project-location-picker").then((module) => module.ProjectLocationPicker),
   { ssr: false, loading: () => <div className="pa-entry-map is-loading" /> },
 );
-
-type Copy = readonly [string, string];
-type Step = "idle" | "data" | "location" | "review" | "running" | "done" | "failed";
-
-const STAGES: ReadonlyArray<{ id: Step[]; label: Copy }> = [
-  { id: ["data"], label: ["بيانات المشروع", "Project data"] },
-  { id: ["location"], label: ["تحديد الموقع", "Location"] },
-  { id: ["review"], label: ["مراجعة البيانات", "Review"] },
-  { id: ["running", "failed"], label: ["جاري التحليل", "Analyzing"] },
-  { id: ["done"], label: ["عرض التقرير", "Report"] },
-];
 
 const CITIES: ReadonlyArray<{ value: string; label: Copy; latitude: number; longitude: number }> = [
   { value: "Riyadh", label: ["الرياض", "Riyadh"], latitude: 24.7136, longitude: 46.6753 },
@@ -63,23 +61,6 @@ const BUDGETS: ReadonlyArray<{ value: string; label: Copy }> = [
   { value: "ABOVE_1M", label: ["أكثر من مليون ر.س", "Above SAR 1M"] },
 ];
 
-const UNITS: ReadonlyArray<{ icon: IconName; label: Copy }> = [
-  { icon: "mapPin", label: ["تحليل الموقع", "Location"] },
-  { icon: "people", label: ["السكان", "Population"] },
-  { icon: "wallet", label: ["القوة الشرائية", "Purchasing power"] },
-  { icon: "grid", label: ["دراسة المنافسين", "Competitors"] },
-  { icon: "shield", label: ["المخاطر والقيود", "Risks and limits"] },
-  { icon: "fileText", label: ["إعداد التقرير", "Report"] },
-];
-
-const SCENE_CARDS: ReadonlyArray<{ icon: IconName; label: Copy; spot: string }> = [
-  { icon: "people", label: ["عدد السكان", "Population"], spot: "a" },
-  { icon: "grid", label: ["المنافسون", "Competitors"], spot: "b" },
-  { icon: "wallet", label: ["القوة الشرائية", "Purchasing power"], spot: "c" },
-  { icon: "trend", label: ["تضخم التكلفة", "Cost inflation"], spot: "d" },
-  { icon: "shield", label: ["مخاطر البيانات", "Data risk"], spot: "e" },
-];
-
 const FEATURES: ReadonlyArray<{ icon: IconName; label: Copy }> = [
   { icon: "globe", label: ["مصادر معلنة وموثقة", "Disclosed sources"] },
   { icon: "mapPin", label: ["موقعك على الخريطة", "Your exact location"] },
@@ -87,7 +68,6 @@ const FEATURES: ReadonlyArray<{ icon: IconName; label: Copy }> = [
   { icon: "eye", label: ["مراجعة بشرية", "Human review"] },
 ];
 
-const pick = (value: Copy, ar: boolean) => (ar ? value[0] : value[1]);
 const labelOf = (list: ReadonlyArray<{ value: string; label: Copy }>, value: string, ar: boolean) => {
   const item = list.find((entry) => entry.value === value);
   return item ? pick(item.label, ar) : "—";
@@ -106,10 +86,18 @@ async function projectCommand<T>(body: Record<string, unknown>, fallback: string
   return payload.result as T;
 }
 
-export function ProjectAnalysisDashboard({ locale, userLabel }: { locale: Locale; userLabel: string }) {
+export function ProjectAnalysisDashboard({
+  initialStep = "idle",
+  locale,
+  userLabel,
+}: {
+  initialStep?: "idle" | "data";
+  locale: Locale;
+  userLabel: string;
+}) {
   const ar = locale === "ar";
   const router = useRouter();
-  const [step, setStep] = useState<Step>("idle");
+  const [step, setStep] = useState<Step>(initialStep);
   const [idea, setIdea] = useState("");
   const [sector, setSector] = useState("");
   const [audience, setAudience] = useState("");
@@ -121,7 +109,6 @@ export function ProjectAnalysisDashboard({ locale, userLabel }: { locale: Locale
   const [locating, setLocating] = useState(false);
   const projectId = useRef<string | null>(null);
   const savedInput = useRef("");
-  const dialogRef = useRef<HTMLDivElement>(null);
 
   const city = CITIES.find((entry) => entry.value === cityValue);
   const open = step !== "idle";
@@ -132,19 +119,6 @@ export function ProjectAnalysisDashboard({ locale, userLabel }: { locale: Locale
     setMessage("");
     setStep("idle");
   }, [busy]);
-
-  useEffect(() => {
-    if (!open) return;
-    const onKey = (event: KeyboardEvent) => {
-      if (event.key === "Escape") close();
-    };
-    window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
-  }, [close, open]);
-
-  useEffect(() => {
-    if (open) dialogRef.current?.focus();
-  }, [open, step]);
 
   function submitData(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -245,7 +219,6 @@ export function ProjectAnalysisDashboard({ locale, userLabel }: { locale: Locale
     }
   }
 
-  const stageIndex = STAGES.findIndex((stage) => stage.id.includes(step));
   const viewReport = () => {
     if (projectId.current) router.push(`/projects/analysis/result?project=${projectId.current}`);
   };
@@ -255,16 +228,7 @@ export function ProjectAnalysisDashboard({ locale, userLabel }: { locale: Locale
       <JenanHeader locale={locale} userLabel={userLabel} />
 
       <section className="pa-entry__stage">
-        <div aria-hidden="true" className="pa-entry__scene">
-          <i className="pa-entry__zone" />
-          <span className="pa-entry__pin"><Icon name="mapPin" /></span>
-          {SCENE_CARDS.map((card) => (
-            <article className={`pa-entry__card is-${card.spot}`} key={card.spot}>
-              <Icon name={card.icon} />
-              <div><strong>{pick(card.label, ar)}</strong><small>{ar ? "يظهر بعد التحليل" : "Shown after analysis"}</small></div>
-            </article>
-          ))}
-        </div>
+        <AnalysisScene ar={ar} />
 
         <div className="pa-entry__copy">
           <nav aria-label={ar ? "مسار الصفحة" : "Breadcrumb"} className="pa-entry__crumbs">
@@ -295,30 +259,15 @@ export function ProjectAnalysisDashboard({ locale, userLabel }: { locale: Locale
       </section>
 
       {open ? (
-        <div className="pa-modal-layer" onMouseDown={(event) => { if (event.target === event.currentTarget) close(); }}>
-          <div
-            aria-labelledby="pa-modal-title"
-            aria-modal="true"
-            className={`pa-modal${step === "location" ? " is-wide" : ""}${step === "running" || step === "done" || step === "failed" ? " is-status" : ""}`}
-            data-step={step}
-            ref={dialogRef}
-            role="dialog"
-            tabIndex={-1}
-          >
-            {busy ? null : (
-              <button aria-label={ar ? "إغلاق" : "Close"} className="pa-modal__close" onClick={close} type="button"><Icon name="x" /></button>
-            )}
-
-            {step === "done" || step === "failed" ? null : (
-              <ol className="pa-steps" aria-label={ar ? "مراحل التحليل" : "Analysis steps"}>
-                {STAGES.map((stage, index) => (
-                  <li className={index < stageIndex ? "is-done" : index === stageIndex ? "is-current" : undefined} key={stage.label[0]}>
-                    <span>{index < stageIndex ? <Icon name="check" /> : index + 1}</span>
-                    <small>{pick(stage.label, ar)}</small>
-                  </li>
-                ))}
-              </ol>
-            )}
+        <AnalysisModal
+          ar={ar}
+          closable={!busy}
+          onClose={close}
+          size={step === "location" ? "wide" : step === "running" || step === "done" || step === "failed" ? "status" : "default"}
+          step={step}
+        >
+          <>
+            {step === "done" || step === "failed" ? null : <AnalysisSteps ar={ar} step={step} />}
 
             {step === "data" ? (
               <form className="pa-modal__body" onSubmit={submitData}>
@@ -414,45 +363,19 @@ export function ProjectAnalysisDashboard({ locale, userLabel }: { locale: Locale
               </div>
             ) : null}
 
-            {step === "running" ? (
-              <div className="pa-modal__body pa-status" data-testid="analysis-running">
-                <h2 id="pa-modal-title">{ar ? <>جاري التحليل <b>وإعداد التقرير</b></> : <>Analyzing <b>and preparing the report</b></>}</h2>
-                <p>{ar ? "تقوم المنصة الآن بجمع بيانات الموقع والسكان والمنافسين ومؤشرات السوق من مصادرها المعلنة." : "The platform is collecting location, population, competitor, and market data from its disclosed sources."}</p>
-                <div aria-live="polite" className="pa-orbit is-running" role="status"><i /><i /><Icon name="barChart" /></div>
-                <ul className="pa-units">
-                  {UNITS.map((unit) => <li key={unit.label[0]}><Icon name={unit.icon} /><span>{pick(unit.label, ar)}</span></li>)}
-                </ul>
-              </div>
+            {step === "running" || step === "done" || step === "failed" ? (
+              <AnalysisStatus
+                ar={ar}
+                message={message}
+                onClose={close}
+                onOpenReport={viewReport}
+                onRetry={startAnalysis}
+                onReview={() => setStep("review")}
+                state={step}
+              />
             ) : null}
-
-            {step === "done" ? (
-              <div className="pa-modal__body pa-status" data-testid="analysis-ready">
-                <div className="pa-orbit is-done"><i /><Icon name="check" /></div>
-                <h2 id="pa-modal-title">{ar ? <>التحليل <b>جاهز</b></> : <>Analysis <b>ready</b></>}</h2>
-                <p className="pa-status__ok">{ar ? "تم إعداد التقرير بنجاح" : "The report was prepared successfully"}</p>
-                <ul className="pa-units is-done">
-                  {UNITS.map((unit) => <li key={unit.label[0]}><Icon name={unit.icon} /><span>{pick(unit.label, ar)}</span><em><Icon name="check" /></em></li>)}
-                </ul>
-                <footer className="is-stack">
-                  <button className="pa-btn is-primary is-block" data-testid="analysis-open-report" onClick={viewReport} type="button"><Icon name="fileText" />{ar ? "اضغط هنا لعرض التقرير الكامل" : "Open the full report"}</button>
-                  <button className="pa-btn is-ghost is-block" onClick={close} type="button">{ar ? "إغلاق" : "Close"}</button>
-                </footer>
-              </div>
-            ) : null}
-
-            {step === "failed" ? (
-              <div className="pa-modal__body pa-status" data-testid="analysis-failed">
-                <div className="pa-orbit is-failed"><i /><Icon name="x" /></div>
-                <h2 id="pa-modal-title">{ar ? <>تعذر إكمال <b>التحليل</b></> : <>The analysis <b>failed</b></>}</h2>
-                <p className="pa-modal__error" role="alert">{message}</p>
-                <footer className="is-stack">
-                  <button className="pa-btn is-primary is-block" onClick={startAnalysis} type="button">{ar ? "إعادة المحاولة" : "Try again"}</button>
-                  <button className="pa-btn is-ghost is-block" onClick={() => setStep("review")} type="button">{ar ? "مراجعة البيانات" : "Review data"}</button>
-                </footer>
-              </div>
-            ) : null}
-          </div>
-        </div>
+          </>
+        </AnalysisModal>
       ) : null}
     </main>
   );

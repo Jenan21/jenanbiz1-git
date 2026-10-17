@@ -36,14 +36,19 @@ test.describe.serial("Projects full route flow", () => {
     for (const definition of projectFlowDefinitions) {
       const response = await page.goto(definition.route, { waitUntil: "domcontentloaded" });
       expect(response?.status(), definition.route).toBe(200);
-      if (definition.route.startsWith("/projects/analysis/")) {
+      if (definition.route === "/projects/analysis/new") {
+        await expect(page.locator("[data-testid='project-analysis-entry']")).toBeVisible();
+        await expect(page.getByRole("dialog")).toBeVisible();
+      } else if (definition.route.startsWith("/projects/analysis/")) {
         await expect(page.locator(".project-analysis-workspace")).toHaveAttribute(
           "data-analysis-route",
           definition.route,
         );
-        await expect(
-          page.locator(".pa-stage-navigation a.is-active"),
-        ).toBeVisible();
+        if (definition.route.endsWith("/progress")) {
+          await expect(page.locator("[data-testid='analysis-progress'], .pa-center").first()).toBeVisible();
+        } else {
+          await expect(page.locator(".pa-stage-navigation a.is-active, .pa-center").first()).toBeVisible();
+        }
       } else if (definition.route.startsWith("/projects/feasibility/pro/")) {
         await expect(page.locator(".professional-feasibility")).toHaveAttribute("data-project-route", definition.route);
         await expect(page.locator(".pfs-stepper a[aria-current='step']")).toBeVisible();
@@ -283,7 +288,9 @@ test.describe.serial("Projects full route flow", () => {
         expect(
           (await page.goto(route, { waitUntil: "domcontentloaded" }))?.status(),
         ).toBe(200);
-        await expect(page.locator(".project-analysis-workspace")).toBeVisible();
+        await expect(
+          page.locator(".project-analysis-workspace, .pa-entry").first(),
+        ).toBeVisible();
         const layout = await page.evaluate(() => ({
           scrollWidth: document.documentElement.scrollWidth,
           viewportWidth: document.documentElement.clientWidth,

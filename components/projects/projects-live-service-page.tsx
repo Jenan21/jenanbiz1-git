@@ -5,6 +5,7 @@ import { ProjectsWorkspace } from "@/components/projects/projects-workspace";
 import { ProjectFlowNavigation } from "@/components/projects/project-flow-navigation";
 import { ProfessionalFeasibilityWorkspace } from "@/components/projects/professional-feasibility-workspace";
 import { ProjectAnalysisWorkspace } from "@/components/projects/project-analysis-workspace";
+import { ProjectAnalysisDashboard } from "@/components/projects/project-analysis-dashboard";
 import { ProjectStartWorkspace } from "@/components/projects/project-start-workspace";
 import { ProjectEvaluationWorkspace } from "@/components/projects/project-evaluation-dashboard";
 import type { ProjectFlowGroup, ProjectFocus } from "@/lib/projects/project-flow-routes";
@@ -24,6 +25,10 @@ export async function ProjectsLiveServicePage({ title, description, focus = "wor
         userLabel={userLabel}
       />
     );
+  }
+
+  if (route === "/projects/analysis/new") {
+    return <ProjectAnalysisDashboard initialStep="data" locale={locale} userLabel={userLabel} />;
   }
 
   if (route.startsWith("/projects/analysis/")) {

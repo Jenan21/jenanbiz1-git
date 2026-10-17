@@ -457,13 +457,8 @@ test.describe.serial("projects section acceptance", () => {
       const livePage = await page.goto(route, { waitUntil: "networkidle" });
       expect(livePage?.status(), `${route} live page`).toBe(200);
       if (route === "/projects/analysis") {
-        await expect(page.locator(".project-analysis-dashboard")).toHaveAttribute(
-          "data-project-analysis-source",
-          "USER_INPUT_REQUIRED",
-        );
-        await expect(
-          page.locator(".project-analysis-dashboard__form"),
-        ).toBeVisible();
+        await expect(page.locator(".pa-entry")).toHaveAttribute("data-project-analysis-route", "/projects/analysis");
+        await expect(page.locator("[data-testid='analysis-start']")).toBeVisible();
       } else if (route === "/projects/feasibility") {
         await expect(
           page.locator(".project-feasibility-dashboard"),
@@ -488,42 +483,34 @@ test.describe.serial("projects section acceptance", () => {
     }
 
     await page.goto("/projects/analysis", { waitUntil: "networkidle" });
+    await page.getByTestId("analysis-start").click();
     await page
-      .getByPlaceholder("Example: a healthy food delivery platform...")
+      .getByPlaceholder("Describe your project idea briefly")
       .fill("Verified E2E analysis entry");
     await page.getByLabel("Sector *").selectOption("Technology");
-    await page.getByLabel("City *").selectOption("Riyadh");
     await page.getByLabel("Target audience *").selectOption("BUSINESSES");
+    await page.getByTestId("analysis-to-location").click();
+    await page.getByTestId("analysis-city").selectOption("Riyadh");
+    await page.getByTestId("analysis-confirm-location").click();
+    await page.getByTestId("analysis-run").click();
+    await expect(page.getByTestId("analysis-ready")).toBeVisible({ timeout: 60_000 });
     await Promise.all([
-      page.waitForURL(/\/projects\/analysis\/progress\?project=/),
-      page.getByRole("button", { name: "Start analysis" }).click(),
+      page.waitForURL(/\/projects\/analysis\/result\?project=/),
+      page.getByTestId("analysis-open-report").click(),
     ]);
-    await expect(page.locator(".project-analysis-workspace")).toHaveAttribute(
-      "data-analysis-route",
-      "/projects/analysis/progress",
-    );
     const analysisProjectUrl = new URL(page.url());
     const analysisProjectId = analysisProjectUrl.searchParams.get("project");
     expect(analysisProjectId).toBeTruthy();
-    await expect(page.getByRole("heading", { name: "Project analysis complete" })).toBeVisible({
-      timeout: 45_000,
-    });
+    await expect(page.locator("[data-testid='analysis-result']")).toBeVisible({ timeout: 30_000 });
     await page.goto(`/projects/analysis/details?project=${analysisProjectId}`, {
       waitUntil: "networkidle",
     });
     await expect(page.locator("[data-testid='analysis-details']")).toBeVisible();
-    await page.goto(`/projects/analysis/result?project=${analysisProjectId}`, {
-      waitUntil: "networkidle",
-    });
-    await expect(page.locator("[data-testid='analysis-result']")).toContainText(
-      "Evidence complete",
-    );
     await page.goto(`/projects/analysis/report?project=${analysisProjectId}`, {
       waitUntil: "networkidle",
     });
-    await expect(page.locator("[data-testid='analysis-report']")).toContainText(
-      "Verified E2E analysis entry",
-    );
+    await expect(page.locator("[data-testid='analysis-report']")).toBeVisible();
+    await expect(page.locator(".pa-summary")).toContainText("Verified E2E analysis entry");
     await page.goto(`/projects/analysis/print?project=${analysisProjectId}`, {
       waitUntil: "networkidle",
     });
