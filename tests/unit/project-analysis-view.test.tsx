@@ -1,14 +1,7 @@
-import { createElement } from "react";
-import { renderToStaticMarkup } from "react-dom/server";
-import { describe, expect, it, vi } from "vitest";
+import { describe, expect, it } from "vitest";
 
-vi.mock("next/link", () => ({
-  default: ({ href, children, ...rest }: { href: string; children: React.ReactNode } & Record<string, unknown>) => createElement("a", { href, ...rest }, children),
-}));
-vi.mock("next/navigation", () => ({ useRouter: () => ({ push: () => undefined }), useSearchParams: () => new URLSearchParams() }));
-vi.mock("@/components/projects/projects-command-header", () => ({ ProjectsCommandHeader: () => null }));
-
-import { AnalysisNotices, readMetric, readStudy } from "@/components/projects/project-analysis-workspace";
+import { buildReport } from "@/lib/projects/analysis-report";
+import { readMetric, readStudy } from "@/lib/projects/analysis-study";
 
 const savedResult = {
   generatedAt: "2026-10-14T00:00:00.000Z",
@@ -49,19 +42,14 @@ describe("saved analysis shown to the owner", () => {
   });
 
   it("warns on every results screen when the saved idea cannot be understood", () => {
-    for (const ar of [true, false]) {
-      const html = renderToStaticMarkup(createElement(AnalysisNotices, { ar, study: study("هههههههههههه") }));
-      expect(html).toContain('data-testid="analysis-unreadable-idea"');
-      expect(html).toContain('data-testid="analysis-scope-notice"');
-      expect(html).toContain('href="/projects/analysis"');
+    for (const locale of ["ar", "en"] as const) {
+      const model = buildReport({ project: { id: "p1", name: "x" }, study: study("هههههههههههه") }, locale);
+      expect(model.ideaWarning).toBeTruthy();
     }
   });
 
-  it("shows only the scope note for a readable idea, and nothing before there is a result", () => {
-    const readable = renderToStaticMarkup(createElement(AnalysisNotices, { ar: true, study: study("منصة رقمية لتوصيل المنتجات الصحية") }));
-    expect(readable).toContain('data-testid="analysis-scope-notice"');
-    expect(readable).not.toContain("analysis-unreadable-idea");
-    const pending = renderToStaticMarkup(createElement(AnalysisNotices, { ar: true, study: readStudy({ status: "PENDING", input: { idea: "منصة رقمية لتوصيل المنتجات الصحية", city: "Jeddah", targetAudience: "CONSUMERS" } }) }));
-    expect(pending).toBe("");
+  it("raises no warning for a readable idea, and none before there is an idea at all", () => {
+    expect(buildReport({ project: { id: "p1", name: "x" }, study: study("منصة رقمية لتوصيل المنتجات الصحية") }, "ar").ideaWarning).toBeNull();
+    expect(buildReport({ project: { id: "p1", name: "x" }, study: readStudy({ status: "PENDING" }) }, "ar").ideaWarning).toBeNull();
   });
 });

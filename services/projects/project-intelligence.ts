@@ -8,6 +8,7 @@ type LocationInput = {
 
 type SourceRecord = { source: string; url: string; fetchedAt: string; confidence: "HIGH" | "MEDIUM" | "LOW" };
 import { competitorSelectorsFor } from "@/lib/projects/competitor-sectors";
+import type { AnalysisStage } from "@/lib/projects/analysis-study";
 import { getProjectIntelligenceProvider } from "@/services/projects/project-intelligence-provider";
 export type ProjectIntelligenceResult = {
   location: { latitude: number; longitude: number; label: string } | null;
@@ -19,7 +20,11 @@ export type ProjectIntelligenceResult = {
   limitations: string[];
 };
 
-export async function searchProjectIntelligence(input: LocationInput): Promise<ProjectIntelligenceResult> {
+/** `onStage` is told which real step the search is starting, so a caller can show true progress. */
+export async function searchProjectIntelligence(
+  input: LocationInput,
+  onStage?: (stage: AnalysisStage) => Promise<void> | void,
+): Promise<ProjectIntelligenceResult> {
   const fetchedAt = new Date().toISOString();
   const provider = getProjectIntelligenceProvider();
   const query = input.query.trim();
@@ -27,6 +32,7 @@ export async function searchProjectIntelligence(input: LocationInput): Promise<P
   if ((input.latitude === undefined) !== (input.longitude === undefined)) throw new Error("latitude and longitude must be provided together");
   if (input.latitude !== undefined && (input.latitude < -90 || input.latitude > 90 || input.longitude! < -180 || input.longitude! > 180)) throw new Error("Invalid coordinates");
 
+  await onStage?.("LOCATION");
   const geocodeUrl = `https://nominatim.openstreetmap.org/search?format=jsonv2&limit=1&q=${encodeURIComponent(query)}`;
   const sources: SourceRecord[] = [{ source: "OpenStreetMap Nominatim", url: geocodeUrl, fetchedAt, confidence: "LOW" }];
   const limitations: string[] = [];
@@ -60,6 +66,7 @@ export async function searchProjectIntelligence(input: LocationInput): Promise<P
   };
 
   const countryCode = input.countryCode?.trim().toUpperCase();
+  await onStage?.("MARKET_DATA");
   if (countryCode) {
     const indicatorUrl = `https://api.worldbank.org/v2/country/${encodeURIComponent(countryCode)}/indicator/SP.POP.TOTL?format=json&per_page=1`;
     const purchasingUrl = `https://api.worldbank.org/v2/country/${encodeURIComponent(countryCode)}/indicator/NY.GNP.PCAP.PP.CD?format=json&per_page=1`;
@@ -85,6 +92,7 @@ export async function searchProjectIntelligence(input: LocationInput): Promise<P
   }
 
   const selectors = competitorSelectorsFor(input.sector);
+  await onStage?.("COMPETITION");
   if (!location) {
     result.limitations.push("A resolvable location is required for competitor discovery.");
   } else if (!selectors) {

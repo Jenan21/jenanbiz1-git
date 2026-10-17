@@ -12,6 +12,11 @@ const nextConfig: NextConfig = {
   reactStrictMode: true,
   poweredByHeader: false,
   serverExternalPackages: ["@napi-rs/canvas", "pdfjs-dist"],
+  // The report PDF reads the font and the letterhead from `public` at request time; list them so the deployed function carries them.
+  outputFileTracingIncludes: {
+    "/api/projects/[projectId]/analysis-report": ["./public/assets/fonts/Alexandria-VariableFont_wght.ttf", "./public/assets/letterhead/jenan-pro-letterhead.jpg"],
+    "/api/user/reports/[id]/pdf": ["./public/assets/fonts/Alexandria-VariableFont_wght.ttf", "./public/assets/letterhead/jenan-pro-letterhead.jpg"],
+  },
   agentRules: false,
   experimental: {
     authInterrupts: true,

@@ -5,14 +5,16 @@ import { PlatformShell } from "@/components/custom/platform-shell";
 import { Icon, type IconName } from "@/components/ui/icons";
 import { requireUser } from "@/lib/auth/session";
 import { getRequestDictionary } from "@/lib/i18n/server";
+import { reportDate } from "@/lib/projects/analysis-report";
 import { getUserReportIndex } from "@/services/account/user-center-service";
+import { listSavedAnalysisReports } from "@/services/projects/analysis-report-service";
 
 export default async function UserReportsPage() {
   const [{ locale }, user] = await Promise.all([
     getRequestDictionary(),
     requireUser("/user/reports"),
   ]);
-  const reports = await getUserReportIndex(user.id);
+  const [reports, saved] = await Promise.all([getUserReportIndex(user.id), listSavedAnalysisReports(user.id)]);
   const ar = locale === "ar";
   const summary: Array<[IconName, number | string, string, string]> = [
     [
@@ -210,22 +212,46 @@ export default async function UserReportsPage() {
                   {ar ? "المخرجات التي حفظها المستخدم" : "User-saved outputs"}
                 </p>
               </div>
-              <b>—</b>
+              <b>{saved.length || "—"}</b>
             </header>
-            <div className="user-report-library__empty">
-              <Icon name="shield" />
-              <strong>
-                {ar ? "لا توجد مخرجات محفوظة" : "No saved outputs"}
-              </strong>
-              <span>
-                {ar
-                  ? "لن نعرض ملفات غير موجودة أو تجريبية."
-                  : "Missing or demo files are never presented as saved."}
-              </span>
-              <button className="button button--ghost" disabled type="button">
-                {ar ? "تنزيل" : "Download"}
-              </button>
-            </div>
+            {saved.length ? (
+              <div className="user-report-library__list">
+                {saved.map((item) => (
+                  <article key={item.id}>
+                    <div>
+                      <strong>{item.title}</strong>
+                      <span>
+                        {ar ? "تقرير تحليل مشروع" : "Project analysis report"}
+                        {item.place ? ` · ${item.place}` : ""} · {reportDate(item.savedAt, locale === "ar" ? "ar" : "en", false)}
+                      </span>
+                    </div>
+                    <div className="user-report-library__actions">
+                      <Link className="button button--ghost" href={`/user/reports/${item.id}`}>
+                        {ar ? "عرض" : "View"}
+                      </Link>
+                      <a className="button button--ghost" href={`/api/user/reports/${item.id}/pdf`}>
+                        PDF
+                      </a>
+                    </div>
+                  </article>
+                ))}
+              </div>
+            ) : (
+              <div className="user-report-library__empty">
+                <Icon name="shield" />
+                <strong>
+                  {ar ? "لا توجد مخرجات محفوظة" : "No saved outputs"}
+                </strong>
+                <span>
+                  {ar
+                    ? "احفظ تقرير تحليل مشروع من صفحة التقرير لتجده هنا."
+                    : "Save a project analysis report from its page and it appears here."}
+                </span>
+                <Link className="button button--ghost" href="/projects/analysis">
+                  {ar ? "ابدأ تحليلًا" : "Start an analysis"}
+                </Link>
+              </div>
+            )}
           </section>
 
           <section className="user-report-library__activity">

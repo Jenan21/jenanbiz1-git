@@ -1149,10 +1149,21 @@
   min-width: 0;
 }
 
+.user-report-library__list > article span,
+.user-report-library__list > article strong {
+  overflow-wrap: anywhere;
+}
+
 .user-report-library__list > article span {
   color: var(--muted);
   font-size: 0.68rem;
-  overflow-wrap: anywhere;
+}
+
+.user-report-library__list > article > .user-report-library__actions {
+  display: flex;
+  flex: none;
+  flex-wrap: wrap;
+  gap: 8px;
 }
 
 .user-report-library__empty {

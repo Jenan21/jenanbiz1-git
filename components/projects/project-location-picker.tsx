@@ -27,6 +27,18 @@ function Recenter({ center, zoom }: { center: PickedPoint; zoom: number }) {
   return null;
 }
 
+/** A dialog that changes size while the map is open (or a window that is resized) must not leave grey, untiled edges. */
+function KeepSize() {
+  const map = useMap();
+  useEffect(() => {
+    if (typeof ResizeObserver === "undefined") return;
+    const observer = new ResizeObserver(() => map.invalidateSize());
+    observer.observe(map.getContainer());
+    return () => observer.disconnect();
+  }, [map]);
+  return null;
+}
+
 function FitToPoints({ competitors, point }: { competitors: MapCompetitor[]; point: PickedPoint }) {
   const map = useMap();
   // The parent rebuilds the array on every render; the signature keeps the view from being re-fitted each time.
@@ -61,6 +73,7 @@ export function ProjectLocationPicker({
       <MapContainer center={[center.latitude, center.longitude]} className="pa-entry-map__canvas" scrollWheelZoom zoom={zoom} zoomControl>
         <TileLayer attribution={tileAttribution} url={tileUrl} />
         <Recenter center={center} zoom={zoom} />
+        <KeepSize />
         {!onPick && point && visible.length ? <FitToPoints competitors={visible} point={point} /> : null}
         {onPick ? <ClickToPick onPick={onPick} /> : null}
         {visible.map((item, index) => (
