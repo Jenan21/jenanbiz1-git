@@ -2001,6 +2001,7 @@ model Evidence {
   missionRun     MissionRun?             @relation(fields: [missionRunId], references: [id], onDelete: SetNull)
   attempt        MissionAttempt?         @relation(fields: [attemptId], references: [id], onDelete: SetNull)
   knowledgeLinks KnowledgeEvidenceLink[]
+  dataCenterLinks DataCenterEvidenceLink[]
   createdAt      DateTime                @default(now())
   updatedAt      DateTime                @updatedAt
 
@@ -4249,4 +4250,251 @@ model AgentGenomeCapability {
 
   @@unique([genomeId, type, key])
   @@index([type, key])
+}
+
+enum DataCenterScope {
+  PLATFORM
+  ORGANIZATION
+  PRIVATE
+}
+
+enum DataCenterLayer {
+  DATA
+  KNOWLEDGE
+  INTELLIGENCE
+  CONTEXT
+}
+
+enum DataCenterLifecycle {
+  DRAFT
+  IN_REVIEW
+  APPROVED
+  PUBLISHED
+  REJECTED
+  ARCHIVED
+}
+
+enum DataCenterEvidence {
+  VERIFIED
+  ESTIMATED
+  DERIVED
+  UNVERIFIED
+  CONFLICTED
+}
+
+model DataCenterType {
+  key                    String          @id
+  label                  String
+  layer                  DataCenterLayer
+  requiresIndependentReview Boolean      @default(false)
+  categoryKey            String?
+  category               DataCenterCategory? @relation(fields: [categoryKey], references: [key], onDelete: Restrict)
+  departmentKey          String?
+  department             DataCenterDepartment? @relation(fields: [departmentKey], references: [key], onDelete: Restrict)
+  createdAt              DateTime        @default(now())
+  items                  DataCenterItem[]
+
+  @@index([categoryKey, departmentKey])
+}
+
+model DataCenterSource {
+  id                String          @id @default(cuid())
+  name              String
+  kind              String
+  scope             DataCenterScope
+  organizationId    String?
+  ownerId           String
+  owner             String
+  license           String
+  allowExport       Boolean         @default(false)
+  allowRetrieval    Boolean         @default(true)
+  freshnessDays     Int              @default(90)
+  sourceOrganization String?
+  createdAt         DateTime        @default(now())
+  items             DataCenterItem[]
+  imports           DataCenterImport[]
+
+  @@index([scope, organizationId, ownerId])
+}
+
+model DataCenterItem {
+  id                String              @id @default(cuid())
+  sourceId          String
+  source            DataCenterSource    @relation(fields: [sourceId], references: [id], onDelete: Restrict)
+  typeKey           String
+  type              DataCenterType      @relation(fields: [typeKey], references: [key], onDelete: Restrict)
+  layer             DataCenterLayer
+  title             String
+  status            DataCenterLifecycle @default(DRAFT)
+  currentVersion    Int                 @default(1)
+  publishedVersion  Int?
+  revision          Int                 @default(0)
+  createdById       String
+  createdAt         DateTime            @default(now())
+  updatedAt         DateTime            @updatedAt
+  versions          DataCenterVersion[]
+  events            DataCenterEvent[]
+  conflicts         DataCenterConflict[] @relation("DataCenterConflictItem")
+  otherConflicts    DataCenterConflict[] @relation("DataCenterConflictOther")
+
+  @@index([sourceId, status])
+  @@index([layer, typeKey, status])
+  @@index([publishedVersion])
+}
+
+model DataCenterVersion {
+  id                String             @id @default(cuid())
+  itemId            String
+  item              DataCenterItem     @relation(fields: [itemId], references: [id], onDelete: Restrict)
+  number            Int
+  title             String
+  content           String
+  evidenceStatus    DataCenterEvidence @default(UNVERIFIED)
+  origin            String             @default("HUMAN")
+  provenance        Json
+  confidence        Json
+  specialties       String[]
+  missionContexts   String[]
+  requiredPermission String?
+  sourcePublishedAt DateTime?
+  expiresAt         DateTime?
+  effectiveFrom     DateTime?
+  effectiveTo       DateTime?
+  checksum          String
+  createdById       String
+  createdAt         DateTime           @default(now())
+  reviews           DataCenterReview[]
+  usage             DataCenterUsage[]
+  imports           DataCenterImport[]
+  academyReleases   DataCenterAcademyRelease[]
+  evidenceLinks     DataCenterEvidenceLink[]
+
+  @@unique([itemId, number])
+  @@index([createdAt])
+}
+
+model DataCenterReview {
+  id                String            @id @default(cuid())
+  versionId         String
+  version           DataCenterVersion @relation(fields: [versionId], references: [id], onDelete: Restrict)
+  reviewerId        String
+  decision          String
+  notes             String
+  createdAt         DateTime          @default(now())
+
+  @@unique([versionId, reviewerId])
+}
+
+model DataCenterEvent {
+  id                String            @id @default(cuid())
+  itemId            String
+  item              DataCenterItem    @relation(fields: [itemId], references: [id], onDelete: Restrict)
+  version           Int
+  fromStatus        DataCenterLifecycle?
+  toStatus          DataCenterLifecycle
+  actorId           String
+  reason            String
+  createdAt         DateTime          @default(now())
+
+  @@index([itemId, createdAt])
+}
+
+model DataCenterConflict {
+  id                String          @id @default(cuid())
+  itemId            String
+  item              DataCenterItem  @relation("DataCenterConflictItem", fields: [itemId], references: [id], onDelete: Restrict)
+  otherItemId       String
+  otherItem         DataCenterItem  @relation("DataCenterConflictOther", fields: [otherItemId], references: [id], onDelete: Restrict)
+  itemVersion       Int
+  otherVersion      Int
+  reason            String
+  resolution        String?
+  notes             String?
+  resolvedById      String?
+  resolvedAt        DateTime?
+  createdAt         DateTime        @default(now())
+
+  @@index([itemId, resolvedAt])
+  @@index([otherItemId, resolvedAt])
+}
+
+model DataCenterUsage {
+  id                String            @id @default(cuid())
+  versionId         String
+  version           DataCenterVersion @relation(fields: [versionId], references: [id], onDelete: Restrict)
+  actorId           String
+  consumer          String
+  missionId         String?
+  purpose           String
+  createdAt         DateTime          @default(now())
+
+  @@index([versionId, createdAt])
+  @@index([actorId, createdAt])
+}
+
+model DataCenterImport {
+  id                String             @id @default(cuid())
+  sourceId          String
+  source            DataCenterSource   @relation(fields: [sourceId], references: [id], onDelete: Restrict)
+  versionId         String
+  version           DataCenterVersion  @relation(fields: [versionId], references: [id], onDelete: Restrict)
+  actorId           String
+  fileName          String
+  mimeType          String
+  sizeBytes         Int
+  checksum          String
+  storageKey        String             @unique
+  adapter           String
+  scanEngine        String
+  createdAt         DateTime           @default(now())
+
+  @@index([sourceId, createdAt])
+}
+
+model DataCenterAcademyRelease {
+  id                String             @id @default(cuid())
+  versionId         String
+  parentRevision    Int                @default(0)
+  version           DataCenterVersion  @relation(fields: [versionId], references: [id], onDelete: Restrict)
+  targetKind        String
+  targetId          String
+  requestedById     String
+  approvedById      String?
+  status            String             @default("PENDING")
+  notes             String
+  createdAt         DateTime           @default(now())
+  approvedAt        DateTime?
+
+  @@index([status, targetKind, targetId])
+}
+
+model DataCenterCategory {
+  key               String           @id
+  label             String
+  createdAt         DateTime         @default(now())
+  types             DataCenterType[]
+}
+
+model DataCenterDepartment {
+  key               String           @id
+  label             String
+  createdAt         DateTime         @default(now())
+  types             DataCenterType[]
+}
+
+model DataCenterEvidenceLink {
+  id                String              @id @default(cuid())
+  versionId         String
+  version           DataCenterVersion   @relation(fields: [versionId], references: [id], onDelete: Restrict)
+  evidenceId        String?
+  evidence          Evidence?           @relation(fields: [evidenceId], references: [id], onDelete: Restrict)
+  kind              String
+  reference         String
+  label             String
+  notes             String?
+  linkedById        String
+  createdAt         DateTime            @default(now())
+
+  @@unique([versionId, kind, reference])
+  @@index([evidenceId])
 }
