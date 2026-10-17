@@ -5,7 +5,7 @@ import { hasPlatformAdminAccess } from "@/lib/auth/authorization";
 import { hasValidOrigin } from "@/lib/auth/request";
 import { enforceRouteRateLimit } from "@/lib/rate-limit/route-rate-limit";
 import { idSchema, MapError } from "./contracts";
-import { authorizedArtifact } from "./service";
+import { authorizedArtifact, authorizedGlyph } from "./service";
 import { byteRange, downloadMetadata, openArtifact } from "./storage";
 
 const privateHeaders = { "cache-control": "private, no-store", "x-content-type-options": "nosniff" };
@@ -33,28 +33,46 @@ export async function artifactResponse(request: NextRequest, artifactId: string,
     if (auth.response) return auth.response;
     if (!idSchema.safeParse(artifactId).success) return json({ error: "INVALID_ARTIFACT_ID" }, 400);
     const artifact = await authorizedArtifact(artifactId, admin);
-    const download = downloadMetadata(artifact);
-    const size = Number(artifact.byteSize);
-    if (!Number.isSafeInteger(size)) throw new MapError("ARTIFACT_TOO_LARGE", 503);
-    const headers = new Headers({
-      ...privateHeaders, "accept-ranges": "bytes", "content-type": download.mime,
-      "content-disposition": `${admin ? "attachment" : "inline"}; filename="${download.filename}"`,
-      etag: `"sha256-${artifact.sha256}"`, "x-checksum-sha256": artifact.sha256,
-    });
-    let range;
-    try {
-      range = byteRange(request.headers.get("range"), size);
-    } catch {
-      headers.set("content-range", `bytes */${size}`);
-      return new NextResponse(null, { status: 416, headers });
-    }
-    const handle = await openArtifact(artifact);
-    headers.set("content-length", String(range ? range.end - range.start + 1 : size));
-    if (range) headers.set("content-range", `bytes ${range.start}-${range.end}/${size}`);
-    const stream = handle.createReadStream({ start: range?.start ?? 0, end: range?.end ?? size - 1, autoClose: true });
-    request.signal.addEventListener("abort", () => stream.destroy(), { once: true });
-    return new NextResponse(Readable.toWeb(stream) as ReadableStream<Uint8Array>, { status: range ? 206 : 200, headers });
+    return await streamArtifact(request, artifact, admin);
   } catch (error) {
     return failure(error);
   }
+}
+
+export async function glyphResponse(request: NextRequest, releaseId: string, glyphPath: string[], admin: boolean) {
+  try {
+    const auth = await access(request, admin);
+    if (auth.response) return auth.response;
+    if (!idSchema.safeParse(releaseId).success || glyphPath.length !== 2 || !glyphPath[1].endsWith(".pbf")) {
+      return json({ error: "ARTIFACT_NOT_FOUND" }, 404);
+    }
+    const artifact = await authorizedGlyph(releaseId, glyphPath[0], glyphPath[1].slice(0, -4), admin);
+    return await streamArtifact(request, artifact, admin);
+  } catch (error) {
+    return failure(error);
+  }
+}
+
+async function streamArtifact(request: NextRequest, artifact: import("./contracts").Artifact, admin: boolean) {
+  const download = downloadMetadata(artifact);
+  const size = Number(artifact.byteSize);
+  if (!Number.isSafeInteger(size)) throw new MapError("ARTIFACT_TOO_LARGE", 503);
+  const headers = new Headers({
+    ...privateHeaders, "accept-ranges": "bytes", "content-type": download.mime,
+    "content-disposition": `${admin ? "attachment" : "inline"}; filename="${download.filename}"`,
+    etag: `"sha256-${artifact.sha256}"`, "x-checksum-sha256": artifact.sha256,
+  });
+  let range;
+  try {
+    range = byteRange(request.headers.get("range"), size);
+  } catch {
+    headers.set("content-range", `bytes */${size}`);
+    return new NextResponse(null, { status: 416, headers });
+  }
+  const handle = await openArtifact(artifact);
+  headers.set("content-length", String(range ? range.end - range.start + 1 : size));
+  if (range) headers.set("content-range", `bytes ${range.start}-${range.end}/${size}`);
+  const stream = handle.createReadStream({ start: range?.start ?? 0, end: range?.end ?? size - 1, autoClose: true });
+  request.signal.addEventListener("abort", () => stream.destroy(), { once: true });
+  return new NextResponse(Readable.toWeb(stream) as ReadableStream<Uint8Array>, { status: range ? 206 : 200, headers });
 }

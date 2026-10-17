@@ -15,14 +15,17 @@ export type AdminMapLayer = {
   releaseId: string | null;
   source: string | null;
   version: string | null;
+  sourceDate: string | null;
+  license: string | null;
   confidence: number | null;
   updatedAt: string | null;
   revision: number;
+  styleLayerIds: string[];
 };
 
 export function canChangeLayer(layer: AdminMapLayer, activeReleaseId: string | null) {
-  if (layer.status !== "ready") return false;
   if (layer.enabled) return true;
+  if (layer.status !== "ready" || !layer.styleLayerIds.length) return false;
   return Boolean(layer.source && layer.version && layer.visibility === "public" && activeReleaseId && layer.releaseId === activeReleaseId);
 }
 
@@ -83,7 +86,7 @@ export function MapLayerCatalog({ activeReleaseId }: { activeReleaseId: string |
     {layers?.length ? <MapTable headers={["الطبقة", "الحالة", "المصدر", "الإصدار", "تاريخ المصدر", "الترخيص", "الثقة", "الرؤية", "آخر تحديث السجل", "الإتاحة"]}>
       {layers.map((layer) => <tr key={layer.id}>
         <td>{layer.label}</td><td>{layer.status === "ready" ? "جاهز بحسب السجل" : layer.status === "warning" ? "يتطلب مراجعة" : "بيانات غير متاحة"}</td>
-        <td>{layer.source ?? "غير متاح"}</td><td>{layer.version ?? "غير متاح"}</td><td>غير موثق</td><td>غير موثق في الكتالوج</td>
+        <td>{layer.source ?? "غير متاح"}</td><td>{layer.version ?? "غير متاح"}</td><td>{displayDate(layer.sourceDate)}</td><td>{layer.license ?? "غير موثق"}</td>
         <td>{layer.confidence === null ? "غير معروفة" : `${Math.round(layer.confidence * 100)}%`}</td><td>{layer.visibility === "public" ? "عامة بشرط النشر" : "داخلية"}</td><td>{displayDate(layer.updatedAt)}</td>
         <td><span>{layer.enabled ? "مفعّلة في السياسة" : "معطّلة"}</span><Button type="button" variant="secondary" disabled={loading || busy || !canChangeLayer(layer, activeReleaseId)} onClick={() => setPending(layer)}>{layer.enabled ? "تعطيل" : "تفعيل"}</Button></td>
       </tr>)}

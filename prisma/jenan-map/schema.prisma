@@ -28,6 +28,7 @@ model Release {
   features     Feature[]
   boundaries   Boundary[]
   savedLocations SavedLocation[]
+  layers       ReleaseLayer[]
 
   @@map("release")
   @@schema("jenan_map")
@@ -118,5 +119,36 @@ model SavedLocation {
 
   @@index([releaseId])
   @@map("saved_location")
+  @@schema("jenan_map")
+}
+
+model Layer {
+  id       String         @id
+  label    String
+  enabled  Boolean        @default(false)
+  revision Int            @default(0)
+  releases ReleaseLayer[]
+
+  @@map("layer")
+  @@schema("jenan_map")
+}
+
+model ReleaseLayer {
+  releaseId     String   @db.Uuid
+  layerId       String
+  release       Release  @relation(fields: [releaseId], references: [id], onDelete: Restrict)
+  layer         Layer    @relation(fields: [layerId], references: [id], onDelete: Restrict)
+  status        String
+  visibility    String
+  source        String
+  version       String
+  sourceDate    DateTime @db.Timestamptz
+  license       String
+  styleLayerIds Json
+  updatedAt     DateTime @default(now()) @db.Timestamptz
+
+  @@id([releaseId, layerId])
+  @@index([releaseId])
+  @@map("release_layer")
   @@schema("jenan_map")
 }

@@ -17,7 +17,7 @@ export function storageRoot() {
 }
 
 export function safeStorageKey(key: string) {
-  if (!/^[a-f0-9-]{36}\/[a-f0-9]{64}\.(geojson|json|pmtiles|bin)$/.test(key)) throw new MapError("INVALID_STORAGE_KEY", 503);
+  if (!/^[a-f0-9-]{36}\/[a-f0-9]{64}\.(geojson|json|pmtiles|pbf|bin)$/.test(key)) throw new MapError("INVALID_STORAGE_KEY", 503);
   return key;
 }
 

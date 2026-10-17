@@ -3,6 +3,7 @@ import { Prisma } from "@/generated/prisma/client";
 import { db, type DbExecutor } from "@/lib/db";
 import { type Artifact, type MapCommand, type MapRuntime, type Release, type SavedLocation, MapError } from "./contracts";
 import { downloadMetadata, openArtifact, storageRoot, storageState } from "./storage";
+import { releaseLayers } from "./layers";
 
 type SqlExecutor = Pick<DbExecutor, "$queryRaw" | "$executeRaw">;
 const sql = Prisma.sql;
@@ -80,13 +81,14 @@ export async function manifest() {
   if (!hasProductionArtifacts(registered)) throw new MapError("OWNED_BASEMAP_STYLE_GLYPHS_SCHEMA_COVERAGE_REQUIRED", 503);
   const files = registered.filter((item) => item.publicSafe);
   for (const file of files) await (await openArtifact(file)).close();
+  const layers = await releaseLayers(release.id);
   return {
     status: state.status,
     release: {
       id: release.id, version: release.version, publishedAt: release.publishedAt,
       source: release.source, sourceDate: release.sourceDate, license: release.license,
       styleUrl: files.find((item) => item.kind === "style") ? `/api/jenan-map/artifacts/${files.find((item) => item.kind === "style")!.id}` : null,
-      layers: files.filter((item) => item.kind === "geojson").map((item) => ({ id: item.id, label: item.filename, available: true, styleLayerIds: [] as string[], type: "geojson", url: `/api/jenan-map/artifacts/${item.id}` })),
+      layers: layers.map((layer) => ({ ...layer, available: true })),
       artifacts: files.map((item) => publicArtifact(item)),
     },
   };
@@ -116,11 +118,13 @@ async function audit(executor: SqlExecutor, actor: string, action: string, relea
 }
 
 async function verifyReady(releaseId: string, executor: SqlExecutor) {
-  const [counts] = await executor.$queryRaw<{ boundaries: bigint; features: bigint }[]>(sql`
+  const [counts] = await executor.$queryRaw<{ boundaries: bigint; features: bigint; layers: bigint }[]>(sql`
     SELECT (SELECT count(*) FROM jenan_map.boundary WHERE "releaseId" = ${releaseId}::uuid) AS boundaries,
-      (SELECT count(*) FROM jenan_map.feature WHERE "releaseId" = ${releaseId}::uuid) AS features`);
+      (SELECT count(*) FROM jenan_map.feature WHERE "releaseId" = ${releaseId}::uuid) AS features,
+      (SELECT count(*) FROM jenan_map.release_layer WHERE "releaseId" = ${releaseId}::uuid
+        AND status='ready' AND visibility='public' AND jsonb_array_length("styleLayerIds") > 0) AS layers`);
   const files = await artifacts(releaseId, executor);
-  if (!counts || counts.boundaries !== BigInt(1) || counts.features < BigInt(1) ||
+  if (!counts || counts.boundaries !== BigInt(1) || counts.features < BigInt(1) || counts.layers < BigInt(1) ||
       !hasProductionArtifacts(files)) {
     throw new MapError("RELEASE_NOT_READY");
   }
@@ -225,6 +229,20 @@ export async function authorizedArtifact(id: string, admin: boolean) {
   return artifact;
 }
 
+export async function authorizedGlyph(releaseId: string, fontstack: string, range: string, admin: boolean) {
+  if (!/^[a-zA-Z0-9][a-zA-Z0-9 ._-]{0,100}$/.test(fontstack) || !/^\d{1,6}-\d{1,6}$/.test(range)) {
+    throw new MapError("ARTIFACT_NOT_FOUND", 404);
+  }
+  const release = admin ? await previewRelease(releaseId) : await publishedRelease(releaseId);
+  const publicOnly = admin ? sql`` : sql` AND "publicSafe"=true`;
+  const [artifact] = await db.$queryRaw<Artifact[]>(sql`
+    SELECT * FROM jenan_map.artifact WHERE "releaseId"=${release.id}::uuid
+      AND kind='glyphs' AND filename=${`${fontstack}/${range}.pbf`} ${publicOnly}
+    LIMIT 1`);
+  if (!artifact) throw new MapError("ARTIFACT_NOT_FOUND", 404);
+  return artifact;
+}
+
 export async function exportManifest(releaseId: string) {
   const release = await releaseById(releaseId);
   const files = await artifacts(releaseId);
@@ -245,6 +263,7 @@ export async function previewManifest(releaseId: string) {
   if (!files.some((file) => file.kind === "geojson")) throw new MapError("PREVIEW_DATA_UNAVAILABLE", 503);
   storageRoot();
   for (const file of files) await (await openArtifact(file)).close();
+  const layers = await releaseLayers(release.id, false);
   return {
     status: "enabled", preview: true,
     release: {
@@ -253,7 +272,7 @@ export async function previewManifest(releaseId: string) {
       styleUrl: files.find((file) => file.kind === "style")
         ? publicArtifact(files.find((file) => file.kind === "style")!, true).url
         : null,
-      layers: files.filter((file) => file.kind === "geojson").map((file) => ({ id: file.id, label: file.filename, available: true, styleLayerIds: [] as string[], type: "geojson", url: publicArtifact(file, true).url })),
+      layers: layers.map((layer) => ({ ...layer, available: true })),
       artifacts: files.map((file) => publicArtifact(file, true)),
     },
   };

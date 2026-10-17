@@ -4,12 +4,20 @@
 // No migrations, remote fetches, shell execution, or third-party fallbacks.
 import { createHash, randomUUID } from "node:crypto";
 import { constants } from "node:fs";
-import { chmod, mkdir, open, realpath, stat } from "node:fs/promises";
+import { chmod, mkdir, open, realpath, rename, stat } from "node:fs/promises";
 import path from "node:path";
+import { Transform } from "node:stream";
+import { pipeline } from "node:stream/promises";
 import pg from "pg";
 
 const MAX_BYTES = 128 * 1024 * 1024;
+const MAX_ARTIFACT_BYTES = 16 * 1024 * 1024 * 1024;
 const MAX_FEATURES = 100_000;
+const LAYER_IDS = new Set([
+  "base", "project-location", "buildings", "roads", "businesses", "pois",
+  "competitors", "population", "real-estate", "suppliers",
+  "investment-opportunities", "purchasing-power", "traffic", "heatmaps",
+]);
 
 export function parseArguments(args) {
   if (args.length !== 4 || args[0] !== "--release" || args[2] !== "--manifest" ||
@@ -55,9 +63,50 @@ export function normalizeFeatures(value) {
   }) };
 }
 
+export function validateLayerBindings(style, bindings) {
+  if (!bindings || typeof bindings !== "object" || Array.isArray(bindings)) throw new Error("Explicit release layer bindings required");
+  const styleLayers = new Map((Array.isArray(style?.layers) ? style.layers : []).map((layer) => [layer?.id, layer]));
+  const seen = new Set();
+  const normalized = [];
+  for (const [id, styleLayerIds] of Object.entries(bindings)) {
+    if (!LAYER_IDS.has(id) || !Array.isArray(styleLayerIds) || !styleLayerIds.length || styleLayerIds.length > 200) {
+      throw new Error("Invalid release layer binding");
+    }
+    for (const styleLayerId of styleLayerIds) {
+      const layer = styleLayers.get(styleLayerId);
+      if (typeof styleLayerId !== "string" || !layer || seen.has(styleLayerId) ||
+          (layer.type !== "background" && (typeof layer.source !== "string" || !style.sources?.[layer.source]))) {
+        throw new Error("Layer binding does not reference a unique style layer");
+      }
+      seen.add(styleLayerId);
+    }
+    normalized.push({ id, styleLayerIds });
+  }
+  if (!normalized.length) throw new Error("At least one release layer binding is required");
+  return normalized;
+}
+
+export function validPmtilesHeader(header, byteSize) {
+  if (!Buffer.isBuffer(header) || header.length < 127 || !Number.isSafeInteger(byteSize) || byteSize < 128 ||
+      header.toString("ascii", 0, 7) !== "PMTiles" || header[7] !== 3) return false;
+  const limit = BigInt(byteSize);
+  for (const offset of [8, 24, 40, 56]) {
+    const start = header.readBigUInt64LE(offset);
+    const length = header.readBigUInt64LE(offset + 8);
+    if ((offset === 8 && length === 0n) || start < 127n || start + length > limit) return false;
+  }
+  const minZoom = header[100], maxZoom = header[101];
+  const minLon = header.readInt32LE(102), maxLon = header.readInt32LE(106);
+  const minLat = header.readInt32LE(110), maxLat = header.readInt32LE(114);
+  return minZoom <= maxZoom && maxZoom <= 30 &&
+    minLon >= -1_800_000_000 && maxLon <= 1_800_000_000 && minLon < maxLon &&
+    minLat >= -900_000_000 && maxLat <= 900_000_000 && minLat < maxLat &&
+    header.readBigUInt64LE(72) > 0n;
+}
+
 async function persistArtifact(client, root, releaseId, bytes, kind, publicSafe, filename) {
   const sha256 = createHash("sha256").update(bytes).digest("hex");
-  const extension = kind === "geojson" ? "geojson" : "bin";
+  const extension = path.extname(filename).slice(1).toLowerCase();
   const storageKey = `${releaseId}/${sha256}.${extension}`;
   const folder = path.join(root, releaseId);
   await mkdir(folder, { recursive: true, mode: 0o700 });
@@ -72,7 +121,105 @@ async function persistArtifact(client, root, releaseId, bytes, kind, publicSafe,
   await chmod(target, 0o400);
   await client.query(`INSERT INTO jenan_map.artifact (id,"releaseId",kind,"storageKey",filename,mime,sha256,"byteSize","publicSafe")
     VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9)`,
-  [randomUUID(), releaseId, kind, storageKey, filename, kind === "geojson" ? "application/geo+json" : "application/octet-stream", sha256, bytes.length, publicSafe]);
+  [randomUUID(), releaseId, kind, storageKey, filename,
+    kind === "geojson" ? "application/geo+json" : kind === "style" ? "application/json" : "application/octet-stream",
+    sha256, bytes.length, publicSafe]);
+}
+
+const assetMime = {
+  pmtiles: "application/vnd.pmtiles",
+  glyphs: "application/x-protobuf",
+  schema: "application/json",
+  coverage: "application/json",
+};
+
+function validateAssets(assets) {
+  if (!Array.isArray(assets)) throw new Error("Versioned PMTiles, glyph, schema and coverage assets are required");
+  const kinds = new Set();
+  for (const asset of assets) {
+    if (!asset || !["pmtiles", "glyphs", "schema", "coverage"].includes(asset.kind) ||
+        typeof asset.file !== "string" || !/^[a-zA-Z0-9][a-zA-Z0-9._-]{0,120}\.(pmtiles|pbf|json)$/.test(asset.file) ||
+        typeof asset.filename !== "string" || typeof asset.publicSafe !== "boolean") {
+      throw new Error("Invalid staged map asset descriptor");
+    }
+    const extension = path.extname(asset.file).toLowerCase();
+    const expected = { pmtiles: ".pmtiles", glyphs: ".pbf", schema: ".json", coverage: ".json" }[asset.kind];
+    if (extension !== expected || (asset.kind !== "glyphs" && kinds.has(asset.kind))) throw new Error("Asset type does not match its staged file");
+    if (asset.kind === "glyphs" && !/^[a-zA-Z0-9][a-zA-Z0-9 ._-]{0,100}\/\d{1,6}-\d{1,6}\.pbf$/.test(asset.filename)) {
+      throw new Error("Invalid glyph filename");
+    }
+    if (asset.kind !== "glyphs" && !/^[a-zA-Z0-9][a-zA-Z0-9._-]{0,120}\.[a-zA-Z0-9]{1,10}$/.test(asset.filename)) {
+      throw new Error("Invalid asset filename");
+    }
+    if (["pmtiles", "schema", "coverage"].includes(asset.kind)) kinds.add(asset.kind);
+  }
+  if (!["pmtiles", "schema", "coverage"].every((kind) => kinds.has(kind)) ||
+      !assets.some((asset) => asset.kind === "glyphs" && asset.publicSafe) ||
+      !assets.some((asset) => asset.kind === "pmtiles" && asset.publicSafe)) {
+    throw new Error("Public PMTiles and glyph assets plus schema and coverage are required");
+  }
+  return assets;
+}
+
+async function persistStagedAsset(client, stagingRoot, root, releaseId, asset) {
+  const input = await open(path.join(stagingRoot, asset.file), constants.O_RDONLY | constants.O_NOFOLLOW);
+  let output;
+  try {
+    const info = await input.stat();
+    if (!info.isFile() || info.size < 1 || info.size > MAX_ARTIFACT_BYTES) throw new Error("Map asset size outside limits");
+    if (asset.kind === "pmtiles") {
+      const header = Buffer.alloc(127);
+      const { bytesRead } = await input.read(header, 0, header.length, 0);
+      if (bytesRead !== header.length || !validPmtilesHeader(header, info.size)) throw new Error("Invalid or empty PMTiles v3 archive header");
+    }
+    const folder = path.join(root, releaseId);
+    await mkdir(folder, { recursive: true, mode: 0o700 });
+    if (await realpath(folder) !== folder) throw new Error("Storage directory symlink refused");
+    const extension = path.extname(asset.filename).slice(1).toLowerCase();
+    const sha256 = createHash("sha256");
+    let byteSize = 0;
+    const digest = new Transform({
+      transform(chunk, _encoding, callback) {
+        byteSize += chunk.length;
+        if (byteSize > MAX_ARTIFACT_BYTES) return callback(new Error("Map asset exceeded size limit"));
+        sha256.update(chunk);
+        callback(null, chunk);
+      },
+    });
+    const temporaryTarget = path.join(folder, `.import-${randomUUID()}.${extension}`);
+    output = await open(temporaryTarget, constants.O_WRONLY | constants.O_CREAT | constants.O_EXCL | constants.O_NOFOLLOW, 0o400);
+    await pipeline(input.createReadStream({ start: 0, autoClose: false }), digest, output.createWriteStream({ autoClose: false }));
+    await output.sync();
+    await output.close();
+    output = undefined;
+    const checksum = sha256.digest("hex");
+    const artifactId = randomUUID();
+    const storageKey = `${releaseId}/${checksum}.${extension}`;
+    const immutableTarget = path.join(folder, `${checksum}.${extension}`);
+    await chmod(temporaryTarget, 0o400);
+    await rename(temporaryTarget, immutableTarget);
+    await client.query(`INSERT INTO jenan_map.artifact
+      (id,"releaseId",kind,"storageKey",filename,mime,sha256,"byteSize","publicSafe")
+      VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9)`,
+    [artifactId, releaseId, asset.kind, storageKey, asset.filename, assetMime[asset.kind], checksum, byteSize, asset.publicSafe]);
+    return { id: artifactId, kind: asset.kind, filename: asset.filename, publicSafe: asset.publicSafe, storageKey, sha256: checksum, byteSize };
+  } finally {
+    await input.close();
+    await output?.close();
+  }
+}
+
+export function bindStyle(style, releaseId, pmtilesFilename, pmtilesArtifactId, glyphAssets) {
+  if (!style || typeof style !== "object" || !style.sources || typeof style.sources !== "object" ||
+      style.sprite ||
+      !Array.isArray(style.layers) || !style.glyphs || !glyphAssets.length) throw new Error("Style must define sources, layers and self-hosted glyphs");
+  for (const source of Object.values(style.sources)) {
+    if (!source || source.type !== "vector" || typeof source.url !== "string" ||
+        source.url !== `pmtiles://${pmtilesFilename}`) throw new Error("Every basemap source must use the declared owned PMTiles archive");
+    source.url = `pmtiles:///api/jenan-map/artifacts/${pmtilesArtifactId}`;
+  }
+  style.glyphs = `/api/jenan-map/releases/${releaseId}/glyphs/{fontstack}/{range}.pbf`;
+  return style;
 }
 
 async function log(client, actor, releaseId, action, metadata) {
@@ -110,6 +257,10 @@ export async function build(args) {
   const rawBoundary = JSON.parse(boundaryBytes.toString("utf8"));
   const boundary = rawBoundary.type === "Feature" ? rawBoundary.geometry : rawBoundary;
   if (!["Polygon", "MultiPolygon"].includes(boundary?.type) || !validCoordinates(boundary.coordinates)) throw new Error("Authoritative Polygon/MultiPolygon boundary required");
+  const assets = validateAssets(input.assets);
+  if (typeof input.styleFile !== "string" || !/^[a-zA-Z0-9][a-zA-Z0-9._-]{0,120}\.json$/.test(input.styleFile)) throw new Error("A staged style JSON file is required");
+  const style = JSON.parse((await readStaged(stagingRoot, input.styleFile)).toString("utf8"));
+  const layerBindings = validateLayerBindings(style, input.layerBindings);
   const client = new pg.Client({ connectionString: process.env.DATABASE_URL });
   let processing = false;
   await client.connect();
@@ -139,6 +290,21 @@ export async function build(args) {
     await persistArtifact(client, storageRoot, releaseId, featureBytes, "source", false, "features-source.bin");
     await persistArtifact(client, storageRoot, releaseId, boundaryBytes, "source", false, "boundary-source.bin");
     await persistArtifact(client, storageRoot, releaseId, Buffer.from(JSON.stringify(features)), "geojson", true, "places.geojson");
+    const importedAssets = [];
+    for (const asset of assets) importedAssets.push(await persistStagedAsset(client, stagingRoot, storageRoot, releaseId, asset));
+    const pmtiles = importedAssets.find((asset) => asset.kind === "pmtiles" && asset.publicSafe);
+    const glyphs = importedAssets.filter((asset) => asset.kind === "glyphs" && asset.publicSafe);
+    if (!pmtiles) throw new Error("A public PMTiles artifact is required");
+    const pmtilesFilename = assets.find((asset) => asset.kind === "pmtiles" && asset.publicSafe).filename;
+    const boundStyle = bindStyle(style, releaseId, pmtilesFilename, pmtiles.id, glyphs);
+    await persistArtifact(client, storageRoot, releaseId, Buffer.from(JSON.stringify(boundStyle)), "style", true, "style.json");
+    const release = (await client.query(`SELECT version,source,"sourceDate",license FROM jenan_map.release WHERE id=$1`, [releaseId])).rows[0];
+    for (const binding of layerBindings) {
+      await client.query(`INSERT INTO jenan_map.release_layer
+        ("releaseId","layerId",status,visibility,source,version,"sourceDate",license,"styleLayerIds")
+        VALUES ($1,$2,'ready','public',$3,$4,$5,$6,$7::jsonb)`,
+      [releaseId, binding.id, release.source, release.version, release.sourceDate, release.license, JSON.stringify(binding.styleLayerIds)]);
+    }
     await client.query(`UPDATE jenan_map.release SET status='Ready' WHERE id=$1 AND status='Processing'`, [releaseId]);
     await log(client, actor, releaseId, "build.ready", { featureCount: features.features.length, boundaryAuthority: input.boundaryAuthority });
     await client.query("COMMIT");

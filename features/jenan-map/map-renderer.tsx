@@ -167,7 +167,15 @@ export default function MapRenderer({
         const style = await response.json();
         if (disposed) return;
         // Keep style resources pinned to the controlled API even if a style is misconfigured.
-        if (style.glyphs) style.glyphs = resourceUrl(style.glyphs);
+        if (style.glyphs) {
+          if (adminPreview && typeof style.glyphs === "string") {
+            style.glyphs = style.glyphs.replace(
+              `/api/jenan-map/releases/${release.id}/glyphs/`,
+              `/api/admin/jenan-map/releases/${release.id}/glyphs/`,
+            );
+          }
+          style.glyphs = resourceUrl(style.glyphs);
+        }
         if (style.sprite) {
           if (typeof style.sprite === "string")
             style.sprite = resourceUrl(style.sprite);

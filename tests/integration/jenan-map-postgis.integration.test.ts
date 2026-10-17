@@ -37,8 +37,9 @@ const features = {
 };
 
 async function fullSyntheticRelease() {
+  const version = `synthetic-${randomUUID()}`;
   const created = await services.command({
-    action: "create", version: `synthetic-${randomUUID()}`, source: "SYNTHETIC integration fixture, not official Saudi data",
+    action: "create", version, source: "SYNTHETIC integration fixture, not official Saudi data",
     sourceDate: "2026-10-01T00:00:00Z", license: "Synthetic test-only fixture",
   }, adminId) as { id: string };
   await pool!.query(`UPDATE jenan_map.release SET status='Processing' WHERE id=$1`, [created.id]);
@@ -46,6 +47,10 @@ async function fullSyntheticRelease() {
     SELECT $1,$2,authority,source,geometry FROM jenan_map.boundary WHERE "releaseId"=$3`, [randomUUID(), created.id, importedId]);
   await pool!.query(`INSERT INTO jenan_map.feature (id,"releaseId",label,category,geometry,search)
     SELECT gen_random_uuid(),$1,label,category,geometry,search FROM jenan_map.feature WHERE "releaseId"=$2`, [created.id, importedId]);
+  await pool!.query(`INSERT INTO jenan_map.release_layer
+    ("releaseId","layerId",status,visibility,source,version,"sourceDate",license,"styleLayerIds")
+    VALUES ($1,'base','ready','public','Synthetic test only',$2,'2026-10-01T00:00:00Z','Test only','["test-background"]')`,
+  [created.id, version]);
   await mkdir(path.join(storage, created.id), { mode: 0o700 });
   for (const kind of ["geojson", "pmtiles", "style", "glyphs", "schema", "coverage"]) {
     // Bytes test immutable storage/publication mechanics only, not format/render validity.
@@ -100,10 +105,40 @@ describe.skipIf(!enabled)("Jenan Map disposable PostGIS mechanics (synthetic onl
     importedId = (await services.command({ action: "create", version: `import-${run}`, source: "Synthetic local geometry only", sourceDate: "2026-10-01T00:00:00Z", license: "Test only" }, adminId) as { id: string }).id;
     await writeFile(path.join(staging, "features.geojson"), JSON.stringify(features));
     await writeFile(path.join(staging, "boundary.geojson"), JSON.stringify(boundary));
+    const pmtiles = Buffer.alloc(128);
+    pmtiles.write("PMTiles", 0, "ascii");
+    pmtiles[7] = 3;
+    pmtiles.writeBigUInt64LE(BigInt(127), 8);
+    pmtiles.writeBigUInt64LE(BigInt(1), 16);
+    pmtiles.writeBigUInt64LE(BigInt(128), 24);
+    pmtiles.writeBigUInt64LE(BigInt(128), 40);
+    pmtiles.writeBigUInt64LE(BigInt(128), 56);
+    pmtiles.writeBigUInt64LE(BigInt(1), 72);
+    pmtiles.writeInt32LE(340_000_000, 102);
+    pmtiles.writeInt32LE(560_000_000, 106);
+    pmtiles.writeInt32LE(160_000_000, 110);
+    pmtiles.writeInt32LE(330_000_000, 114);
+    await writeFile(path.join(staging, "saudi.pmtiles"), pmtiles);
+    await writeFile(path.join(staging, "style.json"), JSON.stringify({
+      version: 8,
+      glyphs: "jenan-map-glyphs://{fontstack}/{range}.pbf",
+      sources: { saudi: { type: "vector", url: "pmtiles://saudi.pmtiles" } },
+      layers: [{ id: "synthetic-points", type: "circle", source: "saudi" }],
+    }));
+    await writeFile(path.join(staging, "arabic-0-255.pbf"), Buffer.from([0, 1, 2, 3]));
+    await writeFile(path.join(staging, "schema.json"), JSON.stringify({ schemaVersion: "test-schema" }));
+    await writeFile(path.join(staging, "coverage.json"), JSON.stringify({ countryCode: "SA", syntheticTestOnly: true }));
     await writeFile(path.join(staging, "import.json"), JSON.stringify({
       countryCode: "SA", authoritative: true, boundaryAuthority: "SYNTHETIC TEST AUTHORITY — NOT REAL SA BOUNDARY",
       boundarySource: "Synthetic polygon with hole to test exact PostGIS semantics",
       confirmation: "BUILD OWNED SA DATA", featuresFile: "features.geojson", boundaryFile: "boundary.geojson",
+      styleFile: "style.json", layerBindings: { pois: ["synthetic-points"] },
+      assets: [
+        { kind: "pmtiles", file: "saudi.pmtiles", filename: "saudi.pmtiles", publicSafe: true },
+        { kind: "glyphs", file: "arabic-0-255.pbf", filename: "Noto Sans Arabic Regular/0-255.pbf", publicSafe: true },
+        { kind: "schema", file: "schema.json", filename: "tile-schema.json", publicSafe: false },
+        { kind: "coverage", file: "coverage.json", filename: "coverage.json", publicSafe: false },
+      ],
     }));
     const script = "../../scripts/jenan-map/build.mjs";
     await (await import(script)).build(["--release", importedId, "--manifest", "import.json"]);
@@ -112,7 +147,9 @@ describe.skipIf(!enabled)("Jenan Map disposable PostGIS mechanics (synthetic onl
     expect((await pool!.query(`SELECT count(*)::int AS count FROM jenan_map.feature WHERE "releaseId"=$1`, [importedId])).rows[0].count).toBe(2);
     const portable = await services.exportManifest(importedId);
     expect(portable.portableGeojsonAvailable).toBe(true);
-    const geojson = (await services.artifacts(importedId)).find((file) => file.kind === "geojson")!;
+    const importedArtifacts = await services.artifacts(importedId);
+    expect(importedArtifacts.map((file) => file.kind)).toEqual(expect.arrayContaining(["pmtiles", "style", "glyphs", "schema", "coverage", "geojson"]));
+    const geojson = importedArtifacts.find((file) => file.kind === "geojson")!;
     const { openArtifact } = await import("@/services/jenan-map/storage");
     const handle = await openArtifact(geojson);
     try {

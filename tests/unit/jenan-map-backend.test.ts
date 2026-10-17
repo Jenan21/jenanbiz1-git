@@ -147,7 +147,8 @@ describe("publication and owned spatial queries", () => {
   it("omits private source artifacts and storage keys from public manifests", async () => {
     await writeReadyFixtures();
     mocks.query.mockResolvedValueOnce([state]).mockResolvedValueOnce([release])
-      .mockResolvedValueOnce([...readyArtifacts, { ...artifact, id: otherId, kind: "source", publicSafe: false }]);
+      .mockResolvedValueOnce([...readyArtifacts, { ...artifact, id: otherId, kind: "source", publicSafe: false }])
+      .mockResolvedValueOnce([{ id: "roads", label: "الطرق", styleLayerIds: ["road-line"] }]);
     const value = await manifest();
     expect(value.release?.artifacts).toHaveLength(4);
     expect(JSON.stringify(value)).not.toContain("storageKey");
@@ -267,10 +268,11 @@ describe("publication and owned spatial queries", () => {
   it("previews reviewed build candidates through exclusively admin artifact endpoints", async () => {
     await mkdir(path.join(root, releaseId), { recursive: true });
     await writeFile(path.join(root, artifact.storageKey), bytes);
-    mocks.query.mockResolvedValueOnce([{ ...release, status: "Ready" }]).mockResolvedValueOnce([artifact]);
+    mocks.query.mockResolvedValueOnce([{ ...release, status: "Ready" }]).mockResolvedValueOnce([artifact])
+      .mockResolvedValueOnce([{ id: "roads", label: "الطرق", styleLayerIds: ["road-line"] }]);
     const result = await previewManifest(releaseId);
     expect(result.preview).toBe(true);
-    expect(result.release.layers[0].url).toContain("/api/admin/jenan-map/artifacts/");
+    expect(result.release.layers[0]).toMatchObject({ id: "roads", styleLayerIds: ["road-line"], available: true });
     mocks.query.mockResolvedValueOnce([{ ...release, status: "Processing" }]);
     await expect(previewManifest(releaseId)).rejects.toThrow("PREVIEW_NOT_READY");
   });

@@ -67,7 +67,7 @@ No real dataset has been imported by this change. Recommended reproducible prepa
 
 The pipeline reconciles the two requested validation stages: **source validation** precedes normalization; **release validation** follows comparison/build and checks artifacts, geometry, schema and coverage before review/approval. Neither successful upload nor a completed build implies approval.
 
-The offline v1 preparation entry is `node scripts/jenan-map/build.mjs --release <uuid> --manifest <staged-filename.json>`, with explicit private directories and database configuration. It accepts bounded owned GeoJSON and boundary inputs, not arbitrary URLs, shell commands or zip archives. This is **not** a country-scale Planetiler runner or an implemented browser upload/build queue. A normalized GeoJSON artifact alone must never qualify as a production basemap: readiness also requires controlled PMTiles/style artifacts and real schema/coverage acceptance. The 128 MiB/100,000-feature preparation limits are deliberate v1 bounds, not a claim to import an entire Saudi extract through JSON memory.
+The offline v1 preparation entry is `node scripts/jenan-map/build.mjs --release <uuid> --manifest <staged-filename.json>`, with explicit private directories and database configuration. It accepts bounded owned GeoJSON and boundary inputs plus streamed PMTiles and per-range glyph files, not arbitrary URLs, shell commands or zip archives. This is **not** a country-scale Planetiler runner or an implemented browser upload/build queue. A normalized GeoJSON artifact alone must never qualify as a production basemap: readiness also requires controlled PMTiles/style/glyph artifacts, persisted style-layer bindings, and reviewed schema/coverage evidence. The 128 MiB/100,000-feature GeoJSON preparation limits and 16 GiB per streamed artifact limit are deliberate v1 bounds, not a claim to import an entire Saudi extract through JSON memory.
 
 An operator manifest references existing private local files, not embedded example businesses or geometry:
 
@@ -79,9 +79,22 @@ An operator manifest references existing private local files, not embedded examp
   "boundarySource": "<source, version, date and license>",
   "featuresFile": "owned-features.geojson",
   "boundaryFile": "approved-boundary.geojson",
+  "styleFile": "tile-style.json",
+  "layerBindings": {
+    "base": ["background"],
+    "roads": ["road-casing", "road-fill"]
+  },
+  "assets": [
+    { "kind": "pmtiles", "file": "saudi.pmtiles", "filename": "saudi.pmtiles", "publicSafe": true },
+    { "kind": "glyphs", "file": "arabic-0-255.pbf", "filename": "Noto Sans Arabic Regular/0-255.pbf", "publicSafe": true },
+    { "kind": "schema", "file": "tile-schema.json", "filename": "tile-schema.json", "publicSafe": false },
+    { "kind": "coverage", "file": "coverage.json", "filename": "coverage.json", "publicSafe": false }
+  ],
   "confirmation": "BUILD OWNED SA DATA"
 }
 ```
+
+The style's vector sources must use `pmtiles://saudi.pmtiles` (the declared PMTiles `filename`) and its glyph template must be `jenan-map-glyphs://{fontstack}/{range}.pbf`; the importer rewrites these to immutable same-origin release endpoints. Supply every font/range PBF referenced by the style as a separate glyph asset with a matching `fontstack/range.pbf` filename. Each `layerBindings` key must be a catalog ID and each value must list unique style-layer IDs that exist in the style. Styles using sprites are not accepted by this importer. The importer validates PMTiles v3 header bounds and checksums the streamed files; it does not certify tile contents, source licenses, actual glyph rendering, style quality, or Saudi coverage. Schema/coverage files remain private evidence for independent review, not proof merely because they were imported.
 
 The source release metadata is staged separately through the authenticated administrative create action. The authority assertion must be reviewed against the actual licensed boundary; a string in a manifest is not independent proof of geographical authority.
 
@@ -103,7 +116,7 @@ The local adapter checks SHA-256 through the open file descriptor before trustin
 
 `/admin/jenan-map` has allowlisted child views for versions, updates, sources, layers, storage, health, audit and settings. All admin APIs independently check the session and platform administrator role; state changes also check origin, schema and rate limits. The standalone `/jenan-map` harness is authenticated and does not activate project analysis/start/feasibility integrations.
 
-The implemented HTTP surface includes manifest/search/validation/artifact reads, administrator snapshot/actions/private preview/export, and the administrator layer catalog. Unsupported browser upload/import, automatic scheduling, country-scale tile building, real categorized comparisons, raw bulk bundles and unmeasured health/telemetry controls must be disabled or described as deferred. The layer catalog starts with nullable provenance/confidence and unavailable records. A client toggle is never a permission to expose internal raw data or unpublished files.
+The implemented HTTP surface includes manifest/search/validation/artifact reads, administrator snapshot/actions/private preview/export, and the administrator layer catalog. Unsupported browser upload/import, automatic scheduling, country-scale tile building, real categorized comparisons, raw bulk bundles and unmeasured health/telemetry controls must be disabled or described as deferred. The layer catalog keeps release-specific provenance, status, and style-layer bindings separate from the global administrator enable policy. A client toggle is never a permission to expose internal raw data or unpublished files.
 
 ### Portability and retention
 
