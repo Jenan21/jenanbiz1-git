@@ -4250,3 +4250,224 @@ model AgentGenomeCapability {
   @@unique([genomeId, type, key])
   @@index([type, key])
 }
+
+enum DataCenterPublicationState {
+  DRAFT
+  UNDER_REVIEW
+  APPROVED
+  PUBLISHED
+  DEPRECATED
+  ARCHIVED
+  REJECTED
+}
+
+enum DataCenterScope {
+  PLATFORM
+  ORGANIZATION
+  USER_PRIVATE
+}
+
+enum DataCenterVerificationStatus {
+  VERIFIED
+  ESTIMATED
+  DERIVED
+  UNVERIFIED
+  CONFLICTED
+}
+
+enum DataCenterOwnership {
+  JENAN_OWNED
+  OPEN_LICENSE
+  LICENSED
+  PRIVATE
+  RESTRICTED
+}
+
+model DataCenterSource {
+  id                String             @id @default(cuid())
+  name              String
+  organization      String?
+  url               String?
+  sourceDate        DateTime?
+  license           String?
+  ownership         DataCenterOwnership?
+  notes             String?
+  createdById       String?
+  createdAt         DateTime           @default(now())
+  updatedAt         DateTime           @updatedAt
+
+  @@index([name])
+  @@index([organization])
+  @@index([createdAt])
+}
+
+model DataCenterRecord {
+  id                    String                       @id @default(cuid())
+  kind                  String
+  title                 String
+  category              String?
+  department            String?
+  summary               String?
+  body                  String?
+  content               Json?
+  metadata              Json?
+  tags                  String[]                     @default([])
+  scope                 DataCenterScope              @default(PLATFORM)
+  organizationId        String?
+  ownerId               String?
+  sourceId              String?
+  source                String?
+  sourceOrganization    String?
+  sourceUrl             String?
+  sourceDate            DateTime?
+  importedAt            DateTime                     @default(now())
+  effectiveFrom         DateTime?
+  effectiveTo           DateTime?
+  geography             Json?
+  license               String?
+  ownership             DataCenterOwnership          @default(JENAN_OWNED)
+  usagePolicy           String?
+  verificationStatus    DataCenterVerificationStatus @default(UNVERIFIED)
+  confidence            Int?
+  status                DataCenterPublicationState   @default(DRAFT)
+  version               Int                          @default(1)
+  approvedById          String?
+  approvedAt            DateTime?
+  publishedAt           DateTime?
+  createdById           String?
+  refreshPolicy         String?
+  expiresAt             DateTime?
+  reviewAt              DateTime?
+  lastCheckedAt         DateTime?
+  storageKey            String?
+  mimeType              String?
+  sizeBytes             BigInt?
+  createdAt             DateTime                     @default(now())
+  updatedAt             DateTime                     @updatedAt
+  versions              DataCenterRecordVersion[]
+  evidence              DataCenterEvidence[]
+  chunks                DataCenterChunk[]
+  conflicts             DataCenterConflict[]
+  usage                 DataCenterUsage[]
+
+  @@index([kind, status, updatedAt])
+  @@index([department, status])
+  @@index([scope, organizationId, ownerId, status])
+  @@index([sourceId])
+  @@index([verificationStatus, confidence])
+  @@index([expiresAt, reviewAt])
+  @@index([createdById, createdAt])
+}
+
+model DataCenterRecordVersion {
+  id              String          @id @default(cuid())
+  recordId        String
+  version         Int
+  snapshot        Json
+  changeSummary   String?
+  createdById     String?
+  createdAt       DateTime        @default(now())
+  record          DataCenterRecord @relation(fields: [recordId], references: [id], onDelete: Cascade)
+
+  @@unique([recordId, version])
+  @@index([recordId, createdAt])
+}
+
+model DataCenterEvidence {
+  id                  String                       @id @default(cuid())
+  recordId            String
+  sourceId            String?
+  source              String
+  sourceOrganization  String?
+  sourceUrl           String?
+  sourceDate          DateTime?
+  importedAt          DateTime                     @default(now())
+  effectiveFrom       DateTime?
+  effectiveTo         DateTime?
+  geography           Json?
+  license             String?
+  verificationStatus  DataCenterVerificationStatus @default(UNVERIFIED)
+  confidence          Int?
+  version             Int                          @default(1)
+  approvedById        String?
+  publishedAt         DateTime?
+  notes               String?
+  createdAt           DateTime                     @default(now())
+  record              DataCenterRecord              @relation(fields: [recordId], references: [id], onDelete: Cascade)
+
+  @@index([recordId, version])
+  @@index([sourceId])
+  @@index([verificationStatus, sourceDate])
+}
+
+model DataCenterChunk {
+  id          String          @id @default(cuid())
+  recordId    String
+  version     Int
+  ordinal     Int
+  content     String
+  metadata    Json?
+  createdAt   DateTime        @default(now())
+  record      DataCenterRecord @relation(fields: [recordId], references: [id], onDelete: Cascade)
+
+  @@unique([recordId, version, ordinal])
+  @@index([recordId, version])
+}
+
+model DataCenterConflict {
+  id                  String          @id @default(cuid())
+  recordId            String
+  currentValue        Json
+  proposedValue       Json
+  currentSourceId     String?
+  proposedSourceId    String?
+  currentSourceDate   DateTime?
+  proposedSourceDate  DateTime?
+  difference          String
+  confidence          Int?
+  status              String          @default("OPEN")
+  resolution          String?
+  resolvedById        String?
+  resolvedAt          DateTime?
+  createdAt           DateTime        @default(now())
+  record              DataCenterRecord @relation(fields: [recordId], references: [id], onDelete: Cascade)
+
+  @@index([status, createdAt])
+  @@index([recordId, createdAt])
+}
+
+model DataCenterImport {
+  id              String   @id @default(cuid())
+  adapter         String
+  status          String   @default("RECEIVED")
+  fileName        String?
+  mimeType        String?
+  sizeBytes       BigInt?
+  checksum        String?
+  createdById     String?
+  recordsFound    Int      @default(0)
+  recordsCreated  Int      @default(0)
+  errors          Json?
+  metadata        Json?
+  createdAt       DateTime @default(now())
+  completedAt     DateTime?
+
+  @@index([status, createdAt])
+  @@index([createdById, createdAt])
+}
+
+model DataCenterUsage {
+  id            String          @id @default(cuid())
+  recordId      String
+  consumer      String
+  department    String?
+  service       String?
+  missionId     String?
+  projectId     String?
+  createdAt     DateTime        @default(now())
+  record        DataCenterRecord @relation(fields: [recordId], references: [id], onDelete: Cascade)
+
+  @@index([recordId, createdAt])
+  @@index([consumer, createdAt])
+  @@index([department, service, createdAt])
+}
