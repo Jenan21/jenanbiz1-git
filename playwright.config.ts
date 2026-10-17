@@ -26,6 +26,11 @@ export default defineConfig({
     video: "off",
   },
   projects: [
+    {
+      name: "jenan-map",
+      testMatch: /jenan-map\.spec\.ts/,
+      use: { viewport: { width: 1440, height: 900 }, locale: "ar-SA" },
+    },
     ...visualProjects.flatMap(([device, viewport]) =>
       (["ar", "en"] as const).map((locale) => ({
         name: `visual-${device}-${locale}`,

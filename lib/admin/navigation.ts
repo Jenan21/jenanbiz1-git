@@ -96,6 +96,11 @@ export const adminNavItems: readonly AdminNavItem[] = [
     icon: "activity",
   },
   {
+    href: "/admin/jenan-map",
+    label: { ar: "إدارة Jenan PRO Map", en: "Jenan PRO Map" },
+    icon: "globe",
+  },
+  {
     href: "/admin/map-provider",
     label: { ar: "تكاملات الخرائط", en: "Map Integrations" },
     icon: "globe",
