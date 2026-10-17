@@ -2,7 +2,7 @@
 
 ## Architecture inspection (2026-10-17)
 
-This is an independent, **not yet accepted** Saudi-only implementation. It does not replace the existing Leaflet project picker, project geocoder, project analysis, frozen homepage, or authentication. The task branch is `copilot/jenan-map-implementation`; PR #24 already exists. `origin/main` was fetched before edits and remained `6b264624ef298d40fe1f9efef0e8d4c6521d2402`, an ancestor of the task branch. No merge, production migration, dataset publication, live rollback, or deployment is authorized by this implementation.
+This is an independent, **not yet accepted** Saudi-only implementation. It does not replace the existing Leaflet project picker, project geocoder, project analysis, frozen homepage, or authentication. The initial task branch was `copilot/jenan-map-implementation` (PR #24); this open-data continuation builds directly on PR #33 commit `256b58d`. No merge, production migration, dataset publication, live rollback, or deployment is performed by this implementation. Earlier verification records below are historical; the open-data continuation record distinguishes newly downloaded sources from production acceptance.
 
 Actual repository findings:
 
@@ -201,3 +201,60 @@ No licensed Saudi PMTiles archive, authoritative boundary with independently rev
 - Secret scanning reported no secrets in changed files before commit `a20f73c`. The commit was pushed to the continuation branch; no merge into `main` occurred.
 - Automated Code Review/CodeQL invocation ended with a **validation time-limit response before results**. This is not a clean scan; security-scan completion remains an explicit delivery blocker.
 - GitHub Actions CodeQL and continuous-verification runs currently report `action_required` with no executed jobs; the retrieved CodeQL logs contain no failed jobs or scan result. Maintainer approval/execution and a successful CodeQL result are still required.
+
+## Open-data continuation — source verification (2026-10-17)
+
+Open boundaries are **unofficial**, not authoritative Saudi government boundaries. A reviewed country polygon can constrain this independent map's picker without establishing legal jurisdiction, cadastral accuracy, or official coverage. The older runbook's demand for an official source must not be satisfied by falsely labelling geoBoundaries or OSM as government data.
+
+The following real source files were downloaded outside the checkout to `/tmp/jenan-map-open-sources/`, from geoBoundaries repository revision `9469f09592ced973a3448cf66b6100b741b64c0d`. No country binaries or full source datasets are committed. Download is not import, review, approval, or publication.
+
+| Layer | Source / organization | Source date and limitations | Actual source license / attribution |
+|---|---|---|---|
+| Country (ADM0, 1 unit) | geoBoundaries / William & Mary geoLab; upstream OpenStreetMap, Wambacher | Boundary year **2017**; metadata update 2023-01-19, build 2023-12-12; downloaded 2026-10-17 | **ODbL 1.0**; © OpenStreetMap contributors; geoBoundaries / William & Mary geoLab; Wambacher |
+| Regions (ADM1, 13 units) | geoBoundaries / William & Mary geoLab; upstream OpenStreetMap, Wambacher | Boundary year **2017**; metadata update 2023-01-19, build 2023-12-12; downloaded 2026-10-17 | **ODbL 1.0**; © OpenStreetMap contributors; geoBoundaries / William & Mary geoLab; Wambacher |
+| Governorates (ADM2, 147 units) | geoBoundaries / William & Mary geoLab; upstream geoBoundaries, OpenStreetMap | Boundary year **2021**; metadata update 2023-01-19, build 2023-12-12; downloaded 2026-10-17 | **CC-BY-SA 2.0**, as stated by this file's metadata; retain attribution, license and modification notice, and review upstream mixed-license obligations before redistribution |
+| Roads, places and POIs | OpenStreetMap contributors, distributed by Geofabrik | GCC extract must be clipped to the reviewed Saudi polygon. No extract was downloaded in this session; source timestamp remains unavailable until supplied | **ODbL 1.0**; © OpenStreetMap contributors, https://www.openstreetmap.org/copyright; distributor https://download.geofabrik.de/asia/gcc-states.html |
+
+Do **not** assume every `gbOpen` file is CC-BY 4.0. The Saudi metadata explicitly reports the licenses above. The metadata's update/build dates are not fresh survey dates; preserve the older boundary year too. These sources contain English administrative names; Arabic aliases must come from actual source tags, not invented translations. Natural Earth was not used.
+
+The adjacent `CITATION-AND-USE-geoBoundaries.txt` additionally identifies geoBoundaries code/derivative works as CC-BY 4.0 and requires a [geoBoundaries](https://www.geoboundaries.org) attribution link **alongside** the individual file's upstream citations. Preserve both product and upstream notices; the product citation does not replace the source license. Academic citation: Runfola et al. (2020), *geoBoundaries: A global database of political administrative boundaries*, https://doi.org/10.1371/journal.pone.0231866.
+
+For each level `ADM0`, `ADM1`, `ADM2`, the source URL is:
+
+```text
+https://media.githubusercontent.com/media/wmgeolab/geoBoundaries/9469f09592ced973a3448cf66b6100b741b64c0d/releaseData/gbOpen/SAU/<LEVEL>/geoBoundaries-SAU-<LEVEL>_simplified.geojson
+```
+
+The adjacent `geoBoundaries-SAU-<LEVEL>-metaData.json` records upstream licensing and dates. The `raw.githubusercontent.com` equivalent contains a **Git LFS pointer**, not geometry; never import it as GeoJSON. Simplification is an upstream modification; country/region edge agreement and islands still require geometry review.
+
+Direct PostGIS inspection of these downloaded sources found valid country geometry, 13 valid region geometries and 147 valid governorate geometries. However, exact `ST_Covers` against the simplified ADM0 polygon covered only **4/13 regions** and **101/147 governorates**. Independent simplification and source vintage cause edge mismatches; a successful download is not spatial consistency. Do not bypass coverage validation or call the remaining features missing territories. Any operator clipping must retain original source identifiers, record the transformation and be reviewed for coastal/island loss before publication.
+
+Verified SHA-256 of downloaded simplified geometry:
+
+```text
+ADM0 7908e4f59ae61e5a8a39b1d0e4cea12d576b0a0b8fcee3daf6de80447a8a012d
+ADM1 cf50a59ddcda0fc4539c12799c320b9936fd75f47c1b5562ef548436d9169e13
+ADM2 1a336a495dfcf3c369c5b5d05c205d7509610e0ab27ef1539140f8a8c763e335
+```
+
+### Network and firewall evidence
+
+Direct DNS/download attempts failed for `www.geoboundaries.org` and `download.geofabrik.de`; license-document requests also failed for `www.openstreetmap.org` and `www.naturalearthdata.com`. Both `raw.githubusercontent.com` and `media.githubusercontent.com` were reachable, allowing the pinned boundary downloads above. No replacement OSM records or fabricated source dates were created.
+
+Allow these exact hosts for the operator workflow as applicable:
+
+- `www.geoboundaries.org`: current API discovery (not required by the pinned mirror).
+- `media.githubusercontent.com`: actual pinned geoBoundaries LFS source files.
+- `raw.githubusercontent.com`: repository metadata/LFS pointers; not a substitute for LFS content.
+- `download.geofabrik.de`: GCC PBF extract, timestamp/checksum and distributor page.
+- `www.openstreetmap.org`, `opendatacommons.org`, `creativecommons.org`: attribution and license documents.
+
+The production browser does not need these hosts: it must keep using the existing same-origin artifact endpoints. Do not widen the application CSP to solve an offline importer download problem. Any newly encountered redirect host must be reviewed and recorded rather than silently allowing arbitrary hosts.
+
+### Production shared storage requirements
+
+Keep the existing streaming artifact adapter and immutable `<release UUID>/<SHA-256>.<extension>` keys. `JENAN_MAP_STORAGE_ROOT` must be a durable, private **shared mount** visible at the configured absolute path to every serving app and importing worker; single-instance ephemeral disk is insufficient. Staging is a separate private `JENAN_MAP_STAGING_ROOT`. Both roots require mode `0700`; imported files are read-only `0400`, so deploy processes need a compatible service identity. Never place either root under `public/`, in git, or in the application's expiring database-backup directory.
+
+Provision enough capacity for raw GCC input, country-clipping/build intermediates, the candidate release and all retained published/rollback artifacts. Back up immutable artifacts plus release metadata together; prove restore and range streaming on the destination before switching traffic. No retention deletion is automated.
+
+An object-store deployment still needs a reviewed streaming adapter implementing equivalent authorization, immutable version/checksum verification, range/abort semantics and private preview isolation. Existing whole-buffer document storage and an environment variable naming a bucket are not such an adapter. Configure credentials only through deployment secrets; there are no embedded production credentials or configured production mount in this change.
