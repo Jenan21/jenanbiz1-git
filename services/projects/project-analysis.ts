@@ -11,6 +11,8 @@ export type ProjectAnalysisInput = {
   city: string;
   targetAudience: "CONSUMERS" | "BUSINESSES" | "YOUTH" | "FAMILIES";
   budgetRange?: "UNDER_100K" | "BETWEEN_100K_500K" | "BETWEEN_500K_1M" | "ABOVE_1M";
+  latitude?: number;
+  longitude?: number;
 };
 
 export type ProjectAnalysisResult = {
@@ -79,12 +81,20 @@ function persistedInput(value: unknown): ProjectAnalysisInput | undefined {
   ) {
     return undefined;
   }
+  const hasCoordinates =
+    typeof input.latitude === "number" &&
+    typeof input.longitude === "number" &&
+    Number.isFinite(input.latitude) &&
+    Number.isFinite(input.longitude);
   return {
     idea: input.idea,
     city: input.city,
     targetAudience: targetAudience as ProjectAnalysisInput["targetAudience"],
     ...(budgetRange
       ? { budgetRange: budgetRange as ProjectAnalysisInput["budgetRange"] }
+      : {}),
+    ...(hasCoordinates
+      ? { latitude: input.latitude as number, longitude: input.longitude as number }
       : {}),
   };
 }
@@ -246,6 +256,9 @@ export async function runProjectAnalysis(projectId: string, userId: string) {
   try {
     const intelligence = await searchProjectIntelligence({
       query: input.city,
+      ...(input.latitude !== undefined && input.longitude !== undefined
+        ? { latitude: input.latitude, longitude: input.longitude }
+        : {}),
       countryCode: project.countryCode ?? undefined,
       sector: project.sector ?? undefined,
     });

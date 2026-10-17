@@ -38,6 +38,9 @@ export type IconName =
   | "cube"
   | "bolt"
   | "link"
+  | "mapPin"
+  | "crosshair"
+  | "fileText"
   | "x";
 
 const paths: Record<IconName, React.ReactNode> = {
@@ -172,6 +175,9 @@ const paths: Record<IconName, React.ReactNode> = {
   barChart: <><path d="M5 20V10M12 20V4M19 20v-7" /></>,
   pieChart: <><path d="M12 3v9h9A9 9 0 1 1 12 3Z" /><path d="M15 3a6 6 0 0 1 6 6h-6V3Z" /></>,
   x: <path d="m6 6 12 12M18 6 6 18" />,
+  mapPin: <><path d="M12 21s-6.5-5.6-6.5-11a6.5 6.5 0 0 1 13 0c0 5.4-6.5 11-6.5 11Z" /><circle cx="12" cy="10" r="2.4" /></>,
+  crosshair: <><circle cx="12" cy="12" r="7" /><path d="M12 2v4M12 18v4M2 12h4M18 12h4" /><circle cx="12" cy="12" r="1.2" /></>,
+  fileText: <><path d="M7 3h7l5 5v13H7V3Z" /><path d="M14 3v5h5M10 13h6M10 17h6" /></>,
   lightbulb: <><path d="M9 18h6M10 21h4" /><path d="M12 3a6 6 0 0 0-3.5 10.9c.6.5 1 1.2 1 2V16h5v-.1c0-.8.4-1.5 1-2A6 6 0 0 0 12 3Z" /></>,
   cube: <><path d="m12 3 8 4.5v9L12 21l-8-4.5v-9L12 3Z" /><path d="m4 7.5 8 4.5 8-4.5M12 12v9" /></>,
   bolt: <path d="M13 2 4 14h7l-1 8 9-12h-7l1-8Z" />,

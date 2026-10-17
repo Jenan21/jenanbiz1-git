@@ -85,6 +85,10 @@ const projectAnalysisInput = z.object({
   budgetRange: z
     .enum(["UNDER_100K", "BETWEEN_100K_500K", "BETWEEN_500K_1M", "ABOVE_1M"])
     .optional(),
+  latitude: z.number().min(-90).max(90).optional(),
+  longitude: z.number().min(-180).max(180).optional(),
+}).refine((value) => (value.latitude === undefined) === (value.longitude === undefined), {
+  message: "latitude and longitude must be provided together",
 });
 const projectLaunchPayload = z.discriminatedUnion("section", [
   z.object({

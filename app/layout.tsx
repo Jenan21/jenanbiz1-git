@@ -17,6 +17,7 @@ import "@/styles/projects-stage.css";
 import "@/styles/projects-hub.css";
 import "@/styles/section-showcase.css";
 import "@/styles/project-analysis-dashboard.css";
+import "@/styles/project-analysis-entry.css";
 import "@/styles/project-analysis-workflow.css";
 import "@/styles/project-feasibility-dashboard.css";
 import "@/styles/project-professional-feasibility.css";
