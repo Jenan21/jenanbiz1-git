@@ -7,6 +7,7 @@ import { constants } from "node:fs";
 import { chmod, mkdir, open, realpath, stat } from "node:fs/promises";
 import path from "node:path";
 import pg from "pg";
+import { validateCoverage } from "./open-data.mjs";
 
 const MAX_BYTES = 128 * 1024 * 1024;
 const MAX_FEATURES = 100_000;
@@ -51,7 +52,28 @@ export function normalizeFeatures(value) {
     if (feature.type !== "Feature" || typeof label !== "string" || !label.trim() || label.length > 240 ||
       typeof category !== "string" || category.length > 100 || !supported.has(feature.geometry?.type) ||
       !validCoordinates(feature.geometry.coordinates)) throw new Error("Invalid feature geometry or public label");
-    return { type: "Feature", properties: { label: label.trim(), category }, geometry: { type: feature.geometry.type, coordinates: feature.geometry.coordinates } };
+    const properties = { label: label.trim(), category };
+    if (feature.properties.aliases !== undefined) {
+      const aliases = feature.properties.aliases;
+      if (!Array.isArray(aliases) || aliases.length > 20 || aliases.some((alias) => typeof alias !== "string" || !alias.trim() || alias.length > 240)) throw new Error("Invalid imported search aliases");
+      properties.aliases = [...new Set(aliases.map((alias) => alias.trim()))];
+    }
+    if (feature.properties.layerId !== undefined) {
+      if (!["roads", "places", "regions", "governorates"].includes(feature.properties.layerId) ||
+          category !== feature.properties.layerId || typeof feature.properties.sourceId !== "string" ||
+          !feature.properties.sourceId || feature.properties.sourceId.length > 240 ||
+          !["geoBoundaries", "OpenStreetMap"].includes(feature.properties.source)) throw new Error("Invalid imported layer/source identity");
+      properties.layerId = feature.properties.layerId;
+      properties.sourceId = feature.properties.sourceId;
+      properties.source = feature.properties.source;
+      for (const key of ["name_ar", "name_en"]) {
+        if (feature.properties[key] !== undefined) {
+          if (typeof feature.properties[key] !== "string" || feature.properties[key].length > 240) throw new Error("Invalid bilingual name");
+          properties[key] = feature.properties[key];
+        }
+      }
+    }
+    return { type: "Feature", properties, geometry: { type: feature.geometry.type, coordinates: feature.geometry.coordinates } };
   }) };
 }
 
@@ -100,16 +122,42 @@ export async function build(args) {
   }
   if (stagingRoot === storageRoot || stagingRoot.startsWith(storageRoot + path.sep) || storageRoot.startsWith(stagingRoot + path.sep)) throw new Error("Separate staging and immutable storage roots required");
   const input = JSON.parse((await readStaged(stagingRoot, manifest)).toString("utf8"));
-  if (input.countryCode !== "SA" || input.authoritative !== true || typeof input.boundaryAuthority !== "string" ||
+  validateCoverage(input);
+  if (input.countryCode !== "SA" || typeof input.boundaryAuthority !== "string" ||
     input.boundaryAuthority.trim().length < 3 || input.boundaryAuthority.length > 1000 ||
     typeof input.boundarySource !== "string" || input.boundarySource.trim().length < 3 || input.boundarySource.length > 2000 ||
-    input.confirmation !== "BUILD OWNED SA DATA") throw new Error("Explicit authoritative Saudi boundary provenance and build confirmation required");
+    input.confirmation !== "BUILD OWNED SA DATA") throw new Error("Explicit reviewed Saudi boundary provenance and build confirmation required");
   const featureBytes = await readStaged(stagingRoot, input.featuresFile);
   const boundaryBytes = await readStaged(stagingRoot, input.boundaryFile);
+  const sourceFiles = [];
+  if (input.sourceFiles !== undefined) {
+    if (input.authoritative !== false || !Array.isArray(input.sourceFiles) || input.sourceFiles.length > 3 ||
+        new Set(input.sourceFiles.map((source) => source.level)).size !== input.sourceFiles.length) throw new Error("Bounded original administrative sources required");
+    for (const source of input.sourceFiles) {
+      if (!["ADM0", "ADM1", "ADM2"].includes(source.level) || !/^[a-f0-9]{64}$/.test(source.sha256 ?? "")) throw new Error("Invalid original source evidence");
+      const bytes = await readStaged(stagingRoot, source.filename);
+      if (createHash("sha256").update(bytes).digest("hex") !== source.sha256) throw new Error("Original source checksum mismatch");
+      sourceFiles.push({ ...source, bytes });
+    }
+  }
+  if (input.clipAdministrativeToBoundary === true &&
+      (input.authoritative !== false || !sourceFiles.some((source) => source.level === "ADM1" || source.level === "ADM2"))) throw new Error("Clipping requires retained original administrative sources");
+  if (input.authoritative === false && createHash("sha256").update(boundaryBytes).digest("hex") !== input.boundarySha256) throw new Error("Reviewed boundary checksum mismatch");
   const features = normalizeFeatures(JSON.parse(featureBytes.toString("utf8")));
+  if (input.clipAdministrativeToBoundary === true && features.features.some((feature) => {
+    const level = { regions: "ADM1", governorates: "ADM2" }[feature.properties.layerId];
+    return level && !sourceFiles.some((source) => source.level === level);
+  })) throw new Error("Every clipped administrative layer requires its original source");
   const rawBoundary = JSON.parse(boundaryBytes.toString("utf8"));
   const boundary = rawBoundary.type === "Feature" ? rawBoundary.geometry : rawBoundary;
-  if (!["Polygon", "MultiPolygon"].includes(boundary?.type) || !validCoordinates(boundary.coordinates)) throw new Error("Authoritative Polygon/MultiPolygon boundary required");
+  if (!["Polygon", "MultiPolygon"].includes(boundary?.type) || !validCoordinates(boundary.coordinates)) throw new Error("Reviewed Polygon/MultiPolygon boundary required");
+  if (input.authoritative === false) {
+    const points = boundary.coordinates.flat(boundary.type === "MultiPolygon" ? 2 : 1);
+    const extent = points.reduce((extent, point) => [Math.min(extent[0], point[0]), Math.min(extent[1], point[1]), Math.max(extent[2], point[0]), Math.max(extent[3], point[1])], [180, 90, -180, -90]);
+    if (extent[0] > 35 || extent[1] > 16.5 || extent[2] < 55 || extent[3] < 32 ||
+        extent[0] < 34 || extent[1] < 15 || extent[2] > 56 || extent[3] > 33) throw new Error("Open boundary lacks Saudi country extent; extent alone is not coverage verification");
+    if (features.features.some((feature) => !input.layers.some((layer) => layer.id === feature.properties.layerId))) throw new Error("Imported feature missing reviewed layer provenance");
+  }
   const client = new pg.Client({ connectionString: process.env.DATABASE_URL });
   let processing = false;
   await client.connect();
@@ -124,23 +172,47 @@ export async function build(args) {
     processing = true;
     await client.query("BEGIN ISOLATION LEVEL SERIALIZABLE");
     await client.query(`SELECT id FROM jenan_map.release WHERE id=$1 AND status='Processing' FOR UPDATE`, [releaseId]);
-    await client.query(`INSERT INTO jenan_map.boundary (id,"releaseId",authority,source,geometry)
-      VALUES ($1,$2,$3,$4,ST_Multi(ST_SetSRID(ST_GeomFromGeoJSON($5),4326)))`,
-    [randomUUID(), releaseId, input.boundaryAuthority, input.boundarySource, JSON.stringify(boundary)]);
+    await client.query(`INSERT INTO jenan_map.boundary (id,"releaseId",authority,source,geometry,coverage)
+      VALUES ($1,$2,$3,$4,ST_Multi(ST_SetSRID(ST_GeomFromGeoJSON($5),4326)),$6::jsonb)`,
+    [randomUUID(), releaseId, input.boundaryAuthority, input.boundarySource, JSON.stringify(boundary), input.authoritative === false ? JSON.stringify({
+      countryCode: input.countryCode, authoritative: false, coverageBasis: input.coverageBasis,
+      coverageVerified: input.coverageVerified, unofficial: input.unofficial, notice: input.notice,
+      boundaryAuthority: input.boundaryAuthority, boundarySource: input.boundarySource,
+      boundarySha256: input.boundarySha256, provenance: input.provenance, layers: input.layers,
+    }) : null]);
     for (const feature of features.features) {
-      const inserted = await client.query(`INSERT INTO jenan_map.feature (id,"releaseId",label,category,geometry,search)
-        SELECT $1,$2,$3,$4,g.geometry,to_tsvector('simple',$3)
+      const inserted = await client.query(`INSERT INTO jenan_map.feature (id,"releaseId",label,category,geometry,search,"sourceId","layerId",aliases)
+        SELECT $1,$2,$3,$4,clipped.geometry,to_tsvector('simple',$6),$7,$8,$9::text[]
         FROM (SELECT ST_SetSRID(ST_GeomFromGeoJSON($5),4326) AS geometry) g
         JOIN jenan_map.boundary b ON b."releaseId"=$2
-        WHERE ST_IsValid(g.geometry) AND NOT ST_IsEmpty(g.geometry) AND ST_Covers(b.geometry,g.geometry)`,
-      [randomUUID(), releaseId, feature.properties.label, feature.properties.category, JSON.stringify(feature.geometry)]);
-      if (inserted.rowCount !== 1) throw new Error("Feature invalid or outside authoritative Saudi boundary");
+        CROSS JOIN LATERAL (SELECT CASE WHEN $10::boolean AND $8 IN ('regions','governorates')
+          AND ST_GeometryType(g.geometry) IN ('ST_Polygon','ST_MultiPolygon')
+          THEN ST_Multi(ST_CollectionExtract(ST_Intersection(g.geometry,b.geometry),3))
+          ELSE g.geometry END AS geometry) clipped
+        WHERE ST_IsValid(g.geometry) AND NOT ST_IsEmpty(g.geometry)
+          AND ST_IsValid(clipped.geometry) AND NOT ST_IsEmpty(clipped.geometry)
+          AND ST_Covers(b.geometry,clipped.geometry)
+        RETURNING ST_AsGeoJSON(geometry,15) AS geometry`,
+      [randomUUID(), releaseId, feature.properties.label, feature.properties.category, JSON.stringify(feature.geometry),
+        [feature.properties.label, ...(feature.properties.aliases ?? [])].join(" "),
+        feature.properties.sourceId ?? null, feature.properties.layerId ?? null, feature.properties.aliases ?? [],
+        input.clipAdministrativeToBoundary === true]);
+      if (inserted.rowCount !== 1) throw new Error("Feature invalid or outside reviewed Saudi boundary");
+      // Public geometry and owned search must reflect the same final PostGIS intersection.
+      feature.geometry = JSON.parse(inserted.rows[0].geometry);
     }
     await persistArtifact(client, storageRoot, releaseId, featureBytes, "source", false, "features-source.bin");
     await persistArtifact(client, storageRoot, releaseId, boundaryBytes, "source", false, "boundary-source.bin");
+    for (const source of sourceFiles) {
+      await persistArtifact(client, storageRoot, releaseId, source.bytes, "source", false, `original-${source.level}.bin`);
+    }
     await persistArtifact(client, storageRoot, releaseId, Buffer.from(JSON.stringify(features)), "geojson", true, "places.geojson");
     await client.query(`UPDATE jenan_map.release SET status='Ready' WHERE id=$1 AND status='Processing'`, [releaseId]);
-    await log(client, actor, releaseId, "build.ready", { featureCount: features.features.length, boundaryAuthority: input.boundaryAuthority });
+    await log(client, actor, releaseId, "build.ready", {
+      featureCount: features.features.length, boundaryAuthority: input.boundaryAuthority,
+      administrativeClipping: input.clipAdministrativeToBoundary === true ? "PostGIS ST_Intersection with reviewed ADM0; original sources retained privately" : null,
+      originalSources: sourceFiles.map(({ level, sha256 }) => ({ level, sha256 })),
+    });
     await client.query("COMMIT");
     processing = false;
     console.log(JSON.stringify({ releaseId, status: "Ready", featureCount: features.features.length, reviewRequired: true }));

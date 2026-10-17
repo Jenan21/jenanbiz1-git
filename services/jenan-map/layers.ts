@@ -2,6 +2,7 @@ import { Prisma } from "@/generated/prisma/client";
 import { db, type DbExecutor } from "@/lib/db";
 import { z } from "zod";
 import { MapError } from "./contracts";
+import { validateProvenance, type OpenProvenance } from "../../scripts/jenan-map/open-data.mjs";
 
 export const layerChangeSchema = z.object({
   id: z.string().regex(/^[a-z][a-z-]{0,63}$/),
@@ -27,6 +28,7 @@ export type StoredMapLayer = {
   searchCategories: string[];
   sourceDate: Date | null;
   license: string | null;
+  provenance?: OpenProvenance | null;
 };
 
 type LayerExecutor = Pick<DbExecutor, "$queryRaw" | "$executeRaw">;
@@ -37,6 +39,11 @@ export const releaseLayerBindingSchema = z.object({
   searchCategories: z.array(z.string().trim().min(1).max(100)).max(100).default([]),
   visibility: z.enum(["public", "internal"]).default("public"),
   confidence: z.number().finite().min(0).max(1).nullable().default(null),
+  provenance: z.unknown().optional().transform((value, ctx) => {
+    if (value === undefined) return undefined;
+    try { return validateProvenance(value); }
+    catch { ctx.addIssue({ code: "custom", message: "Invalid open-source provenance" }); return z.NEVER; }
+  }),
 }).strict();
 export const releaseLayerBindingsSchema = z.array(releaseLayerBindingSchema).min(1).max(100)
   .refine((bindings) => new Set(bindings.map((binding) => binding.id)).size === bindings.length, "Duplicate layer IDs");
@@ -72,10 +79,11 @@ export async function bindReleaseLayers(executor: LayerExecutor, releaseId: stri
   if (bindings.some((binding) => !known.has(binding.id))) throw new MapError("INVALID_LAYER_BINDING", 400);
   for (const binding of bindings) {
     await executor.$executeRaw(Prisma.sql`
-      INSERT INTO jenan_map.release_layer ("releaseId", "layerId", visibility, "styleLayerIds", "searchCategories", confidence)
+      INSERT INTO jenan_map.release_layer ("releaseId", "layerId", visibility, "styleLayerIds", "searchCategories", confidence, provenance)
       VALUES (${releaseId}::uuid, ${binding.id}, ${binding.visibility},
         ARRAY[${Prisma.join(binding.styleLayerIds)}]::text[],
-        ${binding.searchCategories.length ? Prisma.sql`ARRAY[${Prisma.join(binding.searchCategories)}]::text[]` : Prisma.sql`ARRAY[]::text[]`}, ${binding.confidence})`);
+        ${binding.searchCategories.length ? Prisma.sql`ARRAY[${Prisma.join(binding.searchCategories)}]::text[]` : Prisma.sql`ARRAY[]::text[]`}, ${binding.confidence},
+        ${binding.provenance ? JSON.stringify(binding.provenance) : null}::jsonb)`);
   }
 }
 
@@ -88,12 +96,13 @@ export function assertPublicStyleLayerBindings(bindings: { visibility: string; s
 function projectedLayers(releaseId: string | null) {
   return Prisma.sql`SELECT l.id, l.label, COALESCE(b.enabled, false) AS enabled,
     COALESCE(b.visibility, l.visibility) AS visibility, COALESCE(b.status, 'unavailable') AS status,
-    b."releaseId", CASE WHEN b."releaseId" IS NOT NULL THEN r.source END AS source,
+    b."releaseId", CASE WHEN b."releaseId" IS NOT NULL THEN COALESCE(b.provenance->>'source', r.source) END AS source,
     CASE WHEN b."releaseId" IS NOT NULL THEN r.version END AS version,
     b.confidence, b."updatedAt", COALESCE(b.revision, l.revision) AS revision,
     COALESCE(b."styleLayerIds", ARRAY[]::text[]) AS "styleLayerIds",
     COALESCE(b."searchCategories", ARRAY[]::text[]) AS "searchCategories",
-    r."sourceDate", r.license
+    COALESCE((b.provenance->>'sourceDate')::timestamptz, r."sourceDate") AS "sourceDate",
+    COALESCE(b.provenance->>'license', r.license) AS license, b.provenance
     FROM jenan_map.layer l
     LEFT JOIN jenan_map.release_layer b ON b."layerId" = l.id AND b."releaseId" = ${releaseId}::uuid
     LEFT JOIN jenan_map.release r ON r.id = b."releaseId"`;

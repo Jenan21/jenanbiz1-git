@@ -5,6 +5,7 @@ import path from "node:path";
 import { validateArtifactFormat, validateReleaseArtifacts } from "@/services/jenan-map/validation";
 import { openArtifact } from "@/services/jenan-map/storage";
 import { pmtilesFixture, readyFixtureFiles } from "./jenan-map-artifact-fixtures";
+import { OPEN_BOUNDARY_NOTICE } from "../../scripts/jenan-map/open-data.mjs";
 
 const root = path.resolve(".jenan-map-validation-test");
 beforeEach(async () => { process.env.JENAN_MAP_STORAGE_ROOT = root; await mkdir(root, { mode: 0o700 }); });
@@ -89,5 +90,34 @@ describe("real retained map artifact validation", () => {
     const broken = await open(filename, "r");
     try { await expect(validateArtifactFormat({ ...artifact, byteSize: BigInt(33) }, broken)).rejects.toThrow("ARTIFACT_FORMAT_INVALID"); }
     finally { await broken.close(); }
+  });
+  it("requires open-data coverage to match the actual imported boundary rather than an authority assertion", async () => {
+    const fixtures = await files();
+    const fixture = fixtures.find((file) => file.artifact.kind === "coverage")!;
+    const provenance = {
+      source: "geoBoundaries SAU ADM0", organization: "geoBoundaries / William & Mary",
+      url: "https://www.geoboundaries.org/api/current/gbOpen/SAU/ADM0/",
+      sourceDate: "2017-01-01T00:00:00.000Z", importedAt: "2026-10-17T00:00:00.000Z",
+      license: "ODbL-1.0", attribution: "geoBoundaries; © OpenStreetMap contributors / Wambacher",
+    };
+    const coverage = {
+      countryCode: "SA", authoritative: false, coverageBasis: "geoBoundaries-ADM0", coverageVerified: true,
+      unofficial: true, notice: OPEN_BOUNDARY_NOTICE, boundaryAuthority: "Unofficial geoBoundaries",
+      boundarySource: "Pinned Saudi ADM0", boundarySha256: "a".repeat(64), provenance,
+      layers: [{ id: "places", provenance }],
+    };
+    const bytes = Buffer.from(JSON.stringify(coverage));
+    fixture.artifact.sha256 = createHash("sha256").update(bytes).digest("hex");
+    fixture.artifact.byteSize = BigInt(bytes.length);
+    await writeFile(path.join(root, fixture.artifact.storageKey), bytes);
+    const boundary = { authority: coverage.boundaryAuthority, source: coverage.boundarySource, coverage };
+    await expect(validateReleaseArtifacts(fixtures.map((file) => file.artifact), true, boundary)).resolves.toMatchObject({ version: 8 });
+    await expect(validateReleaseArtifacts(fixtures.map((file) => file.artifact), true, { ...boundary, coverage: null })).rejects.toThrow("ARTIFACT_FORMAT_INVALID");
+    await expect(validateReleaseArtifacts(fixtures.map((file) => file.artifact), true, { ...boundary, coverage: { ...coverage, boundarySha256: "b".repeat(64) } })).rejects.toThrow("ARTIFACT_FORMAT_INVALID");
+    const handle = await open(path.join(root, fixture.artifact.storageKey), "r");
+    try {
+      await writeFile(path.join(root, fixture.artifact.storageKey), JSON.stringify({ ...coverage, coverageVerified: false }));
+      await expect(validateArtifactFormat(fixture.artifact, handle)).rejects.toThrow("ARTIFACT_FORMAT_INVALID");
+    } finally { await handle.close(); }
   });
 });

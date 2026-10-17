@@ -32,6 +32,7 @@ export interface MapRelease {
   styleUrl: string | null;
   layers: MapLayer[];
   attribution?: string;
+  boundaryNotice?: string;
   source?: string;
   sourceDate?: string;
   license?: string;

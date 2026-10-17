@@ -4,6 +4,7 @@ import { validateStyleMin } from "@maplibre/maplibre-gl-style-spec";
 import { PMTiles, tileIdToZxy } from "pmtiles";
 import { MapError, type Artifact } from "./contracts";
 import { openArtifact } from "./storage";
+import { validateCoverage, validateProvenance } from "../../scripts/jenan-map/open-data.mjs";
 
 const JSON_LIMIT = 16 * 1024 * 1024;
 function invalid(): never { throw new MapError("ARTIFACT_FORMAT_INVALID", 422); }
@@ -160,9 +161,7 @@ export async function validateArtifactFormat(file: Artifact, handle: FileHandle)
         value.vector_layers.some((layer: { id?: unknown }) => typeof layer.id !== "string")) invalid();
     if (internal(value) || value.vector_layers.some(internal)) invalid();
   } else if (file.kind === "coverage") {
-    if (value.countryCode !== "SA" || value.authoritative !== true ||
-        typeof value.boundaryAuthority !== "string" || value.boundaryAuthority.trim().length < 3 ||
-        typeof value.boundarySource !== "string" || value.boundarySource.trim().length < 3) invalid();
+    try { validateCoverage(value); } catch { invalid(); }
   } else if (file.kind === "geojson") {
     if (value.type !== "FeatureCollection" || !Array.isArray(value.features)) invalid();
   } else if (file.kind === "sprite") {
@@ -178,7 +177,7 @@ export function releaseAssetBase(releaseId: string, admin = false) {
   return `/api/${admin ? "admin/" : ""}jenan-map/releases/${releaseId}`;
 }
 
-export async function validateReleaseArtifacts(files: Artifact[], forceVerification = false, boundary?: { authority: string; source: string }) {
+export async function validateReleaseArtifacts(files: Artifact[], forceVerification = false, boundary?: { authority: string; source: string; coverage?: Record<string, unknown> | null }) {
   const results = new Map<string, Awaited<ReturnType<typeof validateArtifactFormat>>>();
   for (const file of files.filter((f) => f.kind !== "source")) {
     const handle = await openArtifact(file, forceVerification);
@@ -195,6 +194,22 @@ export async function validateReleaseArtifacts(files: Artifact[], forceVerificat
     if (coverage.length !== 1) invalid();
     const evidence = results.get(coverage[0].id)!.value;
     if (evidence.boundaryAuthority !== boundary.authority || evidence.boundarySource !== boundary.source) invalid();
+    // An open-data assertion cannot be substituted for the coverage actually imported into PostGIS.
+    if (evidence.authoritative === false || boundary.coverage) {
+      if (!boundary.coverage || evidence.authoritative !== false) invalid();
+      for (const key of ["boundarySha256", "coverageBasis", "coverageVerified", "unofficial", "notice"]) {
+        if (evidence[key] !== boundary.coverage[key]) invalid();
+      }
+      // Canonicalize metadata: PostgreSQL jsonb reorders object keys.
+      try {
+        validateCoverage(boundary.coverage);
+        if (JSON.stringify(validateProvenance(evidence.provenance)) !== JSON.stringify(validateProvenance(boundary.coverage.provenance))) invalid();
+        const layers = (value: unknown) => (value as { id: string; provenance: unknown }[])
+          .map((layer) => ({ id: layer.id, provenance: validateProvenance(layer.provenance) }))
+          .sort((a, b) => a.id.localeCompare(b.id));
+        if (JSON.stringify(layers(evidence.layers)) !== JSON.stringify(layers(boundary.coverage.layers))) invalid();
+      } catch { invalid(); }
+    }
   }
   for (const tile of tiles) {
     if (results.get(tile.id)!.layers!.some((id: string) => !schema.vector_layers.some((v: { id: string }) => v.id === id))) invalid();
