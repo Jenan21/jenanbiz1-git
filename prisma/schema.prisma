@@ -4250,3 +4250,208 @@ model AgentGenomeCapability {
   @@unique([genomeId, type, key])
   @@index([type, key])
 }
+
+enum HubLayer {
+  DATA
+  KNOWLEDGE
+  ASSET
+  EVIDENCE
+}
+
+enum HubScope {
+  PLATFORM
+  ORGANIZATION
+  PRIVATE
+}
+
+enum HubState {
+  DRAFT
+  UNDER_REVIEW
+  APPROVED
+  PUBLISHED
+  DEPRECATED
+  ARCHIVED
+  REJECTED
+}
+
+model HubSource {
+  id                  String   @id @default(cuid())
+  name                String
+  url                 String?
+  quality             Float
+  license             String
+  allowRedistribution Boolean  @default(false)
+  scope               HubScope
+  organizationId      String?
+  ownerId             String
+  createdAt           DateTime @default(now())
+  versions            HubVersion[]
+
+  @@index([scope, organizationId, ownerId])
+}
+
+model HubItem {
+  id             String   @id @default(cuid())
+  layer          HubLayer
+  scope          HubScope
+  organizationId String?
+  ownerId        String
+  title          String
+  tags           String[]
+  state          HubState @default(DRAFT)
+  revision       Int      @default(1)
+  currentVersion Int      @default(1)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+  versions       HubVersion[]
+  reviews        HubReview[]
+  grants         HubAccessGrant[]
+  academy        HubAcademyRelease[]
+
+  @@index([scope, organizationId, ownerId, state])
+  @@index([layer, state])
+}
+
+model HubVersion {
+  id                  String   @id @default(cuid())
+  itemId              String
+  version             Int
+  title               String
+  content             String
+  tags                String[]
+  sourceId            String
+  sourceDate          DateTime
+  sourceSnapshot      Json
+  confidence          Float
+  verification        String
+  verifiedById        String?
+  verifiedAt          DateTime?
+  validUntil          DateTime?
+  authorId            String
+  checksum            String
+  originalStorageKey  String?
+  originalMimeType    String?
+  originalBytes       Int?
+  createdAt           DateTime @default(now())
+  item                HubItem @relation(fields: [itemId], references: [id], onDelete: Restrict)
+  source              HubSource @relation(fields: [sourceId], references: [id], onDelete: Restrict)
+  chunks              HubChunk[]
+  reviews             HubReview[]
+  academy             HubAcademyRelease[]
+  usage               HubUsage[]
+  leftConflicts       HubConflict[] @relation("HubConflictLeft")
+  rightConflicts      HubConflict[] @relation("HubConflictRight")
+  evidenceLinks       HubEvidenceLink[] @relation("HubEvidenceTarget")
+  evidenceFor         HubEvidenceLink[] @relation("HubEvidenceRecord")
+
+  @@unique([itemId, version])
+  @@index([sourceId])
+}
+
+model HubChunk {
+  id        String @id @default(cuid())
+  versionId String
+  ordinal   Int
+  content   String
+  checksum  String
+  version   HubVersion @relation(fields: [versionId], references: [id], onDelete: Restrict)
+
+  @@unique([versionId, ordinal])
+}
+
+model HubReview {
+  id        String   @id @default(cuid())
+  itemId    String
+  versionId String
+  actorId   String
+  fromState HubState
+  toState   HubState
+  notes     String
+  createdAt DateTime @default(now())
+  item      HubItem @relation(fields: [itemId], references: [id], onDelete: Restrict)
+  version   HubVersion @relation(fields: [versionId], references: [id], onDelete: Restrict)
+
+  @@index([itemId, createdAt])
+}
+
+model HubConflict {
+  id             String   @id @default(cuid())
+  leftVersionId  String
+  rightVersionId String
+  field          String
+  leftValue      String
+  rightValue     String
+  notes          String
+  revision       Int      @default(1)
+  resolution     String?
+  resolvedById   String?
+  resolvedAt     DateTime?
+  createdById    String
+  createdAt      DateTime @default(now())
+  leftVersion    HubVersion @relation("HubConflictLeft", fields: [leftVersionId], references: [id], onDelete: Restrict)
+  rightVersion   HubVersion @relation("HubConflictRight", fields: [rightVersionId], references: [id], onDelete: Restrict)
+
+  @@index([leftVersionId, rightVersionId])
+}
+
+model HubAccessGrant {
+  id         String   @id @default(cuid())
+  itemId     String
+  robotId    String
+  missionId  String?
+  grantedById String
+  expiresAt  DateTime
+  revokedAt  DateTime?
+  createdAt  DateTime @default(now())
+  item       HubItem @relation(fields: [itemId], references: [id], onDelete: Restrict)
+
+  @@index([robotId, missionId, expiresAt])
+}
+
+model HubAcademyRelease {
+  id               String   @id @default(cuid())
+  itemId           String
+  versionId        String
+  specialty        String
+  level            String
+  startsAt         DateTime?
+  validUntil       DateTime?
+  state            HubState @default(DRAFT)
+  revision         Int      @default(1)
+  createdById      String
+  lastReviewedById String?
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+  item             HubItem @relation(fields: [itemId], references: [id], onDelete: Restrict)
+  version          HubVersion @relation(fields: [versionId], references: [id], onDelete: Restrict)
+
+  @@index([state, specialty, level])
+}
+
+model HubUsage {
+  id        String   @id @default(cuid())
+  versionId String
+  actorId   String
+  robotId   String?
+  missionId String?
+  purpose   String
+  createdAt DateTime @default(now())
+  version   HubVersion @relation(fields: [versionId], references: [id], onDelete: Restrict)
+
+  @@index([actorId, createdAt])
+  @@index([versionId, createdAt])
+}
+
+model HubEvidenceLink {
+  id                String   @id @default(cuid())
+  versionId         String
+  evidenceVersionId String
+  relation          String
+  notes             String
+  createdById       String
+  createdAt         DateTime @default(now())
+  version           HubVersion @relation("HubEvidenceTarget", fields: [versionId], references: [id], onDelete: Restrict)
+  evidenceVersion   HubVersion @relation("HubEvidenceRecord", fields: [evidenceVersionId], references: [id], onDelete: Restrict)
+
+  @@unique([versionId, evidenceVersionId, relation])
+}
