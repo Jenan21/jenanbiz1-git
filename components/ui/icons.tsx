@@ -1,4 +1,4 @@
-﻿import type { SVGProps } from "react";
+import type { SVGProps } from "react";
 
 export type IconName =
   | "activity"
@@ -41,6 +41,16 @@ export type IconName =
   | "mapPin"
   | "crosshair"
   | "fileText"
+  | "database"
+  | "car"
+  | "store"
+  | "target"
+  | "chip"
+  | "refresh"
+  | "printer"
+  | "share"
+  | "externalLink"
+  | "warning"
   | "x";
 
 const paths: Record<IconName, React.ReactNode> = {
@@ -177,6 +187,16 @@ const paths: Record<IconName, React.ReactNode> = {
   x: <path d="m6 6 12 12M18 6 6 18" />,
   mapPin: <><path d="M12 21s-6.5-5.6-6.5-11a6.5 6.5 0 0 1 13 0c0 5.4-6.5 11-6.5 11Z" /><circle cx="12" cy="10" r="2.4" /></>,
   crosshair: <><circle cx="12" cy="12" r="7" /><path d="M12 2v4M12 18v4M2 12h4M18 12h4" /><circle cx="12" cy="12" r="1.2" /></>,
+  database: <><ellipse cx="12" cy="6" rx="7" ry="3" /><path d="M5 6v6c0 1.7 3.1 3 7 3s7-1.3 7-3V6M5 12v6c0 1.7 3.1 3 7 3s7-1.3 7-3v-6" /></>,
+  car: <><path d="M5 16V11l2-5h10l2 5v5M3 16h18v3H3zM7 13h.01M17 13h.01" /><path d="M5 11h14" /></>,
+  store: <><path d="M4 9l1-5h14l1 5M4 9v11h16V9M4 9c0 2 4 2 4 0 0 2 4 2 4 0 0 2 4 2 4 0 0 2 4 2 4 0M10 20v-6h4v6" /></>,
+  target: <><circle cx="12" cy="12" r="8" /><circle cx="12" cy="12" r="4" /><circle cx="12" cy="12" r="1" /></>,
+  chip: <><rect x="6" y="6" width="12" height="12" rx="2" /><path d="M9 3v3M15 3v3M9 18v3M15 18v3M3 9h3M3 15h3M18 9h3M18 15h3M10 11l1.5 4M13.5 11 12 15" /></>,
+  refresh: <><path d="M20 12a8 8 0 1 1-2.5-5.8M20 4v4h-4" /></>,
+  printer: <><path d="M7 9V3h10v6M7 17H4v-6h16v6h-3M7 14h10v7H7z" /></>,
+  share: <><circle cx="6" cy="12" r="2.2" /><circle cx="17" cy="6" r="2.2" /><circle cx="17" cy="18" r="2.2" /><path d="m8 11 7-4M8 13l7 4" /></>,
+  externalLink: <><path d="M14 4h6v6M20 4l-9 9M18 14v5H5V6h5" /></>,
+  warning: <><path d="M12 3 2.5 20h19L12 3zM12 10v5M12 17.5v.5" /></>,
   fileText: <><path d="M7 3h7l5 5v13H7V3Z" /><path d="M14 3v5h5M10 13h6M10 17h6" /></>,
   lightbulb: <><path d="M9 18h6M10 21h4" /><path d="M12 3a6 6 0 0 0-3.5 10.9c.6.5 1 1.2 1 2V16h5v-.1c0-.8.4-1.5 1-2A6 6 0 0 0 12 3Z" /></>,
   cube: <><path d="m12 3 8 4.5v9L12 21l-8-4.5v-9L12 3Z" /><path d="m4 7.5 8 4.5 8-4.5M12 12v9" /></>,

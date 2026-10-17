@@ -18,7 +18,7 @@ import "@/styles/projects-hub.css";
 import "@/styles/section-showcase.css";
 import "@/styles/project-analysis-dashboard.css";
 import "@/styles/project-analysis-entry.css";
-import "@/styles/project-analysis-report.css";
+import "@/styles/project-analysis-design.css";
 import "@/styles/project-feasibility-dashboard.css";
 import "@/styles/project-professional-feasibility.css";
 import "@/styles/project-start-dashboard.css";

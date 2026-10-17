@@ -8,12 +8,12 @@ export interface NavItem {
 /** The main sections of the platform, in the order they appear in the header. */
 export const MAIN_NAV: readonly NavItem[] = [
   { href: "/dashboard", label: ["الرئيسية", "Home"] },
-  { href: "/projects", label: ["المشاريع والاستثمار", "Projects and investment"] },
-  { href: "/software", label: ["البرمجيات والحلول", "Software and solutions"] },
-  { href: "/business", label: ["منظومة الأعمال", "Business ecosystem"] },
+  { href: "/projects", label: ["المشاريع والاستثمار", "Projects"] },
+  { href: "/software", label: ["البرمجيات والحلول", "Software"] },
+  { href: "/business", label: ["منظومة الأعمال", "Business"] },
   { href: "/user", label: ["بياناتي", "My data"] },
   { href: "/notifications", label: ["الإشعارات", "Notifications"] },
-  { href: "/benefits", label: ["من نحن", "About us"] },
+  { href: "/benefits", label: ["من نحن", "About"] },
 ];
 
 /**

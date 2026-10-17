@@ -87,6 +87,9 @@ const projectAnalysisInput = z.object({
     .optional(),
   latitude: z.number().min(-90).max(90).optional(),
   longitude: z.number().min(-180).max(180).optional(),
+  expectedCapital: z.number().finite().positive().max(1_000_000_000_000).optional(),
+  projectSize: z.enum(["SMALL", "MEDIUM", "LARGE"]).optional(),
+  placeLabel: z.string().trim().min(2).max(160).optional(),
 }).refine((value) => (value.latitude === undefined) === (value.longitude === undefined), {
   message: "latitude and longitude must be provided together",
 });

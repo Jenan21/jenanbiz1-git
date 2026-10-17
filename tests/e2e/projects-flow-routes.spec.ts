@@ -1,4 +1,4 @@
-﻿import { expect, test } from "@playwright/test";
+import { expect, test } from "@playwright/test";
 import { projectFlowDefinitions } from "@/lib/projects/project-flow-routes";
 import { cleanE2EIdentities, createE2ESession, seedE2EUser } from "./identity-fixture";
 import { e2eIdentity } from "./test-identities";
@@ -47,7 +47,7 @@ test.describe.serial("Projects full route flow", () => {
         if (definition.route.endsWith("/progress")) {
           await expect(page.locator("[data-testid='analysis-progress'], .pa-center").first()).toBeVisible();
         } else {
-          await expect(page.locator(".pa-stage-navigation a.is-active, .pa-center").first()).toBeVisible();
+          await expect(page.locator(".an-report, .pa-center").first()).toBeVisible();
         }
       } else if (definition.route.startsWith("/projects/feasibility/pro/")) {
         await expect(page.locator(".professional-feasibility")).toHaveAttribute("data-project-route", definition.route);

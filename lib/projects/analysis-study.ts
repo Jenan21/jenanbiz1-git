@@ -9,6 +9,9 @@ export type AnalysisInput = {
   budgetRange?: string;
   latitude?: number;
   longitude?: number;
+  expectedCapital?: number;
+  projectSize?: string;
+  placeLabel?: string;
 };
 export type AnalysisResult = {
   generatedAt: string;
@@ -179,6 +182,11 @@ export function readStudy(value: unknown): AnalysisStudy {
           ...(typeof inputRecord.latitude === "number" && typeof inputRecord.longitude === "number"
             ? { latitude: inputRecord.latitude, longitude: inputRecord.longitude }
             : {}),
+          ...(typeof inputRecord.expectedCapital === "number" && inputRecord.expectedCapital > 0
+            ? { expectedCapital: inputRecord.expectedCapital }
+            : {}),
+          ...(typeof inputRecord.projectSize === "string" ? { projectSize: inputRecord.projectSize } : {}),
+          ...(typeof inputRecord.placeLabel === "string" ? { placeLabel: inputRecord.placeLabel } : {}),
         } satisfies AnalysisInput)
       : undefined;
   const result =

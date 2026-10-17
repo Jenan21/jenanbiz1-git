@@ -13,6 +13,9 @@ export type ProjectAnalysisInput = {
   budgetRange?: "UNDER_100K" | "BETWEEN_100K_500K" | "BETWEEN_500K_1M" | "ABOVE_1M";
   latitude?: number;
   longitude?: number;
+  expectedCapital?: number;
+  projectSize?: "SMALL" | "MEDIUM" | "LARGE";
+  placeLabel?: string;
 };
 
 export type ProjectAnalysisResult = {
@@ -96,6 +99,13 @@ function persistedInput(value: unknown): ProjectAnalysisInput | undefined {
     ...(hasCoordinates
       ? { latitude: input.latitude as number, longitude: input.longitude as number }
       : {}),
+    ...(typeof input.expectedCapital === "number" && input.expectedCapital > 0
+      ? { expectedCapital: input.expectedCapital }
+      : {}),
+    ...(["SMALL", "MEDIUM", "LARGE"].includes(String(input.projectSize))
+      ? { projectSize: input.projectSize as ProjectAnalysisInput["projectSize"] }
+      : {}),
+    ...(typeof input.placeLabel === "string" && input.placeLabel ? { placeLabel: input.placeLabel } : {}),
   };
 }
 

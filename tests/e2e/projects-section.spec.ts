@@ -482,17 +482,17 @@ test.describe.serial("projects section acceptance", () => {
       }
     }
 
-    await page.goto("/projects/analysis", { waitUntil: "networkidle" });
+    await page.goto("/projects/analysis", { waitUntil: "domcontentloaded" });
     await page.getByTestId("analysis-start").click();
-    await page
-      .getByPlaceholder("Describe your project idea briefly")
-      .fill("Verified E2E analysis entry");
+    await page.getByPlaceholder("Describe your idea briefly").fill("Verified E2E analysis entry");
+    await page.getByPlaceholder("Example: 500,000").fill("500000");
     await page.getByLabel("Sector *").selectOption("Technology");
     await page.getByLabel("Target audience *").selectOption("BUSINESSES");
+    await page.getByLabel("Project size *").selectOption("SMALL");
     await page.getByTestId("analysis-to-location").click();
-    await page.getByTestId("analysis-city").selectOption("Riyadh");
+    // The place name comes from an external geocoder; the click alone fixes the coordinates the analysis uses.
+    await page.locator(".pa-entry-map__canvas").click({ position: { x: 220, y: 130 } });
     await page.getByTestId("analysis-confirm-location").click();
-    await page.getByTestId("analysis-run").click();
     await expect(page.getByTestId("analysis-ready")).toBeVisible({ timeout: 60_000 });
     await Promise.all([
       page.waitForURL(/\/projects\/analysis\/result\?project=/),
@@ -510,12 +510,12 @@ test.describe.serial("projects section acceptance", () => {
       waitUntil: "networkidle",
     });
     await expect(page.locator("[data-testid='analysis-report']")).toBeVisible();
-    await expect(page.locator(".pa-summary")).toContainText("Verified E2E analysis entry");
+    await expect(page.locator(".an-rsummary")).toContainText("Verified E2E analysis entry");
     await page.goto(`/projects/analysis/print?project=${analysisProjectId}`, {
       waitUntil: "networkidle",
     });
     await expect(page.locator("[data-testid='analysis-export']")).toBeVisible();
-    await expect(page.getByRole("link", { name: "Download PDF" })).toHaveAttribute(
+    await expect(page.getByRole("link", { name: "Export PDF" }).first()).toHaveAttribute(
       "href",
       `/api/projects/${analysisProjectId}/report`,
     );
