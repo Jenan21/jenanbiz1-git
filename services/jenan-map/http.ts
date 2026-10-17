@@ -6,7 +6,7 @@ import { hasValidOrigin } from "@/lib/auth/request";
 import { enforceRouteRateLimit } from "@/lib/rate-limit/route-rate-limit";
 import { idSchema, MapError } from "./contracts";
 import { authorizedArtifact } from "./service";
-import { byteRange, openArtifact } from "./storage";
+import { byteRange, downloadMetadata, openArtifact } from "./storage";
 
 const privateHeaders = { "cache-control": "private, no-store", "x-content-type-options": "nosniff" };
 
@@ -32,14 +32,13 @@ export async function artifactResponse(request: NextRequest, artifactId: string,
     const auth = await access(request, admin);
     if (auth.response) return auth.response;
     if (!idSchema.safeParse(artifactId).success) return json({ error: "INVALID_ARTIFACT_ID" }, 400);
-    const expires = request.nextUrl.searchParams.get("expires");
-    if (expires && (!/^\d+$/.test(expires) || Number(expires) < Date.now() || Number(expires) > Date.now() + 15 * 60_000)) return json({ error: "EXPORT_LINK_EXPIRED" }, 410);
     const artifact = await authorizedArtifact(artifactId, admin);
+    const download = downloadMetadata(artifact);
     const size = Number(artifact.byteSize);
     if (!Number.isSafeInteger(size)) throw new MapError("ARTIFACT_TOO_LARGE", 503);
     const headers = new Headers({
-      ...privateHeaders, "accept-ranges": "bytes", "content-type": artifact.mime,
-      "content-disposition": `${admin ? "attachment" : "inline"}; filename="${artifact.id}.${artifact.kind === "geojson" ? "geojson" : artifact.kind === "style" ? "json" : artifact.kind === "pmtiles" ? "pmtiles" : "bin"}"`,
+      ...privateHeaders, "accept-ranges": "bytes", "content-type": download.mime,
+      "content-disposition": `${admin ? "attachment" : "inline"}; filename="${download.filename}"`,
       etag: `"sha256-${artifact.sha256}"`, "x-checksum-sha256": artifact.sha256,
     });
     let range;

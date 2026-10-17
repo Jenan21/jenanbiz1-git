@@ -4,7 +4,7 @@ import { useEffect, useRef } from "react";
 import * as maplibregl from "maplibre-gl";
 import type { GeoJSONSource, Map as LibreMap, Marker } from "maplibre-gl";
 import { Protocol } from "pmtiles";
-import { controlledMapUrl } from "./api";
+import { controlledReleaseMapUrl } from "./api";
 import { geodesicRing } from "./geometry";
 import type { RendererProps } from "./types";
 import "maplibre-gl/dist/maplibre-gl.css";
@@ -140,7 +140,12 @@ export default function MapRenderer({
     async function initialize() {
       try {
         const resourceUrl = (url: string) =>
-          controlledMapUrl(url, window.location.origin, adminPreview);
+          controlledReleaseMapUrl(
+            url,
+            window.location.origin,
+            release,
+            adminPreview,
+          );
         if (!window.WebGL2RenderingContext)
           throw new Error(
             "WebGL غير متاح في هذا الجهاز. يمكنك إدخال الإحداثيات يدوياً.",
@@ -198,6 +203,12 @@ export default function MapRenderer({
           zoom: current ? 12 : 5,
           minZoom: 3,
           maxZoom: 18,
+          // Camera framing only; Saudi inclusion is validated authoritatively by PostGIS.
+          maxBounds: [
+            [34, 16],
+            [56.5, 33],
+          ],
+          renderWorldCopies: false,
           attributionControl: { compact: true, customAttribution: "Jenan PRO" },
           locale: {
             "NavigationControl.ZoomIn": "تكبير الخريطة",

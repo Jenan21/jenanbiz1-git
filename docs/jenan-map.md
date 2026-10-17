@@ -23,6 +23,28 @@ Official source examples were subsequently reachable through GitHub: [MapLibre P
 
 Independent surfaces: `/jenan-map`, `/admin/jenan-map`, `/api/jenan-map/*`, `/api/admin/jenan-map/*`. Existing project coordinates are adapted, not migrated or activated in existing services. New schema objects are additive. PostGIS migration requires an extension-capable development database and operator review; never run it against production during this task.
 
+### Opt-in infrastructure setup
+
+`compose.jenan-map.yaml` uses its own project, network and volume. It does not override the existing `compose.yaml`. Set a unique local `JENAN_MAP_DEV_DB_PASSWORD` and start it explicitly with `docker compose -f compose.jenan-map.yaml up -d`. Do not use `down -v`, attach existing volumes, or repoint the application at this database by accident.
+
+The map migration chain is isolated under `prisma/jenan-map/migrations`, with **`prisma.jenan-map.config.ts`**. Ordinary application `db:migrate` does not install PostGIS or map tables. Only an operator with a reviewed **disposable development** URL should explicitly run:
+
+```sh
+DATABASE_URL="<disposable-development-database-url>" node_modules/.bin/prisma migrate deploy --config prisma.jenan-map.config.ts
+DATABASE_URL="<disposable-development-database-url>" node_modules/.bin/prisma validate --config prisma.jenan-map.config.ts
+```
+
+The app's existing identity/audit schema must also exist in that development database for authenticated integration tests. Never point these commands at production during this task. The optional map Prisma schema documents geometry/tsvector as unsupported fields; actual spatial queries use parameterized SQL. App startup does not apply the map chain.
+
+Runtime/worker configuration:
+
+- `JENAN_MAP_STORAGE_ROOT`: absolute private mounted artifact directory, outside `public/`, with restrictive operator permissions. It must be shared by all relevant app/worker instances; ephemeral serverless local disk is **not** durable storage.
+- `JENAN_MAP_STAGING_ROOT`: separate absolute private operator staging directory, mode `0700`.
+- `JENAN_MAP_BUILD_ACTOR`: authorized existing administrator identity for offline job audit, never accepted from an HTTP import form.
+- Runtime enabled/maintenance/disabled state lives in `jenan_map.runtime`; it is not a rebuild-time environment toggle.
+
+The existing document storage interface downloads whole buffers and is unsuitable for multi-gigabyte PMTiles. Map storage therefore uses a separate streaming adapter. An object-storage/CDN adapter is still a deployment integration requirement, not something supplied by setting the old document provider's credentials.
+
 ## Truth and safety gates
 
 No licensed Saudi extract, authoritative boundary, published PMTiles archive, production artifact credentials, or verified glyph/sprite build is supplied. Until these exist, show unavailable/no-published-release states. Do not synthesize businesses, addresses, coverage, confidence, health, diff counts, or acceptance metrics. Test geometries are isolated fixtures only.
@@ -45,6 +67,24 @@ No real dataset has been imported by this change. Recommended reproducible prepa
 
 The pipeline reconciles the two requested validation stages: **source validation** precedes normalization; **release validation** follows comparison/build and checks artifacts, geometry, schema and coverage before review/approval. Neither successful upload nor a completed build implies approval.
 
+The offline v1 preparation entry is `node scripts/jenan-map/build.mjs --release <uuid> --manifest <staged-filename.json>`, with explicit private directories and database configuration. It accepts bounded owned GeoJSON and boundary inputs, not arbitrary URLs, shell commands or zip archives. This is **not** a country-scale Planetiler runner or an implemented browser upload/build queue. A normalized GeoJSON artifact alone must never qualify as a production basemap: readiness also requires controlled PMTiles/style artifacts and real schema/coverage acceptance. The 128 MiB/100,000-feature preparation limits are deliberate v1 bounds, not a claim to import an entire Saudi extract through JSON memory.
+
+An operator manifest references existing private local files, not embedded example businesses or geometry:
+
+```json
+{
+  "countryCode": "SA",
+  "authoritative": true,
+  "boundaryAuthority": "<reviewed boundary authority>",
+  "boundarySource": "<source, version, date and license>",
+  "featuresFile": "owned-features.geojson",
+  "boundaryFile": "approved-boundary.geojson",
+  "confirmation": "BUILD OWNED SA DATA"
+}
+```
+
+The source release metadata is staged separately through the authenticated administrative create action. The authority assertion must be reviewed against the actual licensed boundary; a string in a manifest is not independent proof of geographical authority.
+
 ### Artifact delivery acceptance
 
 Every retained release must carry its version, source data date/license/attribution, schema version, filenames, byte sizes and SHA-256 values. PMTiles files are immutable: replace the release, never overwrite an active archive. Use same-origin artifact URLs to preserve the existing CSP. If a CDN is added, explicitly verify:
@@ -56,6 +96,14 @@ Every retained release must carry its version, source data date/license/attribut
 - cross-origin delivery, if introduced later, has narrow explicit CORS origins and exposes only required range/validator headers; it also needs a separately reviewed scoped CSP change.
 
 These are acceptance requirements, not evidence that a CDN has been configured or tested.
+
+The local adapter checks SHA-256 through the open file descriptor before trusting an artifact. A bounded in-process cache keyed by path/checksum and file device/inode/size/modification/change timestamps avoids hashing the complete archive on every range request. A changed identity requires re-verification. Cold verification can still read an entire large archive once per process; its real latency is **unmeasured**, and a production object-store adapter needs immutable version/checksum guarantees. Do not present this as a completed country-scale performance benchmark.
+
+### Administrative surface and deferred controls
+
+`/admin/jenan-map` has allowlisted child views for versions, updates, sources, layers, storage, health, audit and settings. All admin APIs independently check the session and platform administrator role; state changes also check origin, schema and rate limits. The standalone `/jenan-map` harness is authenticated and does not activate project analysis/start/feasibility integrations.
+
+The implemented HTTP surface includes manifest/search/validation/artifact reads, administrator snapshot/actions/private preview/export, and the administrator layer catalog. Unsupported browser upload/import, automatic scheduling, country-scale tile building, real categorized comparisons, raw bulk bundles and unmeasured health/telemetry controls must be disabled or described as deferred. The layer catalog starts with nullable provenance/confidence and unavailable records. A client toggle is never a permission to expose internal raw data or unpublished files.
 
 ### Portability and retention
 

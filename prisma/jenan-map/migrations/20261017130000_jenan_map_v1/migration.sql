@@ -20,7 +20,7 @@ CREATE TABLE jenan_map.release (
 CREATE TABLE jenan_map.artifact (
   id uuid PRIMARY KEY,
   "releaseId" uuid NOT NULL REFERENCES jenan_map.release(id) ON DELETE RESTRICT,
-  kind text NOT NULL CHECK (kind IN ('geojson','style','pmtiles','source')),
+  kind text NOT NULL CHECK (kind IN ('geojson','style','pmtiles','glyphs','schema','coverage','source')),
   "storageKey" text NOT NULL UNIQUE,
   filename text NOT NULL,
   mime text NOT NULL,
@@ -34,6 +34,7 @@ CREATE INDEX artifact_release_idx ON jenan_map.artifact("releaseId");
 CREATE TABLE jenan_map.runtime (
   id integer PRIMARY KEY DEFAULT 1 CHECK (id = 1),
   status text NOT NULL DEFAULT 'disabled' CHECK (status IN ('enabled','maintenance','disabled')),
+  "maintenanceMessage" text,
   "publishedReleaseId" uuid REFERENCES jenan_map.release(id) ON DELETE RESTRICT,
   revision integer NOT NULL DEFAULT 0,
   "updatedAt" timestamptz NOT NULL DEFAULT now()

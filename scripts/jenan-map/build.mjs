@@ -42,6 +42,10 @@ export function normalizeFeatures(value) {
   if (value?.type !== "FeatureCollection" || !Array.isArray(value.features) || value.features.length < 1 || value.features.length > MAX_FEATURES) throw new Error("Expected bounded nonempty FeatureCollection");
   const supported = new Set(["Point", "MultiPoint", "LineString", "MultiLineString", "Polygon", "MultiPolygon"]);
   return { type: "FeatureCollection", features: value.features.map((feature) => {
+    if (feature?.properties?.visibility === "internal" || feature?.properties?.internal === true ||
+        feature?.properties?.publicSafe === false) {
+      throw new Error("Internal features cannot enter a public map artifact");
+    }
     const label = feature?.properties?.label;
     const category = feature?.properties?.category ?? "place";
     if (feature.type !== "Feature" || typeof label !== "string" || !label.trim() || label.length > 240 ||
@@ -74,6 +78,9 @@ async function persistArtifact(client, root, releaseId, bytes, kind, publicSafe,
 async function log(client, actor, releaseId, action, metadata) {
   await client.query(`INSERT INTO jenan_map.audit (id,"actorId","releaseId",action,metadata) VALUES ($1,$2,$3,$4,$5::jsonb)`,
     [randomUUID(), actor, releaseId, action, JSON.stringify(metadata)]);
+  await client.query(`INSERT INTO "AuditLog" (id,"actorId",action,"entityType","entityId",metadata)
+    VALUES ($1,$2,$3,'JenanMapRelease',$4,$5::jsonb)`,
+  [randomUUID(), actor, `jenan_map.${action}`, releaseId, JSON.stringify({ ...metadata, result: action === "build.failed" ? "failure" : "success" })]);
 }
 
 export async function build(args) {
@@ -108,6 +115,8 @@ export async function build(args) {
   await client.connect();
   try {
     await client.query("BEGIN ISOLATION LEVEL SERIALIZABLE");
+    const operator = await client.query(`SELECT id FROM "User" WHERE id=$1 AND status='ACTIVE' AND "systemRole" IN ('ADMIN','SUPER_ADMIN')`, [actor]);
+    if (operator.rowCount !== 1) throw new Error("Build operator must be an active platform administrator");
     const claimed = await client.query(`UPDATE jenan_map.release SET status='Processing' WHERE id=$1 AND status='Draft' RETURNING id`, [releaseId]);
     if (claimed.rowCount !== 1) throw new Error("Only a Draft release can be built; create a new release after failure");
     await log(client, actor, releaseId, "build.started", { operator: actor, manifest });

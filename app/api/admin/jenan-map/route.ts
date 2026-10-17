@@ -10,7 +10,7 @@ export async function GET(request: NextRequest) {
     if (auth.response) return auth.response;
     return json(await snapshot());
   } catch {
-    return json({ runtime: { status: "disabled", publishedReleaseId: null, revision: 0 }, releases: [], audit: [], blockers: ["MAP_NOT_PROVISIONED_OR_UNAVAILABLE"], available: false });
+    return json({ runtime: { status: "disabled", maintenanceMessage: null, publishedReleaseId: null, revision: 0 }, releases: [], audit: [], artifacts: [], storage: { status: "unknown", configured: Boolean(process.env.JENAN_MAP_STORAGE_ROOT?.trim()) }, capabilities: [], previewAvailable: false, exportAvailable: false, blockers: ["MAP_NOT_PROVISIONED_OR_UNAVAILABLE"], available: false });
   }
 }
 

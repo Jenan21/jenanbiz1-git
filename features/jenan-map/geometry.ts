@@ -18,7 +18,7 @@ export function coordinateDraft(
   latitude: number,
   longitude: number,
   source: LocationSource,
-): JenanLocation {
+): JenanLocation & { source: LocationSource; selectedAt: string } {
   if (!isCoordinate(latitude, longitude))
     throw new Error("Invalid coordinates");
   return {

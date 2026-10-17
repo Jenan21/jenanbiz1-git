@@ -15,15 +15,18 @@ vi.mock("@/lib/auth/authorization", () => ({ hasPlatformAdminAccess: mocks.admin
 vi.mock("@/lib/auth/request", () => ({ hasValidOrigin: mocks.origin }));
 vi.mock("@/lib/rate-limit/route-rate-limit", () => ({ enforceRouteRateLimit: mocks.rate }));
 
-import { byteRange, openArtifact, safeStorageKey, storageRoot } from "@/services/jenan-map/storage";
+import { byteRange, downloadMetadata, openArtifact, safeStorageKey, storageRoot } from "@/services/jenan-map/storage";
 import { commandSchema, locationSchema, searchSchema, type Artifact } from "@/services/jenan-map/contracts";
-import { command, exportManifest, manifest, previewManifest, publishedRelease, search, validateLocation } from "@/services/jenan-map/service";
+import { command, exportManifest, manifest, previewManifest, publishedRelease, search, snapshot, validateLocation } from "@/services/jenan-map/service";
 import { GET as publicManifest } from "@/app/api/jenan-map/route";
 import { GET as adminSnapshot, POST as adminCommand } from "@/app/api/admin/jenan-map/route";
 import { GET as publicArtifact } from "@/app/api/jenan-map/artifacts/[artifactId]/route";
 import { GET as adminArtifact } from "@/app/api/admin/jenan-map/artifacts/[artifactId]/route";
 import { GET as adminExport } from "@/app/api/admin/jenan-map/export/route";
 import { GET as adminPreview } from "@/app/api/admin/jenan-map/preview/route";
+import { GET as adminSearch } from "@/app/api/admin/jenan-map/search/route";
+import { POST as adminValidate } from "@/app/api/admin/jenan-map/validate/route";
+import { GET as adminReleaseExport } from "@/app/api/admin/jenan-map/releases/[releaseId]/export/route";
 import { POST as validateEndpoint } from "@/app/api/jenan-map/validate/route";
 import { GET as searchEndpoint } from "@/app/api/jenan-map/search/route";
 
@@ -36,6 +39,18 @@ const root = path.resolve(".jenan-map-backend-test");
 const bytes = Buffer.from('{"type":"FeatureCollection","features":[]}');
 const checksum = createHash("sha256").update(bytes).digest("hex");
 const artifact: Artifact = { id: artifactId, releaseId, kind: "geojson", storageKey: `${releaseId}/${checksum}.geojson`, filename: "places.geojson", mime: "application/geo+json", byteSize: BigInt(bytes.length), sha256: checksum, publicSafe: true };
+const readyArtifacts: Artifact[] = [
+  artifact,
+  { ...artifact, id: otherId, kind: "style", storageKey: `${releaseId}/${checksum}.json`, filename: "style.json", mime: "application/json" },
+  { ...artifact, id: "4c1b5f07-9581-4e3b-a0a3-9fc7ea08ead4", kind: "pmtiles", storageKey: `${releaseId}/${checksum}.pmtiles`, filename: "basemap.pmtiles", mime: "application/vnd.pmtiles" },
+  { ...artifact, id: "5c1b5f07-9581-4e3b-a0a3-9fc7ea08ead5", kind: "glyphs", filename: "glyphs.bin" },
+  { ...artifact, id: "6c1b5f07-9581-4e3b-a0a3-9fc7ea08ead6", kind: "schema", filename: "schema.json", publicSafe: false },
+  { ...artifact, id: "7c1b5f07-9581-4e3b-a0a3-9fc7ea08ead7", kind: "coverage", filename: "coverage.json", publicSafe: false },
+];
+async function writeReadyFixtures() {
+  await mkdir(path.join(root, releaseId), { recursive: true });
+  for (const file of readyArtifacts) await writeFile(path.join(root, file.storageKey), bytes);
+}
 const request = (url = "/api/jenan-map") => new NextRequest(`http://localhost${url}`);
 
 beforeEach(() => {
@@ -88,6 +103,11 @@ describe("private immutable storage", () => {
     expect(() => storageRoot()).toThrow("PRIVATE_STORAGE_REQUIRED");
     expect(() => safeStorageKey("../../secret")).toThrow();
   });
+  it("retains portable glyph/image extensions and sanitizes download headers", () => {
+    expect(downloadMetadata({ ...artifact, filename: "glyphs.pbf", mime: "application/x-protobuf" })).toEqual({ filename: "glyphs.pbf", mime: "application/x-protobuf" });
+    expect(downloadMetadata({ ...artifact, filename: "sprite.png", mime: "image/png" })).toEqual({ filename: "sprite.png", mime: "image/png" });
+    expect(downloadMetadata({ ...artifact, filename: "../../bad\r\n.html", mime: "text/html" })).toEqual({ filename: "bad__.geojson", mime: "application/geo+json" });
+  });
   it("checks file size and SHA-256 before streaming", async () => {
     await mkdir(path.join(root, releaseId), { recursive: true });
     await writeFile(path.join(root, artifact.storageKey), bytes);
@@ -102,6 +122,19 @@ describe("private immutable storage", () => {
     await symlink(original, path.join(root, artifact.storageKey));
     await expect(openArtifact(artifact)).rejects.toThrow();
   });
+  it("keeps hot range reads bounded while permitting forced publication/export checks", async () => {
+    await mkdir(path.join(root, releaseId), { recursive: true });
+    await writeFile(path.join(root, artifact.storageKey), bytes);
+    const first = await openArtifact(artifact);
+    const stream = vi.spyOn(Object.getPrototypeOf(first), "createReadStream");
+    await first.close();
+    try {
+      await (await openArtifact(artifact)).close();
+      expect(stream).not.toHaveBeenCalled();
+      await (await openArtifact(artifact, true)).close();
+      expect(stream).toHaveBeenCalledTimes(1);
+    } finally { stream.mockRestore(); }
+  });
 });
 
 describe("publication and owned spatial queries", () => {
@@ -111,12 +144,11 @@ describe("publication and owned spatial queries", () => {
     expect(mocks.execute).not.toHaveBeenCalled();
   });
   it("omits private source artifacts and storage keys from public manifests", async () => {
-    await mkdir(path.join(root, releaseId), { recursive: true });
-    await writeFile(path.join(root, artifact.storageKey), bytes);
+    await writeReadyFixtures();
     mocks.query.mockResolvedValueOnce([state]).mockResolvedValueOnce([release])
-      .mockResolvedValueOnce([artifact, { ...artifact, id: otherId, kind: "source", publicSafe: false }]);
+      .mockResolvedValueOnce([...readyArtifacts, { ...artifact, id: otherId, kind: "source", publicSafe: false }]);
     const value = await manifest();
-    expect(value.release?.artifacts).toHaveLength(1);
+    expect(value.release?.artifacts).toHaveLength(4);
     expect(JSON.stringify(value)).not.toContain("storageKey");
     expect(JSON.stringify(value)).not.toContain("source.bin");
   });
@@ -149,17 +181,23 @@ describe("publication and owned spatial queries", () => {
   });
   it("rejects stale publish and mismatched rollback confirmations transactionally", async () => {
     mocks.query.mockResolvedValueOnce([state]).mockResolvedValueOnce([{ ...release, status: "Approved" }]);
-    await expect(command({ action: "publish", releaseId, expectedRevision: 3, confirmation: "PUBLISH", reason: "Reviewed and confirmed" }, "admin")).rejects.toThrow("STALE_REVISION");
+    await expect(command({ action: "publish", releaseId, expectedRevision: 3, expectedPublishedReleaseId: releaseId, confirmation: "PUBLISH", reason: "Reviewed and confirmed" }, "admin")).rejects.toThrow("STALE_REVISION");
     expect(mocks.execute).not.toHaveBeenCalled();
     expect(mocks.transaction.mock.calls[0][1]).toMatchObject({ isolationLevel: "Serializable" });
     mocks.query.mockResolvedValueOnce([state]).mockResolvedValueOnce([{ ...release, status: "Archived" }]);
-    await expect(command({ action: "rollback", releaseId, expectedRevision: 4, confirmation: "PUBLISH", reason: "Rollback confirmed" }, "admin")).rejects.toThrow("EXPLICIT_CONFIRMATION_REQUIRED");
+    await expect(command({ action: "rollback", releaseId, expectedRevision: 4, expectedPublishedReleaseId: releaseId, confirmation: "PUBLISH", reason: "Rollback confirmed" }, "admin")).rejects.toThrow("EXPLICIT_CONFIRMATION_REQUIRED");
   });
   it("maps raw PostgreSQL serialization/deadlock failures to safe retry conflicts", async () => {
     for (const code of ["40001", "40P01", "23505"]) {
       mocks.transaction.mockRejectedValueOnce(new Prisma.PrismaClientKnownRequestError("raw conflict", { code: "P2010", clientVersion: "7.10.0", meta: { code } }));
-      await expect(command({ action: "publish", releaseId, expectedRevision: 4, confirmation: "PUBLISH", reason: "Reviewed release confirmed" }, "admin")).rejects.toMatchObject({ code: "CONCURRENT_CHANGE_RETRY", status: 409 });
+      await expect(command({ action: "publish", releaseId, expectedRevision: 4, expectedPublishedReleaseId: releaseId, confirmation: "PUBLISH", reason: "Reviewed release confirmed" }, "admin")).rejects.toMatchObject({ code: "CONCURRENT_CHANGE_RETRY", status: 409 });
     }
+  });
+  it("requires both the expected pointer and revision before publication", async () => {
+    expect(commandSchema.safeParse({ action: "publish", releaseId, expectedRevision: 4, confirmation: "PUBLISH", reason: "Release confirmed" }).success).toBe(false);
+    mocks.query.mockResolvedValueOnce([state]).mockResolvedValueOnce([{ ...release, status: "Approved" }]);
+    await expect(command({ action: "publish", releaseId, expectedRevision: 4, expectedPublishedReleaseId: null, confirmation: "PUBLISH", reason: "Release confirmed" }, "admin")).rejects.toThrow("STALE_PUBLISHED_POINTER");
+    expect(mocks.execute).not.toHaveBeenCalled();
   });
   it("cannot enable before any release exists or archive the active release", async () => {
     mocks.query.mockResolvedValueOnce([{ ...state, publishedReleaseId: null }]);
@@ -169,19 +207,20 @@ describe("publication and owned spatial queries", () => {
   });
   it("stores runtime changes and audit in the same serializable transaction", async () => {
     mocks.query.mockResolvedValueOnce([state]);
-    await command({ action: "runtime", status: "maintenance", expectedRevision: 4, reason: "Planned maintenance", confirmation: "CHANGE RUNTIME" }, "admin");
+    const maintenanceMessage = "الخريطة قيد الصيانة، يرجى المحاولة لاحقًا";
+    await command({ action: "runtime", status: "maintenance", maintenanceMessage, expectedRevision: 4, reason: "Planned maintenance", confirmation: "CHANGE RUNTIME" }, "admin");
     expect(mocks.execute.mock.calls[0][0].text).toContain("UPDATE jenan_map.runtime");
+    expect(mocks.execute.mock.calls[0][0].values).toContain(maintenanceMessage);
     expect(mocks.execute.mock.calls[1][0].text).toContain("INSERT INTO jenan_map.audit");
     expect(mocks.execute.mock.calls[1][0].values).toContain("admin");
   });
   it("publishes verified retained artifacts, archives old pointer and audits atomically", async () => {
-    await mkdir(path.join(root, releaseId), { recursive: true });
-    await writeFile(path.join(root, artifact.storageKey), bytes);
+    await writeReadyFixtures();
     mocks.query.mockResolvedValueOnce([{ ...state, publishedReleaseId: otherId }])
       .mockResolvedValueOnce([{ ...release, status: "Approved" }])
       .mockResolvedValueOnce([{ boundaries: BigInt(1), features: BigInt(1) }])
-      .mockResolvedValueOnce([artifact]);
-    const result = await command({ action: "publish", releaseId, expectedRevision: 4, reason: "Release review approved", confirmation: "PUBLISH" }, "admin");
+      .mockResolvedValueOnce(readyArtifacts);
+    const result = await command({ action: "publish", releaseId, expectedRevision: 4, expectedPublishedReleaseId: otherId, reason: "Release review approved", confirmation: "PUBLISH" }, "admin");
     expect(result).toMatchObject({ action: "publish", revision: 5 });
     const statements = mocks.execute.mock.calls.map(([query]) => query.text);
     expect(statements[0]).toContain("status = 'Archived'");
@@ -191,13 +230,12 @@ describe("publication and owned spatial queries", () => {
     expect(statements.join(" ")).not.toMatch(/\bDELETE\b/);
   });
   it("restores only a previously published archived release without deleting artifacts", async () => {
-    await mkdir(path.join(root, releaseId), { recursive: true });
-    await writeFile(path.join(root, artifact.storageKey), bytes);
+    await writeReadyFixtures();
     mocks.query.mockResolvedValueOnce([{ ...state, publishedReleaseId: otherId }])
       .mockResolvedValueOnce([{ ...release, status: "Archived" }])
       .mockResolvedValueOnce([{ boundaries: BigInt(1), features: BigInt(1) }])
-      .mockResolvedValueOnce([artifact]);
-    expect(await command({ action: "rollback", releaseId, expectedRevision: 4, reason: "Restore reviewed release", confirmation: "ROLLBACK" }, "admin")).toMatchObject({ action: "rollback", revision: 5 });
+      .mockResolvedValueOnce(readyArtifacts);
+    expect(await command({ action: "rollback", releaseId, expectedRevision: 4, expectedPublishedReleaseId: otherId, reason: "Restore reviewed release", confirmation: "ROLLBACK" }, "admin")).toMatchObject({ action: "rollback", revision: 5 });
     const statements = mocks.execute.mock.calls.map(([query]) => query.text).join(" ");
     expect(statements).toContain('COALESCE("publishedAt",now())');
     expect(statements).not.toMatch(/\bDELETE\b/);
@@ -209,13 +247,17 @@ describe("publication and owned spatial queries", () => {
     expect(mocks.execute).not.toHaveBeenCalled();
   });
   it("exports private artifacts only in the admin portable manifest with checksums", async () => {
+    await writeReadyFixtures();
     mocks.query.mockResolvedValueOnce([release]).mockResolvedValueOnce([artifact, { ...artifact, id: otherId, publicSafe: false, kind: "source" }]);
     const value = await exportManifest(releaseId);
     expect(value.artifacts).toHaveLength(2);
     expect(value.artifacts[0].url).toContain("/api/admin/jenan-map/");
     expect(value.artifacts[0].sha256).toBe(checksum);
     expect(value.portableGeojsonAvailable).toBe(true);
-    expect(value.expiresAt).toBeTruthy();
+    expect(value).not.toHaveProperty("expiresAt");
+    expect(value.artifacts[0].url).not.toContain("expires=");
+    expect(value.release).not.toHaveProperty("reviewedBy");
+    expect(value.authorization).toContain("no independent link expiry");
   });
   it("previews reviewed build candidates through exclusively admin artifact endpoints", async () => {
     await mkdir(path.join(root, releaseId), { recursive: true });
@@ -231,6 +273,23 @@ describe("publication and owned spatial queries", () => {
     mocks.query.mockResolvedValueOnce([state]).mockResolvedValueOnce([release]).mockResolvedValueOnce([artifact]);
     await expect(manifest()).rejects.toThrow();
   });
+  it("exposes only safe admin artifact metadata and honest storage/capabilities", async () => {
+    mocks.query.mockResolvedValueOnce([state]).mockResolvedValueOnce([release]).mockResolvedValueOnce([]).mockResolvedValueOnce([artifact]);
+    const result = await snapshot();
+    expect(result.artifacts[0]).toMatchObject({ releaseId, publicSafe: true, byteSize: String(bytes.length), url: `/api/admin/jenan-map/artifacts/${artifactId}` });
+    expect(JSON.stringify(result.artifacts)).not.toContain("storageKey");
+    expect(result.storage).toEqual({ status: "unavailable", configured: true });
+    expect(result.capabilities).toContain("rollback");
+    expect(result.previewAvailable).toBe(true);
+    expect(result.exportAvailable).toBe(true);
+  });
+  it("validates admin preview geometry against the pinned unpublished release", async () => {
+    mocks.query.mockResolvedValueOnce([{ ...release, status: "Ready" }]).mockResolvedValueOnce([{ inside: true }]);
+    expect(await validateLocation(24, 46, releaseId, true)).toEqual({ valid: true, latitude: 24, longitude: 46, releaseId });
+    expect(mocks.query.mock.calls[0][0].text).toContain("FROM jenan_map.release");
+    expect(mocks.query.mock.calls.some(([query]) => query.text.includes("jenan_map.runtime"))).toBe(false);
+    await expect(validateLocation(24, 46, undefined, true)).rejects.toThrow("PREVIEW_RELEASE_REQUIRED");
+  });
 });
 
 describe("API authorization, origin and byte serving", () => {
@@ -240,21 +299,22 @@ describe("API authorization, origin and byte serving", () => {
     const responses = await Promise.all([
       publicManifest(request()), searchEndpoint(request("/api/jenan-map/search?q=Riyadh")),
       validateEndpoint(request()), adminSnapshot(request()), adminCommand(request()),
-      publicArtifact(request(), context), adminArtifact(request(), context), adminExport(request()), adminPreview(request()),
+      publicArtifact(request(), context), adminArtifact(request(), context), adminExport(request()), adminPreview(request()), adminSearch(request()), adminValidate(request()), adminReleaseExport(request(), { params: Promise.resolve({ releaseId }) }),
     ]);
-    expect(responses.map((response) => response.status)).toEqual(Array(9).fill(401));
+    expect(responses.map((response) => response.status)).toEqual(Array(12).fill(401));
     expect(mocks.query).not.toHaveBeenCalled();
   });
   it("requires admin on snapshots, exports, artifacts and commands", async () => {
     mocks.admin.mockReturnValue(false);
     const context = { params: Promise.resolve({ artifactId }) };
-    const responses = await Promise.all([adminSnapshot(request()), adminCommand(request()), adminExport(request()), adminArtifact(request(), context), adminPreview(request())]);
-    expect(responses.map((response) => response.status)).toEqual(Array(5).fill(403));
+    const responses = await Promise.all([adminSnapshot(request()), adminCommand(request()), adminExport(request()), adminArtifact(request(), context), adminPreview(request()), adminSearch(request()), adminValidate(request()), adminReleaseExport(request(), { params: Promise.resolve({ releaseId }) })]);
+    expect(responses.map((response) => response.status)).toEqual(Array(8).fill(403));
   });
   it("enforces origin before every mutation", async () => {
     mocks.origin.mockReturnValue(false);
     expect((await adminCommand(request())).status).toBe(403);
     expect((await validateEndpoint(request())).status).toBe(403);
+    expect((await adminValidate(request())).status).toBe(403);
     expect(mocks.query).not.toHaveBeenCalled();
   });
   it("honors shared authenticated rate limits", async () => {
@@ -278,10 +338,11 @@ describe("API authorization, origin and byte serving", () => {
     expect(response.headers.get("x-checksum-sha256")).toBe(checksum);
     expect(await response.text()).toBe(bytes.subarray(0, 10).toString());
   });
-  it("refuses nonpublic artifacts and expired admin export links", async () => {
+  it("refuses nonpublic artifacts and never treats export URLs as bearer credentials", async () => {
     mocks.query.mockResolvedValueOnce([{ ...artifact, publicSafe: false }]).mockResolvedValueOnce([state]).mockResolvedValueOnce([release]);
     expect((await publicArtifact(request(), { params: Promise.resolve({ artifactId }) })).status).toBe(404);
-    expect((await adminArtifact(request("/api/admin/jenan-map/artifacts/" + artifactId + "?expires=1"), { params: Promise.resolve({ artifactId }) })).status).toBe(410);
+    mocks.admin.mockReturnValue(false);
+    expect((await adminArtifact(request("/api/admin/jenan-map/artifacts/" + artifactId), { params: Promise.resolve({ artifactId }) })).status).toBe(403);
   });
 });
 

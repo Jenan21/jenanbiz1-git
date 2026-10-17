@@ -27,6 +27,7 @@ model Release {
   artifacts    Artifact[]
   features     Feature[]
   boundaries   Boundary[]
+  savedLocations SavedLocation[]
 
   @@map("release")
   @@schema("jenan_map")
@@ -53,6 +54,7 @@ model Artifact {
 model Runtime {
   id                 Int      @id @default(1)
   status             String   @default("disabled")
+  maintenanceMessage String?
   publishedReleaseId String?  @db.Uuid
   revision           Int      @default(0)
   updatedAt          DateTime @default(now()) @db.Timestamptz
@@ -97,5 +99,24 @@ model Audit {
 
   @@index([createdAt])
   @@map("audit")
+  @@schema("jenan_map")
+}
+
+model SavedLocation {
+  userId           String   @id
+  releaseId        String   @db.Uuid
+  release          Release  @relation(fields: [releaseId], references: [id], onDelete: Restrict)
+  latitude         Float
+  longitude        Float
+  country          String   @default("SA")
+  region           String?
+  city             String?
+  district         String?
+  formattedAddress String?
+  source           String
+  selectedAt       DateTime @default(now()) @db.Timestamptz
+
+  @@index([releaseId])
+  @@map("saved_location")
   @@schema("jenan_map")
 }

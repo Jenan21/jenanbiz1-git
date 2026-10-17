@@ -34,9 +34,13 @@ export function JenanMapHarness() {
               </p>
               <p>
                 آخر تأكيد:{" "}
-                <time dateTime={location.selectedAt}>
-                  {new Date(location.selectedAt).toLocaleString("ar-SA")}
-                </time>
+                {location.selectedAt ? (
+                  <time dateTime={location.selectedAt}>
+                    {new Date(location.selectedAt).toLocaleString("ar-SA")}
+                  </time>
+                ) : (
+                  "غير متاح في السجل السابق"
+                )}
               </p>
             </>
           ) : (

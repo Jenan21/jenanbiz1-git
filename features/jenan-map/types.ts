@@ -8,8 +8,8 @@ export interface JenanLocation {
   city: string | null;
   district: string | null;
   formattedAddress: string | null;
-  source: LocationSource;
-  selectedAt: string;
+  source: LocationSource | null;
+  selectedAt: string | null;
 }
 
 export interface MapLayer {
@@ -29,6 +29,7 @@ export interface MapRelease {
   source?: string;
   sourceDate?: string;
   license?: string;
+  artifacts?: Array<{ id: string; kind: string; url: string }>;
 }
 
 export interface MapManifest {

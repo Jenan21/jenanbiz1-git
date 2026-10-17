@@ -1,3 +1,5 @@
+import type { MapRelease } from "./types";
+
 export async function mapRequest<T>(
   url: string,
   init: RequestInit = {},
@@ -80,6 +82,27 @@ export function mapManifestUrl(preview: string | null) {
   return preview
     ? `/api/admin/jenan-map/preview?releaseId=${encodeURIComponent(preview)}`
     : "/api/jenan-map";
+}
+
+export function controlledReleaseMapUrl(
+  value: string,
+  origin: string,
+  release: Pick<MapRelease, "id" | "artifacts">,
+  adminPreview = false,
+) {
+  const controlled = controlledMapUrl(value, origin, adminPreview);
+  const path = new URL(controlled.replace(/^pmtiles:\/\//, "")).pathname;
+  const releasePrefix = `/api/${adminPreview ? "admin/" : ""}jenan-map/releases/${encodeURIComponent(release.id)}/`;
+  const artifactMatches = release.artifacts?.some((artifact) => {
+    const allowed = new URL(
+      controlledMapUrl(artifact.url, origin, adminPreview),
+    ).pathname;
+    return path === allowed || path.startsWith(`${allowed}/`);
+  });
+  if (!path.startsWith(releasePrefix) && !artifactMatches) {
+    throw new Error("مصدر الخريطة غير مرتبط بالإصدار المحدد.");
+  }
+  return controlled;
 }
 
 export function assertPinnedRelease(

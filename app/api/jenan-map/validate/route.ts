@@ -10,6 +10,6 @@ export async function POST(request: NextRequest) {
     if (auth.response) return auth.response;
     const parsed = locationSchema.safeParse(await request.json().catch(() => null));
     if (!parsed.success) return json({ error: "INVALID_COORDINATES" }, 400);
-    return json(await validateLocation(parsed.data.latitude, parsed.data.longitude));
+    return json(await validateLocation(parsed.data.latitude, parsed.data.longitude, parsed.data.releaseId));
   } catch (error) { return failure(error); }
 }

@@ -6,6 +6,7 @@ import { focusLoopTarget } from "@/features/jenan-map/accessibility";
 import {
   assertPinnedRelease,
   controlledMapUrl,
+  controlledReleaseMapUrl,
   mapManifestUrl,
   mapRequest,
 } from "@/features/jenan-map/api";
@@ -16,7 +17,11 @@ import {
   isCoordinate,
   MAP_RADII,
 } from "@/features/jenan-map/geometry";
-import { toLegacyProjectLocation } from "@/features/jenan-map/project-adapter";
+import {
+  fromLegacyProjectLocation,
+  fromProjectRecord,
+  toLegacyProjectLocation,
+} from "@/features/jenan-map/project-adapter";
 
 function distance(a: [number, number], b: [number, number]) {
   const rad = Math.PI / 180;
@@ -103,19 +108,244 @@ describe("Jenan PRO map geometry and draft isolation", () => {
     expect(draft.source).toBe("map");
     expect(Number.isFinite(Date.parse(draft.selectedAt))).toBe(true);
   });
-  it("only adapts the actual legacy Project countryCode contract without persistence", () => {
+});
+
+describe("read-only project integration adapters", () => {
+  const input = {
+    idea: "A saved project",
+    city: "الرياض",
+    targetAudience: "BUSINESSES",
+    latitude: 24.713612345,
+    longitude: 46.675312345,
+    placeLabel: "عنوان محفوظ",
+  };
+  it("restores the exact coordinates and saved label from analysisStudy.input", () => {
+    const project = {
+      countryCode: "SA",
+      analysisStudy: { status: "COMPLETED", input },
+    };
+    expect(fromProjectRecord(project)).toEqual({
+      latitude: input.latitude,
+      longitude: input.longitude,
+      city: input.city,
+      formattedAddress: input.placeLabel,
+      country: null,
+      region: null,
+      district: null,
+      source: null,
+      selectedAt: null,
+    });
+    expect(project.analysisStudy.input).toBe(input);
+  });
+  it("never guesses an address, selection time or country from a coordinate-only legacy record", () => {
+    expect(fromLegacyProjectLocation({ latitude: 24, longitude: 46 })).toEqual({
+      latitude: 24,
+      longitude: 46,
+      country: null,
+      region: null,
+      city: null,
+      district: null,
+      formattedAddress: null,
+      source: null,
+      selectedAt: null,
+    });
+  });
+  it("round-trips all explicit selection metadata in a caller-owned sidecar without mutation", () => {
+    const selection = {
+      ...coordinateDraft(input.latitude, input.longitude, "search"),
+      selectedAt: "2026-10-01T12:00:00.000Z",
+      country: "SA",
+      region: "منطقة الرياض",
+      city: input.city,
+      district: "حي مسجل",
+      formattedAddress: input.placeLabel,
+    };
+    const output = toLegacyProjectLocation(selection);
+    expect(output.analysisInput).toEqual({
+      latitude: input.latitude,
+      longitude: input.longitude,
+      city: input.city,
+      placeLabel: input.placeLabel,
+    });
+    expect(output.launchBasics).toEqual({ city: input.city });
+    expect(output.feasibilityGeneral).toEqual({ location: input.placeLabel });
+    expect(output.countryCode).toBe("SA");
     expect(
-      toLegacyProjectLocation({
-        ...coordinateDraft(24, 46, "map"),
-        country: "SA",
-      }),
-    ).toEqual({ countryCode: "SA" });
-    expect(toLegacyProjectLocation(coordinateDraft(24, 46, "map"))).toEqual({});
+      fromLegacyProjectLocation(output.analysisInput, output.selection),
+    ).toEqual(selection);
+    expect(output.selection).not.toBe(selection);
+    expect(output.missingRequiredFields).toEqual([]);
+  });
+  it("drops stale metadata if persisted analysis coordinates have changed", () => {
+    const old = {
+      ...coordinateDraft(25, 47, "search"),
+      formattedAddress: "عنوان قديم",
+      city: "مدينة قديمة",
+    };
+    const restored = fromLegacyProjectLocation(input, old);
+    expect(restored?.latitude).toBe(input.latitude);
+    expect(restored?.formattedAddress).toBe(input.placeLabel);
+    expect(restored?.source).toBeNull();
+    expect(restored?.selectedAt).toBeNull();
+    expect(restored?.region).toBeNull();
+  });
+  it("clears the old analysis label and requires a known city instead of inventing a city/address", () => {
+    const output = toLegacyProjectLocation(coordinateDraft(25, 47, "map"));
+    expect(output.analysisInput).toEqual({
+      latitude: 25,
+      longitude: 47,
+      city: "",
+      placeLabel: undefined,
+    });
+    expect({ ...input, ...output.analysisInput }.placeLabel).toBeUndefined();
+    expect(output.launchBasics).toEqual({ city: "" });
+    expect(output.feasibilityGeneral).toEqual({ location: "" });
+    expect(output.missingRequiredFields).toEqual(["city"]);
+  });
+  it("does not invent coordinates from start city or feasibility location text", () => {
+    const project = {
+      launchPlan: { sections: { BASICS: { city: "الرياض" } } },
+      feasibilityStudy: { sections: { GENERAL: { location: "الرياض" } } },
+    };
+    expect(fromProjectRecord(project)).toBeNull();
+    const explicit = {
+      ...coordinateDraft(24.7136, 46.6753, "coordinates"),
+      selectedAt: "2026-10-01T12:00:00.000Z",
+    };
+    expect(fromProjectRecord(project, explicit)).toEqual(explicit);
+  });
+  it.each([
+    { latitude: NaN, longitude: 46 },
+    { latitude: 91, longitude: 46 },
+    { latitude: 24 },
+    { latitude: "24", longitude: "46" },
+  ])("rejects incomplete or invalid persisted coordinate pair %o", (point) => {
+    expect(fromLegacyProjectLocation(point)).toBeNull();
+  });
+  it("does not replace absent or invalid metadata with today's time or an inferred source", () => {
+    const restored = fromLegacyProjectLocation(input, {
+      ...input,
+      selectedAt: "not-a-date",
+      source: "legacy",
+    });
+    expect(restored?.selectedAt).toBeNull();
+    expect(restored?.source).toBeNull();
   });
 });
 
 describe("controlled map network", () => {
   const origin = "https://jenanpro.sa";
+  const release = {
+    id: "release-one",
+    artifacts: [
+      {
+        id: "tiles-one",
+        kind: "pmtiles",
+        url: "/api/jenan-map/artifacts/tiles-one",
+      },
+      {
+        id: "style-one",
+        kind: "style",
+        url: "/api/jenan-map/artifacts/style-one",
+      },
+    ],
+  };
+  it("pins styles, PMTiles and glyph templates to the selected immutable release", () => {
+    expect(
+      controlledReleaseMapUrl(release.artifacts[1].url, origin, release),
+    ).toBe(origin + release.artifacts[1].url);
+    expect(
+      controlledReleaseMapUrl(
+        "/api/jenan-map/releases/release-one/glyphs/{fontstack}/{range}.pbf",
+        origin,
+        release,
+      ),
+    ).toContain("{fontstack}/{range}.pbf");
+    expect(() =>
+      controlledReleaseMapUrl(
+        "/api/jenan-map/releases/release-two/glyphs/{fontstack}/{range}.pbf",
+        origin,
+        release,
+      ),
+    ).toThrow("غير مرتبط");
+    expect(() =>
+      controlledReleaseMapUrl(
+        "/api/jenan-map/artifacts/style-two",
+        origin,
+        release,
+      ),
+    ).toThrow("غير مرتبط");
+    expect(() =>
+      controlledReleaseMapUrl("/api/jenan-map/style/current", origin, release),
+    ).toThrow("غير مرتبط");
+    const preview = {
+      id: "preview-one",
+      artifacts: [
+        {
+          id: "preview-style",
+          kind: "style",
+          url: "/api/admin/jenan-map/artifacts/preview-style",
+        },
+      ],
+    };
+    expect(
+      controlledReleaseMapUrl(preview.artifacts[0].url, origin, preview, true),
+    ).toBe(origin + preview.artifacts[0].url);
+    expect(() =>
+      controlledReleaseMapUrl(
+        "/api/admin/jenan-map/releases/another/glyphs/font/0-255.pbf",
+        origin,
+        preview,
+        true,
+      ),
+    ).toThrow();
+  });
+  it("preserves PMTiles protocol source and tile URLs through MapLibre's transform hook", async () => {
+    const { PMTiles, Protocol } = await import("pmtiles");
+    const base = origin + release.artifacts[0].url;
+    const archive = new PMTiles(base);
+    vi.spyOn(archive, "getHeader").mockResolvedValue({
+      minLon: 34,
+      maxLon: 56,
+      minLat: 16,
+      maxLat: 33,
+      minZoom: 0,
+      maxZoom: 14,
+    } as Awaited<ReturnType<typeof archive.getHeader>>);
+    const getTile = vi
+      .spyOn(archive, "getZxy")
+      .mockResolvedValue({ data: new ArrayBuffer(4) });
+    const protocol = new Protocol();
+    protocol.add(archive);
+    const sourceUrl = controlledReleaseMapUrl(
+      `pmtiles://${base}`,
+      origin,
+      release,
+    );
+    const tileJSON = await protocol.tilev4(
+      { url: sourceUrl, type: "json" },
+      new AbortController(),
+    );
+    expect(tileJSON.data).toMatchObject({
+      tiles: [`${sourceUrl}/{z}/{x}/{y}`],
+    });
+    const tileUrl = controlledReleaseMapUrl(
+      `${sourceUrl}/12/3200/1700`,
+      origin,
+      release,
+    );
+    const tile = await protocol.tilev4(
+      { url: tileUrl, type: "arrayBuffer" },
+      new AbortController(),
+    );
+    expect(getTile).toHaveBeenCalledWith(
+      12,
+      3200,
+      1700,
+      expect.any(AbortSignal),
+    );
+    expect(tile.data).toEqual(new Uint8Array(4));
+  });
   it("uses the authenticated admin endpoint for pinned preview manifests", () => {
     expect(mapManifestUrl("release-id")).toBe(
       "/api/admin/jenan-map/preview?releaseId=release-id",
