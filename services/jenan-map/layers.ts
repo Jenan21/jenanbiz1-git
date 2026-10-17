@@ -38,7 +38,8 @@ export const releaseLayerBindingSchema = z.object({
   visibility: z.enum(["public", "internal"]).default("public"),
   confidence: z.number().finite().min(0).max(1).nullable().default(null),
 }).strict();
-export const releaseLayerBindingsSchema = z.array(releaseLayerBindingSchema).min(1).max(100);
+export const releaseLayerBindingsSchema = z.array(releaseLayerBindingSchema).min(1).max(100)
+  .refine((bindings) => new Set(bindings.map((binding) => binding.id)).size === bindings.length, "Duplicate layer IDs");
 export type ReleaseLayerBinding = z.infer<typeof releaseLayerBindingSchema>;
 
 export function validateReleaseLayerBindings(input: unknown, actualStyleIds: string[]): ReleaseLayerBinding[] {
@@ -65,6 +66,7 @@ export function validateReleaseLayerBindings(input: unknown, actualStyleIds: str
 
 export async function bindReleaseLayers(executor: LayerExecutor, releaseId: string, input: unknown, actualStyleIds: string[]) {
   const bindings = validateReleaseLayerBindings(input, actualStyleIds);
+  assertPublicStyleLayerBindings(bindings, actualStyleIds);
   const catalog = await executor.$queryRaw<{ id: string }[]>(Prisma.sql`SELECT id FROM jenan_map.layer`);
   const known = new Set(catalog.map((layer) => layer.id));
   if (bindings.some((binding) => !known.has(binding.id))) throw new MapError("INVALID_LAYER_BINDING", 400);
@@ -75,6 +77,12 @@ export async function bindReleaseLayers(executor: LayerExecutor, releaseId: stri
         ARRAY[${Prisma.join(binding.styleLayerIds)}]::text[],
         ${binding.searchCategories.length ? Prisma.sql`ARRAY[${Prisma.join(binding.searchCategories)}]::text[]` : Prisma.sql`ARRAY[]::text[]`}, ${binding.confidence})`);
   }
+}
+
+export function assertPublicStyleLayerBindings(bindings: { visibility: string; styleLayerIds: string[] }[], actualStyleIds: string[]) {
+  if (bindings.some((binding) => binding.visibility !== "public")) throw new MapError("INTERNAL_LAYER_NOT_PUBLIC");
+  const claimed = new Set(bindings.flatMap((binding) => binding.styleLayerIds));
+  if (!actualStyleIds.length || actualStyleIds.some((id) => !claimed.has(id))) throw new MapError("UNBOUND_PUBLIC_STYLE_LAYER");
 }
 
 function projectedLayers(releaseId: string | null) {

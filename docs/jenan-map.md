@@ -128,7 +128,7 @@ There is **no automatic deletion** of raw sources, prior releases, failed builds
 - Parent-owned layer tests: `node_modules/.bin/vitest run tests/unit/jenan-map-layers.test.ts tests/unit/jenan-map-layer-route.test.ts` — **6 passed**. Scoped ESLint passed after correcting one test-variable lint error.
 - Parent-owned actual spatial test: `JENAN_MAP_TEST_DATABASE_URL=postgresql://runner@127.0.0.1:55439/jenan_map_test node_modules/.bin/vitest run tests/integration/jenan-map-spatial.integration.test.ts` under Node 24.22.0 — **6 passed**. Tests use connection-local temporary synthetic geometry only, validate meter units at all four radii, polygon-vs-bounding-box coverage, and GiST index eligibility with sequential scanning disabled. They do **not** establish Saudi boundary accuracy or representative production query latency. Scoped ESLint passed.
 
-Pending implementation and exact command results. Real-data renderer acceptance, spatial database integration, range/CDN behavior, responsive viewport matrix, map-load/memory measurements and portable restore must be reported separately from mocked/unit tests. This document must not be read as v1 completion.
+This historical baseline predates the continuation results below. Real-data renderer acceptance, spatial database integration, range/CDN behavior, responsive viewport matrix, map-load/memory measurements and portable restore must be reported separately from mocked/unit tests. This document must not be read as v1 completion.
 
 ## Delivery acceptance checklist — 14 grouped gates
 
@@ -138,18 +138,18 @@ The supplied statement does not enumerate the original fourteen items verbatim. 
 |---|---|---|
 | 1 | Independent branch/routes; preserve projects/home/auth | Implementation under review; production surfaces must remain unchanged |
 | 2 | Saudi-only licensed real data and authoritative boundary | **Blocked:** sources not supplied/imported |
-| 3 | MapLibre/PMTiles owned basemap and versioned assets | Dependencies and local worker prepared; real archive acceptance **pending** |
-| 4 | Arabic premium style, RTL, keyboard and responsive modal | Implemented UI requires browser checks and real-label visual acceptance |
-| 5 | Search, click/drag, geolocation, confirmation/cancel and saved location | Implementation/testing in progress; no real-data acceptance |
+| 3 | MapLibre/PMTiles owned basemap and versioned assets | Validated binary ingestion and release-pinned asset delivery implemented; real archive acceptance **blocked** |
+| 4 | Arabic premium style, RTL, keyboard and responsive modal | Empty/unavailable fixture UI passes all ten responsive sizes and keyboard checks; real-label visual acceptance **blocked** |
+| 5 | Search, click/drag, geolocation, confirmation/cancel and saved location | Owned persistence, device-source and cancellation fixture checks pass; real-data renderer interaction not accepted |
 | 6 | Existing location adapters, no service activation | Adapter only; integration remains intentionally inactive |
-| 7 | Geodesic radii and spatial SRID/index/unit correctness | Isolated PostGIS test infrastructure prepared; results pending |
-| 8 | Lazy loading, lifecycle disposal and performance evidence | Implementation pending measurement; no real map-load/memory claim |
-| 9 | Layer provenance/access control and truthful no-data states | Unsupported analytical layers must remain unavailable |
-| 10 | Isolated import/normalize/compare/build/review workflow | Operator preparation only; full country tile build and genuine diffs pending |
-| 11 | Approval, atomic publish, explicit rollback and retention | Must pass isolated lifecycle/concurrency tests; no live publication |
+| 7 | Geodesic radii and spatial SRID/index/unit correctness | Isolated spatial fixtures passed; authoritative boundary accuracy and production latency remain unaccepted |
+| 8 | Lazy loading, lifecycle disposal and performance evidence | Fixture browser checks pass; no real map-load/memory measurement claim |
+| 9 | Layer provenance/access control and truthful no-data states | Durable release bindings and selected-layer search implemented; unsupported analytical layers remain unavailable |
+| 10 | Isolated import/normalize/compare/build/review workflow | Actual binary/asset ingestion plus offline geometry preparation; full country tile build and genuine diffs remain deferred |
+| 11 | Approval, atomic publish, explicit rollback and retention | Nine isolated PostGIS lifecycle tests pass; no live publication |
 | 12 | Admin routes, runtime status, health and audit | Implementation under review; unmeasured health remains unknown |
-| 13 | Authorized portable exports, checksums, license and restore | Individual downloads planned; full bundle and destination restore acceptance pending |
-| 14 | Lint/types/Prisma/build/unit/E2E, review and handover | Baseline recorded; final results below when available; **v1 not accepted** |
+| 13 | Authorized portable exports, checksums, license and restore | Licensed individual streaming downloads implemented; full bundle and destination restore acceptance remain deferred |
+| 14 | Lint/types/Prisma/build/unit/E2E, review and handover | Local checks pass as recorded below; CodeQL and real-data acceptance blocked; **v1 not accepted** |
 
 ## Continuation from `08d1899` (2026-10-17)
 
@@ -160,13 +160,19 @@ This follow-up preserves the inherited implementation rather than replacing it. 
 `POST /api/admin/jenan-map/releases/<uuid>/artifacts` independently enforces the existing administrator session, origin and rate-limit checks. It accepts:
 
 - Multipart `file` plus JSON `metadata`, bounded to **32 MiB total while reading**.
-- JSON `{ "stagedFilename": "<private-local-filename>", "metadata": { ... } }` for streaming a staged artifact of up to **32 GiB**, without buffering the archive. Staging and storage must be separate private directories, outside `public/`. This does not configure persistent hosting storage.
+- JSON `{ "stagedFilename": "<private-local-filename>", "metadata": { ... } }`, with a **16 KiB request limit**, for streaming a staged artifact of up to **32 GiB**, without buffering the archive. Staging and storage must be separate private directories, outside `public/`. This does not configure persistent hosting storage.
 
 Metadata includes `kind` (`pmtiles`, `style`, `glyphs`, `sprite`, `schema`, `coverage`), logical `filename`, exact `sha256`, exact `byteSize`, `publicSafe`, optional `exportAllowed`/`exportLicense`, and `confirmation: "IMPORT OWNED MAP ARTIFACT"`. Imports retain immutable content-addressed files and audit records; an upload does not approve or publish a release. Sources/geometry still use the offline preparation entry above. No arbitrary URL download, executable builder, archive extraction or remote credentials are accepted by the import handler.
 
 Assets resolve through `/api/jenan-map/releases/<uuid>/<kind>/<filename>`, or its `/api/admin/jenan-map/` private-preview equivalent. The `/assets/<kind>/<filename>` form remains a compatibility alias. Canonical glyph templates are `glyphs/{fontstack}/{range}.pbf`; the sprite base is `sprites/sprite`, with `.json`, `.png`, `@2x.json` and `@2x.png` variants. The same immutable style uses public canonical references; the selected manifest resolves them to authenticated preview endpoints without falling back to the published release.
 
 Approval/publication validates PMTiles v3 structure, root directory and a decoded MVT sample, style/source-layer compatibility, glyph PBFs, sprite image/index bounds, schema evidence and matching boundary provenance. This detects invalid formats; it is **not** exhaustive geographical, Arabic-label or country-scale visual acceptance. A licensed real dataset and human review remain mandatory.
+
+### Release-scoped layer binding
+
+After importing the actual style, `POST /api/admin/jenan-map/releases/<uuid>/layers` accepts `{ layers: [{ id, styleLayerIds, searchCategories, visibility: "public", confidence }], confirmation: "BIND MAP LAYERS" }`. The admin form is enabled only when storage and the server's `layer-bind` capability are available. Every actual style layer, including background, must be bound; internal or unbound style layers are rejected. Browser imports require an unreviewed Draft/Ready candidate and never publish it.
+
+Bindings retain immutable provenance. Per-release enabled/revision updates affect the manifest, rendering and `layerIds`-filtered search together; unavailable bindings remain explicitly unavailable rather than silently enabled. The additive candidate-binding guard retains archived bindings and refuses new bindings for approved, published or archived releases. Existing committed migrations are unchanged.
 
 ### Account-owned display settings
 
@@ -179,3 +185,19 @@ The existing global `Permissions-Policy` denied device geolocation. A narrowly s
 ### Real acceptance still blocked
 
 No licensed Saudi PMTiles archive, authoritative boundary with independently reviewed provenance, matching real search dataset, complete Arabic glyph/sprite package or production shared-storage configuration was supplied. Therefore this continuation does not claim a production map, real-data acceptance, reference-fidelity percentage, measured country-scale latency, live publication or completed portable restore. Keep the truthful empty/unavailable states until the operator supplies and reviews those inputs.
+
+### Continuation verification record
+
+- Locked dependency install and Prisma client generation succeeded. The available host is Node 22.23.3, while the project requests Node 24; this warning is not suppressed.
+- Parent-owned unit checks: `node_modules/.bin/vitest run tests/unit/jenan-map-ui.test.ts tests/unit/jenan-map-preferences.test.ts` — **63 passed** after final search-contract changes. Scoped ESLint passed.
+- Browser matrix: `playwright test tests/e2e/jenan-map.spec.ts --project=jenan-map --retries=0` — **28 passed** across the ten specified sizes, including keyboard focus, truthful empty states, no engine/data initialization on public pages, preview-preserving sign-in, saved settings, device location, and cancellation. After adding selected-layer search, the targeted search/ordinary-member checks both passed. These mocked transport/fixture tests are not real-dataset acceptance.
+- Browser-test instrumentation distinguishes Turbopack's tiny async-import loader stub from the actual map engine, and accommodates React Strict Mode's replayed effect while checking that closing does not generate new requests.
+- A fresh isolated loopback PostGIS development database received the ordinary app and opt-in map migrations. No production database was connected, reset or published.
+- Backend focused checks: **79 unit tests and 9 actual PostGIS lifecycle tests passed**. Layer/admin checks: **50 unit/frontend tests and 5 real PostgreSQL binding persistence/guard tests passed**. These focused counts overlap the full suite and must not be summed as distinct tests.
+- Final full `node_modules/.bin/vitest run`: **785 passed, 23 skipped** (151 files passed, 6 skipped). Existing opt-in database tests were also exercised separately above. The existing Academy foundation seeder was required for the full-suite database fixture; no unrelated tests were weakened. Sixteen `pg` concurrent-query deprecation warnings remain visible.
+- Final `npm run lint`, `npm run typecheck` and `npm run build`: **passed**. ESLint excludes only the generated, dependency-copied MapLibre worker; application lint rules are unchanged. Build generated all 154 static pages.
+- Read-only review identified a candidate-binding trigger/API mismatch and omitted export-license metadata. Both were fixed; two focused regressions passed, including an actual SQL migration check after additive-migration consolidation.
+- The disposable database's pre-applied map SQL was baselined into its migration journal without dropping data; the final `prisma migrate deploy --config prisma.jenan-map.config.ts` reports no pending migrations. Do not copy this test-fixture baselining step to an unverified production database.
+- Secret scanning reported no secrets in changed files before commit `a20f73c`. The commit was pushed to the continuation branch; no merge into `main` occurred.
+- Automated Code Review/CodeQL invocation ended with a **validation time-limit response before results**. This is not a clean scan; security-scan completion remains an explicit delivery blocker.
+- GitHub Actions CodeQL and continuous-verification runs currently report `action_required` with no executed jobs; the retrieved CodeQL logs contain no failed jobs or scan result. Maintainer approval/execution and a successful CodeQL result are still required.

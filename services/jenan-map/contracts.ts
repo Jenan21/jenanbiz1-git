@@ -69,4 +69,5 @@ export type MapRuntime = { status: "enabled" | "maintenance" | "disabled"; maint
 export type Artifact = {
   id: string; releaseId: string; kind: string; storageKey: string; filename: string;
   mime: string; sha256: string; byteSize: bigint; publicSafe: boolean;
+  exportAllowed?: boolean; exportLicense?: string | null;
 };

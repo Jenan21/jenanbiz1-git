@@ -3,6 +3,8 @@ import { randomUUID, createHash } from "node:crypto";
 import { mkdir, rm, writeFile } from "node:fs/promises";
 import path from "node:path";
 import pg from "pg";
+import { Readable } from "node:stream";
+import { readyFixtureFiles } from "../unit/jenan-map-artifact-fixtures";
 
 // Explicit opt-in, disposable loopback database only. Fixtures are synthetic;
 // these tests do not constitute Saudi dataset, basemap, glyph or visual acceptance.
@@ -20,6 +22,8 @@ let userId: string;
 let importedId: string;
 let firstPublished: string;
 let secondCandidate: string;
+const authority = "SYNTHETIC TEST AUTHORITY — NOT REAL SA BOUNDARY";
+const boundarySource = "Synthetic polygon with hole to test exact PostGIS semantics";
 
 const boundary = {
   type: "Polygon",
@@ -47,19 +51,37 @@ async function fullSyntheticRelease() {
   await pool!.query(`INSERT INTO jenan_map.feature (id,"releaseId",label,category,geometry,search)
     SELECT gen_random_uuid(),$1,label,category,geometry,search FROM jenan_map.feature WHERE "releaseId"=$2`, [created.id, importedId]);
   await mkdir(path.join(storage, created.id), { mode: 0o700 });
-  for (const kind of ["geojson", "pmtiles", "style", "glyphs", "schema", "coverage"]) {
-    // Bytes test immutable storage/publication mechanics only, not format/render validity.
-    const bytes = Buffer.from(JSON.stringify({ syntheticTestOnly: true, kind }));
+  const geometryBytes = Buffer.from(JSON.stringify({ ...features, features: features.features.map((feature) => ({
+    ...feature, properties: { label: feature.properties.label, category: feature.properties.category },
+  })) }));
+  {
+    const bytes = geometryBytes;
     const sha = createHash("sha256").update(bytes).digest("hex");
-    const extension = kind === "geojson" ? "geojson" : kind === "pmtiles" ? "pmtiles" : "json";
-    const key = `${created.id}/${sha}.${extension}`;
+    const key = `${created.id}/${sha}.geojson`;
     await writeFile(path.join(storage, key), bytes, { mode: 0o400 });
     await pool!.query(`INSERT INTO jenan_map.artifact
-      (id,"releaseId",kind,"storageKey",filename,mime,sha256,"byteSize","publicSafe")
-      VALUES ($1,$2,$3,$4,$5,'application/json',$6,$7,$8)`,
-    [randomUUID(), created.id, kind, key, `synthetic-${kind}.${extension}`, sha, bytes.length, !["schema", "coverage"].includes(kind)]);
+      (id,"releaseId",kind,"storageKey",filename,mime,sha256,"byteSize","publicSafe","exportAllowed","exportLicense")
+      VALUES ($1,$2,'geojson',$3,'places.geojson','application/geo+json',$4,$5,true,true,'Synthetic fixture export permitted')`,
+    [randomUUID(), created.id, key, sha, bytes.length]);
   }
   await pool!.query(`UPDATE jenan_map.release SET status='Ready' WHERE id=$1`, [created.id]);
+  const { ingestArtifact, importSchema } = await import("@/services/jenan-map/ingestion");
+  for (const fixture of readyFixtureFiles(created.id, {
+    countryCode: "SA", authoritative: true, boundaryAuthority: authority, boundarySource,
+  }).filter((file) => file.artifact.kind !== "geojson")) {
+    const metadata = importSchema.parse({
+      kind: fixture.artifact.kind, filename: fixture.artifact.filename,
+      sha256: fixture.artifact.sha256, byteSize: fixture.bytes.length, publicSafe: fixture.artifact.publicSafe,
+      exportAllowed: true, exportLicense: "Synthetic test-only bytes; export permitted",
+      confirmation: "IMPORT OWNED MAP ARTIFACT",
+    });
+    await ingestArtifact(created.id, metadata, Readable.from([fixture.bytes]), adminId);
+  }
+  const { ingestLayerBindings, bindLayersSchema } = await import("@/services/jenan-map/layer-ingestion");
+  await ingestLayerBindings(created.id, bindLayersSchema.parse({
+    layers: [{ id: "base", styleLayerIds: ["places"], searchCategories: ["synthetic"], visibility: "public" }],
+    confirmation: "BIND MAP LAYERS",
+  }), adminId);
   await services.command({ action: "approve", releaseId: created.id, confirmation: "APPROVE", reason: "Synthetic mechanics-only fixture review" }, adminId);
   return created.id;
 }
@@ -101,8 +123,8 @@ describe.skipIf(!enabled)("Jenan Map disposable PostGIS mechanics (synthetic onl
     await writeFile(path.join(staging, "features.geojson"), JSON.stringify(features));
     await writeFile(path.join(staging, "boundary.geojson"), JSON.stringify(boundary));
     await writeFile(path.join(staging, "import.json"), JSON.stringify({
-      countryCode: "SA", authoritative: true, boundaryAuthority: "SYNTHETIC TEST AUTHORITY — NOT REAL SA BOUNDARY",
-      boundarySource: "Synthetic polygon with hole to test exact PostGIS semantics",
+      countryCode: "SA", authoritative: true, boundaryAuthority: authority,
+      boundarySource,
       confirmation: "BUILD OWNED SA DATA", featuresFile: "features.geojson", boundaryFile: "boundary.geojson",
     }));
     const script = "../../scripts/jenan-map/build.mjs";
@@ -110,8 +132,7 @@ describe.skipIf(!enabled)("Jenan Map disposable PostGIS mechanics (synthetic onl
     const [row] = (await pool!.query(`SELECT status FROM jenan_map.release WHERE id=$1`, [importedId])).rows;
     expect(row.status).toBe("Ready");
     expect((await pool!.query(`SELECT count(*)::int AS count FROM jenan_map.feature WHERE "releaseId"=$1`, [importedId])).rows[0].count).toBe(2);
-    const portable = await services.exportManifest(importedId);
-    expect(portable.portableGeojsonAvailable).toBe(true);
+    await expect(services.exportManifest(importedId)).rejects.toMatchObject({ code: "NO_LICENSED_EXPORT_ARTIFACTS" });
     const geojson = (await services.artifacts(importedId)).find((file) => file.kind === "geojson")!;
     const { openArtifact } = await import("@/services/jenan-map/storage");
     const handle = await openArtifact(geojson);
@@ -150,6 +171,35 @@ describe.skipIf(!enabled)("Jenan Map disposable PostGIS mechanics (synthetic onl
     expect(wider.results).toHaveLength(2);
   });
 
+  it("exports only licensed retained files and resolves real release-pinned asset/style metadata", async () => {
+    const manifest = await services.manifest();
+    expect(manifest.release?.layers).toEqual(expect.arrayContaining([expect.objectContaining({ id: "base", available: true, styleLayerIds: ["places"] })]));
+    const portable = await services.exportManifest(firstPublished, adminId);
+    expect(portable.artifacts).toHaveLength(6);
+    expect(portable.artifacts.every((file) => file.url.endsWith("?download=1") && file.exportLicense)).toBe(true);
+    expect(portable.artifacts.find((file) => file.kind === "glyphs")?.logicalFilename).toBe("Noto/0-255.pbf");
+    expect(portable.artifacts.some((file) => file.kind === "source")).toBe(false);
+    const files = await services.artifacts(firstPublished);
+    const style = await services.servedStyle(files.find((file) => file.kind === "style")!, true);
+    expect(style.glyphs).toBe(`/api/admin/jenan-map/releases/${firstPublished}/glyphs/{fontstack}/{range}.pbf`);
+    const sources = await services.artifacts(importedId);
+    await expect(services.authorizedArtifact(sources.find((file) => file.kind === "source")!.id, true))
+      .rejects.toMatchObject({ code: "RAW_SOURCE_DOWNLOAD_UNSUPPORTED", status: 403 });
+  });
+
+  it("uses the same enabled release-binding policy for actual search and delivered style visibility", async () => {
+    await pool!.query(`UPDATE jenan_map.release_layer SET enabled=false,revision=revision+1 WHERE "releaseId"=$1 AND "layerId"='base'`, [firstPublished]);
+    try {
+      const results = await services.search({ q: "اختبار", releaseId: firstPublished, radiusMeters: 2000 });
+      expect(results.results).toHaveLength(0);
+      expect((await services.manifest()).release?.layers[0]).toMatchObject({ id: "base", available: false });
+      const styleFile = (await services.artifacts(firstPublished)).find((file) => file.kind === "style")!;
+      expect((await services.servedStyle(styleFile, false)).layers[0].layout.visibility).toBe("none");
+    } finally {
+      await pool!.query(`UPDATE jenan_map.release_layer SET enabled=true,revision=revision+1 WHERE "releaseId"=$1 AND "layerId"='base'`, [firstPublished]);
+    }
+  });
+
   it("persists user-owned selections across fresh reads with server timestamps and no invented addresses", async () => {
     expect(await services.savedLocation(userId)).toBeNull();
     const saved = await services.saveLocation({ latitude: 23.5, longitude: 45.5, releaseId: firstPublished, source: "coordinates" }, userId);
@@ -160,6 +210,22 @@ describe.skipIf(!enabled)("Jenan Map disposable PostGIS mechanics (synthetic onl
     expect(await services.savedLocation(adminId)).toBeNull();
     await expect(services.saveLocation({ latitude: 24.5, longitude: 46.5, releaseId: firstPublished, source: "map" }, userId)).rejects.toMatchObject({ status: 422 });
     expect(await services.savedLocation(userId)).toEqual(saved);
+    const deviceSelection = await services.saveLocation({ latitude: 23.5, longitude: 45.5, releaseId: firstPublished, source: "geolocation" }, userId);
+    expect(deviceSelection.source).toBe("geolocation");
+    expect(await services.savedLocation(userId)).toEqual(deviceSelection);
+  });
+
+  it("persists release-specific preferences with actual owner isolation and revision conflicts", async () => {
+    const { mapPreferences, saveMapPreferences } = await import("@/services/jenan-map/preferences");
+    const input = { releaseId: firstPublished, radius: 3000 as const, visibleLayers: [] as string[], viewport: null, expectedRevision: 0 };
+    const saved = await saveMapPreferences(userId, input);
+    expect(saved).toMatchObject({ releaseId: firstPublished, radius: 3000, visibleLayers: [], viewport: null, revision: 1 });
+    expect(await mapPreferences(userId, firstPublished)).toEqual(saved);
+    expect(await mapPreferences(adminId, firstPublished)).toBeNull();
+    const updated = await saveMapPreferences(userId, { ...input, radius: 1000, visibleLayers: ["base"], expectedRevision: 1 });
+    expect(updated).toMatchObject({ radius: 1000, visibleLayers: ["base"], revision: 2 });
+    await expect(saveMapPreferences(userId, input)).rejects.toMatchObject({ code: "STALE_REVISION", status: 409 });
+    expect(await mapPreferences(userId, firstPublished)).toEqual(updated);
   });
 
   it("rolls publication back atomically if the existing central audit cannot be written", async () => {

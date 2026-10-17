@@ -10,6 +10,26 @@ import { byteRange, downloadMetadata, openArtifact } from "./storage";
 
 const privateHeaders = { "cache-control": "private, no-store", "x-content-type-options": "nosniff" };
 
+export async function boundedBody(request: NextRequest, limit: number, errorCode = "REQUEST_TOO_LARGE") {
+  if (!request.body) throw new MapError("IMPORT_BODY_REQUIRED", 400);
+  const chunks: Uint8Array[] = [];
+  let count = 0;
+  const reader = request.body.getReader();
+  try {
+    for (;;) {
+      const result = await reader.read();
+      if (result.done) break;
+      count += result.value.byteLength;
+      if (count > limit) {
+        await reader.cancel();
+        throw new MapError(errorCode, 413);
+      }
+      chunks.push(result.value);
+    }
+  } finally { reader.releaseLock(); }
+  return Buffer.concat(chunks);
+}
+
 export function json(body: unknown, status = 200) {
   return NextResponse.json(body, { status, headers: privateHeaders });
 }

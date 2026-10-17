@@ -6,7 +6,7 @@ const database = vi.hoisted(() => ({
 }));
 vi.mock("@/lib/db", () => ({ db: database }));
 
-import { assertLayerCanEnable, bindReleaseLayers, changeMapLayer, layerChangeSchema, mapLayers, readyLayerSearchFilter, releaseManifestLayers, releaseMapLayers, validateReleaseLayerBindings, type StoredMapLayer } from "@/services/jenan-map/layers";
+import { assertLayerCanEnable, assertPublicStyleLayerBindings, bindReleaseLayers, changeMapLayer, layerChangeSchema, mapLayers, readyLayerSearchFilter, releaseManifestLayers, releaseMapLayers, validateReleaseLayerBindings, type StoredMapLayer } from "@/services/jenan-map/layers";
 
 const layer: StoredMapLayer = {
   id: "population", label: "السكان", enabled: false, visibility: "public",
@@ -22,12 +22,25 @@ describe("Jenan map layer publication boundary", () => {
       id: "roads", enabled: false, expectedRevision: 0, confirmation: "CHANGE LAYER",
     }).success).toBe(true);
   });
+  it("rejects internal and unbound renderer IDs in a public style rather than pretending visibility is authorization", () => {
+    expect(() => assertPublicStyleLayerBindings([{ visibility: "internal", styleLayerIds: ["secret"] }], ["secret"])).toThrow("INTERNAL_LAYER_NOT_PUBLIC");
+    expect(() => assertPublicStyleLayerBindings([{ visibility: "public", styleLayerIds: ["road"] }], ["road", "secret"])).toThrow("UNBOUND_PUBLIC_STYLE_LAYER");
+    expect(() => assertPublicStyleLayerBindings([{ visibility: "public", styleLayerIds: ["road"] }], ["road"])).not.toThrow();
+  });
   it("never enables missing, stale or internal data", () => {
     for (const change of [
       { status: "unavailable" as const }, { source: null }, { version: null },
       { releaseId: "other-release" }, { visibility: "internal" as const }, { styleLayerIds: [] },
     ]) expect(() => assertLayerCanEnable({ ...layer, ...change }, "approved-release")).toThrow();
     expect(() => assertLayerCanEnable(layer, null)).toThrow();
+  });
+
+  it("never persists an internal binding for public archive/style preparation", async () => {
+    await expect(bindReleaseLayers(database, "release-a", [
+      { id: "roads", styleLayerIds: ["private-road"], visibility: "internal" },
+    ], ["private-road"])).rejects.toThrow("INTERNAL_LAYER_NOT_PUBLIC");
+    expect(database.$queryRaw).not.toHaveBeenCalled();
+    expect(database.$executeRaw).not.toHaveBeenCalled();
   });
 
   describe("release-scoped renderer and search binding validation", () => {

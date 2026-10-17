@@ -31,6 +31,8 @@ export async function ingestLayerBindings(releaseId: string, input: z.infer<type
       if (!Array.isArray(style.layers)) throw new MapError("ARTIFACT_FORMAT_INVALID", 422);
       actualStyleIds = style.layers.map((layer: { id: string }) => layer.id);
     } finally { await handle.close(); }
+    const claimed = new Set(input.layers.flatMap((layer) => layer.styleLayerIds));
+    if (actualStyleIds.some((id) => !claimed.has(id))) throw new MapError("UNBOUND_PUBLIC_STYLE_LAYER", 422);
     await bindReleaseLayers(tx, releaseId, input.layers, actualStyleIds);
     const metadata = JSON.stringify({ layerIds: input.layers.map((layer) => layer.id), publicLayerIds: input.layers.filter((layer) => layer.visibility === "public").map((layer) => layer.id) });
     await tx.$executeRaw(Prisma.sql`INSERT INTO jenan_map.audit (id,"actorId",action,"releaseId",metadata)

@@ -7,6 +7,9 @@ import { openArtifact } from "./storage";
 
 const JSON_LIMIT = 16 * 1024 * 1024;
 function invalid(): never { throw new MapError("ARTIFACT_FORMAT_INVALID", 422); }
+function internal(value: { visibility?: unknown; internal?: unknown; publicSafe?: unknown } | undefined) {
+  return value?.visibility === "internal" || value?.internal === true || value?.publicSafe === false;
+}
 export async function readJson(handle: FileHandle) {
   const info = await handle.stat();
   if (info.size > JSON_LIMIT) invalid();
@@ -68,6 +71,7 @@ export async function validateArtifactFormat(file: Artifact, handle: FileHandle)
     catch { return invalid(); }
     if (!Array.isArray(metadata.vector_layers) || !metadata.vector_layers.length ||
         metadata.vector_layers.some((v: { id?: unknown }) => typeof v.id !== "string")) invalid();
+    if (file.publicSafe && (internal(metadata) || metadata.vector_layers.some(internal))) invalid();
     // Parse the actual root directory and verify its entries address retained tile/leaf bytes.
     const directory = decode(await readAt(handle, ...sections[0] as [number, number]));
     let cursor = 0;
@@ -150,9 +154,11 @@ export async function validateArtifactFormat(file: Artifact, handle: FileHandle)
   const value = await readJson(handle);
   if (file.kind === "style") {
     if (validateStyleMin(value).length || value.version !== 8 || !Object.keys(value.sources ?? {}).length) invalid();
+    if (file.publicSafe && (internal(value.metadata) || value.layers.some((layer: { metadata?: object }) => internal(layer.metadata)))) invalid();
   } else if (file.kind === "schema") {
     if (typeof value.version !== "string" || !Array.isArray(value.vector_layers) || !value.vector_layers.length ||
         value.vector_layers.some((layer: { id?: unknown }) => typeof layer.id !== "string")) invalid();
+    if (internal(value) || value.vector_layers.some(internal)) invalid();
   } else if (file.kind === "coverage") {
     if (value.countryCode !== "SA" || value.authoritative !== true ||
         typeof value.boundaryAuthority !== "string" || value.boundaryAuthority.trim().length < 3 ||

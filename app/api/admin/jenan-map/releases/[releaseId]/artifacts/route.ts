@@ -1,8 +1,8 @@
 import { NextRequest } from "next/server";
 import { z } from "zod";
-import { access, failure, json } from "@/services/jenan-map/http";
+import { access, boundedBody, failure, json } from "@/services/jenan-map/http";
 import { idSchema, MapError } from "@/services/jenan-map/contracts";
-import { importSchema, ingestArtifact, localImportStream } from "@/services/jenan-map/ingestion";
+import { assertImportCandidate, importSchema, ingestArtifact, localImportStream } from "@/services/jenan-map/ingestion";
 
 export const runtime = "nodejs";
 const MULTIPART_LIMIT = 32 * 1024 * 1024;
@@ -11,22 +11,10 @@ export async function POST(request: NextRequest, context: { params: Promise<{ re
     const auth = await access(request, true, true);
     if (auth.response) return auth.response;
     const releaseId = idSchema.parse((await context.params).releaseId);
+    await assertImportCandidate(releaseId);
     if (request.headers.get("content-type")?.startsWith("multipart/form-data;")) {
       // Bound the body while reading, not merely the untrusted Content-Length header.
-      const chunks: Uint8Array[] = [];
-      let count = 0;
-      if (!request.body) throw new MapError("IMPORT_BODY_REQUIRED", 400);
-      const reader = request.body.getReader();
-      try {
-        for (;;) {
-          const result = await reader.read();
-          if (result.done) break;
-          count += result.value.byteLength;
-          if (count > MULTIPART_LIMIT) { await reader.cancel(); throw new MapError("USE_LOCAL_IMPORT_FOR_LARGE_ARTIFACTS", 413); }
-          chunks.push(result.value);
-        }
-      } finally { reader.releaseLock(); }
-      const body = Buffer.concat(chunks);
+      const body = await boundedBody(request, MULTIPART_LIMIT, "USE_LOCAL_IMPORT_FOR_LARGE_ARTIFACTS");
       const form = await new Response(body, { headers: { "content-type": request.headers.get("content-type")! } }).formData();
       if ([...form.keys()].some((key) => !["metadata", "file"].includes(key)) ||
           form.getAll("metadata").length !== 1 || form.getAll("file").length !== 1) throw new MapError("INVALID_IMPORT_FORM", 400);
@@ -36,7 +24,8 @@ export async function POST(request: NextRequest, context: { params: Promise<{ re
       async function* bytes() { yield new Uint8Array(await (file as File).arrayBuffer()); }
       return json(await ingestArtifact(releaseId, input, bytes(), auth.user!.id), 201);
     }
-    const input = z.object({ metadata: importSchema, stagedFilename: z.string().max(181) }).strict().parse(await request.json());
+    const input = z.object({ metadata: importSchema, stagedFilename: z.string().max(181) }).strict()
+      .parse(JSON.parse((await boundedBody(request, 16 * 1024, "IMPORT_JSON_TOO_LARGE")).toString("utf8")));
     const stream = await localImportStream(input.stagedFilename);
     try { return json(await ingestArtifact(releaseId, input.metadata, stream, auth.user!.id), 201); }
     finally { stream.destroy(); }

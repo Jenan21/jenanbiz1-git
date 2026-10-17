@@ -29,7 +29,7 @@ export function canChangeLayer(layer: AdminMapLayer, activeReleaseId: string | n
   return Boolean(layer.status === "ready" && layer.styleLayerIds?.length && layer.source && layer.version && layer.visibility === "public" && activeReleaseId && layer.releaseId === activeReleaseId);
 }
 
-export function MapLayerCatalog({ activeReleaseId }: { activeReleaseId: string | null }) {
+export function MapLayerCatalog({ activeReleaseId, disabled = false }: { activeReleaseId: string | null; disabled?: boolean }) {
   const [layers, setLayers] = useState<AdminMapLayer[] | null>(null);
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
@@ -58,7 +58,7 @@ export function MapLayerCatalog({ activeReleaseId }: { activeReleaseId: string |
   }, [activeReleaseId]);
 
   async function changeLayer() {
-    if (!pending || busy || loading || !canChangeLayer(pending, activeReleaseId)) return;
+    if (!pending || busy || loading || disabled || !canChangeLayer(pending, activeReleaseId)) return;
     setBusy(true);
     setMessage("");
     try {
@@ -82,7 +82,7 @@ export function MapLayerCatalog({ activeReleaseId }: { activeReleaseId: string |
 
   return <MapPanel title="كتالوج الطبقات وسياسة الإتاحة">
     <p>ربط الطبقات ومعرّفات النمط وتصنيفات البحث يأتي من بيان الاستيراد الموثّق لكل إصدار. التفعيل محجوب للبيانات غير الجاهزة أو الداخلية أو غير المرتبطة بإصدار الإنتاج الحالي؛ يمكن دائماً تعطيل طبقة مفعّلة.</p>
-    <Button type="button" variant="secondary" disabled={loading || busy} onClick={() => { setMessage(""); void load(); }}>{loading ? "جارٍ قراءة الكتالوج…" : "تحديث كتالوج الطبقات"}</Button>
+    <Button type="button" variant="secondary" disabled={disabled || loading || busy} onClick={() => { setMessage(""); void load(); }}>{loading ? "جارٍ قراءة الكتالوج…" : "تحديث كتالوج الطبقات"}</Button>
     {message ? <p role="status">{message}</p> : null}
     {layers?.length ? <MapTable headers={["الطبقة", "الحالة", "المصدر", "الإصدار", "تاريخ المصدر", "الترخيص", "معرّفات النمط", "تصنيفات البحث", "الثقة", "الرؤية", "آخر تحديث السجل", "الإتاحة"]}>
       {layers.map((layer) => <tr key={layer.id}>
@@ -90,7 +90,7 @@ export function MapLayerCatalog({ activeReleaseId }: { activeReleaseId: string |
         <td>{layer.source ?? "غير متاح"}</td><td>{layer.version ?? "غير متاح"}</td><td>{displayDate(layer.sourceDate)}</td><td>{layer.license ?? "غير موثق"}</td>
         <td><bdi>{layer.styleLayerIds?.join("، ") || "غير مرتبط"}</bdi></td><td><bdi>{layer.searchCategories?.join("، ") || "لا توجد تصنيفات بحث مرتبطة"}</bdi></td>
         <td>{layer.confidence === null ? "غير معروفة" : `${Math.round(layer.confidence * 100)}%`}</td><td>{layer.visibility === "public" ? "عامة بشرط النشر" : "داخلية"}</td><td>{displayDate(layer.updatedAt)}</td>
-        <td><span>{layer.enabled ? "مفعّلة في السياسة" : "معطّلة"}</span><Button type="button" variant="secondary" disabled={loading || busy || !canChangeLayer(layer, activeReleaseId)} onClick={() => setPending(layer)}>{layer.enabled ? "تعطيل" : "تفعيل"}</Button></td>
+        <td><span>{layer.enabled ? "مفعّلة في السياسة" : "معطّلة"}</span><Button type="button" variant="secondary" disabled={disabled || loading || busy || !canChangeLayer(layer, activeReleaseId)} onClick={() => setPending(layer)}>{layer.enabled ? "تعطيل" : "تفعيل"}</Button></td>
       </tr>)}
     </MapTable> : <MapEmpty>{loading ? "جارٍ قراءة الحالة…" : layers ? "لا توجد طبقات مسجلة." : "كتالوج الطبقات غير متاح؛ حالته غير معروفة وجميع عناصر التحكم معطلة."}</MapEmpty>}
     {pending ? <MapActionConfirmation pending={{ action: "layer", title: pending.enabled ? "تأكيد تعطيل الطبقة" : "تأكيد تفعيل الطبقة", description: `تغيير إتاحة طبقة «${pending.label}». لن يغيّر هذا الإجراء بيانات المصدر أو ينشئ بيانات جديدة.`, requireReason: false }} revision={pending.revision} publishedReleaseId={activeReleaseId} busy={busy} onCancel={() => setPending(null)} onConfirm={() => { void changeLayer(); }} /> : null}

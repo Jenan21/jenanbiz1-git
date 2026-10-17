@@ -31,6 +31,11 @@ export const importSchema = z.object({
 });
 export type ImportInput = z.infer<typeof importSchema>;
 
+export async function assertImportCandidate(releaseId: string) {
+  const [release] = await db.$queryRaw<{ status: string }[]>(Prisma.sql`SELECT status FROM jenan_map.release WHERE id=${releaseId}::uuid`);
+  if (!release || !["Draft", "Ready"].includes(release.status)) throw new MapError("IMPORT_REQUIRES_UNREVIEWED_RELEASE");
+}
+
 export async function localImportStream(filename: string) {
   if (!/^[a-zA-Z0-9][a-zA-Z0-9._-]{0,180}$/.test(filename)) throw new MapError("INVALID_STAGED_FILENAME", 400);
   const configured = process.env.JENAN_MAP_STAGING_ROOT;
@@ -48,6 +53,8 @@ export async function localImportStream(filename: string) {
 export async function ingestArtifact(releaseId: string, input: ImportInput, stream: AsyncIterable<Uint8Array>, actor: string) {
   idSchema.parse(releaseId);
   input = importSchema.parse(input);
+  try { await assertImportCandidate(releaseId); }
+  catch (error) { if (stream instanceof Readable) stream.destroy(); throw error; }
   const root = await realpath(storageRoot());
   const publicRoot = await realpath(path.resolve("public")).catch(() => path.resolve("public"));
   if (root === publicRoot || root.startsWith(publicRoot + path.sep) || ((await stat(root)).mode & 0o077) !== 0) {

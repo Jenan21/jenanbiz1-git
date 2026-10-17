@@ -178,6 +178,21 @@ describe("publication and owned spatial queries", () => {
     expect(query.values).toContain(q);
     expect(query.values).toContain(1234);
   });
+  it.each(["roads,pois", ""])("passes parsed CSV layer selection into the bound-category SQL predicate: %j", async (layerIds) => {
+    mocks.query.mockResolvedValueOnce([state]).mockResolvedValueOnce([release])
+      .mockResolvedValueOnce([{ id: "boundary" }]).mockResolvedValueOnce([]);
+    const response = await searchEndpoint(request(`/api/jenan-map/search?q=Riyadh&layerIds=${layerIds}`));
+    expect(response.status).toBe(200);
+    const query = mocks.query.mock.calls.at(-1)![0];
+    expect(query.text).toContain("jenan_map.release_layer");
+    expect(query.text).toContain("lb.enabled");
+    expect(query.text).toContain("f.category = ANY");
+    expect(query.text).toContain(`lb."layerId" = 'base'`);
+    if (layerIds) {
+      expect(query.values).toContain("roads");
+      expect(query.values).toContain("pois");
+    } else expect(query.text).not.toContain(`lb."layerId" IN`);
+  });
   it("rejects stale publish and mismatched rollback confirmations transactionally", async () => {
     mocks.query.mockResolvedValueOnce([state]).mockResolvedValueOnce([{ ...release, status: "Approved" }]);
     await expect(command({ action: "publish", releaseId, expectedRevision: 3, expectedPublishedReleaseId: releaseId, confirmation: "PUBLISH", reason: "Reviewed and confirmed" }, "admin")).rejects.toThrow("STALE_REVISION");
@@ -249,6 +264,15 @@ describe("publication and owned spatial queries", () => {
     await expect(command({ action: "approve", releaseId, reason: "Human review confirmed", confirmation: "APPROVE" }, "admin")).rejects.toThrow("RELEASE_NOT_READY");
     expect(mocks.execute).not.toHaveBeenCalled();
   });
+  it.each([{ bindings: [] }, { bindings: [{ available: true, styleLayerIds: ["invented-style-id"] }] }])("requires enabled release bindings that match actual immutable style IDs: %j", async ({ bindings }) => {
+    await writeReadyFixtures();
+    mocks.releaseLayers.mockResolvedValueOnce(bindings);
+    mocks.query.mockResolvedValueOnce([state]).mockResolvedValueOnce([{ ...release, status: "Ready" }])
+      .mockResolvedValueOnce([{ boundaries: BigInt(1), features: BigInt(1), authority: "Fixture authority", source: "Synthetic unit fixture only" }])
+      .mockResolvedValueOnce(readyArtifacts);
+    await expect(command({ action: "approve", releaseId, reason: "Human review confirmed", confirmation: "APPROVE" }, "admin")).rejects.toThrow("RELEASE_LAYERS_NOT_READY");
+    expect(mocks.execute).not.toHaveBeenCalled();
+  });
   it("exports only explicitly licensed non-source artifacts in the admin portable manifest", async () => {
     await writeReadyFixtures();
     mocks.query.mockResolvedValueOnce([release]).mockResolvedValueOnce([{ ...artifact, exportAllowed: true }, { ...artifact, id: otherId, publicSafe: false, kind: "source", exportAllowed: true }]);
@@ -287,6 +311,7 @@ describe("publication and owned spatial queries", () => {
     expect(JSON.stringify(result.artifacts)).not.toContain("storageKey");
     expect(result.storage).toEqual({ status: "unavailable", configured: true });
     expect(result.capabilities).toContain("rollback");
+    expect(result.capabilities).not.toContain("artifact-import");
     expect(result.previewAvailable).toBe(true);
     expect(result.exportAvailable).toBe(true);
   });

@@ -14,6 +14,8 @@ describe.skipIf(!databaseUrl)("durable release bindings on disposable PostgreSQL
   const schema = `binding_fixture_${randomUUID().replaceAll("-", "")}`;
   const first = randomUUID();
   const second = randomUUID();
+  const draft = randomUUID();
+  const ready = randomUUID();
   const rewrite = (sql: string) => sql.replaceAll("jenan_map.", `${schema}.`);
   const executor = {
     async $queryRaw(query: Prisma.Sql) {
@@ -52,8 +54,9 @@ describe.skipIf(!databaseUrl)("durable release bindings on disposable PostgreSQL
     for (const path of [
       "prisma/jenan-map/migrations/20261017140000_map_layer_catalog/migration.sql",
       "prisma/jenan-map/migrations/20261017170000_release_layer_bindings/migration.sql",
+      "prisma/jenan-map/migrations/20261017180000_map_candidate_layer_bindings/migration.sql",
     ]) await client.query(rewrite(await readFile(path, "utf8")));
-    await client.query(`INSERT INTO ${schema}.release (id,status) VALUES ($1,'Processing'),($2,'Processing')`, [first, second]);
+    await client.query(`INSERT INTO ${schema}.release (id,status) VALUES ($1,'Processing'),($2,'Processing'),($3,'Draft'),($4,'Ready')`, [first, second, draft, ready]);
   });
 
   afterAll(async () => {
@@ -68,8 +71,10 @@ describe.skipIf(!databaseUrl)("durable release bindings on disposable PostgreSQL
     await bindReleaseLayers(executor, first, [
       { id: "base", styleLayerIds: ["base-first"], searchCategories: ["city", "address"] },
       { id: "roads", styleLayerIds: ["roads-first"], searchCategories: ["road"], confidence: 0.6 },
-      { id: "businesses", styleLayerIds: ["private-first"], searchCategories: ["private"], visibility: "internal" },
-    ], ["base-first", "roads-first", "private-first"]);
+    ], ["base-first", "roads-first"]);
+    await client.query(`INSERT INTO ${schema}.release_layer
+      ("releaseId","layerId",visibility,"styleLayerIds","searchCategories")
+      VALUES ($1,'businesses','internal',ARRAY['private-first'],ARRAY['private'])`, [first]);
     await bindReleaseLayers(executor, second, [
       { id: "roads", styleLayerIds: ["roads-second"], searchCategories: ["road"] },
     ], ["roads-second"]);
@@ -92,6 +97,15 @@ describe.skipIf(!databaseUrl)("durable release bindings on disposable PostgreSQL
     expect(base.rows.map((row) => row.category)).toEqual(["address", "city"]);
   });
 
+  it("permits the actual administrator binding workflow on both Draft and Ready candidates", async () => {
+    for (const releaseId of [draft, ready]) {
+      await bindReleaseLayers(executor, releaseId, [
+        { id: "base", styleLayerIds: ["candidate-background"], visibility: "public" },
+      ], ["candidate-background"]);
+      expect((await releaseMapLayers(releaseId, executor)).map((layer) => layer.id)).toEqual(["base"]);
+    }
+  });
+
   it("removes a disabled binding from both manifest readiness and search but not another release", async () => {
     await client.query(`UPDATE ${schema}.release_layer SET enabled=false,revision=revision+1 WHERE "releaseId"=$1 AND "layerId"='roads'`, [first]);
     expect((await releaseMapLayers(first, executor)).map((row) => row.id)).toEqual(["base"]);
@@ -104,13 +118,13 @@ describe.skipIf(!databaseUrl)("durable release bindings on disposable PostgreSQL
     expect(result.rows.map((row) => row.category)).toEqual(["address", "city"]);
   });
 
-  it("retains immutable release binding provenance and rejects inserts outside Processing", async () => {
+  it("retains immutable release binding provenance and rejects inserts after review", async () => {
     await rejected(`UPDATE jenan_map.release_layer SET "styleLayerIds"=ARRAY['changed'] WHERE "releaseId"='${first}'`, /provenance is immutable/);
     await rejected(`UPDATE jenan_map.release_layer SET visibility='public' WHERE "releaseId"='${first}' AND "layerId"='businesses'`, /provenance is immutable/);
     await rejected(`UPDATE jenan_map.release_layer SET confidence=1 WHERE "releaseId"='${first}'`, /provenance is immutable/);
     await rejected(`DELETE FROM jenan_map.release_layer WHERE "releaseId"='${first}'`, /must be retained/);
-    await client.query(`UPDATE ${schema}.release SET status='Ready' WHERE id=$1`, [first]);
+    await client.query(`UPDATE ${schema}.release SET status='Approved' WHERE id=$1`, [first]);
     await rejected(`INSERT INTO jenan_map.release_layer ("releaseId","layerId",visibility,"styleLayerIds")
-      VALUES ('${first}','pois','public',ARRAY['new-pois'])`, /require Processing/);
+      VALUES ('${first}','pois','public',ARRAY['new-pois'])`, /require an unreviewed/);
   });
 });

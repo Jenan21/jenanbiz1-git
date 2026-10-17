@@ -3,19 +3,21 @@ import { mkdir, readdir, rm, symlink, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { Readable } from "node:stream";
 import { NextRequest } from "next/server";
-const mocks = vi.hoisted(() => ({ query: vi.fn(), execute: vi.fn(), transaction: vi.fn(), user: vi.fn(), admin: vi.fn(), origin: vi.fn(), rate: vi.fn(), releaseLayers: vi.fn() }));
+const mocks = vi.hoisted(() => ({ query: vi.fn(), execute: vi.fn(), transaction: vi.fn(), user: vi.fn(), admin: vi.fn(), origin: vi.fn(), rate: vi.fn(), releaseLayers: vi.fn(), bindLayers: vi.fn(), readyLayers: vi.fn() }));
 vi.mock("@/lib/db", () => ({ db: { $queryRaw: mocks.query, $executeRaw: mocks.execute, $transaction: mocks.transaction } }));
 vi.mock("@/lib/auth/session", () => ({ getCurrentUser: mocks.user }));
 vi.mock("@/lib/auth/authorization", () => ({ hasPlatformAdminAccess: mocks.admin }));
 vi.mock("@/lib/auth/request", () => ({ hasValidOrigin: mocks.origin }));
 vi.mock("@/lib/rate-limit/route-rate-limit", () => ({ enforceRouteRateLimit: mocks.rate }));
 vi.mock("@/services/jenan-map/layers", async (original) => ({
-  ...await original<typeof import("@/services/jenan-map/layers")>(), releaseManifestLayers: mocks.releaseLayers,
+  ...await original<typeof import("@/services/jenan-map/layers")>(), releaseManifestLayers: mocks.releaseLayers, bindReleaseLayers: mocks.bindLayers, releaseMapLayers: mocks.readyLayers,
 }));
 import { importSchema, ingestArtifact, localImportStream, type ImportInput } from "@/services/jenan-map/ingestion";
 import { servedStyle } from "@/services/jenan-map/service";
 import { releaseAssetResponse } from "@/services/jenan-map/http";
 import { POST } from "@/app/api/admin/jenan-map/releases/[releaseId]/artifacts/route";
+import { ingestLayerBindings, bindLayersSchema } from "@/services/jenan-map/layer-ingestion";
+import { POST as bindLayers } from "@/app/api/admin/jenan-map/releases/[releaseId]/layers/route";
 import { fixtureReleaseId as releaseId, readyFixtureFiles } from "./jenan-map-artifact-fixtures";
 const root = path.resolve(".jenan-map-ingestion-test"), staging = path.resolve(".jenan-map-staging-test");
 const fixture = readyFixtureFiles()[2];
@@ -72,6 +74,32 @@ it("rejects upload before reading a body when admin/origin checks fail", async (
   expect((await POST(new NextRequest("http://localhost", { method: "POST" }), context())).status).toBe(403);
   expect(mocks.query).not.toHaveBeenCalled();
 });
+it("caps staged JSON input at 16 KiB while reading instead of trusting Content-Length", async () => {
+  const response = await POST(new NextRequest("http://localhost", {
+    method: "POST", headers: { "content-type": "application/json", "content-length": "1" },
+    body: JSON.stringify({ oversized: "x".repeat(16 * 1024) }),
+  }), context());
+  expect(response.status).toBe(413);
+  expect(await response.json()).toEqual({ error: "IMPORT_JSON_TOO_LARGE" });
+  expect(mocks.transaction).not.toHaveBeenCalled();
+});
+it("rejects noncandidate releases without consuming binary streams or HTTP bodies", async () => {
+  mocks.query.mockResolvedValue([{ status: "Published" }]);
+  let consumed = false;
+  async function* stream() { consumed = true; yield fixture.bytes; }
+  await expect(ingestArtifact(releaseId, metadata, stream(), "admin")).rejects.toThrow("IMPORT_REQUIRES_UNREVIEWED_RELEASE");
+  expect(consumed).toBe(false);
+  const request = new NextRequest("http://localhost", { method: "POST", body: JSON.stringify({ unused: true }) });
+  expect((await POST(request, context())).status).toBe(409);
+  expect(request.bodyUsed).toBe(false);
+  expect(mocks.transaction).not.toHaveBeenCalled();
+});
+it("rechecks candidate status transactionally after consuming verified bytes", async () => {
+  mocks.query.mockResolvedValueOnce([{ status: "Draft" }]).mockResolvedValueOnce([{ status: "Approved" }]);
+  await expect(ingestArtifact(releaseId, metadata, Readable.from([fixture.bytes]), "admin")).rejects.toThrow("IMPORT_REQUIRES_UNREVIEWED_RELEASE");
+  expect(mocks.transaction).toHaveBeenCalledOnce();
+  expect(mocks.execute).not.toHaveBeenCalled();
+});
 it("requires a license attestation for export and prevents evidence becoming public", () => {
   expect(importSchema.safeParse({ ...metadata, exportLicense: undefined }).success).toBe(false);
   expect(importSchema.safeParse({ ...metadata, kind: "coverage", filename: "coverage.json" }).success).toBe(false);
@@ -101,4 +129,42 @@ it.each([false, true])("serves exact release-pinned glyph bytes with private cac
   expect(response.headers.get("cache-control")).toBe("private, no-store");
   expect(response.headers.get("content-type")).toBe("application/x-protobuf");
   expect(Buffer.from(await response.arrayBuffer())).toEqual(glyph.bytes);
+});
+it("derives layer binding style IDs from retained bytes under the candidate lock and audits", async () => {
+  const style = readyFixtureFiles()[1];
+  await mkdir(path.join(root, releaseId)); await writeFile(path.join(root, style.artifact.storageKey), style.bytes);
+  mocks.query.mockResolvedValueOnce([{ status: "Ready" }]).mockResolvedValueOnce([style.artifact]);
+  mocks.readyLayers.mockResolvedValue([{ id: "base", styleLayerIds: ["places"] }]);
+  const input = bindLayersSchema.parse({ layers: [{ id: "base", styleLayerIds: ["places"], searchCategories: ["place"], visibility: "public" }], confirmation: "BIND MAP LAYERS" });
+  const output = await ingestLayerBindings(releaseId, input, "admin");
+  expect(output.reviewRequired).toBe(true);
+  expect(mocks.bindLayers).toHaveBeenCalledWith(expect.anything(), releaseId, input.layers, ["places"]);
+  expect(mocks.query.mock.calls[0][0].text).toContain("FOR UPDATE");
+  expect(mocks.execute.mock.calls.map(([q]) => q.text).join(" ")).toContain('INSERT INTO "AuditLog"');
+});
+it("rejects implicit public visibility and client-invented actual style IDs in the binding endpoint", async () => {
+  const input = { layers: [{ id: "base", styleLayerIds: ["places"] }], confirmation: "BIND MAP LAYERS", actualStyleIds: ["places"] };
+  const response = await bindLayers(new NextRequest("http://localhost", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(input) }), context());
+  expect(response.status).toBe(400);
+  expect(mocks.bindLayers).not.toHaveBeenCalled();
+});
+it("does not label layers encoded in a public basemap as private", async () => {
+  const style = readyFixtureFiles()[1];
+  mocks.query.mockResolvedValueOnce([{ status: "Ready" }]).mockResolvedValueOnce([style.artifact]);
+  const input = bindLayersSchema.parse({ layers: [{ id: "base", styleLayerIds: ["places"], visibility: "internal" }], confirmation: "BIND MAP LAYERS" });
+  await expect(ingestLayerBindings(releaseId, input, "admin")).rejects.toThrow("INTERNAL_LAYER_IN_PUBLIC_STYLE");
+});
+it("does not finalize a public style containing unbound layers", async () => {
+  const style = readyFixtureFiles()[1];
+  await mkdir(path.join(root, releaseId)); await writeFile(path.join(root, style.artifact.storageKey), style.bytes);
+  mocks.query.mockResolvedValueOnce([{ status: "Ready" }]).mockResolvedValueOnce([style.artifact]);
+  const input = bindLayersSchema.parse({ layers: [{ id: "base", styleLayerIds: ["unrelated"], visibility: "public" }], confirmation: "BIND MAP LAYERS" });
+  await expect(ingestLayerBindings(releaseId, input, "admin")).rejects.toThrow("UNBOUND_PUBLIC_STYLE_LAYER");
+  expect(mocks.bindLayers).not.toHaveBeenCalled();
+});
+it("hides globally unavailable bound style IDs in the delivered style", async () => {
+  const style = readyFixtureFiles()[1];
+  await mkdir(path.join(root, releaseId)); await writeFile(path.join(root, style.artifact.storageKey), style.bytes);
+  mocks.releaseLayers.mockResolvedValue([{ id: "base", available: false, styleLayerIds: ["places"] }]);
+  expect((await servedStyle(style.artifact, false)).layers[0].layout.visibility).toBe("none");
 });

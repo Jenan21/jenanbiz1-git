@@ -100,12 +100,15 @@ export async function snapshot() {
   const releases = await db.$queryRaw<Release[]>(sql`SELECT * FROM jenan_map.release ORDER BY "createdAt" DESC LIMIT 100`);
   const audit = await db.$queryRaw(sql`SELECT * FROM jenan_map.audit ORDER BY "createdAt" DESC LIMIT 100`);
   const files = await db.$queryRaw<Artifact[]>(sql`SELECT * FROM jenan_map.artifact ORDER BY "createdAt" DESC LIMIT 500`);
+  const storage = await storageState();
   return {
     runtime: state, releases, audit,
     artifacts: files.map((file) => ({ ...publicArtifact(file, true), releaseId: file.releaseId, publicSafe: file.publicSafe,
-      exportAllowed: file.kind !== "source" && (file as Artifact & { exportAllowed?: boolean }).exportAllowed === true })),
-    storage: await storageState(),
-    capabilities: ["create", "approve", "publish", "rollback", "archive", "runtime", "preview", "export", "artifact-download", "artifact-import"],
+      exportAllowed: file.kind !== "source" && file.exportAllowed === true,
+      exportLicense: file.exportLicense ?? null })),
+    storage,
+    capabilities: ["create", "approve", "publish", "rollback", "archive", "runtime", "preview", "export", "artifact-download",
+      ...(storage.status === "available" ? ["artifact-import", "layer-bind"] : [])],
     importLimits: { multipartRequestBytes: 32 * 1024 * 1024, localArtifactBytes: 32 * 1024 ** 3, countryTileBuildAvailable: false },
     previewAvailable: true, exportAvailable: true,
     blockers: !state.publishedReleaseId ? ["NO_PUBLISHED_RELEASE", "IMPORT_AND_REVIEW_REQUIRED"] : [],
@@ -133,8 +136,10 @@ async function verifyReady(releaseId: string, executor: SqlExecutor) {
   }
   const style = await validateReleaseArtifacts(files, true, { authority: counts.authority, source: counts.source });
   const bindings = await releaseManifestLayers(releaseId, executor);
-  const styleIds = new Set(style.layers.map((layer: { id: string }) => layer.id));
+  const styleIds = new Set<string>(style.layers.map((layer: { id: string }) => layer.id));
+  const claimed = new Set(bindings.flatMap((layer) => layer.styleLayerIds ?? []));
   if (!bindings.some((layer) => layer.available) ||
+      [...styleIds].some((id) => !claimed.has(id)) ||
       bindings.some((layer) => layer.styleLayerIds?.some((id) => !styleIds.has(id)))) throw new MapError("RELEASE_LAYERS_NOT_READY");
 }
 

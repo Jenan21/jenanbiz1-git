@@ -75,10 +75,12 @@ export function mapErrorMessage(code?: string, status?: number) {
   if (["STALE_REVISION", "STALE_PUBLISHED_POINTER", "CONCURRENT_CHANGE_RETRY"].includes(code ?? "")) return "تغيرت الحالة أثناء المراجعة. أُعيد تحميل الحالة؛ راجع مؤشر الإنتاج ثم أعد التأكيد يدوياً.";
   if (status === 503 || code === "MAP_NOT_CONFIGURED" || code === "DATABASE_UNAVAILABLE") return "بيانات الخريطة غير متاحة حالياً. قد تكون قاعدة البيانات أو تهيئة الخريطة غير متاحة؛ لا يمكن استنتاج الحالة التشغيلية.";
   if (code === "RELEASE_NOT_READY" || code === "REVIEW_REQUIRED") return "الإصدار غير جاهز أو لم تُستكمل مراجعته. تحقق من البيانات والملفات والتراخيص قبل الاعتماد والنشر.";
-  if (code === "LAYER_DATA_UNAVAILABLE" || code === "LAYER_BINDINGS_REQUIRED") return "الطبقة غير جاهزة: يلزم ربط موثّق بمعرّفات نمط الإصدار وبيانات المصدر قبل التفعيل.";
-  if (code === "INTERNAL_LAYER_NOT_PUBLIC") return "الطبقة داخلية ولا يمكن إتاحتها للجمهور.";
+  if (code === "LAYER_DATA_UNAVAILABLE" || code === "LAYER_BINDINGS_REQUIRED" || code === "UNBOUND_PUBLIC_STYLE_LAYER" || code === "RELEASE_LAYERS_NOT_READY") return "الطبقة غير جاهزة: يلزم ربط موثّق بمعرّفات نمط الإصدار وبيانات المصدر قبل التفعيل.";
+  if (code === "INTERNAL_LAYER_NOT_PUBLIC" || code === "INTERNAL_LAYER_IN_PUBLIC_STYLE") return "الطبقة داخلية ولا يمكن إتاحتها للجمهور.";
   if (code === "IMPORT_IN_PROGRESS") return "هذا الإصدار قيد الاستيراد بالفعل. حدّث الحالة ولا تكرر الطلب.";
-  if (code === "INVALID_IMPORT_MANIFEST" || code === "INVALID_LAYER_BINDING") return "بيان الاستيراد أو ربط الطبقات غير صالح. راجع أسماء الملفات ومعرّفات النمط والتصنيفات والترخيص.";
+  if (code === "INVALID_IMPORT_MANIFEST" || code === "INVALID_LAYER_BINDING" || code === "INVALID_LAYER_BINDINGS") return "بيان الاستيراد أو ربط الطبقات غير صالح. راجع أسماء الملفات ومعرّفات النمط والتصنيفات والترخيص.";
+  if (code === "ONE_PUBLIC_STYLE_REQUIRED") return "يلزم ملف نمط عام واحد موثّق لهذا الإصدار قبل ربط الطبقات. استورده أولاً ثم أعد المحاولة.";
+  if (code === "LAYER_BINDINGS_ALREADY_RETAINED") return "ربط الطبقات محفوظ بالفعل ولا يمكن استبداله. راجع المعاينة أو أنشئ إصداراً جديداً.";
   if (code === "INVALID_IMPORT_INPUT" || code === "INVALID_IMPORT_FORM" || code === "INVALID_STAGED_FILENAME") return "بيانات الاستيراد غير صالحة. راجع النوع والاسم والحجم والبصمة وإذن التصدير؛ لا تستخدم مسارات أو روابط خارجية.";
   if (code === "USE_LOCAL_IMPORT_FOR_LARGE_ARTIFACTS") return "الملف أكبر من حد الرفع. جهّزه في مجلد التخزين الخاص ثم اختر الاستيراد باسم الملف المجهّز.";
   if (code === "ARTIFACT_ALREADY_RETAINED") return "هذا الأصل محفوظ بالفعل ولا يمكن استبداله. حدّث قائمة الملفات وراجع الإصدار والبصمة.";

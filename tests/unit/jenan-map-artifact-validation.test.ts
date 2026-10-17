@@ -4,7 +4,7 @@ import { mkdir, open, rm, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { validateArtifactFormat, validateReleaseArtifacts } from "@/services/jenan-map/validation";
 import { openArtifact } from "@/services/jenan-map/storage";
-import { readyFixtureFiles } from "./jenan-map-artifact-fixtures";
+import { pmtilesFixture, readyFixtureFiles } from "./jenan-map-artifact-fixtures";
 
 const root = path.resolve(".jenan-map-validation-test");
 beforeEach(async () => { process.env.JENAN_MAP_STORAGE_ROOT = root; await mkdir(root, { mode: 0o700 }); });
@@ -67,6 +67,15 @@ describe("real retained map artifact validation", () => {
     await writeFile(filename, bytes); const handle = await open(filename, "r");
     try { await expect(validateArtifactFormat(fixture.artifact, handle)).rejects.toThrow(); }
     finally { await handle.close(); }
+  });
+  it("rejects declared internal layers inside a public PMTiles archive", async () => {
+    const bytes = pmtilesFixture({ vector_layers: [{ id: "places", visibility: "internal" }] });
+    const filename = path.join(root, "internal.pmtiles");
+    await writeFile(filename, bytes); const handle = await open(filename, "r");
+    try {
+      await expect(validateArtifactFormat({ ...readyFixtureFiles()[2].artifact, byteSize: BigInt(bytes.length) }, handle))
+        .rejects.toThrow("ARTIFACT_FORMAT_INVALID");
+    } finally { await handle.close(); }
   });
   it("validates actual sprite PNG decoding, not just a filename or magic header", async () => {
     const { createCanvas } = await import("@napi-rs/canvas");
