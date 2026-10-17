@@ -22,6 +22,9 @@ export type AdminMapLayer = {
   searchCategories: string[];
   sourceDate: string | null;
   license: string | null;
+  provenance?: {
+    organization: string; url: string; importedAt: string; attribution: string;
+  } | null;
 };
 
 export function canChangeLayer(layer: AdminMapLayer, activeReleaseId: string | null) {
@@ -87,7 +90,13 @@ export function MapLayerCatalog({ activeReleaseId, disabled = false }: { activeR
     {layers?.length ? <MapTable headers={["الطبقة", "الحالة", "المصدر", "الإصدار", "تاريخ المصدر", "الترخيص", "معرّفات النمط", "تصنيفات البحث", "الثقة", "الرؤية", "آخر تحديث السجل", "الإتاحة"]}>
       {layers.map((layer) => <tr key={layer.id}>
         <td>{layer.label}</td><td>{layer.status === "ready" ? "جاهز بحسب السجل" : layer.status === "warning" ? "يتطلب مراجعة" : "بيانات غير متاحة"}</td>
-        <td>{layer.source ?? "غير متاح"}</td><td>{layer.version ?? "غير متاح"}</td><td>{displayDate(layer.sourceDate)}</td><td>{layer.license ?? "غير موثق"}</td>
+        <td>{layer.source ?? "غير متاح"}{layer.provenance ? <details>
+          <summary>توثيق المصدر</summary>
+          <p>{layer.provenance.organization}</p>
+          <p><a href={layer.provenance.url} target="_blank" rel="noopener noreferrer">رابط بيانات المصدر</a></p>
+          <p>تاريخ الاستيراد: {displayDate(layer.provenance.importedAt)}</p>
+          <p>{layer.provenance.attribution}</p>
+        </details> : null}</td><td>{layer.version ?? "غير متاح"}</td><td>{displayDate(layer.sourceDate)}</td><td>{layer.license ?? "غير موثق"}</td>
         <td><bdi>{layer.styleLayerIds?.join("، ") || "غير مرتبط"}</bdi></td><td><bdi>{layer.searchCategories?.join("، ") || "لا توجد تصنيفات بحث مرتبطة"}</bdi></td>
         <td>{layer.confidence === null ? "غير معروفة" : `${Math.round(layer.confidence * 100)}%`}</td><td>{layer.visibility === "public" ? "عامة بشرط النشر" : "داخلية"}</td><td>{displayDate(layer.updatedAt)}</td>
         <td><span>{layer.enabled ? "مفعّلة في السياسة" : "معطّلة"}</span><Button type="button" variant="secondary" disabled={disabled || loading || busy || !canChangeLayer(layer, activeReleaseId)} onClick={() => setPending(layer)}>{layer.enabled ? "تعطيل" : "تفعيل"}</Button></td>

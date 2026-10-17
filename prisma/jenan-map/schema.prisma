@@ -72,6 +72,9 @@ model Feature {
   release   Release @relation(fields: [releaseId], references: [id], onDelete: Restrict)
   label     String
   category  String
+  sourceId  String?
+  layerId   String?
+  aliases   String[] @default([])
   geometry  Unsupported("geometry(Geometry,4326)")
   search    Unsupported("tsvector")
 
@@ -86,6 +89,7 @@ model Boundary {
   release       Release @relation(fields: [releaseId], references: [id], onDelete: Restrict)
   authority     String
   source        String
+  coverage      Json?
   geometry      Unsupported("geometry(MultiPolygon,4326)")
 
   @@map("boundary")

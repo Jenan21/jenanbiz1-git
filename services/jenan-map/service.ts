@@ -5,6 +5,7 @@ import { type Artifact, type MapCommand, type MapRuntime, type Release, type Sav
 import { downloadMetadata, openArtifact, storageRoot, storageState } from "./storage";
 import { releaseAssetBase, validateReleaseArtifacts } from "./validation";
 import { readyLayerSearchFilter, releaseManifestLayers } from "./layers";
+import { OPEN_BOUNDARY_NOTICE, OSM_ATTRIBUTION, validateProvenance } from "../../scripts/jenan-map/open-data.mjs";
 
 type SqlExecutor = Pick<DbExecutor, "$queryRaw" | "$executeRaw">;
 const sql = Prisma.sql;
@@ -88,6 +89,7 @@ export async function manifest() {
     release: {
       id: release.id, version: release.version, publishedAt: release.publishedAt,
       source: release.source, sourceDate: release.sourceDate, license: release.license,
+      attribution: `${OSM_ATTRIBUTION}; geoBoundaries product CC BY 4.0; upstream licenses retained per layer`, boundaryNotice: OPEN_BOUNDARY_NOTICE,
       styleUrl: files.find((item) => item.kind === "style") ? `/api/jenan-map/artifacts/${files.find((item) => item.kind === "style")!.id}` : null,
       layers: await releaseManifestLayers(release.id),
       artifacts: files.map((item) => publicArtifact(item)),
@@ -124,23 +126,36 @@ async function audit(executor: SqlExecutor, actor: string, action: string, relea
 }
 
 async function verifyReady(releaseId: string, executor: SqlExecutor) {
-  const [counts] = await executor.$queryRaw<{ boundaries: bigint; features: bigint; authority: string; source: string }[]>(sql`
+  const [counts] = await executor.$queryRaw<{ boundaries: bigint; features: bigint; authority: string; source: string; coverage?: Record<string, unknown> | null }[]>(sql`
     SELECT (SELECT count(*) FROM jenan_map.boundary WHERE "releaseId" = ${releaseId}::uuid) AS boundaries,
       (SELECT count(*) FROM jenan_map.feature WHERE "releaseId" = ${releaseId}::uuid) AS features,
       (SELECT authority FROM jenan_map.boundary WHERE "releaseId" = ${releaseId}::uuid) AS authority,
-      (SELECT source FROM jenan_map.boundary WHERE "releaseId" = ${releaseId}::uuid) AS source`);
+      (SELECT source FROM jenan_map.boundary WHERE "releaseId" = ${releaseId}::uuid) AS source,
+      (SELECT coverage FROM jenan_map.boundary WHERE "releaseId" = ${releaseId}::uuid) AS coverage`);
   const files = await artifacts(releaseId, executor);
   if (!counts || counts.boundaries !== BigInt(1) || counts.features < BigInt(1) ||
       !hasProductionArtifacts(files)) {
     throw new MapError("RELEASE_NOT_READY");
   }
-  const style = await validateReleaseArtifacts(files, true, { authority: counts.authority, source: counts.source });
+  const style = await validateReleaseArtifacts(files, true, { authority: counts.authority, source: counts.source, coverage: counts.coverage });
   const bindings = await releaseManifestLayers(releaseId, executor);
   const styleIds = new Set<string>(style.layers.map((layer: { id: string }) => layer.id));
   const claimed = new Set(bindings.flatMap((layer) => layer.styleLayerIds ?? []));
   if (!bindings.some((layer) => layer.available) ||
       [...styleIds].some((id) => !claimed.has(id)) ||
       bindings.some((layer) => layer.styleLayerIds?.some((id) => !styleIds.has(id)))) throw new MapError("RELEASE_LAYERS_NOT_READY");
+  if (counts.coverage?.authoritative === false) {
+    const expected = counts.coverage.layers as { id: string; provenance: unknown }[];
+    if (!Array.isArray(expected) || bindings.length !== expected.length || bindings.some((binding) => {
+      const source = expected.find((layer) => layer.id === binding.id);
+      if (!source || !binding.provenance) return true;
+      const categories = binding.id === "base" ? [] : [binding.id];
+      if (binding.searchCategories.length !== categories.length ||
+          categories.some((category) => !binding.searchCategories.includes(category))) return true;
+      const provenance = validateProvenance(source.provenance);
+      return Object.entries(provenance).some(([key, value]) => binding.provenance![key as keyof typeof provenance] !== value);
+    })) throw new MapError("RELEASE_LAYER_PROVENANCE_MISMATCH");
+  }
 }
 
 export async function command(input: MapCommand, actor: string) {
@@ -300,6 +315,7 @@ export async function previewManifest(releaseId: string) {
     release: {
       id: release.id, version: release.version, publishedAt: release.publishedAt,
       source: release.source, sourceDate: release.sourceDate, license: release.license,
+      attribution: `${OSM_ATTRIBUTION}; geoBoundaries product CC BY 4.0; upstream licenses retained per layer`, boundaryNotice: OPEN_BOUNDARY_NOTICE,
       styleUrl: files.find((file) => file.kind === "style")
         ? publicArtifact(files.find((file) => file.kind === "style")!, true).url
         : null,

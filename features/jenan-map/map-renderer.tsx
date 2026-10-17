@@ -209,13 +209,21 @@ export default function MapRenderer({
           zoom: camera?.zoom ?? (current ? 12 : 5),
           minZoom: 3,
           maxZoom: 18,
-          // Camera framing only; Saudi inclusion is validated authoritatively by PostGIS.
+          // Camera framing only; Saudi inclusion uses the release's reviewed PostGIS polygon.
           maxBounds: [
             [34, 16],
             [56.5, 33],
           ],
           renderWorldCopies: false,
-          attributionControl: { compact: true, customAttribution: "Jenan PRO" },
+          attributionControl: {
+            compact: false,
+            customAttribution: [
+              "Jenan PRO",
+              '© <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener noreferrer">OpenStreetMap contributors</a> (ODbL 1.0)',
+              '<a href="https://www.geoboundaries.org/" target="_blank" rel="noopener noreferrer">geoBoundaries</a> (product CC BY 4.0; upstream licenses retained)',
+              "حدود غير رسمية — Unofficial boundaries",
+            ],
+          },
           locale: {
             "NavigationControl.ZoomIn": "تكبير الخريطة",
             "NavigationControl.ZoomOut": "تصغير الخريطة",

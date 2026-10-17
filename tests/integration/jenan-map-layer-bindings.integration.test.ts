@@ -50,11 +50,13 @@ describe.skipIf(!databaseUrl)("durable release bindings on disposable PostgreSQL
         version text NOT NULL DEFAULT 'test-only', "sourceDate" timestamptz NOT NULL DEFAULT now(),
         license text NOT NULL DEFAULT 'Test fixtures only');
       CREATE TABLE ${schema}.feature ("releaseId" uuid, category text);
+      CREATE TABLE ${schema}.boundary ("releaseId" uuid);
     `);
     for (const path of [
       "prisma/jenan-map/migrations/20261017140000_map_layer_catalog/migration.sql",
       "prisma/jenan-map/migrations/20261017170000_release_layer_bindings/migration.sql",
       "prisma/jenan-map/migrations/20261017180000_map_candidate_layer_bindings/migration.sql",
+      "prisma/jenan-map/migrations/20261017190000_map_open_data_provenance/migration.sql",
     ]) await client.query(rewrite(await readFile(path, "utf8")));
     await client.query(`INSERT INTO ${schema}.release (id,status) VALUES ($1,'Processing'),($2,'Processing'),($3,'Draft'),($4,'Ready')`, [first, second, draft, ready]);
   });
@@ -70,7 +72,11 @@ describe.skipIf(!databaseUrl)("durable release bindings on disposable PostgreSQL
     await client.query(`UPDATE ${schema}.layer SET confidence=0.99`);
     await bindReleaseLayers(executor, first, [
       { id: "base", styleLayerIds: ["base-first"], searchCategories: ["city", "address"] },
-      { id: "roads", styleLayerIds: ["roads-first"], searchCategories: ["road"], confidence: 0.6 },
+      { id: "roads", styleLayerIds: ["roads-first"], searchCategories: ["road"], confidence: 0.6, provenance: {
+        source: "Synthetic provenance fixture", organization: "Test-only organization",
+        url: "https://download.geofabrik.de/asia/gcc-states.html", sourceDate: "2026-01-01T00:00:00.000Z",
+        importedAt: "2026-10-01T00:00:00.000Z", license: "ODbL-1.0", attribution: "Test-only OpenStreetMap attribution metadata",
+      } },
     ], ["base-first", "roads-first"]);
     await client.query(`INSERT INTO ${schema}.release_layer
       ("releaseId","layerId",visibility,"styleLayerIds","searchCategories")
@@ -83,6 +89,10 @@ describe.skipIf(!databaseUrl)("durable release bindings on disposable PostgreSQL
     ]);
     expect((await releaseMapLayers(second, executor)).map((row) => row.styleLayerIds)).toEqual([["roads-second"]]);
     expect((await releaseMapLayers(first, executor)).map((row) => row.confidence)).toEqual([null, 0.6]);
+    expect((await releaseMapLayers(first, executor)).find((row) => row.id === "roads")).toMatchObject({
+      source: "Synthetic provenance fixture", license: "ODbL-1.0",
+      provenance: { organization: "Test-only organization", importedAt: "2026-10-01T00:00:00.000Z" },
+    });
     expect((await client.query(`SELECT status,source FROM ${schema}.layer WHERE id='roads'`)).rows[0])
       .toEqual({ status: "unavailable", source: null });
   });
@@ -122,6 +132,7 @@ describe.skipIf(!databaseUrl)("durable release bindings on disposable PostgreSQL
     await rejected(`UPDATE jenan_map.release_layer SET "styleLayerIds"=ARRAY['changed'] WHERE "releaseId"='${first}'`, /provenance is immutable/);
     await rejected(`UPDATE jenan_map.release_layer SET visibility='public' WHERE "releaseId"='${first}' AND "layerId"='businesses'`, /provenance is immutable/);
     await rejected(`UPDATE jenan_map.release_layer SET confidence=1 WHERE "releaseId"='${first}'`, /provenance is immutable/);
+    await rejected(`UPDATE jenan_map.release_layer SET provenance='{}' WHERE "releaseId"='${first}'`, /provenance is immutable/);
     await rejected(`DELETE FROM jenan_map.release_layer WHERE "releaseId"='${first}'`, /must be retained/);
     await client.query(`UPDATE ${schema}.release SET status='Approved' WHERE id=$1`, [first]);
     await rejected(`INSERT INTO jenan_map.release_layer ("releaseId","layerId",visibility,"styleLayerIds")
