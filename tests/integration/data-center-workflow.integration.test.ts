@@ -36,7 +36,8 @@ describe("Data Center transactional workflows (mocked executor)", () => {
     const result = await createDataCenterItem(input, admin);
     expect(result.status).toBe("DRAFT");
     expect(result.version.evidenceStatus).toBe("ESTIMATED");
-    expect(result.version.confidence).toMatchObject({ factors: { evidence: 25 }, policyVersion: "dc-confidence-v1" });
+    expect(result.version.confidence).toMatchObject({ factors: { evidence: 18 }, policyVersion: "dc-confidence-v2-seven-factors" });
+    expect(Object.keys((result.version.confidence as { factors: Record<string, number> }).factors)).toHaveLength(7);
     expect(mocks.tx.auditLog.create).toHaveBeenCalledWith(expect.objectContaining({ data: expect.objectContaining({ action: "data-center.item.created" }) }));
     expect(mocks.tx.dataCenterEvent.create).toHaveBeenCalledOnce();
   });
@@ -44,6 +45,12 @@ describe("Data Center transactional workflows (mocked executor)", () => {
     mocks.tx.dataCenterSource.findUnique.mockResolvedValue({ ...source, kind: "GENERATED" });
     await expect(createDataCenterItem({ ...input, evidenceStatus: "VERIFIED", provenance: [{ label: "x", kind: "SOURCE", reference: "x" }] }, admin)).rejects.toThrow("VERIFICATION_REQUIRES");
     expect(mocks.tx.dataCenterItem.create).not.toHaveBeenCalled();
+  });
+  it("derives AI origin from the trusted machine principal even if a service caller supplies HUMAN", async () => {
+    mocks.tx.dataCenterSource.findUnique.mockResolvedValue({ ...source, scope: "PRIVATE", ownerId: admin.id });
+    const result = await createDataCenterItem({ ...input, origin: "HUMAN" }, { ...admin, kind: "AI" });
+    expect(result.version.origin).toBe("AI");
+    expect(result.status).toBe("DRAFT");
   });
   it("creates a new draft version without updating old content", async () => {
     mocks.tx.dataCenterItem.findUnique.mockResolvedValue({ ...item, status: "PUBLISHED" });

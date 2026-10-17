@@ -27,10 +27,13 @@ export async function accessiblePublishedVersionWhere(actor: DataCenterActor, in
     AND: [
       await permissionFilter(actor, tx),
       { OR: [{ expiresAt: null }, { expiresAt: { gt: new Date() } }] },
+      { OR: [{ effectiveFrom: null }, { effectiveFrom: { lte: new Date() } }] },
+      { OR: [{ effectiveTo: null }, { effectiveTo: { gt: new Date() } }] },
     ],
     item: {
-      status: "PUBLISHED", source: { AND: [scope, { allowRetrieval: true }, ...(input.organizationId ? [{ organizationId: input.organizationId }] : [])] },
+      status: { not: "ARCHIVED" }, publishedVersion: { not: null }, source: { AND: [scope, { allowRetrieval: true }, ...(input.organizationId ? [{ organizationId: input.organizationId }] : [])] },
       ...(input.typeKey ? { typeKey: input.typeKey } : {}), ...(input.layer ? { layer: input.layer } : {}),
+      ...(input.categoryKey || input.departmentKey ? { type: { ...(input.categoryKey ? { categoryKey: input.categoryKey } : {}), ...(input.departmentKey ? { departmentKey: input.departmentKey } : {}) } } : {}),
       conflicts: { none: { resolvedAt: null } }, otherConflicts: { none: { resolvedAt: null } },
     },
     evidenceStatus: { not: "CONFLICTED" },
@@ -47,7 +50,7 @@ export async function retrieveDataCenterContext(input: DataCenterContextRequest,
   const where = await accessiblePublishedVersionWhere(actor, input);
   // Only scoped candidates reach either search adapter. The cap is explicit, never a claim of global coverage.
   const candidates = await db.dataCenterVersion.findMany({ where, include: { item: { include: { source: true } } }, take: 2001, orderBy: { createdAt: "desc" } });
-  const current = candidates.slice(0, 2000).filter((v) => v.number === v.item.currentVersion);
+  const current = candidates.slice(0, 2000).filter((v) => v.number === v.item.publishedVersion);
   let matches = current;
   if (query && current.length) {
     const ids = current.map((v) => v.id);
@@ -72,10 +75,13 @@ export async function retrieveDataCenterContext(input: DataCenterContextRequest,
     typeKey: v.item.typeKey, layer: v.item.layer, evidenceStatus: v.evidenceStatus, origin: v.origin,
     provenance: v.provenance, checksum: v.checksum, sourceId: v.item.sourceId, source: v.item.source.name,
     license: v.item.source.license, owner: v.item.source.owner, scope: v.item.source.scope,
-    sourcePublishedAt: v.sourcePublishedAt, expiresAt: v.expiresAt,
+    sourceOrganization: v.item.source.sourceOrganization, sourcePublishedAt: v.sourcePublishedAt, expiresAt: v.expiresAt,
+    effectiveFrom: v.effectiveFrom, effectiveTo: v.effectiveTo,
     confidence: deterministicConfidence({ evidenceStatus: v.evidenceStatus, origin: v.origin,
       provenanceCount: Array.isArray(v.provenance) ? v.provenance.length : 0, sourcePublishedAt: v.sourcePublishedAt,
-      freshnessDays: v.item.source.freshnessDays, expiresAt: v.expiresAt }),
+      freshnessDays: v.item.source.freshnessDays, expiresAt: v.expiresAt, sourceKind: v.item.source.kind,
+      completeness: 4 + (Array.isArray(v.provenance) && v.provenance.length ? 2 : 0) + (v.sourcePublishedAt ? 2 : 0) + (v.effectiveFrom || v.effectiveTo ? 2 : 0), consistency: 0 }),
+    confidenceSnapshot: v.confidence,
   })), total: matches.length, page, limit, truncated: candidates.length > 2000 };
 }
 /** Read-only geospatial consumer contract; rendering remains the Map consumer's responsibility. */
@@ -97,7 +103,7 @@ export async function retrieveDataCenterGeoContext(input: DataCenterContextReque
 export async function recordDataCenterUsage(input: { versionId: string; consumer: string; purpose: string; missionId?: string; specialty?: string; missionContext?: string }, actor: DataCenterActor) {
   return db.$transaction(async (tx) => {
     const version = await tx.dataCenterVersion.findFirst({ where: { AND: [await accessiblePublishedVersionWhere(actor, { specialty: input.specialty, missionContext: input.missionContext }, tx), { id: input.versionId }] }, include: { item: true } });
-    if (!version || version.number !== version.item.currentVersion) throw new DataCenterError("PUBLISHED_VERSION_NOT_FOUND", 404);
+    if (!version || version.number !== version.item.publishedVersion) throw new DataCenterError("PUBLISHED_VERSION_NOT_FOUND", 404);
     if (input.missionId) {
       const mission = await tx.mission.findFirst({ where: { id: input.missionId } });
       if (!mission || !isDataCenterAdmin(actor)) throw new DataCenterError("MISSION_ACCESS_REQUIRED", 403);
@@ -125,7 +131,7 @@ export async function importAcademyDataCenterSource(input: { sourceId: string; r
 }
 async function assertAcademyReleaseSource(tx: DbExecutor, versionId: string) {
   const version = await tx.dataCenterVersion.findUnique({ where: { id: versionId }, include: { item: { include: { source: true } } } });
-  if (!version || version.item.source.kind !== "ACADEMY" || !version.item.source.allowRetrieval || version.item.layer !== "KNOWLEDGE" || version.item.status !== "PUBLISHED" || version.number !== version.item.currentVersion || version.origin !== "ACADEMY" || version.evidenceStatus === "CONFLICTED" || (version.expiresAt && version.expiresAt <= new Date()))
+  if (!version || version.item.source.kind !== "ACADEMY" || !version.item.source.allowRetrieval || version.item.layer !== "KNOWLEDGE" || version.item.status === "ARCHIVED" || version.number !== version.item.publishedVersion || version.origin !== "ACADEMY" || version.evidenceStatus === "CONFLICTED" || (version.expiresAt && version.expiresAt <= new Date()) || (version.effectiveFrom && version.effectiveFrom > new Date()) || (version.effectiveTo && version.effectiveTo <= new Date()))
     throw new DataCenterError("APPROVED_ACADEMY_SOURCE_REQUIRED", 409);
   const conflicts = await tx.dataCenterConflict.count({ where: { resolvedAt: null, OR: [{ itemId: version.itemId }, { otherItemId: version.itemId }] } });
   if (conflicts) throw new DataCenterError("UNRESOLVED_CONFLICT", 409);
@@ -171,7 +177,7 @@ export async function approveAcademyDataCenterRelease(input: { releaseId: string
   return db.$transaction(async (tx) => {
     await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${`data-center-release:${input.releaseId}`}))`;
     const release = await tx.dataCenterAcademyRelease.findUnique({ where: { id: input.releaseId }, include: { version: { include: { item: true } } } });
-    if (!release || release.status !== "PENDING" || release.version.item.status !== "PUBLISHED" || release.version.number !== release.version.item.currentVersion) throw new DataCenterError("PENDING_RELEASE_NOT_FOUND", 409);
+    if (!release || release.status !== "PENDING" || release.version.item.status === "ARCHIVED" || release.version.number !== release.version.item.publishedVersion) throw new DataCenterError("PENDING_RELEASE_NOT_FOUND", 409);
     if (release.requestedById === actor.id) throw new DataCenterError("INDEPENDENT_RELEASE_APPROVAL_REQUIRED", 409);
     await assertAcademyReleaseSource(tx, release.versionId);
     await assertAcademyTarget(tx, release.targetKind, release.targetId);

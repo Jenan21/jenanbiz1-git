@@ -33,8 +33,9 @@ describe("Data Center governance policy", () => {
     const input = { evidenceStatus: "ESTIMATED", provenanceCount: 2, freshnessDays: 90, origin: "AI", now: new Date("2026-10-17T00:00:00Z") };
     const first = deterministicConfidence(input);
     expect(first).toEqual(deterministicConfidence(input));
-    expect(first.score).toBe(35);
-    expect(first.factors).toEqual({ evidence: 25, provenance: 10, freshness: 0, origin: 0 });
+    expect(first.score).toBe(24);
+    expect(first.factors).toEqual({ evidence: 18, provenance: 6, freshness: 0, origin: 0, sourceReliability: 0, completeness: 0, consistency: 0 });
+    expect(Object.keys(first.factors)).toHaveLength(7);
     expect(first.ageDays).toBeNull();
     expect(deterministicConfidence({ ...input, evidenceStatus: "CONFLICTED", sourcePublishedAt: input.now }).score).toBe(0);
     expect(deterministicConfidence({ ...input, sourcePublishedAt: input.now, expiresAt: new Date("2020-01-01") }).expired).toBe(true);
@@ -44,5 +45,9 @@ describe("Data Center governance policy", () => {
     const tx = { organizationMember: { findMany: vi.fn().mockResolvedValue([]) } };
     await expect(assertSourceAccess(source, { id: "stranger", systemRole: "USER" }, false, tx as never)).rejects.toThrow("SOURCE_NOT_FOUND");
     await expect(assertSourceAccess(source, { id: "owner", systemRole: "USER" }, true, tx as never)).resolves.toBe(source);
+  });
+  it("rejects caller-supplied origin in public commands", () => {
+    expect(commandSchema.safeParse({ action: "create-item", sourceId: "s", title: "proposal", typeKey: "dataset", layer: "DATA", content: "content", origin: "HUMAN" }).success).toBe(false);
+    expect(commandSchema.safeParse({ action: "create-version", itemId: "i", title: "proposal", content: "content", reason: "new", origin: "HUMAN" }).success).toBe(false);
   });
 });

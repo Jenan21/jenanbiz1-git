@@ -24,6 +24,8 @@ const fieldLabels: Record<string, string> = {
   available: "متاح", scanner: "فحص الملفات", provider: "المزود", formats: "الصيغ", maxBytes: "الحد الأقصى بالبايت",
   targetKind: "نوع الجهة التعليمية", versionId: "معرّف الإصدار",
   fileName: "اسم الملف", adapter: "معالج الاستيراد", scanEngine: "مزود فحص الملف",
+  categoryKey: "مفتاح الفئة", departmentKey: "مفتاح القسم", sourceOrganization: "الجهة الناشرة",
+  effectiveFrom: "بداية السريان", effectiveTo: "نهاية السريان", publishedVersion: "الإصدار المنشور",
 };
 
 export function RecordDetails({ record }: { record: DataCenterRecord }) {

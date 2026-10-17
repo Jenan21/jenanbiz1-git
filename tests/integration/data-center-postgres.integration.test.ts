@@ -21,7 +21,7 @@ vi.mock("@/lib/db", async (importOriginal) => {
   }) };
 });
 import { db } from "@/lib/db";
-import { createDataCenterSource, createDataCenterItem, createDataCenterVersion, transitionDataCenterItem, reviewDataCenterItem, createDataCenterConflict, resolveDataCenterConflict } from "@/services/data-center/service";
+import { createDataCenterSource, createDataCenterItem, createDataCenterVersion, transitionDataCenterItem, reviewDataCenterItem, createDataCenterConflict, resolveDataCenterConflict, dispatchDataCenterCommand } from "@/services/data-center/service";
 import { approveAcademyDataCenterRelease, configureDataCenterSemanticAdapter, exportDataCenter, importAcademyDataCenterSource, recordDataCenterUsage, requestAcademyDataCenterRelease, retrieveAcademyDataCenterRelease, retrieveDataCenterContext } from "@/services/data-center/retrieval";
 import type { DataCenterActor } from "@/services/data-center/contracts";
 import { configureDataCenterScanner, downloadDataCenterOriginal, ingestDataCenterFile } from "@/services/data-center/imports";
@@ -47,7 +47,7 @@ async function publish(itemId: string, actor: DataCenterActor) {
 }
 afterAll(async () => { if (enabled) await (context.actual as typeof db).$disconnect(); });
 describe.skipIf(!enabled)("Data Center real PostgreSQL transactions (always rolled back)", () => {
-  it("runs draft → review → publish → indexed search → exact-version usage → new draft", async () => {
+  it("runs draft → review → publish → indexed search → exact-version usage and retains publication during a draft edit", async () => {
     await isolated(async (tx, admin) => {
       const source = await createDataCenterSource({ name: "Official statistics", kind: "OFFICIAL", scope: "PLATFORM", owner: "Authority", license: "Open", allowExport: true }, admin);
       const item = await createDataCenterItem({ sourceId: source.id, title: "Riyadh demographic estimate", typeKey: "dataset", layer: "DATA", content: "Estimated residents 2026", evidenceStatus: "ESTIMATED" }, admin);
@@ -59,8 +59,12 @@ describe.skipIf(!enabled)("Data Center real PostgreSQL transactions (always roll
       expect(usage.versionId).toBe(item.version.id);
       const exported = await exportDataCenter({ query: "demographic", format: "json" }, admin);
       expect(JSON.parse(exported.body).rows.some((r: { versionId: string }) => r.versionId === item.version.id)).toBe(true);
-      await createDataCenterVersion({ itemId: item.id, title: "Revised demographic estimate", content: "Revised estimate", evidenceStatus: "ESTIMATED", reason: "New evidence" }, admin);
-      expect((await retrieveDataCenterContext({ query: "demographic" }, admin)).rows.some((r) => r.itemId === item.id)).toBe(false);
+      const draft = await createDataCenterVersion({ itemId: item.id, title: "Revised demographic estimate", content: "Revised estimate", evidenceStatus: "ESTIMATED", reason: "New evidence" }, admin);
+      const duringDraft = await retrieveDataCenterContext({ query: "demographic" }, admin);
+      expect(duringDraft.rows.find((r) => r.itemId === item.id)?.versionId).toBe(item.version.id);
+      expect(duringDraft.rows.some((r) => r.versionId === draft.id)).toBe(false);
+      await publish(item.id, admin);
+      expect((await retrieveDataCenterContext({ query: "demographic" }, admin)).rows.find((r) => r.itemId === item.id)?.versionId).toBe(draft.id);
       expect(await tx.dataCenterVersion.count({ where: { itemId: item.id } })).toBe(2);
       expect(await tx.auditLog.count({ where: { actorId: admin.id, action: { startsWith: "data-center." } } })).toBeGreaterThan(7);
     });
@@ -78,6 +82,9 @@ describe.skipIf(!enabled)("Data Center real PostgreSQL transactions (always roll
       await publish(orgItem.id, admin);
       let result = await retrieveDataCenterContext({}, other);
       expect(result.rows.some((r) => [privateItem.id, orgItem.id].includes(r.itemId))).toBe(false);
+      const superAdminResult = await retrieveDataCenterContext({}, { ...admin, systemRole: "SUPER_ADMIN" });
+      expect(superAdminResult.rows.find((r) => r.itemId === privateItem.id)?.scope).toBe("PRIVATE");
+      expect((await tx.dataCenterSource.findUniqueOrThrow({ where: { id: privateSource.id } })).scope).toBe("PRIVATE");
       const adapter = { name: "scoped-test", search: vi.fn(async ({ candidateVersionIds }: { candidateVersionIds: string[] }) => [...candidateVersionIds, privateItem.version.id]) };
       configureDataCenterSemanticAdapter(adapter);
       result = await retrieveDataCenterContext({ query: "balance", mode: "semantic" }, other);
@@ -146,6 +153,24 @@ describe.skipIf(!enabled)("Data Center real PostgreSQL transactions (always roll
       expect(await retrieveAcademyDataCenterRelease("ROBOT", robot.id, admin)).toMatchObject([{ versionId: item.version.id }]);
       await tx.academyResource.update({ where: { id: resource.id }, data: { approvalState: "ARCHIVED" } });
       expect(await retrieveAcademyDataCenterRelease("ROBOT", robot.id, admin)).toHaveLength(0);
+    });
+  });
+  it("persists category/department registries, source organization and effective dates without exposing future-effective knowledge", async () => {
+    await isolated(async (tx, admin) => {
+      const suffix = randomUUID();
+      const categoryKey = `category-${suffix}`, departmentKey = `department-${suffix}`, typeKey = `type-${suffix}`;
+      await dispatchDataCenterCommand({ action: "register-category", key: categoryKey, label: "Statistics" }, admin);
+      await dispatchDataCenterCommand({ action: "register-department", key: departmentKey, label: "Analysis" }, admin);
+      await dispatchDataCenterCommand({ action: "register-type", key: typeKey, label: "Timed dataset", layer: "DATA", categoryKey, departmentKey, requiresIndependentReview: false }, admin);
+      const source = await createDataCenterSource({ name: "Authority dataset", kind: "OFFICIAL", scope: "PLATFORM", owner: "Authority", license: "Internal", sourceOrganization: "Statistics Authority" }, admin);
+      const item = await createDataCenterItem({ sourceId: source.id, title: "Effective statistics", typeKey, layer: "DATA", content: "Reviewed facts", evidenceStatus: "UNVERIFIED", effectiveFrom: "2026-01-01T00:00:00Z", effectiveTo: "2099-01-01T00:00:00Z" }, admin);
+      await publish(item.id, admin);
+      const result = await retrieveDataCenterContext({ categoryKey, departmentKey }, admin);
+      expect(result.rows.find((r) => r.itemId === item.id)).toMatchObject({ sourceOrganization: "Statistics Authority", effectiveFrom: new Date("2026-01-01T00:00:00Z") });
+      const future = await createDataCenterItem({ sourceId: source.id, title: "Future statistics", typeKey, layer: "DATA", content: "Future facts", evidenceStatus: "UNVERIFIED", effectiveFrom: "2098-01-01T00:00:00Z" }, admin);
+      await publish(future.id, admin);
+      expect((await retrieveDataCenterContext({ categoryKey }, admin)).rows.some((r) => r.itemId === future.id)).toBe(false);
+      expect((await tx.dataCenterType.findUniqueOrThrow({ where: { key: typeKey } })).departmentKey).toBe(departmentKey);
     });
   });
 });

@@ -11,6 +11,7 @@ export const sourceSchema = z.object({
   scope: z.enum(["PLATFORM", "ORGANIZATION", "PRIVATE"]), organizationId: id.optional(),
   owner: text(240), license: text(500), allowExport: z.boolean().default(false),
   allowRetrieval: z.boolean().default(true), freshnessDays: z.number().int().min(1).max(3650).default(90),
+  sourceOrganization: text(240).optional(),
 }).strict().refine((v) => v.scope === "ORGANIZATION" ? !!v.organizationId : !v.organizationId, "Organization scope requires organizationId exclusively");
 export const itemSchema = z.object({
   sourceId: id, title: text(240), typeKey: text(80), layer: z.enum(layers),
@@ -18,14 +19,17 @@ export const itemSchema = z.object({
   provenance: z.array(z.object({ label: text(240), reference: text(2000), kind: z.enum(["SOURCE", "CALCULATION", "DOCUMENT", "HUMAN_REVIEW"]) }).strict()).max(100).default([]),
   specialties: tags, missionContexts: tags, requiredPermission: text(100).optional(),
   sourcePublishedAt: z.iso.datetime().optional(), expiresAt: z.iso.datetime().optional(),
+  effectiveFrom: z.iso.datetime().optional(), effectiveTo: z.iso.datetime().optional(),
   origin: z.enum(["HUMAN", "AI", "IMPORT", "CALCULATION", "ACADEMY"]).default("HUMAN"),
 }).strict();
 export const versionSchema = itemSchema.omit({ sourceId: true, typeKey: true, layer: true }).extend({ itemId: id, reason: text(2000) });
 export const commandSchema = z.discriminatedUnion("action", [
   sourceSchema.safeExtend({ action: z.literal("create-source") }),
-  itemSchema.extend({ action: z.literal("create-item") }),
-  versionSchema.extend({ action: z.literal("create-version") }),
-  z.object({ action: z.literal("register-type"), key: z.string().regex(/^[a-z][a-z0-9._-]{1,79}$/), label: text(240), layer: z.enum(layers), requiresIndependentReview: z.boolean().default(false) }).strict(),
+  itemSchema.omit({ origin: true }).extend({ action: z.literal("create-item") }),
+  versionSchema.omit({ origin: true }).extend({ action: z.literal("create-version") }),
+  z.object({ action: z.literal("register-type"), key: z.string().regex(/^[a-z][a-z0-9._-]{1,79}$/), label: text(240), layer: z.enum(layers), requiresIndependentReview: z.boolean().default(false), categoryKey: text(80).optional(), departmentKey: text(80).optional() }).strict(),
+  z.object({ action: z.literal("register-category"), key: z.string().regex(/^[a-z][a-z0-9._-]{1,79}$/), label: text(240) }).strict(),
+  z.object({ action: z.literal("register-department"), key: z.string().regex(/^[a-z][a-z0-9._-]{1,79}$/), label: text(240) }).strict(),
   z.object({ action: z.literal("transition-item"), itemId: id, status: z.enum(lifecycleStates), reason: text(2000) }).strict(),
   z.object({ action: z.literal("review-item"), itemId: id, decision: z.enum(["APPROVED", "REJECTED"]), notes: text(4000) }).strict(),
   z.object({ action: z.literal("create-conflict"), itemId: id, otherItemId: id, reason: text(4000) }).strict(),
@@ -46,6 +50,7 @@ export interface DataCenterContextRequest {
   query?: string; mode?: "keyword" | "semantic"; organizationId?: string;
   specialty?: string; missionContext?: string; typeKey?: string;
   layer?: typeof layers[number]; limit?: number; page?: number;
+  categoryKey?: string; departmentKey?: string;
 }
 export interface DataCenterSemanticAdapter {
   readonly name: string;

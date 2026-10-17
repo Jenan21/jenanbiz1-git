@@ -86,7 +86,10 @@ describe("Data Center provenance and forms", () => {
     const form = new FormData();
     for (const [key, value] of Object.entries({ title: "Dataset", sourceId: "s1", typeKey: "dataset", layer: "DATA", content: "Content", evidenceStatus: "UNVERIFIED", origin: "HUMAN", category: "ASSET", department: "operations", sourcePublishedAt: "2026-10-01T12:00", specialties: "finance, operations،research", provenance: '[{"label":"Official","reference":"https://example.com","kind":"SOURCE"}]' })) form.set(key, value);
     const payload = commandPayload(form, DATA_CENTER_COMMANDS.item);
-    expect(payload).toMatchObject({ action: "create-item", category: "ASSET", department: "operations", specialties: ["finance", "operations", "research"] });
+    expect(payload).toMatchObject({ action: "create-item", specialties: ["finance", "operations", "research"] });
+    expect(payload).not.toHaveProperty("origin");
+    expect(payload).not.toHaveProperty("category");
+    expect(payload).not.toHaveProperty("department");
     expect(payload.sourcePublishedAt).toMatch(/^2026-10-01T/);
     expect(Array.isArray(payload.provenance)).toBe(true);
     expect(payload).not.toHaveProperty("expiresAt");
@@ -103,10 +106,24 @@ describe("Data Center provenance and forms", () => {
     expect(html).toContain("disabled");
     expect(html).toContain('name="notes"');
   });
+  it("includes explicit retrieval permission metadata on creation and later versions", () => {
+    for (const definition of [DATA_CENTER_COMMANDS.item, DATA_CENTER_COMMANDS.version]) {
+      expect(definition.fields.some((field) => field.name === "requiredPermission")).toBe(true);
+      const form = new FormData();
+      form.set("requiredPermission", "data-center.read.restricted");
+      const payload = commandPayload(form, definition);
+      expect(payload.requiredPermission).toBe("data-center.read.restricted");
+    }
+  });
+  it("classifies types through registered category and department keys", () => {
+    const form = new FormData();
+    for (const [key, value] of Object.entries({ key: "template", label: "Template", layer: "KNOWLEDGE", categoryKey: "assets", departmentKey: "operations", requiresIndependentReview: "true" })) form.set(key, value);
+    expect(commandPayload(form, DATA_CENTER_COMMANDS.type)).toMatchObject({ action: "register-type", categoryKey: "assets", departmentKey: "operations", requiresIndependentReview: true });
+  });
   it("scopes data and knowledge tabs and makes retrieval published-only", () => {
     expect(sectionQuery("data", 1).get("layer")).toBe("DATA");
     expect(sectionQuery("knowledge", 2).get("layer")).toBe("KNOWLEDGE");
-    expect(sectionQuery("assets", 1).get("category")).toBe("ASSET");
+    expect(sectionQuery("assets", 1).get("categoryKey")).toBe("assets");
     expect(sectionQuery("robot-knowledge", 1, "", "DRAFT").get("status")).toBe("PUBLISHED");
     expect(sectionQuery("usage", 3).get("page")).toBe("3");
   });

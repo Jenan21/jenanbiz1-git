@@ -19,6 +19,7 @@ export const DATA_CENTER_COMMANDS: Record<string, CommandDefinition> = {
     input("scope", "نطاق الإتاحة", { options: ["PRIVATE", "ORGANIZATION", "PLATFORM"] }),
     input("organizationId", "معرّف المؤسسة — مطلوب لنطاق المؤسسة فقط", { optional: true }),
     input("owner", "مالك المحتوى"), input("license", "الترخيص وحقوق الاستخدام"),
+    input("sourceOrganization", "الجهة الناشرة للمصدر", { optional: true }),
     input("freshnessDays", "مدة صلاحية المصدر (أيام)", { kind: "number", defaultValue: "90" }),
     input("allowExport", "السماح بالتصدير", { options: ["false", "true"] }),
     input("allowRetrieval", "السماح بالاسترجاع", { options: ["true", "false"] }),
@@ -26,30 +27,34 @@ export const DATA_CENTER_COMMANDS: Record<string, CommandDefinition> = {
   item: { action: "create-item", title: "إنشاء سجل", fields: [
     input("title", "عنوان السجل"), input("sourceId", "المصدر"),
     input("typeKey", "مفتاح النوع"), input("layer", "الطبقة", { options: layers }),
-    input("category", "الفئة", { optional: true }), input("department", "القسم", { optional: true }),
     input("content", "المحتوى", { kind: "textarea" }),
     input("sourcePublishedAt", "تاريخ نشر المصدر", { kind: "datetime-local", optional: true }),
     input("expiresAt", "انتهاء الصلاحية", { kind: "datetime-local", optional: true }),
+    input("effectiveFrom", "بداية السريان", { kind: "datetime-local", optional: true }),
+    input("effectiveTo", "نهاية السريان", { kind: "datetime-local", optional: true }),
     input("evidenceStatus", "حالة الدليل — الاعتماد ليس تحققاً من الحقيقة", { options: ["UNVERIFIED", "ESTIMATED", "DERIVED", "VERIFIED", "CONFLICTED"] }),
-    input("origin", "أصل المحتوى", { options: ["HUMAN", "AI", "IMPORT", "CALCULATION", "ACADEMY"] }),
     input("specialties", "التخصصات (مفصولة بفواصل)", { optional: true }),
     input("missionContexts", "سياقات المهام (مفصولة بفواصل)", { optional: true }),
+    input("requiredPermission", "صلاحية الاسترجاع المطلوبة", { optional: true }),
     input("provenance", "المراجع: JSON [{label, reference, kind}]", { kind: "textarea", optional: true }),
   ] },
   type: { action: "register-type", title: "تسجيل نوع", fields: [
     input("key", "مفتاح النوع (حروف لاتينية صغيرة)"), input("label", "اسم النوع"),
     input("layer", "الطبقة", { options: layers }),
+    input("categoryKey", "مفتاح الفئة المسجلة", { optional: true }),
+    input("departmentKey", "مفتاح القسم المسجل", { optional: true }),
     input("requiresIndependentReview", "مراجعة مستقلة إلزامية", { options: ["true", "false"] }),
   ] },
   version: { action: "create-version", title: "إنشاء إصدار جديد", fields: [
     input("title", "العنوان"), input("content", "المحتوى الجديد", { kind: "textarea" }), reason,
-    input("category", "الفئة", { optional: true }), input("department", "القسم", { optional: true }),
     input("evidenceStatus", "حالة الدليل", { options: ["UNVERIFIED", "ESTIMATED", "DERIVED", "VERIFIED", "CONFLICTED"] }),
-    input("origin", "أصل المحتوى", { options: ["HUMAN", "AI", "IMPORT", "CALCULATION", "ACADEMY"] }),
     input("sourcePublishedAt", "تاريخ المصدر", { kind: "datetime-local", optional: true }),
     input("expiresAt", "انتهاء الصلاحية", { kind: "datetime-local", optional: true }),
+    input("effectiveFrom", "بداية السريان", { kind: "datetime-local", optional: true }),
+    input("effectiveTo", "نهاية السريان", { kind: "datetime-local", optional: true }),
     input("specialties", "التخصصات (مفصولة بفواصل)", { optional: true }),
     input("missionContexts", "سياقات المهام (مفصولة بفواصل)", { optional: true }),
+    input("requiredPermission", "صلاحية الاسترجاع المطلوبة", { optional: true }),
     input("provenance", "المراجع: JSON [{label, reference, kind}]", { kind: "textarea", optional: true }),
   ] },
   transition: { action: "transition-item", title: "تغيير حالة السجل", fields: [
@@ -78,6 +83,13 @@ export const DATA_CENTER_COMMANDS: Record<string, CommandDefinition> = {
   usage: { action: "record-usage", title: "تسجيل مرجع استخدام", fields: [
     input("versionId", "معرّف الإصدار المنشور"), input("consumer", "الخدمة أو المستهلك"),
     input("purpose", "غرض الاستخدام"), input("missionId", "معرّف المهمة", { optional: true }),
+    input("specialty", "التخصص", { optional: true }), input("missionContext", "سياق المهمة", { optional: true }),
+  ] },
+  category: { action: "register-category", title: "تسجيل فئة", fields: [
+    input("key", "مفتاح الفئة (حروف لاتينية صغيرة)"), input("label", "اسم الفئة"),
+  ] },
+  department: { action: "register-department", title: "تسجيل قسم", fields: [
+    input("key", "مفتاح القسم (حروف لاتينية صغيرة)"), input("label", "اسم القسم"),
   ] },
 };
 

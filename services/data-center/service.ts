@@ -36,11 +36,11 @@ export async function createDataCenterItemInTransaction(tx: DbExecutor, input: C
   const type = await tx.dataCenterType.findUnique({ where: { key: data.typeKey } });
   if (!type || type.layer !== data.layer) throw new DataCenterError("TYPE_LAYER_MISMATCH");
   // Generated proposals remain proposals, even when submitted by a trusted administrator.
-  if (source.kind === "GENERATED") data.origin = "AI";
+  if (actor.kind === "AI" || source.kind === "GENERATED") data.origin = "AI";
   if (data.origin === "AI" && data.layer === "KNOWLEDGE") throw new DataCenterError("GENERATED_MATERIAL_IS_NOT_SOURCE_KNOWLEDGE");
   assertEvidence(data, actor);
   const item = await tx.dataCenterItem.create({ data: { sourceId: source.id, typeKey: type.key, layer: type.layer, title: data.title, createdById: actor.id } });
-  const version = await tx.dataCenterVersion.create({ data: versionData(data, item.id, 1, actor, source.freshnessDays) });
+  const version = await tx.dataCenterVersion.create({ data: versionData(data, item.id, 1, actor, source.freshnessDays, source.kind) });
   await tx.dataCenterEvent.create({ data: { itemId: item.id, version: 1, toStatus: "DRAFT", actorId: actor.id, reason: "Initial proposal; review required" } });
   await auditDataCenter(tx, actor, "item.created", item.id, { versionId: version.id, evidenceStatus: version.evidenceStatus });
   return { ...item, version };
@@ -48,26 +48,31 @@ export async function createDataCenterItemInTransaction(tx: DbExecutor, input: C
 export async function createDataCenterItem(input: CreateItemInput, actor: DataCenterActor) {
   return db.$transaction((tx) => createDataCenterItemInTransaction(tx, input, actor));
 }
-function versionData(data: ReturnType<typeof itemSchema.parse> | ReturnType<typeof versionSchema.parse>, itemId: string, number: number, actor: DataCenterActor, freshnessDays: number) {
+function versionData(data: ReturnType<typeof itemSchema.parse> | ReturnType<typeof versionSchema.parse>, itemId: string, number: number, actor: DataCenterActor, freshnessDays: number, sourceKind: string) {
   const sourcePublishedAt = data.sourcePublishedAt ? new Date(data.sourcePublishedAt) : undefined;
   if (sourcePublishedAt && sourcePublishedAt > new Date()) throw new DataCenterError("FUTURE_SOURCE_DATE");
   const expiresAt = data.expiresAt ? new Date(data.expiresAt) : undefined;
+  const effectiveFrom = data.effectiveFrom ? new Date(data.effectiveFrom) : undefined;
+  const effectiveTo = data.effectiveTo ? new Date(data.effectiveTo) : undefined;
+  if (effectiveFrom && effectiveTo && effectiveFrom >= effectiveTo) throw new DataCenterError("INVALID_EFFECTIVE_DATE_RANGE");
   const normalized = { title: data.title, content: data.content, evidenceStatus: data.evidenceStatus, origin: data.origin, provenance: data.provenance,
     specialties: data.specialties, missionContexts: data.missionContexts, requiredPermission: data.requiredPermission ?? null,
-    sourcePublishedAt: sourcePublishedAt?.toISOString() ?? null, expiresAt: expiresAt?.toISOString() ?? null };
-  return { ...normalized, itemId, number, sourcePublishedAt, expiresAt,
+    sourcePublishedAt: sourcePublishedAt?.toISOString() ?? null, expiresAt: expiresAt?.toISOString() ?? null,
+    effectiveFrom: effectiveFrom?.toISOString() ?? null, effectiveTo: effectiveTo?.toISOString() ?? null };
+  return { ...normalized, itemId, number, sourcePublishedAt, expiresAt, effectiveFrom, effectiveTo,
     checksum: createHash("sha256").update(JSON.stringify(normalized)).digest("hex"), createdById: actor.id,
-    confidence: deterministicConfidence({ evidenceStatus: data.evidenceStatus, provenanceCount: data.provenance.length, sourcePublishedAt, freshnessDays, origin: data.origin, expiresAt }) };
+    confidence: deterministicConfidence({ evidenceStatus: data.evidenceStatus, provenanceCount: data.provenance.length, sourcePublishedAt, freshnessDays, sourceKind, origin: data.origin, expiresAt,
+      completeness: 4 + (data.provenance.length ? 2 : 0) + (sourcePublishedAt ? 2 : 0) + (effectiveFrom || effectiveTo ? 2 : 0), consistency: 0 }) };
 }
 export async function createDataCenterVersion(input: zVersionInput, actor: DataCenterActor) {
   const data = versionSchema.parse(input);
   return db.$transaction(async (tx) => {
     await lockDataCenterItem(tx, data.itemId);
     const item = await getAccessibleItem(tx, actor, data.itemId, true);
-    if (item.source.kind === "GENERATED") data.origin = "AI";
+    if (actor.kind === "AI" || item.source.kind === "GENERATED") data.origin = "AI";
     if (data.origin === "AI" && item.layer === "KNOWLEDGE") throw new DataCenterError("GENERATED_MATERIAL_IS_NOT_SOURCE_KNOWLEDGE");
     assertEvidence(data, actor);
-    const version = await tx.dataCenterVersion.create({ data: versionData(data, item.id, item.currentVersion + 1, actor, item.source.freshnessDays) });
+    const version = await tx.dataCenterVersion.create({ data: versionData(data, item.id, item.currentVersion + 1, actor, item.source.freshnessDays, item.source.kind) });
     await tx.dataCenterItem.update({ where: { id: item.id }, data: { currentVersion: version.number, title: data.title, status: "DRAFT" } });
     await tx.dataCenterEvent.create({ data: { itemId: item.id, version: version.number, fromStatus: item.status, toStatus: "DRAFT", actorId: actor.id, reason: data.reason } });
     await auditDataCenter(tx, actor, "version.created", item.id, { versionId: version.id, reason: data.reason });
@@ -93,8 +98,10 @@ export async function transitionDataCenterItem(input: { itemId: string; status: 
       const conflicts = await tx.dataCenterConflict.count({ where: { resolvedAt: null, OR: [{ itemId: item.id }, { otherItemId: item.id }] } });
       if (conflicts || version.evidenceStatus === "CONFLICTED") throw new DataCenterError("UNRESOLVED_CONFLICT", 409);
       if (version.expiresAt && version.expiresAt <= new Date()) throw new DataCenterError("EXPIRED_VERSION", 409);
+      if (version.effectiveTo && version.effectiveTo <= new Date()) throw new DataCenterError("EXPIRED_EFFECTIVE_PERIOD", 409);
     }
-    const result = await tx.dataCenterItem.update({ where: { id: item.id }, data: { status: input.status } });
+    const result = await tx.dataCenterItem.update({ where: { id: item.id }, data: { status: input.status,
+      ...(input.status === "PUBLISHED" ? { publishedVersion: item.currentVersion } : input.status === "ARCHIVED" ? { publishedVersion: null } : {}) } });
     await tx.dataCenterEvent.create({ data: { itemId: item.id, version: version.number, fromStatus: item.status, toStatus: input.status, actorId: actor.id, reason: input.reason } });
     await auditDataCenter(tx, actor, "item.transitioned", item.id, { from: item.status, to: input.status, versionId: version.id, reason: input.reason });
     return result;
@@ -140,7 +147,7 @@ export async function resolveDataCenterConflict(input: { conflictId: string; res
       const conflictedVersion = itemId === conflict.itemId ? conflict.itemVersion : conflict.otherVersion;
       if (item.currentVersion !== conflictedVersion) throw new DataCenterError("CONFLICT_VERSION_CHANGED_REVIEW_RESOLUTION", 409);
       if (item.status !== "ARCHIVED") {
-        await tx.dataCenterItem.update({ where: { id: itemId }, data: { status: "ARCHIVED" } });
+        await tx.dataCenterItem.update({ where: { id: itemId }, data: { status: "ARCHIVED", publishedVersion: null } });
         await tx.dataCenterEvent.create({ data: { itemId, version: item.currentVersion, fromStatus: item.status, toStatus: "ARCHIVED", actorId: actor.id, reason: `Conflict ${conflict.id}: ${input.resolution}. ${input.notes}` } });
       }
     }
@@ -149,9 +156,11 @@ export async function resolveDataCenterConflict(input: { conflictId: string; res
     return result;
   });
 }
-export async function registerDataCenterType(input: { key: string; label: string; layer: "DATA" | "KNOWLEDGE" | "INTELLIGENCE" | "CONTEXT"; requiresIndependentReview: boolean }, actor: DataCenterActor) {
+export async function registerDataCenterType(input: { key: string; label: string; layer: "DATA" | "KNOWLEDGE" | "INTELLIGENCE" | "CONTEXT"; requiresIndependentReview: boolean; categoryKey?: string; departmentKey?: string }, actor: DataCenterActor) {
   requireDataCenterAdmin(actor);
   return db.$transaction(async (tx) => {
+    if (input.categoryKey && !await tx.dataCenterCategory.findUnique({ where: { key: input.categoryKey } })) throw new DataCenterError("CATEGORY_NOT_FOUND", 404);
+    if (input.departmentKey && !await tx.dataCenterDepartment.findUnique({ where: { key: input.departmentKey } })) throw new DataCenterError("DEPARTMENT_NOT_FOUND", 404);
     const result = await tx.dataCenterType.create({ data: input });
     await auditDataCenter(tx, actor, "type.registered", result.key);
     return result;
@@ -166,7 +175,7 @@ export async function getDataCenterItem(itemId: string, actor: DataCenterActor) 
 export async function getDataCenterOverview(actor: DataCenterActor) {
   requireDataCenterAdmin(actor);
   const [sources, items, published, reviews, conflicts, imports, usage, types, layers, lifecycle, academyReleases] = await Promise.all([
-    db.dataCenterSource.count(), db.dataCenterItem.count(), db.dataCenterItem.count({ where: { status: "PUBLISHED" } }),
+    db.dataCenterSource.count(), db.dataCenterItem.count(), db.dataCenterItem.count({ where: { publishedVersion: { not: null }, status: { not: "ARCHIVED" } } }),
     db.dataCenterItem.count({ where: { status: "IN_REVIEW" } }), db.dataCenterConflict.count({ where: { resolvedAt: null } }),
     db.dataCenterImport.count(), db.dataCenterUsage.count(), db.dataCenterType.count(),
     db.dataCenterItem.groupBy({ by: ["layer"], _count: true }), db.dataCenterItem.groupBy({ by: ["status"], _count: true }),
@@ -196,6 +205,10 @@ export async function listDataCenterArea(area: string, actor: DataCenterActor, o
       [rows, total] = await Promise.all([db.dataCenterSource.findMany({ ...pagination, orderBy: { createdAt: "desc" } }), db.dataCenterSource.count()]); break;
     case "types":
       [rows, total] = await Promise.all([db.dataCenterType.findMany({ ...pagination, orderBy: { key: "asc" } }), db.dataCenterType.count()]); break;
+    case "categories":
+      [rows, total] = await Promise.all([db.dataCenterCategory.findMany({ ...pagination, orderBy: { key: "asc" } }), db.dataCenterCategory.count()]); break;
+    case "departments":
+      [rows, total] = await Promise.all([db.dataCenterDepartment.findMany({ ...pagination, orderBy: { key: "asc" } }), db.dataCenterDepartment.count()]); break;
     case "conflicts":
       [rows, total] = await Promise.all([db.dataCenterConflict.findMany({ ...pagination, orderBy: { createdAt: "desc" }, include: { item: { select: { title: true } }, otherItem: { select: { title: true } } } }), db.dataCenterConflict.count()]); break;
     case "imports":
@@ -215,6 +228,14 @@ export async function dispatchDataCenterCommand(command: DataCenterCommand, acto
     case "create-item": return createDataCenterItem(input as Extract<DataCenterCommand, { action: "create-item" }>, actor);
     case "create-version": return createDataCenterVersion(input, actor);
     case "register-type": return registerDataCenterType(input as Extract<DataCenterCommand, { action: "register-type" }>, actor);
+    case "register-category": case "register-department":
+      requireDataCenterAdmin(actor);
+      return db.$transaction(async (tx) => {
+        const data = input as { key: string; label: string };
+        const result = action === "register-category" ? await tx.dataCenterCategory.create({ data }) : await tx.dataCenterDepartment.create({ data });
+        await auditDataCenter(tx, actor, action, result.key);
+        return result;
+      });
     case "transition-item": return transitionDataCenterItem(input as Extract<DataCenterCommand, { action: "transition-item" }>, actor);
     case "review-item": return reviewDataCenterItem(input as Extract<DataCenterCommand, { action: "review-item" }>, actor);
     case "create-conflict": return createDataCenterConflict(input as Extract<DataCenterCommand, { action: "create-conflict" }>, actor);

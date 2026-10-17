@@ -28,8 +28,7 @@ export function sectionQuery(section: DataCenterSection, page: number, query = "
   if (status) params.set("status", status);
   const sectionLayer = section === "data" ? "DATA" : section === "knowledge" ? "KNOWLEDGE" : layer;
   if (sectionLayer) params.set("layer", sectionLayer);
-  if (section === "assets") params.set("category", "ASSET");
-  if (section === "evidence") params.set("evidence", "true");
+  if (section === "assets") params.set("categoryKey", "assets");
   if (section === "robot-knowledge") params.set("status", "PUBLISHED");
   return params;
 }
@@ -109,9 +108,7 @@ export function DataCenterWorkspace({ section }: { section: DataCenterSection })
   async function openForm(key: string, fixed?: DataCenterRecord) {
     let command = DATA_CENTER_COMMANDS[key];
     if (key === "item") {
-      command = { ...command, fields: command.fields.map((field) => field.name === "category" && section === "assets"
-        ? { ...field, defaultValue: "ASSET" }
-        : field.name === "layer" && ["knowledge", "assets", "evidence"].includes(section)
+      command = { ...command, fields: command.fields.map((field) => field.name === "layer" && ["knowledge", "assets", "evidence"].includes(section)
           ? { ...field, defaultValue: "KNOWLEDGE" } : field) };
     }
     if (key === "version" && selected) {
@@ -165,7 +162,7 @@ export function DataCenterWorkspace({ section }: { section: DataCenterSection })
     event.preventDefault();
     const values = new FormData(event.currentTarget);
     const params = new URLSearchParams({ query: String(values.get("query") ?? ""), mode: String(values.get("mode") ?? "keyword"), limit: "20" });
-    for (const key of ["specialty", "missionContext", "typeKey", "organizationId"]) {
+    for (const key of ["specialty", "missionContext", "typeKey", "organizationId", "categoryKey", "departmentKey"]) {
       const value = String(values.get(key) ?? "").trim();
       if (value) params.set(key, value);
     }
@@ -226,7 +223,7 @@ export function DataCenterWorkspace({ section }: { section: DataCenterSection })
                   {section === "sources" ? <button className={styles.button} disabled={busy} onClick={() => void openForm("source")}>إضافة مصدر</button> : null}
                   {section === "conflicts" ? <button className={styles.button} disabled={busy} onClick={() => void openForm("conflict")}>تسجيل تعارض</button> : null}
                   {section === "academy" ? <><button className={styles.button} disabled={busy} onClick={() => void openForm("release")}>اقتراح إصدار</button><button className={`${styles.button} ${styles.secondary}`} disabled={busy} onClick={() => void openForm("academySource")}>ربط مصدر الأكاديمية</button></> : null}
-                  {section === "settings" ? <button className={styles.button} disabled={busy} onClick={() => void openForm("type")}>تسجيل نوع</button> : null}
+                  {section === "settings" ? <><button className={styles.button} disabled={busy} onClick={() => void openForm("type")}>تسجيل نوع</button><button className={`${styles.button} ${styles.secondary}`} disabled={busy} onClick={() => void openForm("category")}>تسجيل فئة</button><button className={`${styles.button} ${styles.secondary}`} disabled={busy} onClick={() => void openForm("department")}>تسجيل قسم</button></> : null}
                   {section === "usage" ? <button className={styles.button} disabled={busy} onClick={() => void openForm("usage")}>تسجيل مرجع استخدام</button> : null}
                 </div>
               </div>
@@ -247,7 +244,7 @@ export function DataCenterWorkspace({ section }: { section: DataCenterSection })
             </> : null}
             {isItemSection ? <Card className={styles.panel}>
               <h2>{section === "publishing" ? "مراجعة واعتماد ونشر" : "تصفية السجلات"}</h2>
-              {section === "assets" ? <p className={styles.muted}>الأصول تصنيف للمحتوى القابل لإعادة الاستخدام، وليست طبقة صلاحيات إضافية. استخدم الفئة ASSET عند الإنشاء.</p> : null}
+              {section === "assets" ? <p className={styles.muted}>الأصول تصنيف للمحتوى القابل لإعادة الاستخدام، وليست طبقة صلاحيات إضافية. استخدم نوعاً مسجلاً ضمن الفئة assets؛ تُدار الفئات والأقسام في الإعدادات.</p> : null}
               {section === "evidence" ? <p className={styles.muted}>عرض حالة الأدلة ومراجع المصدر للإصدارات. حالة VERIFIED لا تُمنح لمجرد اعتماد إداري.</p> : null}
               {section === "versions" ? <p className={styles.muted}>اختر سجلاً ثم افتح التفاصيل لعرض إصداراته ومراجعاته وبصمة محتواه. يُعرض حتى 100 إصدار لكل سجل وفق حد الخادم.</p> : null}
               <form className={styles.form} onSubmit={filter}>
@@ -256,6 +253,7 @@ export function DataCenterWorkspace({ section }: { section: DataCenterSection })
                 <label>الطبقة<select name="layer" disabled={section === "data" || section === "knowledge"} defaultValue=""><option value="">كل الطبقات</option>{["DATA", "KNOWLEDGE", "INTELLIGENCE", "CONTEXT"].map((layer) => <option key={layer}>{layer}</option>)}</select></label>
                 <div className={styles.actions}><button className={styles.button} disabled={loading} type="submit">تطبيق</button></div>
               </form>
+              <p className={styles.muted}>الفئة والقسم مرتبطان بالنوع المسجل. أصل المحتوى يُحدد في الخادم؛ مصادر GENERATED تبقى اقتراحات ذكاء اصطناعي ولا تصبح مصادر موثقة تلقائياً.</p>
             </Card> : null}
             {section === "robot-knowledge" ? <Card className={styles.panel}>
               <h2>استرجاع سياق محدود الصلاحيات</h2><p className={styles.muted}>النتائج من الإصدارات المنشورة المتاحة فقط، ومحدودة العدد. لا تُرسل قاعدة المعرفة كاملة لأي نموذج.</p>
@@ -264,6 +262,7 @@ export function DataCenterWorkspace({ section }: { section: DataCenterSection })
                 <label>طريقة البحث<select name="mode"><option value="keyword">بحث بالكلمات</option><option value="semantic" disabled={!semanticAvailable}>{semanticAvailable ? "بحث دلالي" : "بحث دلالي — غير متاح"}</option></select></label>
                 <label>التخصص<input name="specialty" maxLength={80} /></label><label>سياق المهمة<input name="missionContext" maxLength={80} /></label>
                 <label>مفتاح النوع<input name="typeKey" maxLength={80} /></label><label>معرّف المؤسسة<input name="organizationId" maxLength={128} /></label>
+                <label>مفتاح الفئة<input name="categoryKey" maxLength={80} /></label><label>مفتاح القسم<input name="departmentKey" maxLength={80} /></label>
                 <button className={styles.button} type="submit" disabled={busy}>استرجاع المعرفة</button>
               </form>
               <p className={styles.muted}>التصدير يقتصر على صفحة النتائج المنشورة المسموح بإعادة توزيعها؛ قد يختلف عددها عن نتائج الاسترجاع.</p>

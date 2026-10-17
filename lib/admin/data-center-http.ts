@@ -85,6 +85,7 @@ const retrievalQuerySchema = z.object({
   query: z.string().max(500).optional(), mode: z.enum(["keyword", "semantic"]).default("keyword"),
   organizationId: z.string().max(128).optional(), specialty: z.string().max(80).optional(), missionContext: z.string().max(80).optional(),
   typeKey: z.string().max(80).optional(), layer: z.enum(layers).optional(), limit: z.coerce.number().int().min(1).max(100).default(20),
+  categoryKey: z.string().max(80).optional(), departmentKey: z.string().max(80).optional(),
   page: z.coerce.number().int().min(1).max(100).default(1),
 });
 export async function dataCenterContextGet(request: NextRequest) {

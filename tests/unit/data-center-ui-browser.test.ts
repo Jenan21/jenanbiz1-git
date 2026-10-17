@@ -14,6 +14,8 @@ describe.runIf(enabled)("authenticated Data Center UI browser acceptance", () =>
   const sourceName = `UI source ${suffix}`;
   const typeKey = `ui.${suffix}`;
   const itemTitle = `UI dataset ${suffix}`;
+  const categoryKey = `ui-cat.${suffix}`;
+  const departmentKey = `ui-dept.${suffix}`;
   let db: Client;
   let browser: Browser;
   let page: Page;
@@ -44,6 +46,8 @@ describe.runIf(enabled)("authenticated Data Center UI browser acceptance", () =>
       await db.query('DELETE FROM "DataCenterItem" WHERE "createdById"=$1', [userId]);
       await db.query('DELETE FROM "DataCenterSource" WHERE "ownerId"=$1', [userId]);
       await db.query('DELETE FROM "DataCenterType" WHERE key=$1', [typeKey]);
+      await db.query('DELETE FROM "DataCenterCategory" WHERE key=$1', [categoryKey]);
+      await db.query('DELETE FROM "DataCenterDepartment" WHERE key=$1', [departmentKey]);
       await db.query('DELETE FROM "AuditLog" WHERE "actorId"=$1', [userId]);
       await db.query('DELETE FROM "User" WHERE id=$1', [userId]);
     } finally { await db.end(); }
@@ -68,8 +72,12 @@ describe.runIf(enabled)("authenticated Data Center UI browser acceptance", () =>
 
   it("creates, reviews, approves, publishes, retrieves and exports an actual persisted record", async () => {
     await goto("settings");
+    await page.getByRole("button", { name: "تسجيل فئة", exact: true }).click();
+    await submitForm("تسجيل فئة", { key: categoryKey, label: `UI category ${suffix}` });
+    await page.getByRole("button", { name: "تسجيل قسم", exact: true }).click();
+    await submitForm("تسجيل قسم", { key: departmentKey, label: `UI department ${suffix}` });
     await page.getByRole("button", { name: "تسجيل نوع", exact: true }).click();
-    await submitForm("تسجيل نوع", { key: typeKey, label: `UI Type ${suffix}` }, { layer: "DATA", requiresIndependentReview: "false" });
+    await submitForm("تسجيل نوع", { key: typeKey, label: `UI Type ${suffix}`, categoryKey, departmentKey }, { layer: "DATA", requiresIndependentReview: "false" });
     await goto("sources");
     await page.getByRole("button", { name: "إضافة مصدر", exact: true }).click();
     await submitForm("إضافة مصدر", { name: sourceName, owner: "UI acceptance fixture", license: "Test content, redistribution allowed" }, { scope: "PLATFORM", allowExport: "true" });
@@ -78,7 +86,7 @@ describe.runIf(enabled)("authenticated Data Center UI browser acceptance", () =>
     await page.getByRole("button", { name: "إنشاء سجل", exact: true }).click();
     const form = page.getByRole("form", { name: "إنشاء سجل" });
     await browserExpect(form.locator('[name="sourceId"] option').filter({ hasText: sourceName })).toHaveCount(1);
-    await submitForm("إنشاء سجل", { title: itemTitle, content: `Searchable evidence ${suffix}`, category: "TEST", department: "operations" }, { sourceId: source.rows[0].id, typeKey, layer: "DATA" });
+    await submitForm("إنشاء سجل", { title: itemTitle, content: `Searchable evidence ${suffix}` }, { sourceId: source.rows[0].id, typeKey, layer: "DATA" });
     await inspect();
     await page.getByRole("button", { name: "تغيير الحالة / النشر", exact: true }).click();
     await submitForm("تغيير حالة السجل", { reason: "Request human review of test evidence" }, { status: "IN_REVIEW" });
@@ -96,7 +104,12 @@ describe.runIf(enabled)("authenticated Data Center UI browser acceptance", () =>
     await browserExpect(page.getByText("النتائج: 1", { exact: true })).toBeVisible();
     const download = page.waitForEvent("download");
     await page.getByRole("button", { name: "تصدير JSON", exact: true }).click();
-    expect((await download).suggestedFilename()).toBe("jenan-pro-data-center.json");
+    const exported = await download;
+    expect(exported.suggestedFilename()).toBe("jenan-pro-data-center.json");
+    const stream = await exported.createReadStream();
+    let content = "";
+    for await (const chunk of stream) content += chunk.toString();
+    expect(content).toContain(itemTitle);
   }, 180000);
 
   it("loads all fifteen pages and checks every required viewport after API loading", async () => {
