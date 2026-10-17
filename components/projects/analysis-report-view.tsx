@@ -6,7 +6,8 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { FlowModal } from "@/components/projects/project-flow-kit";
 import { Icon, type IconName } from "@/components/ui/icons";
 import { AnalysisRequestError, reportSaveMessage } from "@/lib/projects/analysis-errors";
-import { venuesText, type IndicatorId, type ReportFact, type ReportIndicator, type ReportModel } from "@/lib/projects/analysis-report";
+import { clampText, fitItems, linesFor } from "@/lib/projects/analysis-report-fit";
+import { venuesText, type IndicatorId, type ReportFact, type ReportIndicator, type ReportModel, type ReportPending } from "@/lib/projects/analysis-report";
 
 const ProjectLocationPicker = dynamic(
   () => import("@/components/projects/project-location-picker").then((module) => module.ProjectLocationPicker),
@@ -25,16 +26,8 @@ export type ReportActions = {
   newHref?: string;
 };
 
-type Detail = "recommendations" | "standout" | "risks";
-
-const KPI_ICONS: Record<IndicatorId, IconName> = {
-  population: "people",
-  competitors: "store",
-  purchasing: "wallet",
-  inflation: "trend",
-  evidence: "shield",
-  risk: "warning",
-};
+type Detail = "recommendations" | "standout" | "risks" | "facts" | "sources";
+type Toast = { kind: "info" | "error" | "saved"; text: string; id?: string };
 
 const FACT_ICONS: Record<ReportFact["id"], IconName> = {
   idea: "lightbulb",
@@ -45,15 +38,30 @@ const FACT_ICONS: Record<ReportFact["id"], IconName> = {
   area: "cube",
 };
 
-const TOP = 3;
+/** The six indicator slots of the approved design, in reading order; the last three wait for engines that do not exist yet. */
+const SLOT_ICONS: Record<IndicatorId | ReportPending["id"], IconName> = {
+  population: "people",
+  competitors: "store",
+  purchasing: "wallet",
+  inflation: "trend",
+  evidence: "shield",
+  risk: "warning",
+  traffic: "car",
+  demand: "trend",
+  opportunity: "target",
+};
 
-/** Only the figures whose direction is unambiguous are coloured; a competitor count is never called good or bad. */
-function sentiment(item: ReportIndicator) {
-  if (item.state === "UNAVAILABLE" || !item.tone || item.tone === "UNAVAILABLE") return "";
-  if (item.id === "evidence" || item.id === "purchasing") return item.tone === "HIGH" ? "is-good" : item.tone === "LOW" ? "is-bad" : "is-warn";
-  if (item.id === "risk") return item.tone === "HIGH" ? "is-bad" : item.tone === "LOW" ? "is-good" : "is-warn";
-  return "";
-}
+/** How much of a fact the one-screen strip shows before the rest moves to the dialog. */
+const FACT_MAX: Record<ReportFact["id"], number> = { idea: 62, location: 42, capital: 26, audience: 34, sector: 34, area: 24 };
+/** Generous characters-per-line and line budgets of the three lists (an item costs its lines plus 0.7 for its padding); see analysis-report-fit.ts. */
+const FIT = {
+  recs: { chars: 26, budget: 8.2, max: 3 },
+  stand: { chars: 20, budget: 8.2, max: 3 },
+  risks: { chars: 40, budget: 5.4, max: 3 },
+};
+
+const RING = 2 * Math.PI * 48;
+const levelBars = (tone?: string) => (tone === "HIGH" ? 3 : tone === "MODERATE" ? 2 : tone === "LOW" ? 1 : 0);
 
 async function printPdf(url: string) {
   const response = await fetch(url, { credentials: "same-origin" });
@@ -88,14 +96,16 @@ async function printPdf(url: string) {
 }
 
 /**
- * The finished analysis report. It draws only what the report model holds, so a live report, a stored copy and the PDF
- * always agree; every figure carries its state, source and date.
+ * The finished analysis report, drawn as the one screen of the approved design: no page scroll and no scrolling card on a
+ * desktop or laptop screen. It draws only what the report model holds, so a live report, a stored copy and the PDF always
+ * agree; every figure carries its state, source and date, and whatever does not fit a card is one click away in a dialog.
  */
 export function AnalysisReportView({ actions, model, testId }: { actions: ReportActions; model: ReportModel; testId?: string }) {
   const ar = model.locale === "ar";
+  const copy = (a: string, e: string) => (ar ? a : e);
   const [detail, setDetail] = useState<Detail | null>(null);
-  const [save, setSave] = useState<{ state: "idle" | "saving" | "saved" | "error"; id?: string; message?: string }>({ state: "idle" });
-  const [note, setNote] = useState("");
+  const [save, setSave] = useState<{ state: "idle" | "saving" | "saved" | "error" }>({ state: "idle" });
+  const [toast, setToast] = useState<Toast | null>(null);
   const mounted = useRef(true);
   useEffect(() => {
     mounted.current = true;
@@ -103,18 +113,22 @@ export function AnalysisReportView({ actions, model, testId }: { actions: Report
       mounted.current = false;
     };
   }, []);
+  useEffect(() => {
+    if (!toast || toast.kind === "error") return;
+    const timer = window.setTimeout(() => setToast(null), 9000);
+    return () => window.clearTimeout(timer);
+  }, [toast]);
 
   const closeDetail = useCallback(() => setDetail(null), []);
   const words = model.title.split(" ");
   const lastWord = words.pop();
   const pdfUrl = (inline: boolean) => (inline ? `${actions.pdfHref}${actions.pdfHref.includes("?") ? "&" : "?"}disposition=inline` : actions.pdfHref);
   const hasPoint = model.place.latitude !== undefined && model.place.longitude !== undefined;
-  const copy = (a: string, e: string) => (ar ? a : e);
 
   async function saveCopy() {
     if (!actions.saveProjectId || save.state === "saving") return;
     setSave({ state: "saving" });
-    setNote("");
+    setToast(null);
     try {
       const response = await fetch("/api/projects", {
         method: "POST",
@@ -123,19 +137,23 @@ export function AnalysisReportView({ actions, model, testId }: { actions: Report
       });
       const payload = (await response.json().catch(() => null)) as { result?: { id?: string }; success?: boolean } | null;
       if (!response.ok || !payload?.success) throw new AnalysisRequestError(response.status);
-      if (mounted.current) setSave({ state: "saved", id: payload.result?.id });
+      if (!mounted.current) return;
+      setSave({ state: "saved" });
+      setToast({ kind: "saved", id: payload.result?.id, text: copy("حُفظت نسخة من التقرير وبيانات المشروع والموقع في بياناتك. ", "A copy of the report, the project data and the location is saved in your data. ") });
     } catch (error) {
-      if (mounted.current) setSave({ state: "error", message: reportSaveMessage(error, ar) });
+      if (!mounted.current) return;
+      setSave({ state: "error" });
+      setToast({ kind: "error", text: reportSaveMessage(error, ar) });
     }
   }
 
   async function printReport() {
-    setNote(copy("جارٍ تجهيز التقرير للطباعة…", "Preparing the report for printing…"));
+    setToast({ kind: "info", text: copy("جارٍ تجهيز التقرير للطباعة…", "Preparing the report for printing…") });
     try {
       await printPdf(pdfUrl(true));
-      if (mounted.current) setNote("");
+      if (mounted.current) setToast(null);
     } catch {
-      if (mounted.current) setNote(copy("فُتح التقرير في نافذة جديدة؛ اطبعه من هناك.", "The report opened in a new tab; print it from there."));
+      if (mounted.current) setToast({ kind: "info", text: copy("فُتح التقرير في نافذة جديدة؛ اطبعه من هناك.", "The report opened in a new tab; print it from there.") });
     }
   }
 
@@ -147,196 +165,262 @@ export function AnalysisReportView({ actions, model, testId }: { actions: Report
         return;
       }
       await navigator.clipboard.writeText(url);
-      setNote(copy("تم نسخ رابط التقرير. يفتح لمن لديه صلاحية الوصول إلى هذا المشروع.", "Report link copied. It opens for people who can access this project."));
+      setToast({ kind: "info", text: copy("تم نسخ رابط التقرير. يفتح لمن لديه صلاحية الوصول إلى هذا المشروع.", "Report link copied. It opens for people who can access this project.") });
     } catch (error) {
       if (error instanceof DOMException && error.name === "AbortError") return;
-      setNote(copy("تعذر نسخ الرابط. انسخه من شريط العنوان.", "The link could not be copied. Copy it from the address bar."));
+      setToast({ kind: "error", text: copy("تعذر نسخ الرابط. انسخه من شريط العنوان.", "The link could not be copied. Copy it from the address bar.") });
     }
   }
+
+  /* ---------------------------------------------------------------- what each card shows */
+  const indicator = Object.fromEntries(model.indicators.map((item) => [item.id, item])) as Record<IndicatorId, ReportIndicator>;
+  const slots: Array<{ id: IndicatorId | ReportPending["id"]; item?: ReportIndicator; pending?: ReportPending }> = [
+    { id: "population", item: indicator.population },
+    { id: "competitors", item: indicator.competitors },
+    { id: "purchasing", item: indicator.purchasing },
+    ...model.pending.map((pending) => ({ id: pending.id, pending })),
+  ];
+
+  const facts = model.facts.map((fact) => ({ ...fact, ...clampText(fact.value, FACT_MAX[fact.id]) }));
+
+  const tip = model.recommendations.find((item) => item.code === "DIFFERENTIATE_OFFER");
+  const recList = fitItems(model.recommendations, { budget: FIT.recs.budget, max: FIT.recs.max, lines: (item) => linesFor(item.title, FIT.recs.chars) + 0.7 });
+  const standItems = [
+    ...(tip ? [{ key: "tip", icon: "check" as IconName, title: tip.title, meta: "" }] : []),
+    ...model.standOut.competitors.map((item, index) => ({ key: `${item.name}-${index}`, icon: "store" as IconName, title: item.name, meta: `${item.category} · ${item.distance}` })),
+  ];
+  const standList = fitItems(standItems, { budget: FIT.stand.budget, max: FIT.stand.max, lines: (item) => linesFor(item.title, FIT.stand.chars) + (item.meta ? 0.9 : 0) + 0.7 });
+  const riskList = fitItems(model.risks.items, { budget: FIT.risks.budget, max: FIT.risks.max, lines: (item) => Math.min(2, linesFor(item, FIT.risks.chars)) + 0.7 });
+
+  const completeness = model.complete ? model.completeness : 0;
+  const gaugeNote = !model.complete
+    ? copy("أكمل التحليل لتظهر نسبة اكتمال الأدلة.", "Finish the analysis to see the evidence coverage.")
+    : model.quality === "LOW"
+      ? copy("الأدلة غير كافية لقرار نهائي. أغلق فجوات المصادر ثم أعد التحليل.", "Coverage is not enough for a final decision. Close the source gaps and run the analysis again.")
+      : copy("الأدلة كافية للانتقال إلى دراسة جدوى تفصيلية بعد مراجعة حدود البيانات.", "Coverage is enough to move on to a detailed feasibility study after the data limits are reviewed.");
+  const riskBars = model.risks.level === "HIGH" ? 3 : model.risks.level === "MODERATE" ? 2 : model.risks.level === "LOW" ? 1 : 0;
 
   const detailTitle: Record<Detail, string> = {
     recommendations: copy("التوصيات", "Recommendations"),
     standout: copy("كيف تتميز عن منافسيك؟", "How to stand out from competitors?"),
     risks: copy("المخاطر والقيود", "Risks and limits"),
+    facts: copy("بيانات المشروع", "Project data"),
+    sources: copy("المصادر ودرجة الثقة", "Sources and confidence"),
   };
 
+  const complete = model.complete;
+  const pdfButton = (testid: string) => (
+    <a className="rp-btn" data-testid={testid} download href={pdfUrl(false)}><Icon name="fileText" />{copy("تصدير PDF", "Export PDF")}</a>
+  );
+  const printButton = (testid: string, primary = true) => (
+    <button className={`rp-btn${primary ? " is-primary" : ""}`} data-testid={testid} onClick={() => void printReport()} type="button"><Icon name="printer" />{copy("طباعة التقرير", "Print report")}</button>
+  );
+
   return (
-    <section className="rp" data-testid={testId} dir={ar ? "rtl" : "ltr"}>
-      <header className="rp-head">
-        <div>
-          <h1>{words.join(" ")} <b>{lastWord}</b></h1>
-          <p>{copy("الموقع والسوق والمنافسة والقوة الشرائية، ببيانات من مصادر معلنة.", "Location, market, competition and purchasing power, from disclosed sources.")}</p>
-        </div>
-        <div className="rp-head__side">
-          {model.complete ? (
-            <span className="rp-done">
-              <span aria-hidden="true"><Icon name="check" /></span>
-              <span><b>{actions.savedAtLabel ? copy("نسخة محفوظة في بياناتي", "Copy saved in My data") : copy("التحليل مكتمل", "Analysis complete")}</b><small>{actions.savedAtLabel ?? model.generatedAtLabel}</small></span>
-            </span>
-          ) : (
-            <span className="rp-done is-partial">
-              <span aria-hidden="true"><Icon name="warning" /></span>
-              <span><b>{copy("تقرير جزئي", "Partial report")}</b><small>{copy("بيانات الموقع فقط — لم يكتمل التحليل", "Location data only — the analysis has not finished")}</small></span>
-            </span>
-          )}
-          {actions.newHref ? <Link className="rp-btn is-ghost" href={actions.newHref}><Icon name="plus" />{copy("تحليل جديد", "New analysis")}</Link> : null}
-        </div>
-      </header>
-
-      {model.ideaWarning ? (
-        <p className="rp-warning" data-testid="analysis-unreadable-idea" role="alert">
-          <Icon name="warning" />
-          <span>{model.ideaWarning}{actions.newHref ? <> <Link href={actions.newHref}>{copy("تحليل جديد", "New analysis")}</Link></> : null}</span>
-        </p>
-      ) : null}
-
-      <dl className="rp-facts">
-        {model.facts.map((fact) => (
-          <div className={`rp-fact is-${fact.id}`} key={fact.id}>
-            <dt><Icon name={FACT_ICONS[fact.id]} />{fact.label}</dt>
-            <dd>{fact.value}</dd>
-          </div>
-        ))}
-      </dl>
-
-      <section aria-labelledby="rp-kpis-title" className="rp-kpis-wrap">
-        <h2 className="rp-sr" id="rp-kpis-title">{copy("المؤشرات الرئيسية", "Key indicators")}</h2>
-        <div className="rp-kpis">
-          {model.indicators.map((item) => (
-            <article className={`rp-kpi is-${item.state.toLowerCase()} ${sentiment(item)}`} data-indicator={item.id} key={item.id}>
-              <header><span className="rp-kpi__icon"><Icon name={KPI_ICONS[item.id]} /></span><h3>{item.label}</h3></header>
-              <strong>{item.value}</strong>
-              <p>{item.note}</p>
-              <footer>
-                <span className="rp-chip">{item.stateLabel}</span>
-                {item.state !== "UNAVAILABLE" ? <small>{[item.source, item.date, item.confidence ? item.confidenceLabel : ""].filter(Boolean).join(" · ")}</small> : null}
-              </footer>
-            </article>
-          ))}
-        </div>
-        <ul aria-label={copy("مؤشرات غير متاحة حاليًا", "Indicators not available yet")} className="rp-pending">
-          <li className="rp-pending__lead"><Icon name="lock" />{copy("غير متاحة حاليًا", "Not available yet")}</li>
-          {model.pending.map((item) => <li key={item.id}><b>{item.label}</b><span>{item.reason}</span></li>)}
-        </ul>
-      </section>
-
-      <div className="rp-main">
-        <section aria-labelledby="rp-map-title" className="rp-map">
-          <header>
-            <h2 id="rp-map-title"><Icon name="mapPin" />{copy("تحليل الموقع الجغرافي", "Geographic location analysis")}</h2>
-            <ul className="rp-legend" aria-hidden="true">
-              <li className="is-you">{copy("موقعك", "Your location")}</li>
-              {model.mapCompetitors.length ? <li className="is-rival">{copy("منافس مرصود", "Mapped competitor")}</li> : null}
-            </ul>
-          </header>
-          <div className="rp-map__canvas">
-            {hasPoint ? (
-              <ProjectLocationPicker
-                center={{ latitude: model.place.latitude as number, longitude: model.place.longitude as number }}
-                competitors={model.mapCompetitors}
-                label={copy("خريطة الموقع والمنافسين", "Location and competitors map")}
-                point={{ latitude: model.place.latitude as number, longitude: model.place.longitude as number }}
-                zoom={14}
-              />
+    <>
+      <div className="rp-host">
+        <section className="rp" data-testid={testId} dir={ar ? "rtl" : "ltr"}>
+          <div aria-hidden="true" className="rp-banner" />
+          <header className="rp-head">
+            <div className="rp-head__text">
+              <h1>{words.join(" ")} <b>{lastWord}</b></h1>
+              <p>{copy("نتائج تحليل شاملة مبنية على الموقع والسوق والمنافسة والقوة الشرائية.", "A complete analysis built on location, market, competition and purchasing power.")}</p>
+            </div>
+            {model.ideaWarning ? (
+              <button className="rp-badge is-warning" data-testid="analysis-unreadable-idea" onClick={() => setDetail("facts")} type="button">
+                <span aria-hidden="true"><Icon name="warning" /></span>
+                <span><b>{copy("فكرة المشروع غير مفهومة", "The idea is not understandable")}</b><small>{copy("اضغط لقراءة التنبيه", "Select to read the warning")}</small></span>
+              </button>
+            ) : complete ? (
+              <span className="rp-badge">
+                <span aria-hidden="true"><Icon name="check" /></span>
+                <span><b>{actions.savedAtLabel ? copy("نسخة محفوظة في بياناتي", "Copy saved in My data") : copy("تم التحليل بنجاح", "Analysis complete")}</b><small>{actions.savedAtLabel ?? model.generatedAtLabel}</small></span>
+              </span>
             ) : (
-              <div className="rp-map__empty"><Icon name="globe" /><span>{copy("تعذر تحديد الموقع على الخريطة", "The location could not be placed on the map")}</span></div>
+              <span className="rp-badge is-partial">
+                <span aria-hidden="true"><Icon name="warning" /></span>
+                <span><b>{copy("تقرير جزئي", "Partial report")}</b><small>{copy("بيانات الموقع فقط", "Location data only")}</small></span>
+              </span>
             )}
-          </div>
-          <footer>
-            <span><Icon name="mapPin" /><b>{model.place.name}</b></span>
-            <span>{model.competitorCount !== null ? copy(`المرصود ضمن 5 كم: ${venuesText(model.competitorCount, "ar")}`, `Mapped within 5 km: ${venuesText(model.competitorCount, "en")}`) : copy("لم تتوفر بيانات المنافسين", "Competitor data is not available")}</span>
-          </footer>
-        </section>
+          </header>
 
-        <div className="rp-side">
-          <section aria-labelledby="rp-recs-title" className="rp-brief">
-            <h2 id="rp-recs-title"><Icon name="rocket" />{copy("أهم التوصيات", "Key recommendations")}</h2>
-            {model.recommendations.length ? (
-              <ol className="rp-points">
-                {model.recommendations.slice(0, TOP).map((item, index) => (
-                  <li key={item.code}><span className="rp-points__n">{index + 1}</span><div><b>{item.title}</b><p>{item.reason}</p></div></li>
-                ))}
-              </ol>
-            ) : <p className="rp-empty">{model.standOut.empty}</p>}
-            {model.recommendations.length ? <button className="rp-more" data-testid="analysis-recs-details" onClick={() => setDetail("recommendations")} type="button">{copy("عرض التفاصيل", "View details")}</button> : null}
-          </section>
-
-          <section aria-labelledby="rp-stand-title" className="rp-brief">
-            <h2 id="rp-stand-title"><Icon name="trend" />{copy("كيف تتميز عن منافسيك؟", "How to stand out from competitors?")}</h2>
-            {model.standOut.positioning || model.standOut.competitors.length ? (
-              <ul className="rp-points is-plain">
-                {model.standOut.positioning ? <li><span className="rp-points__n"><Icon name="check" /></span><div><b>{copy("تموضع مقترح", "Suggested positioning")}</b><p>{model.standOut.positioning}</p></div></li> : null}
-                {model.standOut.competitors.slice(0, model.standOut.positioning ? TOP - 1 : TOP).map((item, index) => (
-                  <li key={`${item.name}-${index}`}><span className="rp-points__n"><Icon name="store" /></span><div><b>{item.name}</b><p>{item.category} · {item.distance}</p></div></li>
-                ))}
-              </ul>
-            ) : <p className="rp-empty">{model.standOut.empty}</p>}
-            {model.standOut.positioning || model.standOut.competitors.length ? <button className="rp-more" data-testid="analysis-stand-details" onClick={() => setDetail("standout")} type="button">{copy("عرض التفاصيل", "View details")}</button> : null}
-          </section>
-
-          <section aria-labelledby="rp-risk-title" className="rp-brief">
-            <h2 id="rp-risk-title"><Icon name="warning" />{copy("المخاطر والتحديات", "Risks and challenges")}</h2>
-            <p className={`rp-risklevel is-${model.risks.level.toLowerCase()}`}>
-              <small>{copy("مستوى مخاطر البيانات", "Data-risk level")}</small>
-              <b>{model.risks.levelLabel}</b>
-              <span aria-hidden="true">{[1, 2, 3].map((step) => <i className={step <= (model.risks.level === "HIGH" ? 3 : model.risks.level === "MODERATE" ? 2 : model.risks.level === "LOW" ? 1 : 0) ? "is-on" : undefined} key={step} />)}</span>
-            </p>
-            {model.risks.items.length ? (
-              <ul className="rp-points is-plain is-risk">
-                {model.risks.items.slice(0, TOP).map((item) => <li key={item}><span className="rp-points__n"><Icon name="warning" /></span><div><p>{item}</p></div></li>)}
-              </ul>
-            ) : <p className="rp-empty">{model.risks.empty}</p>}
-            {model.risks.items.length ? <button className="rp-more" data-testid="analysis-risks-details" onClick={() => setDetail("risks")} type="button">{copy("عرض التفاصيل", "View details")}</button> : null}
-          </section>
-        </div>
-      </div>
-
-      <section aria-labelledby="rp-sources-title" className="rp-sources">
-        <h2 id="rp-sources-title"><Icon name="database" />{copy("المصادر ودرجة الثقة", "Sources and confidence")}</h2>
-        {model.sources.length ? (
-          <table>
-            <thead><tr><th scope="col">{copy("المصدر", "Source")}</th><th scope="col">{copy("ما يغطيه", "What it covers")}</th><th scope="col">{copy("تاريخ الجلب", "Retrieved")}</th><th scope="col">{copy("الثقة", "Confidence")}</th></tr></thead>
-            <tbody>
-              {model.sources.map((row, index) => (
-                <tr key={`${row.name}-${index}`}>
-                  <th data-label={copy("المصدر", "Source")} scope="row">{row.name}</th>
-                  <td data-label={copy("ما يغطيه", "What it covers")}>{row.covers}</td>
-                  <td data-label={copy("تاريخ الجلب", "Retrieved")}>{row.date}</td>
-                  <td data-label={copy("الثقة", "Confidence")}>{row.confidence}</td>
-                </tr>
+          <div className="rp-strip">
+            <div className="rp-strip__actions">
+              {actions.newHref ? <Link className="rp-btn is-ghost" href={actions.newHref}><Icon name="barChart" />{copy("تحليل جديد", "New analysis")}</Link> : null}
+              {complete ? pdfButton("analysis-pdf-top") : null}
+              {complete ? printButton("analysis-print-top") : null}
+            </div>
+            <dl className="rp-facts">
+              {facts.map((fact) => (
+                <div className={`rp-fact is-${fact.id}`} key={fact.id}>
+                  <dt>
+                    <Icon name={FACT_ICONS[fact.id]} />
+                    <span>{fact.label}</span>
+                    {fact.clamped ? <button className="rp-fact__more" onClick={() => setDetail("facts")} type="button">{copy("المزيد", "More")}</button> : null}
+                  </dt>
+                  <dd>{fact.text}</dd>
+                </div>
               ))}
-            </tbody>
-          </table>
-        ) : <p className="rp-empty">{model.standOut.empty}</p>}
-        <p className="rp-disclaimer" role="note"><Icon name="shield" /><span>{model.disclaimer}</span></p>
-      </section>
+            </dl>
+          </div>
 
-      <footer className="rp-actions">
-        <div className="rp-actions__bar" role="toolbar" aria-label={copy("إجراءات التقرير", "Report actions")}>
-          {model.complete ? (
-            <>
-              {actions.saveProjectId ? (
-                <button className="rp-btn is-primary" data-testid="analysis-save" disabled={save.state === "saving"} onClick={() => void saveCopy()} type="button">
-                  <Icon name={save.state === "saved" ? "check" : "database"} />
-                  {save.state === "saving" ? copy("جارٍ الحفظ…", "Saving…") : save.state === "saved" ? copy("تم الحفظ في بياناتي", "Saved in My data") : copy("حفظ في بياناتي", "Save to My data")}
-                </button>
+          <section aria-labelledby="rp-kpis-title" className="rp-kpis-wrap">
+            <header className="rp-kpis__head">
+              <h2 id="rp-kpis-title"><Icon name="barChart" />{copy("المؤشرات الرئيسية للمشروع", "Key project indicators")}</h2>
+              <button className="rp-link" onClick={() => setDetail("sources")} type="button"><Icon name="database" />{copy("المصادر ودرجة الثقة", "Sources and confidence")}</button>
+            </header>
+            <div className="rp-kpis">
+              {slots.map((slot) => {
+                const item = slot.item;
+                const available = Boolean(item) && item!.state !== "UNAVAILABLE";
+                const label = item?.label ?? slot.pending!.label;
+                const value = available ? item!.value : copy("غير متاح", "Unavailable");
+                const note = item ? (available ? item.short : item.note) : slot.pending!.reason;
+                const source = available ? [item!.source, item!.date].filter((part) => part && part !== "—").join(" · ") : "";
+                const bars = available ? levelBars(item!.tone) : 0;
+                return (
+                  <article className={`rp-kpi${available ? ` is-${item!.state.toLowerCase()}` : " is-unavailable"}`} data-indicator={slot.id} key={slot.id}>
+                    <span className="rp-kpi__icon"><Icon name={SLOT_ICONS[slot.id]} /></span>
+                    {bars ? <span aria-hidden="true" className="rp-bars" data-level={bars}><i /><i /><i /></span> : null}
+                    <div className="rp-kpi__body">
+                      <h3>{label}</h3>
+                      <strong>{value}</strong>
+                      <p>{note}</p>
+                    </div>
+                    {available ? (
+                      <footer>
+                        <span className="rp-chip">{item!.stateLabel}</span>
+                        <small>{source}</small>
+                      </footer>
+                    ) : null}
+                  </article>
+                );
+              })}
+            </div>
+          </section>
+
+          <div className="rp-main">
+            <section aria-labelledby="rp-map-title" className="rp-map">
+              <div className="rp-map__canvas">
+                {hasPoint ? (
+                  <ProjectLocationPicker
+                    center={{ latitude: model.place.latitude as number, longitude: model.place.longitude as number }}
+                    competitors={model.mapCompetitors}
+                    fitPadding={{ top: 70, right: 36, bottom: 40, left: 36 }}
+                    label={copy("خريطة الموقع والمنافسين", "Location and competitors map")}
+                    point={{ latitude: model.place.latitude as number, longitude: model.place.longitude as number }}
+                    zoom={14}
+                  />
+                ) : (
+                  <div className="rp-map__empty"><Icon name="globe" /><span>{copy("تعذر تحديد الموقع على الخريطة", "The location could not be placed on the map")}</span></div>
+                )}
+              </div>
+              <h2 className="rp-map__title" id="rp-map-title"><Icon name="mapPin" />{copy("تحليل الموقع الجغرافي", "Geographic location analysis")}</h2>
+              <span className="rp-map__place" title={model.place.name}><Icon name="mapPin" /><b>{clampText(model.place.name, 40).text}</b></span>
+              <div className="rp-callout is-rivals">
+                <span aria-hidden="true"><Icon name="store" /></span>
+                <div><small>{copy("المنافسون", "Competitors")}</small><b>{model.competitorCount !== null ? venuesText(model.competitorCount, model.locale) : copy("غير متاح", "Unavailable")}</b><em>{copy("ضمن 5 كم", "Within 5 km")}</em></div>
+              </div>
+              <div className="rp-callout is-people">
+                <span aria-hidden="true"><Icon name="people" /></span>
+                <div><small>{copy("عدد السكان", "Population")}</small><b>{indicator.population.state !== "UNAVAILABLE" ? indicator.population.value : copy("غير متاح", "Unavailable")}</b><em>{copy("على مستوى الدولة", "Country level")}</em></div>
+              </div>
+              <ul aria-hidden="true" className="rp-legend">
+                <li className="is-you">{copy("موقعك", "Your location")}</li>
+                {model.mapCompetitors.length ? <li className="is-rival">{copy("منافس مرصود", "Mapped competitor")}</li> : null}
+              </ul>
+              <span aria-hidden="true" className="rp-compass"><i />N</span>
+            </section>
+
+            <section aria-labelledby="rp-gauge-title" className="rp-gauge">
+              <h2 id="rp-gauge-title"><Icon name="activity" />{copy("اكتمال الأدلة", "Evidence coverage")}</h2>
+              <div aria-label={`${completeness}%`} className="rp-ring" role="img">
+                <svg aria-hidden="true" viewBox="0 0 120 120">
+                  <circle className="rp-ring__track" cx="60" cy="60" r="48" />
+                  <circle className="rp-ring__bar" cx="60" cy="60" r="48" strokeDasharray={`${(completeness / 100) * RING} ${RING}`} />
+                </svg>
+                <span><b>{complete ? `${completeness}%` : "—"}</b><small>{complete ? model.qualityLabel : copy("غير متاح", "Unavailable")}</small></span>
+              </div>
+              <p className="rp-gauge__note">
+                {gaugeNote}
+                <em>{copy("اكتمال الأدلة لا يعني احتمال نجاح المشروع.", "Evidence coverage is not a probability of success.")}</em>
+              </p>
+            </section>
+
+            <section aria-labelledby="rp-recs-title" className="rp-brief is-recs">
+              <h2 id="rp-recs-title"><Icon name="rocket" />{copy("أهم التوصيات", "Key recommendations")}</h2>
+              {recList.shown.length ? (
+                <ol className="rp-points">
+                  {recList.shown.map((item, index) => (
+                    <li key={item.code}><span className="rp-points__n">{index + 1}</span><b>{clampText(item.title, FIT.recs.chars * 2).text}</b></li>
+                  ))}
+                </ol>
+              ) : <p className="rp-empty">{model.standOut.empty}</p>}
+              {model.recommendations.length ? <button className="rp-more" data-testid="analysis-recs-details" onClick={() => setDetail("recommendations")} type="button">{copy("عرض التفاصيل", "View details")}</button> : null}
+            </section>
+
+            <section aria-labelledby="rp-stand-title" className="rp-brief is-stand">
+              <h2 id="rp-stand-title"><Icon name="trend" />{copy("كيف تتميز عن منافسيك؟", "How to stand out from competitors?")}</h2>
+              {standList.shown.length ? (
+                <ul className="rp-points is-plain">
+                  {standList.shown.map((item) => (
+                    <li key={item.key}>
+                      <span className="rp-points__n"><Icon name={item.icon} /></span>
+                      <div><b>{clampText(item.title, FIT.stand.chars * 2).text}</b>{item.meta ? <small>{item.meta}</small> : null}</div>
+                    </li>
+                  ))}
+                </ul>
+              ) : <p className="rp-empty">{model.standOut.empty}</p>}
+              {standItems.length ? <button className="rp-more" data-testid="analysis-stand-details" onClick={() => setDetail("standout")} type="button">{copy("عرض التفاصيل", "View details")}</button> : null}
+            </section>
+
+            <section aria-labelledby="rp-risk-title" className="rp-brief is-risks">
+              <h2 id="rp-risk-title"><Icon name="warning" />{copy("المخاطر والتحديات", "Risks and challenges")}</h2>
+              <div className={`rp-risklevel is-${model.risks.level.toLowerCase()}`}>
+                <small>{copy("مستوى مخاطر البيانات", "Data-risk level")}</small>
+                <b>{model.risks.levelLabel}</b>
+                <span aria-hidden="true" className="rp-meter">{[1, 2, 3].map((step) => <i className={step <= riskBars ? "is-on" : undefined} key={step} />)}</span>
+                {model.risks.items.length ? <button className="rp-more" data-testid="analysis-risks-details" onClick={() => setDetail("risks")} type="button">{copy("عرض التفاصيل", "View details")}</button> : null}
+              </div>
+              {riskList.shown.length ? (
+                <ul className="rp-points is-plain is-risk">
+                  {riskList.shown.map((item) => <li key={item}><span className="rp-points__n"><Icon name="warning" /></span><p>{clampText(item, FIT.risks.chars * 2).text}</p></li>)}
+                </ul>
+              ) : <p className="rp-empty">{model.risks.empty}</p>}
+            </section>
+          </div>
+
+          <footer className="rp-actions">
+            <div className="rp-actions__bar" role="toolbar" aria-label={copy("إجراءات التقرير", "Report actions")}>
+              {complete ? (
+                <>
+                  {printButton("analysis-print")}
+                  {pdfButton("analysis-pdf")}
+                  <button className="rp-btn" data-testid="analysis-share" onClick={() => void shareReport()} type="button"><Icon name="share" />{copy("مشاركة", "Share")}</button>
+                  {actions.saveProjectId ? (
+                    <button className="rp-btn" data-testid="analysis-save" disabled={save.state === "saving"} onClick={() => void saveCopy()} type="button">
+                      <Icon name={save.state === "saved" ? "check" : "database"} />
+                      {save.state === "saving" ? copy("جارٍ الحفظ…", "Saving…") : save.state === "saved" ? copy("تم الحفظ في بياناتي", "Saved in My data") : copy("حفظ في بياناتي", "Save to My data")}
+                    </button>
+                  ) : (
+                    <Link className="rp-btn" href="/user/reports"><Icon name="database" />{copy("التقارير المحفوظة", "Saved reports")}</Link>
+                  )}
+                </>
               ) : (
-                <Link className="rp-btn is-primary" href="/user/reports"><Icon name="database" />{copy("التقارير المحفوظة", "Saved reports")}</Link>
+                <Link className="rp-btn is-primary" href={actions.newHref ?? "/projects/analysis"}><Icon name="barChart" />{copy("ابدأ التحليل", "Start analysis")}</Link>
               )}
-              <a className="rp-btn" data-testid="analysis-pdf" download href={pdfUrl(false)}><Icon name="fileText" />{copy("تصدير PDF", "Export PDF")}</a>
-              <button className="rp-btn" data-testid="analysis-print" onClick={() => void printReport()} type="button"><Icon name="printer" />{copy("طباعة التقرير", "Print report")}</button>
-              <button className="rp-btn" data-testid="analysis-share" onClick={() => void shareReport()} type="button"><Icon name="share" />{copy("مشاركة", "Share")}</button>
-            </>
-          ) : (
-            <Link className="rp-btn is-primary" href={actions.newHref ?? "/projects/analysis"}><Icon name="barChart" />{copy("ابدأ التحليل", "Start analysis")}</Link>
-          )}
-        </div>
-        <p aria-live="polite" className={`rp-actions__note${save.state === "error" ? " is-error" : ""}`} role="status">
-          {save.state === "saved" ? (
-            <>{copy("حُفظت نسخة من التقرير وبيانات المشروع والموقع في بياناتك. ", "A copy of the report, the project data and the location is saved in your data. ")}<Link href={save.id ? `/user/reports/${save.id}` : "/user/reports"}>{copy("فتح النسخة المحفوظة", "Open the saved copy")}</Link></>
-          ) : save.state === "error" ? save.message : note}
-        </p>
-      </footer>
+            </div>
+          </footer>
+
+          {toast ? (
+            <p aria-live="polite" className={`rp-toast is-${toast.kind}`} role={toast.kind === "error" ? "alert" : "status"}>
+              <span>{toast.text}</span>
+              {toast.kind === "saved" ? <Link href={toast.id ? `/user/reports/${toast.id}` : "/user/reports"}>{copy("فتح النسخة المحفوظة", "Open the saved copy")}</Link> : null}
+              <button aria-label={copy("إغلاق", "Dismiss")} onClick={() => setToast(null)} type="button"><Icon name="x" /></button>
+            </p>
+          ) : null}
+        </section>
+      </div>
 
       {detail ? (
         <FlowModal ar={ar} className="rp-modal" onClose={closeDetail} step={`detail-${detail}`}>
@@ -370,21 +454,56 @@ export function AnalysisReportView({ actions, model, testId }: { actions: Report
                     </ul>
                     {model.standOut.competitors.length > 10 ? <p className="rp-empty">{copy(`يظهر أقرب 10 من أصل ${model.standOut.competitors.length} منشأة مرصودة.`, `Showing the nearest 10 of ${model.standOut.competitors.length} mapped venues.`)}</p> : null}
                   </>
-                ) : <p className="rp-empty">{model.standOut.empty}</p>}
+                ) : model.standOut.positioning ? null : <p className="rp-empty">{model.standOut.empty}</p>}
               </>
             ) : null}
             {detail === "risks" ? (
               <>
-                <p className={`rp-risklevel is-${model.risks.level.toLowerCase()}`}><small>{copy("مستوى مخاطر البيانات", "Data-risk level")}</small><b>{model.risks.levelLabel}</b></p>
+                <p className={`rp-risklevel is-flat is-${model.risks.level.toLowerCase()}`}><small>{copy("مستوى مخاطر البيانات", "Data-risk level")}</small><b>{model.risks.levelLabel}</b></p>
                 <ul className="rp-detail is-rows is-risk">
                   {model.risks.items.map((item) => <li key={item}><p>{item}</p></li>)}
                 </ul>
+              </>
+            ) : null}
+            {detail === "facts" ? (
+              <>
+                {model.ideaWarning ? (
+                  <p className="rp-warning" role="alert">
+                    <Icon name="warning" />
+                    <span>{model.ideaWarning}{actions.newHref ? <> <Link href={actions.newHref}>{copy("تحليل جديد", "New analysis")}</Link></> : null}</span>
+                  </p>
+                ) : null}
+                <dl className="rp-detail-facts">
+                  {model.facts.map((fact) => (
+                    <div key={fact.id}><dt><Icon name={FACT_ICONS[fact.id]} />{fact.label}</dt><dd>{fact.value}</dd></div>
+                  ))}
+                </dl>
+              </>
+            ) : null}
+            {detail === "sources" ? (
+              <>
+                {model.sources.length ? (
+                  <table className="rp-table">
+                    <thead><tr><th scope="col">{copy("المصدر", "Source")}</th><th scope="col">{copy("ما يغطيه", "What it covers")}</th><th scope="col">{copy("تاريخ الجلب", "Retrieved")}</th><th scope="col">{copy("الثقة", "Confidence")}</th></tr></thead>
+                    <tbody>
+                      {model.sources.map((row, index) => (
+                        <tr key={`${row.name}-${index}`}>
+                          <th data-label={copy("المصدر", "Source")} scope="row">{row.name}</th>
+                          <td data-label={copy("ما يغطيه", "What it covers")}>{row.covers}</td>
+                          <td data-label={copy("تاريخ الجلب", "Retrieved")}>{row.date}</td>
+                          <td data-label={copy("الثقة", "Confidence")}>{row.confidence}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                ) : <p className="rp-empty">{model.standOut.empty}</p>}
+                <p className="rp-disclaimer" data-testid="analysis-scope-notice" role="note"><Icon name="shield" /><span>{model.disclaimer}</span></p>
               </>
             ) : null}
             <button className="rp-btn is-primary rp-modal__done" onClick={closeDetail} type="button">{copy("تم", "Done")}</button>
           </div>
         </FlowModal>
       ) : null}
-    </section>
+    </>
   );
 }

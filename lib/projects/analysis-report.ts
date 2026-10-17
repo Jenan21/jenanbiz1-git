@@ -44,11 +44,11 @@ export const confidenceLabel = (confidence: Confidence | undefined, ar: boolean)
 const LIMITATIONS: ReadonlyArray<readonly [RegExp, Copy, string?]> = [
   [/location provider returned no matching result/i, ["لم يُعثر على نتيجة مطابقة للموقع المحدد.", "No matching result was found for the chosen location."]],
   [/geocoding could not be loaded/i, ["تعذر تحديد اسم الموقع في الوقت الحالي.", "The place name could not be resolved right now."]],
-  [/population, purchasing-power, and inflation data could not be loaded/i, ["لا تتوفر بيانات موثوقة كافية للسكان والقوة الشرائية والتضخم حاليًا.", "Reliable population, purchasing-power and inflation data is not available right now."], "market"],
+  [/population, purchasing-power, and inflation data could not be loaded/i, ["لا تتوفر بيانات موثوقة كافية للسكان والقوة الشرائية والتضخم حاليًا.", "Reliable population, purchasing-power and inflation data is not available."], "market"],
   [/two-letter country code is required/i, ["لا تتوفر بيانات السكان والقوة الشرائية لأن الدولة غير محددة.", "Population and purchasing-power data is unavailable because no country is set."], "market"],
   [/resolvable location is required for competitor discovery/i, ["يلزم موقع محدد بدقة لرصد المنافسين.", "A precisely resolved location is needed to find competitors."]],
   [/sector with a known map category/i, ["لا يوجد تصنيف خرائطي لهذا القطاع، لذلك لا يُعرض عدد للمنافسين.", "This sector has no map category, so no competitor count is shown."]],
-  [/no venues of this sector are mapped within 5 km/i, ["لم تُرصد منشآت لهذا النشاط ضمن 5 كم على الخريطة؛ وهذا لا يعني عدم وجود منافسة.", "No venues of this activity are mapped within 5 km; that does not mean there is no competition."]],
+  [/no venues of this sector are mapped within 5 km/i, ["لم تُرصد منشآت لهذا النشاط ضمن 5 كم؛ وقد توجد منافسة غير مرصودة.", "No venues of this activity are mapped within 5 km; competition may still exist."]],
   [/competitor discovery could not be loaded/i, ["لا تتوفر بيانات موثوقة كافية عن المنافسين حاليًا.", "Reliable competitor data is not available right now."]],
   [/population result is unavailable/i, ["لا تتوفر بيانات موثوقة كافية لعدد السكان حاليًا.", "Reliable population data is not available right now."], "population"],
   [/purchasing-power result is unavailable/i, ["لا تتوفر بيانات موثوقة كافية للقوة الشرائية حاليًا.", "Reliable purchasing-power data is not available right now."], "purchasing"],
@@ -190,6 +190,8 @@ export type ReportIndicator = {
   label: string;
   value: string;
   note: string;
+  /** The same note in few words, for a compact card; it never says more than `note` does. */
+  short: string;
   state: MetricState;
   stateLabel: string;
   tone?: "LOW" | "MODERATE" | "HIGH" | "UNAVAILABLE";
@@ -294,8 +296,9 @@ export function buildReport(data: ReportData, locale: Locale): ReportModel {
   const yearOf = (metric: { period?: string }, fetched?: string) => metric.period ?? (fetched ? reportDate(fetched, locale, false) : "—");
   const noData = pick(NO_DATA_NOTE, ar);
 
-  const indicator = (item: Omit<ReportIndicator, "stateLabel" | "confidenceLabel">): ReportIndicator => ({
+  const indicator = (item: Omit<ReportIndicator, "short" | "stateLabel" | "confidenceLabel"> & { short?: string }): ReportIndicator => ({
     ...item,
+    short: item.short ?? item.note,
     stateLabel: stateLabel(item.state, ar),
     confidenceLabel: confidenceLabel(item.confidence, ar),
   });
@@ -312,6 +315,7 @@ export function buildReport(data: ReportData, locale: Locale): ReportModel {
       ? indicator({
           id: "competitors", label: pick(["المنافسون", "Competitors"], ar), value: reportNumber(competitorCount, locale),
           note: pick([`عدد المنشآت المرصودة ضمن 5 كم · المنافسة ${levelText(result?.competitionLevel)}`, `venues mapped within 5 km · competition ${levelText(result?.competitionLevel)}`], ar),
+          short: pick([`ضمن 5 كم · المنافسة ${levelText(result?.competitionLevel)}`, `Within 5 km · competition ${levelText(result?.competitionLevel)}`], ar),
           state: "ESTIMATED", tone: result?.competitionLevel, source: sourceShort("OpenStreetMap Overpass"),
           date: reportDate(venues?.retrievedAt, locale, false), confidence: venues?.confidence,
         })
@@ -320,6 +324,7 @@ export function buildReport(data: ReportData, locale: Locale): ReportModel {
       ? indicator({
           id: "purchasing", label: pick(["القوة الشرائية", "Purchasing power"], ar), value: levelText(result?.purchasingPowerLevel),
           note: pick([`دخل الفرد ${reportNumber(purchasing.value, locale)} دولارًا دوليًا · على مستوى الدولة`, `Income per person ${reportNumber(purchasing.value, locale)} international $ · country level`], ar),
+          short: pick([`دخل الفرد ${reportNumber(purchasing.value, locale)} دولارًا دوليًا`, `Income per person ${reportNumber(purchasing.value, locale)} int'l $`], ar),
           state: "ESTIMATED", tone: result?.purchasingPowerLevel, source: sourceShort("World Bank Open Data"),
           date: yearOf(purchasing, worldBank?.retrievedAt), confidence: worldBank?.confidence,
         })
@@ -434,6 +439,16 @@ export function buildReport(data: ReportData, locale: Locale): ReportModel {
   ];
 
   const generatedAt = result?.generatedAt || study.updatedAt || "";
+  // Cost inflation is a challenge for the person's costs, so it leads the risk list when it is known.
+  const inflationLine = inflation.value !== null
+    ? pick(
+        [
+          `تضخم التكاليف السنوي ${reportNumber(inflation.value, locale, 1)}% (${yearOf(inflation, worldBank?.retrievedAt)}، على مستوى الدولة)`,
+          `Annual cost inflation ${reportNumber(inflation.value, locale, 1)}% (${yearOf(inflation, worldBank?.retrievedAt)}, country level)`,
+        ],
+        ar,
+      )
+    : null;
   const problem = input ? textProblem(input.idea) : null;
   const ideaWarning = problem
     ? pick([
@@ -465,7 +480,7 @@ export function buildReport(data: ReportData, locale: Locale): ReportModel {
     risks: {
       level: result?.dataRiskLevel ?? "UNAVAILABLE",
       levelLabel: result ? levelText(result.dataRiskLevel) : pick(["غير متاح", "Unavailable"], ar),
-      items: limitations,
+      items: [...(inflationLine ? [inflationLine] : []), ...limitations],
       empty: pick(["لا توجد قيود إضافية مسجلة على البيانات.", "No additional data limits are recorded."], ar),
     },
     sources: sourceRows,

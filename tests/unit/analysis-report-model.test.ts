@@ -59,6 +59,19 @@ describe("report model", () => {
     expect(model.pending.map((item) => item.id)).toEqual(["traffic", "demand", "opportunity"]);
   });
 
+  it("gives each available indicator a compact note for the one-screen cards and keeps the count the map callout needs", () => {
+    const ar = buildReport(full(), "ar");
+    const by = Object.fromEntries(ar.indicators.map((item) => [item.id, item]));
+    expect(ar.competitorCount).toBe(2);
+    expect(by.competitors!.short).toBe("ضمن 5 كم · المنافسة متوسطة");
+    expect(by.purchasing!.short).toContain("58,000");
+    expect(buildReport(full(), "en").indicators.find((item) => item.id === "competitors")!.short).toBe("Within 5 km · competition Moderate");
+    // An unavailable indicator never gets a made-up short note: it repeats its honest note.
+    const empty = buildReport({ project, study: readStudy({ status: "COMPLETED", updatedAt: now, input }), snapshot: undefined }, "ar");
+    expect(empty.competitorCount).toBeNull();
+    for (const item of empty.indicators) expect(item.short).toBe(item.note);
+  });
+
   it("never turns missing data into a number: it says unavailable and gives the Arabic no-data note", () => {
     const empty = { project, study: readStudy({ status: "COMPLETED", updatedAt: now, input }), snapshot: undefined };
     const model = buildReport(empty, "ar");
@@ -77,7 +90,7 @@ describe("report model", () => {
     const model = buildReport(full(), "ar");
     const everything = JSON.stringify(model);
     expect(everything).not.toMatch(/overpass-api|timeout|504|Nominatim|provider returned|could not be loaded/i);
-    expect(model.risks.items).toEqual(["لا تتوفر بيانات موثوقة كافية عن المنافسين حاليًا."]);
+    expect(model.risks.items).toEqual(["تضخم التكاليف السنوي 1.7% (2024، على مستوى الدولة)", "لا تتوفر بيانات موثوقة كافية عن المنافسين حاليًا."]);
     expect(limitationText("some brand new upstream failure", true)).toBe(NO_DATA_NOTE[0]);
     expect(limitationText("some brand new upstream failure", false)).toBe(NO_DATA_NOTE[1]);
   });
