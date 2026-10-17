@@ -4,7 +4,7 @@ import { commandSchema, itemSchema, sourceSchema } from "@/services/data-center/
 import { assertEvidence, assertSourceAccess, deterministicConfidence } from "@/services/data-center/policy";
 import type { DataCenterSource } from "@/generated/prisma/client";
 
-const admin = { id: "admin", systemRole: "ADMIN" };
+const admin = { id: "admin", systemRole: "ADMIN", kind: "HUMAN" as const };
 describe("Data Center governance policy", () => {
   it("accepts the public action contract and rejects arbitrary URL imports", () => {
     expect(commandSchema.parse({ action: "create-source", name: "Official", kind: "OFFICIAL", scope: "PLATFORM", owner: "Authority", license: "Internal" }).action).toBe("create-source");
@@ -22,11 +22,11 @@ describe("Data Center governance policy", () => {
     expect(() => assertEvidence(verified, { ...admin, kind: "AI" })).toThrow("VERIFICATION_REQUIRES");
     expect(() => assertEvidence({ ...verified, origin: "AI" }, admin)).toThrow("VERIFICATION_REQUIRES");
     expect(() => assertEvidence({ ...verified, provenance: [] }, admin)).toThrow("VERIFICATION_REQUIRES");
-    expect(() => assertEvidence(verified, { id: "u", systemRole: "USER" })).toThrow("VERIFICATION_REQUIRES");
+    expect(() => assertEvidence(verified, { id: "u", systemRole: "USER", kind: "HUMAN" })).toThrow("VERIFICATION_REQUIRES");
     expect(() => assertEvidence(verified, admin)).not.toThrow();
   });
   it("keeps estimates and derivations distinct from verification", () => {
-    expect(() => assertEvidence({ evidenceStatus: "ESTIMATED", origin: "HUMAN", provenance: [] }, { id: "u", systemRole: "USER" })).not.toThrow();
+    expect(() => assertEvidence({ evidenceStatus: "ESTIMATED", origin: "HUMAN", provenance: [] }, { id: "u", systemRole: "USER", kind: "HUMAN" })).not.toThrow();
     expect(() => assertEvidence({ evidenceStatus: "DERIVED", origin: "CALCULATION", provenance: [] }, admin)).toThrow("DERIVATION_PROVENANCE");
   });
   it("computes repeatable factors and never fabricates freshness for missing dates", () => {
@@ -43,8 +43,8 @@ describe("Data Center governance policy", () => {
   it("does not leak another user's private source", async () => {
     const source = { scope: "PRIVATE", ownerId: "owner", organizationId: null } as DataCenterSource;
     const tx = { organizationMember: { findMany: vi.fn().mockResolvedValue([]) } };
-    await expect(assertSourceAccess(source, { id: "stranger", systemRole: "USER" }, false, tx as never)).rejects.toThrow("SOURCE_NOT_FOUND");
-    await expect(assertSourceAccess(source, { id: "owner", systemRole: "USER" }, true, tx as never)).resolves.toBe(source);
+    await expect(assertSourceAccess(source, { id: "stranger", systemRole: "USER", kind: "HUMAN" }, false, tx as never)).rejects.toThrow("SOURCE_NOT_FOUND");
+    await expect(assertSourceAccess(source, { id: "owner", systemRole: "USER", kind: "HUMAN" }, true, tx as never)).resolves.toBe(source);
   });
   it("rejects caller-supplied origin in public commands", () => {
     expect(commandSchema.safeParse({ action: "create-item", sourceId: "s", title: "proposal", typeKey: "dataset", layer: "DATA", content: "content", origin: "HUMAN" }).success).toBe(false);

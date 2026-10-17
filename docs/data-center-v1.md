@@ -18,7 +18,8 @@ an Academy approval race, stale mutation responses, an impossible private
 approval path, and filtering after candidate limiting. These are review
 inputs, not accepted behavior or a reason to reuse the old migration.
 
-Four independently classified layers share provenance and governance:
+The target architecture has four layers sharing provenance and governance
+(see the incomplete-coverage disclosure below):
 
 - **Data:** computable structured datasets and geographic information.
 - **Knowledge:** documents, research, operational knowledge, and explanations.
@@ -208,6 +209,50 @@ drills before relying on this store for production continuity.
 
 ## Delivery verification
 
-The final delivery report below records the implemented schema, modules,
-routes, permissions, checks, and limitations. Unavailable external providers
-and unexecuted checks must not be represented as passing.
+**Status: foundation checkpoint, not a completed or accepted v1.** Work was
+time-boxed at the owner's request; remaining scope is not silently declared
+complete. PR #32 remains for owner review and must not be merged as a
+completed v1 without closing the gaps below.
+
+### Verified initial checks
+
+- Backend agent reported 40 passing focused tests, including six real
+  PostgreSQL rollback-isolated workflows; owned ESLint, full typecheck,
+  Prisma validate/generate, and additive migration deployment passed.
+- UI agent reported passing focused UI/route tests and live authenticated
+  responsive checks. This is not equivalent to final functional acceptance
+  of every required workflow.
+- Secret scanning of the foundation checkpoint files found no secrets.
+- Local Node was v22.23.3, whereas the repository requests Node 24; the
+  lockfile was installed unchanged.
+- Full final lint/test/build results are not established by the initial
+  focused checks.
+- Final automated review/CodeQL was requested but refused because the
+  validation time limit was reached. No successful final security scan or
+  automated review is claimed.
+
+### Incomplete coverage requiring follow-up
+
+- The persisted layer enum still uses DATA, KNOWLEDGE, INTELLIGENCE, CONTEXT;
+  the required independent ASSET/EVIDENCE layers and complete asset schema
+  are not delivered. Their UI pages must not be mistaken for complete hubs.
+- Lifecycle lacks DEPRECATED; complete per-operation permissions, stale
+  reviewer version guards, robot grants, and a trusted bounded mission
+  context contract remain to be completed and validated.
+- Category/department registries and publication metadata are present, but
+  full ownership, license, geography, freshness, evidence, and the specified
+  seven-factor confidence policy are incomplete.
+- Academy has targeted requests and approvals, but not the complete release
+  classification/validity/level/mandatory policy or supervisor/committee
+  robot-proposal workflow.
+- Retrieval still has a 2,000-candidate cap; complete context-budget,
+  department/location/date filtering, and consumption analytics are not
+  production-accepted.
+- Export covers permitted published retrieval rows, not the requested full
+  metadata/evidence/version/source/audit interchange.
+- PDF text extraction and a configured production malware scanner/semantic
+  provider are unavailable by default.
+
+Next work should close these existing mission gaps and run the full delivery
+gate before adding more capabilities. No homepage, Auth, Map, or Project
+Analysis redesign is needed to do so.

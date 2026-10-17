@@ -2,7 +2,7 @@ import { createHash } from "node:crypto";
 import { Prisma, type DataCenterLifecycle } from "@/generated/prisma/client";
 import { db, type DbExecutor } from "@/lib/db";
 import { commandSchema, DataCenterError, itemSchema, sourceSchema, versionSchema, type CreateItemInput, type CreateSourceInput, type DataCenterActor, type DataCenterCommand } from "./contracts";
-import { assertEvidence, assertSourceAccess, deterministicConfidence, requireDataCenterAdmin, sourceScopeWhere } from "./policy";
+import { assertEvidence, assertSourceAccess, deterministicConfidence, requireDataCenterAdmin, requireDataCenterPrincipal, sourceScopeWhere } from "./policy";
 
 export async function auditDataCenter(tx: DbExecutor, actor: DataCenterActor, action: string, entityId: string, metadata: Prisma.InputJsonValue = {}) {
   await tx.auditLog.create({ data: { actorId: actor.id, action: `data-center.${action}`, entityType: "DataCenter", entityId, metadata } });
@@ -17,6 +17,7 @@ export async function getAccessibleItem(tx: DbExecutor, actor: DataCenterActor, 
   return item;
 }
 export async function createDataCenterSource(input: CreateSourceInput, actor: DataCenterActor) {
+  requireDataCenterPrincipal(actor);
   const data = sourceSchema.parse(input);
   if (data.scope === "PLATFORM") requireDataCenterAdmin(actor);
   if (data.scope === "ORGANIZATION") {

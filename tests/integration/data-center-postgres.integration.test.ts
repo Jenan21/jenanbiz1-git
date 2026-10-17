@@ -34,7 +34,7 @@ async function isolated(run: (tx: DbExecutor, admin: DataCenterActor) => Promise
     context.tx = tx;
     try {
       const user = await tx.user.create({ data: { email: `data-center-${randomUUID()}@example.test`, status: "ACTIVE", systemRole: "ADMIN" } });
-      await run(tx, { id: user.id, systemRole: "ADMIN" });
+      await run(tx, { id: user.id, systemRole: "ADMIN", kind: "HUMAN" });
       throw rollback;
     } finally { context.tx = null; configureDataCenterSemanticAdapter(); configureDataCenterScanner(); context.stored.clear(); }
   }, { timeout: 30_000 })).rejects.toBe(rollback);
@@ -72,7 +72,7 @@ describe.skipIf(!enabled)("Data Center real PostgreSQL transactions (always roll
   it("isolates private and organization data and does not send hidden IDs to semantic adapters", async () => {
     await isolated(async (tx, admin) => {
       const viewer = await tx.user.create({ data: { email: `viewer-${randomUUID()}@example.test`, status: "ACTIVE" } });
-      const other = { id: viewer.id, systemRole: "USER" };
+      const other = { id: viewer.id, systemRole: "USER", kind: "HUMAN" as const };
       const privateSource = await createDataCenterSource({ name: "Confidential source", kind: "MANUAL", scope: "PRIVATE", owner: "Private owner", license: "Restricted" }, admin);
       const privateItem = await createDataCenterItem({ sourceId: privateSource.id, title: "Confidential balance", typeKey: "dataset", layer: "DATA", content: "Sensitive", evidenceStatus: "UNVERIFIED" }, admin);
       await publish(privateItem.id, admin);
@@ -128,14 +128,14 @@ describe.skipIf(!enabled)("Data Center real PostgreSQL transactions (always roll
       expect("storageKey" in result.import).toBe(false);
       const download = await downloadDataCenterOriginal(result.import.id, admin);
       expect(new TextDecoder().decode(download.bytes)).toBe(original);
-      await expect(downloadDataCenterOriginal(result.import.id, { id: admin.id, systemRole: "USER" })).rejects.toThrow("ADMIN_REQUIRED");
+      await expect(downloadDataCenterOriginal(result.import.id, { id: admin.id, systemRole: "USER", kind: "HUMAN" })).rejects.toThrow("ADMIN_REQUIRED");
       expect(await tx.dataCenterImport.count({ where: { actorId: admin.id } })).toBe(1);
     });
   });
   it("releases only approved Academy source versions to a real target after explicit second-admin approval", async () => {
     await isolated(async (tx, admin) => {
       const second = await tx.user.create({ data: { email: `reviewer-${randomUUID()}@example.test`, status: "ACTIVE", systemRole: "ADMIN" } });
-      const reviewer = { id: second.id, systemRole: "ADMIN" };
+      const reviewer = { id: second.id, systemRole: "ADMIN", kind: "HUMAN" as const };
       const source = await createDataCenterSource({ name: "Academy source", kind: "ACADEMY", scope: "PLATFORM", owner: "Academy", license: "Internal training" }, admin);
       const resource = await tx.academyResource.create({ data: { kind: "STUDY", slug: `study-${randomUUID()}`, title: "Approved study", approvalState: "APPROVED" } });
       const resourceVersion = await tx.academyResourceVersion.create({ data: { resourceId: resource.id, version: 1, title: resource.title, content: { text: "Approved factual study source" }, approvalState: "APPROVED" } });

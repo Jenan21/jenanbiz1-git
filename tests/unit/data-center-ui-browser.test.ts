@@ -37,20 +37,29 @@ describe.runIf(enabled)("authenticated Data Center UI browser acceptance", () =>
   }, 30000);
 
   afterAll(async () => {
-    await browser?.close();
     if (!db) return;
     try {
-      await db.query('DELETE FROM "DataCenterReview" WHERE "versionId" IN (SELECT v.id FROM "DataCenterVersion" v JOIN "DataCenterItem" i ON i.id=v."itemId" JOIN "DataCenterSource" s ON s.id=i."sourceId" WHERE s."ownerId"=$1)', [userId]);
-      await db.query('DELETE FROM "DataCenterEvent" WHERE "actorId"=$1', [userId]);
-      await db.query('DELETE FROM "DataCenterVersion" WHERE "createdById"=$1', [userId]);
-      await db.query('DELETE FROM "DataCenterItem" WHERE "createdById"=$1', [userId]);
-      await db.query('DELETE FROM "DataCenterSource" WHERE "ownerId"=$1', [userId]);
-      await db.query('DELETE FROM "DataCenterType" WHERE key=$1', [typeKey]);
-      await db.query('DELETE FROM "DataCenterCategory" WHERE key=$1', [categoryKey]);
-      await db.query('DELETE FROM "DataCenterDepartment" WHERE key=$1', [departmentKey]);
-      await db.query('DELETE FROM "AuditLog" WHERE "actorId"=$1', [userId]);
-      await db.query('DELETE FROM "User" WHERE id=$1', [userId]);
-    } finally { await db.end(); }
+      // Keep immutable evidence intact: archive local fixtures, never disable database triggers.
+      const items = await db.query('SELECT id,status FROM "DataCenterItem" WHERE "createdById"=$1', [userId]);
+      for (const item of items.rows) {
+        if (item.status === "ARCHIVED") continue;
+        const command = async (status: string) => {
+          const response = await page.request.post(`${origin}/api/admin/data-center`, { headers: { origin }, data: { action: "transition-item", itemId: item.id, status, reason: "Local browser acceptance fixture cleanup" } });
+          expect(response.ok()).toBe(true);
+        };
+        if (item.status === "IN_REVIEW") await command("DRAFT");
+        await command("ARCHIVED");
+      }
+      await db.query('DELETE FROM "DataCenterSource" s WHERE s."ownerId"=$1 AND NOT EXISTS (SELECT 1 FROM "DataCenterItem" i WHERE i."sourceId"=s.id)', [userId]);
+      await db.query('DELETE FROM "DataCenterType" t WHERE t.key=$1 AND NOT EXISTS (SELECT 1 FROM "DataCenterItem" i WHERE i."typeKey"=t.key)', [typeKey]);
+      await db.query('DELETE FROM "DataCenterCategory" c WHERE c.key=$1 AND NOT EXISTS (SELECT 1 FROM "DataCenterType" t WHERE t."categoryKey"=c.key)', [categoryKey]);
+      await db.query('DELETE FROM "DataCenterDepartment" d WHERE d.key=$1 AND NOT EXISTS (SELECT 1 FROM "DataCenterType" t WHERE t."departmentKey"=d.key)', [departmentKey]);
+    } finally {
+      await db.query('DELETE FROM "Session" WHERE "userId"=$1', [userId]);
+      await db.query('UPDATE "User" SET status=\'SUSPENDED\',"systemRole"=\'USER\',"updatedAt"=NOW() WHERE id=$1', [userId]);
+      await browser?.close();
+      await db.end();
+    }
   }, 30000);
 
   async function goto(section: (typeof DATA_CENTER_SECTIONS)[number]["key"]) {

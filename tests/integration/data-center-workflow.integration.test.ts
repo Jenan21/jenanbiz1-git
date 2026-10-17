@@ -80,7 +80,7 @@ describe("Data Center transactional workflows (mocked executor)", () => {
   it("rejects invalid lifecycle shortcuts and non-admin publishing", async () => {
     await expect(transitionDataCenterItem({ itemId: "i", status: "PUBLISHED", reason: "skip" }, admin)).rejects.toThrow("INVALID_LIFECYCLE_TRANSITION");
     mocks.tx.dataCenterItem.findUnique.mockResolvedValue({ ...item, status: "APPROVED", source: { ...source, scope: "PRIVATE", ownerId: "user" } });
-    await expect(transitionDataCenterItem({ itemId: "i", status: "PUBLISHED", reason: "skip" }, { id: "user", systemRole: "USER" })).rejects.toThrow("ADMIN_REQUIRED");
+    await expect(transitionDataCenterItem({ itemId: "i", status: "PUBLISHED", reason: "skip" }, { id: "user", systemRole: "USER", kind: "HUMAN" })).rejects.toThrow("ADMIN_REQUIRED");
   });
   it("audits explicit conflict resolution without mutating evidence", async () => {
     mocks.tx.dataCenterConflict.findUnique.mockResolvedValue({ id: "c", itemId: "i", otherItemId: "other", resolvedAt: null });

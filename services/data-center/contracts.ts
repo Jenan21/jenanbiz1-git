@@ -42,7 +42,7 @@ export const commandSchema = z.discriminatedUnion("action", [
 export type CreateSourceInput = z.input<typeof sourceSchema>;
 export type CreateItemInput = z.input<typeof itemSchema>;
 export type DataCenterCommand = z.infer<typeof commandSchema>;
-export interface DataCenterActor { id: string; systemRole: string; kind?: "HUMAN" | "AI"; }
+export interface DataCenterActor { id: string; systemRole: string; kind: "HUMAN" | "AI"; }
 export class DataCenterError extends Error {
   constructor(public readonly code: string, public readonly status = 400) { super(code); }
 }

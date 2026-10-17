@@ -4,7 +4,10 @@ import type { SystemRole, DataCenterSource } from "@/generated/prisma/client";
 import { DataCenterError, type DataCenterActor } from "./contracts";
 
 export function isDataCenterAdmin(actor: DataCenterActor) {
-  return actor.kind !== "AI" && hasPlatformAdminAccess(actor.systemRole as SystemRole);
+  return actor.kind === "HUMAN" && hasPlatformAdminAccess(actor.systemRole as SystemRole);
+}
+export function requireDataCenterPrincipal(actor: DataCenterActor) {
+  if (actor.kind !== "HUMAN" && actor.kind !== "AI") throw new DataCenterError("TRUSTED_PRINCIPAL_KIND_REQUIRED", 403);
 }
 export function requireDataCenterAdmin(actor: DataCenterActor) {
   if (!isDataCenterAdmin(actor)) throw new DataCenterError("ADMIN_REQUIRED", 403);
@@ -16,6 +19,7 @@ export async function authorizedOrganizationIds(actor: DataCenterActor, permissi
   return memberships.filter((m) => memberHasPermission(m, permission)).map((m) => m.organizationId);
 }
 export async function sourceScopeWhere(actor: DataCenterActor, tx: DbExecutor = db) {
+  requireDataCenterPrincipal(actor);
   if (isDataCenterAdmin(actor)) return {};
   const orgs = await authorizedOrganizationIds(actor, "data-center.read", tx);
   return { OR: [
@@ -25,6 +29,7 @@ export async function sourceScopeWhere(actor: DataCenterActor, tx: DbExecutor = 
   ] };
 }
 export async function assertSourceAccess(source: DataCenterSource | null, actor: DataCenterActor, write = false, tx: DbExecutor = db) {
+  requireDataCenterPrincipal(actor);
   if (!source) throw new DataCenterError("SOURCE_NOT_FOUND", 404);
   if (isDataCenterAdmin(actor)) return source;
   const own = source.scope === "PRIVATE" && source.ownerId === actor.id;
