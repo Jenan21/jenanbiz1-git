@@ -9,6 +9,7 @@
 *.tsbuildinfo
 .eslintcache
 /generated/prisma
+/generated/jenan-map
 .DS_Store
 Thumbs.db
 .idea
@@ -24,3 +25,5 @@ lint.json
 lint-output.json
 audit-omit-dev.json
 e2e-summary.txt
+/public/jenan-map/maplibre-gl-worker.mjs
+/public/jenan-map/maplibre-LICENSE.txt

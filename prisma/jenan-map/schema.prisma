@@ -1,0 +1,154 @@
+// Independent additive schema. The application uses parameterized SQL for PostGIS.
+// Generate/apply is deliberately not part of application startup.
+generator client {
+  provider = "prisma-client"
+  output   = "../../generated/jenan-map"
+}
+
+datasource db {
+  provider = "postgresql"
+  schemas  = ["jenan_map"]
+}
+
+model Release {
+  id           String   @id @db.Uuid
+  version      String   @unique
+  status       String   @default("Draft")
+  source       String
+  sourceDate   DateTime @db.Timestamptz
+  license      String
+  createdBy    String
+  createdAt    DateTime @default(now()) @db.Timestamptz
+  reviewedBy   String?
+  reviewedAt   DateTime? @db.Timestamptz
+  reviewNotes  String?
+  publishedAt  DateTime? @db.Timestamptz
+  failure      String?
+  artifacts    Artifact[]
+  features     Feature[]
+  boundaries   Boundary[]
+  savedLocations SavedLocation[]
+  layers       ReleaseLayer[]
+
+  @@map("release")
+  @@schema("jenan_map")
+}
+
+model Artifact {
+  id          String   @id @db.Uuid
+  releaseId   String   @db.Uuid
+  release     Release  @relation(fields: [releaseId], references: [id], onDelete: Restrict)
+  kind        String
+  storageKey  String   @unique
+  filename    String
+  mime        String
+  sha256      String   @db.Char(64)
+  byteSize    BigInt
+  publicSafe  Boolean  @default(false)
+  createdAt   DateTime @default(now()) @db.Timestamptz
+
+  @@index([releaseId])
+  @@map("artifact")
+  @@schema("jenan_map")
+}
+
+model Runtime {
+  id                 Int      @id @default(1)
+  status             String   @default("disabled")
+  maintenanceMessage String?
+  publishedReleaseId String?  @db.Uuid
+  revision           Int      @default(0)
+  updatedAt          DateTime @default(now()) @db.Timestamptz
+
+  @@map("runtime")
+  @@schema("jenan_map")
+}
+
+model Feature {
+  id        String @id @db.Uuid
+  releaseId String @db.Uuid
+  release   Release @relation(fields: [releaseId], references: [id], onDelete: Restrict)
+  label     String
+  category  String
+  geometry  Unsupported("geometry(Geometry,4326)")
+  search    Unsupported("tsvector")
+
+  @@index([releaseId])
+  @@map("feature")
+  @@schema("jenan_map")
+}
+
+model Boundary {
+  id            String @id @db.Uuid
+  releaseId     String @unique @db.Uuid
+  release       Release @relation(fields: [releaseId], references: [id], onDelete: Restrict)
+  authority     String
+  source        String
+  geometry      Unsupported("geometry(MultiPolygon,4326)")
+
+  @@map("boundary")
+  @@schema("jenan_map")
+}
+
+model Audit {
+  id        String   @id @db.Uuid
+  actorId   String
+  action    String
+  releaseId String?  @db.Uuid
+  metadata  Json
+  createdAt DateTime @default(now()) @db.Timestamptz
+
+  @@index([createdAt])
+  @@map("audit")
+  @@schema("jenan_map")
+}
+
+model SavedLocation {
+  userId           String   @id
+  releaseId        String   @db.Uuid
+  release          Release  @relation(fields: [releaseId], references: [id], onDelete: Restrict)
+  latitude         Float
+  longitude        Float
+  country          String   @default("SA")
+  region           String?
+  city             String?
+  district         String?
+  formattedAddress String?
+  source           String
+  selectedAt       DateTime @default(now()) @db.Timestamptz
+
+  @@index([releaseId])
+  @@map("saved_location")
+  @@schema("jenan_map")
+}
+
+model Layer {
+  id       String         @id
+  label    String
+  enabled  Boolean        @default(false)
+  revision Int            @default(0)
+  releases ReleaseLayer[]
+
+  @@map("layer")
+  @@schema("jenan_map")
+}
+
+model ReleaseLayer {
+  releaseId     String   @db.Uuid
+  layerId       String
+  release       Release  @relation(fields: [releaseId], references: [id], onDelete: Restrict)
+  layer         Layer    @relation(fields: [layerId], references: [id], onDelete: Restrict)
+  status        String
+  visibility    String
+  source        String
+  version       String
+  sourceDate    DateTime @db.Timestamptz
+  license       String
+  styleLayerIds Json
+  updatedAt     DateTime @default(now()) @db.Timestamptz
+
+  @@id([releaseId, layerId])
+  @@index([releaseId])
+  @@map("release_layer")
+  @@schema("jenan_map")
+}
