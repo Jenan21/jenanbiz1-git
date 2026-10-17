@@ -21,6 +21,7 @@ import { command, exportManifest, manifest, previewManifest, publishedRelease, s
 import { GET as publicManifest } from "@/app/api/jenan-map/route";
 import { GET as adminSnapshot, POST as adminCommand } from "@/app/api/admin/jenan-map/route";
 import { GET as publicArtifact } from "@/app/api/jenan-map/artifacts/[artifactId]/route";
+import { GET as publicGlyph } from "@/app/api/jenan-map/releases/[releaseId]/glyphs/[...glyphPath]/route";
 import { GET as adminArtifact } from "@/app/api/admin/jenan-map/artifacts/[artifactId]/route";
 import { GET as adminExport } from "@/app/api/admin/jenan-map/export/route";
 import { GET as adminPreview } from "@/app/api/admin/jenan-map/preview/route";
@@ -345,6 +346,29 @@ describe("API authorization, origin and byte serving", () => {
     expect(response.headers.get("cache-control")).toBe("private, no-store");
     expect(response.headers.get("x-checksum-sha256")).toBe(checksum);
     expect(await response.text()).toBe(bytes.subarray(0, 10).toString());
+  });
+  it("serves only published release glyph ranges through checksummed private streaming", async () => {
+    const glyphBytes = Buffer.from([1, 2, 3, 4]);
+    const glyphHash = createHash("sha256").update(glyphBytes).digest("hex");
+    const glyph: Artifact = {
+      ...artifact, id: otherId, kind: "glyphs", filename: "Noto Sans Arabic Regular/0-255.pbf",
+      mime: "application/x-protobuf", sha256: glyphHash, byteSize: BigInt(glyphBytes.length),
+      storageKey: `${releaseId}/${glyphHash}.pbf`,
+    };
+    await mkdir(path.join(root, releaseId), { recursive: true });
+    await writeFile(path.join(root, glyph.storageKey), glyphBytes);
+    mocks.query.mockResolvedValueOnce([state]).mockResolvedValueOnce([release]).mockResolvedValueOnce([glyph]);
+    const response = await publicGlyph(
+      new NextRequest(`http://localhost/api/jenan-map/releases/${releaseId}/glyphs/Noto%20Sans%20Arabic%20Regular/0-255.pbf`, {
+        headers: { range: "bytes=1-2" },
+      }),
+      { params: Promise.resolve({ releaseId, glyphPath: ["Noto Sans Arabic Regular", "0-255.pbf"] }) },
+    );
+    expect(response.status).toBe(206);
+    expect(response.headers.get("content-type")).toBe("application/x-protobuf");
+    expect(response.headers.get("content-range")).toBe("bytes 1-2/4");
+    expect(Buffer.from(await response.arrayBuffer())).toEqual(glyphBytes.subarray(1, 3));
+    expect(mocks.query.mock.calls[2][0].text).toContain('"publicSafe"=true');
   });
   it("refuses nonpublic artifacts and never treats export URLs as bearer credentials", async () => {
     mocks.query.mockResolvedValueOnce([{ ...artifact, publicSafe: false }]).mockResolvedValueOnce([state]).mockResolvedValueOnce([release]);

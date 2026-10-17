@@ -1,8 +1,6 @@
 "use client";
 
 import {
-  lazy,
-  Suspense,
   useCallback,
   useEffect,
   useId,
@@ -11,11 +9,11 @@ import {
   type RefObject,
 } from "react";
 import { createPortal } from "react-dom";
+import dynamic from "next/dynamic";
 import { assertPinnedRelease, mapManifestUrl, mapRequest } from "./api";
 import { focusLoopTarget } from "./accessibility";
 import { saveOwnedMapLocation } from "./location-api";
 import { coordinateDraft, isCoordinate, MAP_RADII } from "./geometry";
-import { RendererBoundary } from "./renderer-boundary";
 import type {
   JenanLocation,
   LocationSource,
@@ -24,7 +22,17 @@ import type {
 } from "./types";
 import styles from "./jenan-map.module.css";
 
-const Renderer = lazy(() => import("./map-renderer"));
+const RendererShell = dynamic(
+  () => import("./renderer-shell").then((module) => module.RendererShell),
+  {
+    ssr: false,
+    loading: () => (
+      <div className={styles.mapMessage} role="status">
+        جارٍ تحميل محرك الخريطة…
+      </div>
+    ),
+  },
+);
 const statusLabels = {
   maintenance: "الخريطة تحت الصيانة حالياً. لم يتم تغيير موقعك المحفوظ.",
   disabled: "خدمة الخريطة معطلة حالياً.",
@@ -134,26 +142,31 @@ export function JenanMapModal({
 
   useEffect(() => {
     const controller = new AbortController();
-    mapRequest<MapManifest>(mapManifestUrl(preview), {
-      signal: controller.signal,
-    })
-      .then((data) => {
-        if (controller.signal.aborted) return;
-        assertPinnedRelease(data, preview);
-        setManifest(data);
-        setVisibleLayers(
-          data.release?.layers
-            .filter((layer) => layer.available && layer.styleLayerIds?.length)
-            .map((layer) => layer.id) ?? [],
-        );
+    const timer = window.setTimeout(() => {
+      mapRequest<MapManifest>(mapManifestUrl(preview), {
+        signal: controller.signal,
       })
-      .catch((reason: Error) => {
-        if (!controller.signal.aborted) setError(reason.message);
-      })
-      .finally(() => {
-        if (!controller.signal.aborted) setManifestLoading(false);
-      });
-    return () => controller.abort();
+        .then((data) => {
+          if (controller.signal.aborted) return;
+          assertPinnedRelease(data, preview);
+          setManifest(data);
+          setVisibleLayers(
+            data.release?.layers
+              .filter((layer) => layer.available && layer.styleLayerIds?.length)
+              .map((layer) => layer.id) ?? [],
+          );
+        })
+        .catch((reason: Error) => {
+          if (!controller.signal.aborted) setError(reason.message);
+        })
+        .finally(() => {
+          if (!controller.signal.aborted) setManifestLoading(false);
+        });
+    }, 0);
+    return () => {
+      window.clearTimeout(timer);
+      controller.abort();
+    };
   }, [attempt, preview]);
 
   useEffect(() => {
@@ -520,25 +533,15 @@ export function JenanMapModal({
           </aside>
           <section className={styles.mapPanel} aria-label="خريطة اختيار الموقع">
             {canRender && !rendererError && (
-              <RendererBoundary>
-                <Suspense
-                  fallback={
-                    <div className={styles.mapMessage} role="status">
-                      جارٍ تحميل محرك الخريطة…
-                    </div>
-                  }
-                >
-                  <Renderer
-                    adminPreview={Boolean(preview)}
-                    release={manifest!.release!}
-                    location={draft}
-                    radius={radius}
-                    visibleLayers={visibleLayers}
-                    onSelect={select}
-                    onError={setRendererError}
-                  />
-                </Suspense>
-              </RendererBoundary>
+              <RendererShell
+                adminPreview={Boolean(preview)}
+                release={manifest!.release!}
+                location={draft}
+                radius={radius}
+                visibleLayers={visibleLayers}
+                onSelect={select}
+                onError={setRendererError}
+              />
             )}
             {(!canRender || rendererError) && (
               <div className={styles.mapMessage} role="status">

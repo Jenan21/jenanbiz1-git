@@ -101,7 +101,7 @@ describe.skipIf(!enabled)("Jenan Map disposable PostGIS mechanics (synthetic onl
     delete process.env.JENAN_MAP_BUILD_ACTOR;
   });
 
-  it("executes the offline real-geometry importer and blocks incomplete basemap publication", async () => {
+  it("imports staged PMTiles/glyph/style assets, pins policy layers and permits reviewed readiness", async () => {
     importedId = (await services.command({ action: "create", version: `import-${run}`, source: "Synthetic local geometry only", sourceDate: "2026-10-01T00:00:00Z", license: "Test only" }, adminId) as { id: string }).id;
     await writeFile(path.join(staging, "features.geojson"), JSON.stringify(features));
     await writeFile(path.join(staging, "boundary.geojson"), JSON.stringify(boundary));
@@ -157,7 +157,18 @@ describe.skipIf(!enabled)("Jenan Map disposable PostGIS mechanics (synthetic onl
       expect(JSON.parse(content).features).toHaveLength(2);
       expect(content).not.toContain("privateContact");
     } finally { await handle.close(); }
-    await expect(services.command({ action: "approve", releaseId: importedId, confirmation: "APPROVE", reason: "Must remain blocked without owned basemap artifacts" }, adminId)).rejects.toMatchObject({ code: "RELEASE_NOT_READY" });
+    const styleArtifact = importedArtifacts.find((file) => file.kind === "style")!;
+    const styleHandle = await openArtifact(styleArtifact);
+    try {
+      const style = JSON.parse(await styleHandle.readFile({ encoding: "utf8" }));
+      expect(style.sources.saudi.url).toBe(`pmtiles:///api/jenan-map/artifacts/${importedArtifacts.find((file) => file.kind === "pmtiles")!.id}`);
+      expect(style.glyphs).toBe(`/api/jenan-map/releases/${importedId}/glyphs/{fontstack}/{range}.pbf`);
+      expect(style.layers[0].layout.visibility).toBe("none");
+    } finally { await styleHandle.close(); }
+    expect((await pool!.query(`SELECT "layerId","styleLayerIds" FROM jenan_map.release_layer WHERE "releaseId"=$1`, [importedId])).rows)
+      .toMatchObject([{ layerId: "pois", styleLayerIds: ["synthetic-points"] }]);
+    await expect(services.command({ action: "approve", releaseId: importedId, confirmation: "APPROVE", reason: "Synthetic integration fixture mechanics only" }, adminId))
+      .resolves.toMatchObject({ action: "approve", id: importedId });
   });
 
   it("serializes two actual competing publications, retaining exactly one production pointer", async () => {

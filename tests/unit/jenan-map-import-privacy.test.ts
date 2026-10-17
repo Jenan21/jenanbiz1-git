@@ -64,5 +64,6 @@ it("binds only existing style layers to stored catalog keys and owned PMTiles/gl
   expect(bound).toMatchObject({
     sources: { saudi: { url: "pmtiles:///api/jenan-map/artifacts/artifact-id" } },
     glyphs: "/api/jenan-map/releases/release-id/glyphs/{fontstack}/{range}.pbf",
+    layers: [{ id: "background", layout: { visibility: "none" } }, { id: "road-line", layout: { visibility: "none" } }],
   });
 });

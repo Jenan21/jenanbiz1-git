@@ -3,7 +3,7 @@
 // node --env-file=.env scripts/jenan-map/build.mjs --release UUID --manifest import.json
 // No migrations, remote fetches, shell execution, or third-party fallbacks.
 import { createHash, randomUUID } from "node:crypto";
-import { constants } from "node:fs";
+import { constants, createWriteStream } from "node:fs";
 import { chmod, mkdir, open, realpath, rename, stat } from "node:fs/promises";
 import path from "node:path";
 import { Transform } from "node:stream";
@@ -163,7 +163,6 @@ function validateAssets(assets) {
 
 async function persistStagedAsset(client, stagingRoot, root, releaseId, asset) {
   const input = await open(path.join(stagingRoot, asset.file), constants.O_RDONLY | constants.O_NOFOLLOW);
-  let output;
   try {
     const info = await input.stat();
     if (!info.isFile() || info.size < 1 || info.size > MAX_ARTIFACT_BYTES) throw new Error("Map asset size outside limits");
@@ -187,11 +186,9 @@ async function persistStagedAsset(client, stagingRoot, root, releaseId, asset) {
       },
     });
     const temporaryTarget = path.join(folder, `.import-${randomUUID()}.${extension}`);
-    output = await open(temporaryTarget, constants.O_WRONLY | constants.O_CREAT | constants.O_EXCL | constants.O_NOFOLLOW, 0o400);
-    await pipeline(input.createReadStream({ start: 0, autoClose: false }), digest, output.createWriteStream({ autoClose: false }));
-    await output.sync();
-    await output.close();
-    output = undefined;
+    await pipeline(input.createReadStream({ start: 0, autoClose: false }), digest, createWriteStream(temporaryTarget, { flags: "wx", mode: 0o400 }));
+    const written = await open(temporaryTarget, constants.O_RDONLY | constants.O_NOFOLLOW);
+    try { await written.sync(); } finally { await written.close(); }
     const checksum = sha256.digest("hex");
     const artifactId = randomUUID();
     const storageKey = `${releaseId}/${checksum}.${extension}`;
@@ -205,7 +202,6 @@ async function persistStagedAsset(client, stagingRoot, root, releaseId, asset) {
     return { id: artifactId, kind: asset.kind, filename: asset.filename, publicSafe: asset.publicSafe, storageKey, sha256: checksum, byteSize };
   } finally {
     await input.close();
-    await output?.close();
   }
 }
 
@@ -217,6 +213,9 @@ export function bindStyle(style, releaseId, pmtilesFilename, pmtilesArtifactId, 
     if (!source || source.type !== "vector" || typeof source.url !== "string" ||
         source.url !== `pmtiles://${pmtilesFilename}`) throw new Error("Every basemap source must use the declared owned PMTiles archive");
     source.url = `pmtiles:///api/jenan-map/artifacts/${pmtilesArtifactId}`;
+  }
+  for (const layer of style.layers) {
+    layer.layout = { ...layer.layout, visibility: "none" };
   }
   style.glyphs = `/api/jenan-map/releases/${releaseId}/glyphs/{fontstack}/{range}.pbf`;
   return style;

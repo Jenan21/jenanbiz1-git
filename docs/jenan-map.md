@@ -137,11 +137,19 @@ There is **no automatic deletion** of raw sources, prior releases, failed builds
 - Exact worker copy verified: 508,314 bytes; SHA-256 `5f1e2f0e1624082b7e88a06e4c86085992b0f8c02929801e552f3f7a119856a9`. This is an asset integrity check, not a measured map-load result.
 - `node_modules/.bin/eslint playwright.config.ts` and `git diff --check`: passed at configuration integration.
 - `npm audit --omit=dev --json`: zero vulnerabilities after adding the map dependencies. Full audit reports five pre-existing high-severity development-tool advisories in the ESLint/Next/glob chain; no unrelated force-upgrade was performed.
-- An isolated PostgreSQL 16.15 / PostGIS 3.4 instance was prepared on loopback port 55439 under `/tmp`, without touching the existing application database or volumes. This is test infrastructure, not the repository's PostgreSQL 17 production deployment.
+- The earlier isolated PostgreSQL 16.15 / PostGIS 3.4 spatial test ran on loopback port 55439 under `/tmp`, without touching the existing application database or volumes. This is test infrastructure, not the repository's PostgreSQL 17 production deployment.
 - Parent-owned layer tests: `node_modules/.bin/vitest run tests/unit/jenan-map-layers.test.ts tests/unit/jenan-map-layer-route.test.ts` — **6 passed**. Scoped ESLint passed after correcting one test-variable lint error.
 - Parent-owned actual spatial test: `JENAN_MAP_TEST_DATABASE_URL=postgresql://runner@127.0.0.1:55439/jenan_map_test node_modules/.bin/vitest run tests/integration/jenan-map-spatial.integration.test.ts` under Node 24.22.0 — **6 passed**. Tests use connection-local temporary synthetic geometry only, validate meter units at all four radii, polygon-vs-bounding-box coverage, and GiST index eligibility with sequential scanning disabled. They do **not** establish Saudi boundary accuracy or representative production query latency. Scoped ESLint passed.
 
-Pending implementation and exact command results. Real-data renderer acceptance, spatial database integration, range/CDN behavior, responsive viewport matrix, map-load/memory measurements and portable restore must be reported separately from mocked/unit tests. This document must not be read as v1 completion.
+### Continuation verification (2026-10-17)
+
+- The new opt-in map migration and all 67 existing application migrations were applied only to a disposable, loopback-only PostgreSQL 17 / PostGIS 3.5 container with no mounted data volume. `prisma validate --config prisma.jenan-map.config.ts` passed. No production database was used.
+- `RUN_JENAN_MAP_POSTGIS_TESTS=1 DATABASE_URL=postgresql://runner@127.0.0.1:55439/jenan_map_test ./node_modules/.bin/vitest run tests/integration/jenan-map-postgis.integration.test.ts` — **6 passed**. These exercise import, checksum storage, layer bindings, publication concurrency/rollback, spatial behavior and per-user saved locations with synthetic-only geometries and hand-built PMTiles header bytes. They are not real Saudi dataset or tile-render acceptance.
+- `DATABASE_URL=postgresql://localhost:5432/dummy ./node_modules/.bin/vitest run tests/unit` — **92 files, 513 tests passed**.
+- `DATABASE_URL=postgresql://runner@127.0.0.1:55439/jenan_map_test node scripts/run-playwright.mjs tests/e2e/jenan-map.spec.ts --project=jenan-map` — **25 passed**, covering auth/no-release behavior and responsive modal bounds at the test's listed viewport sizes. This run intentionally had no published release and did not load real tiles or validate Arabic labels.
+- `npm run lint`, `npm run typecheck`, and `DATABASE_URL=postgresql://runner@127.0.0.1:55439/jenan_map_test npm run build` passed. The build reported the expected absent Sentry release token warning. The host is Node 22.23.3 while the repository requires Node 24; npm also reported five high-severity development-tool advisories during install.
+- **Real-data acceptance remains blocked:** no licensed Saudi OSM extract, authoritative boundary, production PMTiles archive, glyph/font ranges, sprite assets, or approved production storage credentials were provided. The import flow now accepts operator-staged PMTiles v3, glyph ranges, style, schema/coverage evidence, boundary and features, but has only been exercised with synthetic fixtures. Do not approve, publish, deploy or represent v1 as accepted until genuine sources and independent visual, geographic, license and range-delivery review are available.
+- Production artifact storage remains the private mounted-filesystem adapter. The deployment must supply shared durable storage; no object store/CDN was configured or tested. Cold checksum latency, country-scale build performance, real map-load/memory and portable destination restore remain unmeasured.
 
 ## Delivery acceptance checklist — 14 grouped gates
 
@@ -149,17 +157,17 @@ The supplied statement does not enumerate the original fourteen items verbatim. 
 
 | # | Gate | Acceptance status |
 |---|---|---|
-| 1 | Independent branch/routes; preserve projects/home/auth | Implementation under review; production surfaces must remain unchanged |
+| 1 | Independent branch/routes; preserve projects/home/auth | Isolated routes retained; browser isolation checks passed; no merge or deployment |
 | 2 | Saudi-only licensed real data and authoritative boundary | **Blocked:** sources not supplied/imported |
-| 3 | MapLibre/PMTiles owned basemap and versioned assets | Dependencies and local worker prepared; real archive acceptance **pending** |
-| 4 | Arabic premium style, RTL, keyboard and responsive modal | Implemented UI requires browser checks and real-label visual acceptance |
-| 5 | Search, click/drag, geolocation, confirmation/cancel and saved location | Implementation/testing in progress; no real-data acceptance |
+| 3 | MapLibre/PMTiles owned basemap and versioned assets | Staged import/checksum pipeline and glyph routes wired; synthetic fixture only; real archive acceptance **blocked** |
+| 4 | Arabic premium style, RTL, keyboard and responsive modal | 25 browser tests passed at fixture/no-release states; Arabic-label visual acceptance **blocked** on genuine assets |
+| 5 | Search, click/drag, geolocation, confirmation/cancel and saved location | Synthetic PostGIS search/location and browser interaction tests passed; real-data acceptance **blocked** |
 | 6 | Existing location adapters, no service activation | Adapter only; integration remains intentionally inactive |
-| 7 | Geodesic radii and spatial SRID/index/unit correctness | Isolated PostGIS test infrastructure prepared; results pending |
-| 8 | Lazy loading, lifecycle disposal and performance evidence | Implementation pending measurement; no real map-load/memory claim |
-| 9 | Layer provenance/access control and truthful no-data states | Unsupported analytical layers must remain unavailable |
-| 10 | Isolated import/normalize/compare/build/review workflow | Operator preparation only; full country tile build and genuine diffs pending |
-| 11 | Approval, atomic publish, explicit rollback and retention | Must pass isolated lifecycle/concurrency tests; no live publication |
-| 12 | Admin routes, runtime status, health and audit | Implementation under review; unmeasured health remains unknown |
-| 13 | Authorized portable exports, checksums, license and restore | Individual downloads planned; full bundle and destination restore acceptance pending |
-| 14 | Lint/types/Prisma/build/unit/E2E, review and handover | Baseline recorded; final results below when available; **v1 not accepted** |
+| 7 | Geodesic radii and spatial SRID/index/unit correctness | Disposable PostGIS synthetic geometry tests passed; Saudi boundary accuracy **blocked** |
+| 8 | Lazy loading, lifecycle disposal and performance evidence | Renderer is lazy until an eligible release; browser fixture tests passed; actual performance remains unmeasured |
+| 9 | Layer provenance/access control and truthful no-data states | Release-specific immutable layer bindings and policy gating implemented/tested; unsupported analytical layers remain unavailable |
+| 10 | Isolated import/normalize/compare/build/review workflow | Offline staged import and review path exercised with synthetic assets; country-scale build and real diffs **blocked** |
+| 11 | Approval, atomic publish, explicit rollback and retention | Disposable synthetic lifecycle/concurrency/rollback tests passed; no live publication |
+| 12 | Admin routes, runtime status, health and audit | APIs/catalog/layer bindings exercised; unmeasured health remains unknown |
+| 13 | Authorized portable exports, checksums, license and restore | Checksummed artifact streaming tested; full bundle and destination restore acceptance pending |
+| 14 | Lint/types/Prisma/build/unit/E2E, review and handover | Lint/typecheck/build, 513 unit tests, 6 PostGIS tests and 25 browser tests passed; final CodeQL/review pending; **v1 not accepted** |

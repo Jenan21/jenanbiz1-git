@@ -2,10 +2,15 @@
 
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
-import { JenanMapModal } from "./jenan-map-modal";
+import dynamic from "next/dynamic";
 import { loadOwnedMapLocation } from "./location-api";
 import type { JenanLocation } from "./types";
 import styles from "./jenan-map.module.css";
+
+const JenanMapModal = dynamic(
+  () => import("./jenan-map-modal").then((module) => module.JenanMapModal),
+  { ssr: false, loading: () => null },
+);
 
 export function JenanMapHarness() {
   const [open, setOpen] = useState(false);
