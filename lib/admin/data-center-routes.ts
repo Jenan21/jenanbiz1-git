@@ -26,11 +26,27 @@ export function findDataCenterSection(section: string) {
   return DATA_CENTER_SECTIONS.find((item) => item.key === section) ?? null;
 }
 
+const dataCenterLabels: Record<string, string> = {
+  DATA: "بيانات", KNOWLEDGE: "معرفة", ASSET: "أصل", EVIDENCE: "دليل",
+  INTELLIGENCE: "تحليل ذكي", CONTEXT: "سياق",
+  DRAFT: "مسودة", IN_REVIEW: "قيد المراجعة", APPROVED: "معتمد",
+  PUBLISHED: "منشور", REJECTED: "مرفوض", ARCHIVED: "مؤرشف", DEPRECATED: "متقادم",
+  VERIFIED: "متحقق منه", ESTIMATED: "تقديري", DERIVED: "مشتق",
+  UNVERIFIED: "غير متحقق منه", CONFLICTED: "متعارض",
+  PLATFORM: "المنصة", ORGANIZATION: "المؤسسة", PRIVATE: "خاص",
+  JENAN_OWNED: "مملوك لجنان", OPEN_LICENSE: "ترخيص مفتوح", LICENSED: "مرخّص", RESTRICTED: "مقيّد",
+  FRESH: "حديث", AGING: "يقترب من التقادم", STALE: "قديم", EXPIRED: "منتهي الصلاحية",
+  HUMAN: "بشري", AI: "ذكاء اصطناعي", IMPORT: "مستورد", CALCULATION: "حساب حتمي",
+  MANUAL: "يدوي", FILE: "ملف", OFFICIAL: "رسمي", ACADEMY: "الأكاديمية",
+  GENERATED: "مولّد", API: "واجهة بيانات", SOURCE: "مصدر", DOCUMENT: "وثيقة",
+  HUMAN_REVIEW: "مراجعة بشرية", EXISTING_EVIDENCE: "دليل موجود",
+};
+
 export function displayDataCenterValue(value: unknown): string {
   if (value === null || value === undefined || value === "") return "غير متاح";
   if (typeof value === "boolean") return value ? "نعم" : "لا";
   if (typeof value === "number") return Number.isFinite(value) ? String(value) : "غير متاح";
-  if (typeof value === "string") return value;
+  if (typeof value === "string") return dataCenterLabels[value] ?? value;
   return JSON.stringify(value);
 }
 

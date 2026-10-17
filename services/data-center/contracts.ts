@@ -1,17 +1,22 @@
 import { z } from "zod";
 
-export const layers = ["DATA", "KNOWLEDGE", "INTELLIGENCE", "CONTEXT"] as const;
+export const layers = ["DATA", "KNOWLEDGE", "ASSET", "EVIDENCE", "INTELLIGENCE", "CONTEXT"] as const;
+export const ownerships = ["PLATFORM_OWNED", "USER_OWNED", "THIRD_PARTY", "AI_GENERATED"] as const;
 export const evidenceStates = ["VERIFIED", "ESTIMATED", "DERIVED", "UNVERIFIED", "CONFLICTED"] as const;
-export const lifecycleStates = ["DRAFT", "IN_REVIEW", "APPROVED", "PUBLISHED", "REJECTED", "ARCHIVED"] as const;
+export const lifecycleStates = ["DRAFT", "IN_REVIEW", "APPROVED", "PUBLISHED", "REJECTED", "ARCHIVED", "DEPRECATED"] as const;
 const text = (max: number) => z.string().trim().min(1).max(max);
 const id = text(128);
 const tags = z.array(text(80)).max(30).default([]);
+const safeUrl = z.url().max(2000).refine((v) => ["http:", "https:"].includes(new URL(v).protocol), "HTTP(S) URL required");
+const expectedVersion = z.number().int().min(1);
 export const sourceSchema = z.object({
   name: text(240), kind: z.enum(["MANUAL", "FILE", "OFFICIAL", "ACADEMY", "GENERATED", "API"]),
   scope: z.enum(["PLATFORM", "ORGANIZATION", "PRIVATE"]), organizationId: id.optional(),
   owner: text(240), license: text(500), allowExport: z.boolean().default(false),
   allowRetrieval: z.boolean().default(true), freshnessDays: z.number().int().min(1).max(3650).default(90),
   sourceOrganization: text(240).optional(),
+  sourceUrl: safeUrl.optional(), ownership: z.enum(ownerships).default("THIRD_PARTY"),
+  usagePolicy: text(2000).default("Internal use; redistribution requires explicit permission"),
 }).strict().refine((v) => v.scope === "ORGANIZATION" ? !!v.organizationId : !v.organizationId, "Organization scope requires organizationId exclusively");
 export const itemSchema = z.object({
   sourceId: id, title: text(240), typeKey: text(80), layer: z.enum(layers),
@@ -21,6 +26,10 @@ export const itemSchema = z.object({
   sourcePublishedAt: z.iso.datetime().optional(), expiresAt: z.iso.datetime().optional(),
   effectiveFrom: z.iso.datetime().optional(), effectiveTo: z.iso.datetime().optional(),
   origin: z.enum(["HUMAN", "AI", "IMPORT", "CALCULATION", "ACADEMY"]).default("HUMAN"),
+  tags, preview: text(4000).optional(), geography: text(240).optional(),
+  sourceOrganization: text(240).optional(), sourceUrl: safeUrl.optional(), sourceDate: z.iso.datetime().optional(),
+  upstreamVersionIds: z.array(id).max(30).default([]),
+  committeeRequired: z.boolean().default(false),
 }).strict();
 export const versionSchema = itemSchema.omit({ sourceId: true, typeKey: true, layer: true }).extend({ itemId: id, reason: text(2000) });
 export const commandSchema = z.discriminatedUnion("action", [
@@ -31,19 +40,28 @@ export const commandSchema = z.discriminatedUnion("action", [
   z.object({ action: z.literal("register-category"), key: z.string().regex(/^[a-z][a-z0-9._-]{1,79}$/), label: text(240) }).strict(),
   z.object({ action: z.literal("register-department"), key: z.string().regex(/^[a-z][a-z0-9._-]{1,79}$/), label: text(240) }).strict(),
   z.object({ action: z.literal("link-evidence"), versionId: id, evidenceId: id.optional(), kind: z.enum(["SOURCE", "DOCUMENT", "CALCULATION", "HUMAN_REVIEW", "EXISTING_EVIDENCE"]), reference: text(2000), label: text(240), notes: text(4000).optional() }).strict(),
-  z.object({ action: z.literal("transition-item"), itemId: id, status: z.enum(lifecycleStates), reason: text(2000) }).strict(),
-  z.object({ action: z.literal("review-item"), itemId: id, decision: z.enum(["APPROVED", "REJECTED"]), notes: text(4000) }).strict(),
+  z.object({ action: z.literal("transition-item"), itemId: id, expectedVersion, status: z.enum(lifecycleStates), reason: text(2000) }).strict(),
+  z.object({ action: z.literal("review-item"), itemId: id, expectedVersion, decision: z.enum(["APPROVED", "REJECTED"]), notes: text(4000) }).strict(),
+  z.object({ action: z.literal("review-robot-proposal"), itemId: id, expectedVersion, stage: z.enum(["SUPERVISOR", "COMMITTEE"]), decision: z.enum(["APPROVED", "REJECTED"]), notes: text(4000) }).strict(),
+  z.object({ action: z.literal("grant-robot-access"), sourceId: id, robotId: id, principalId: id, roleKey: text(100), specialty: text(80), missionId: id, expiresAt: z.iso.datetime() }).strict(),
+  z.object({ action: z.literal("revoke-robot-access"), grantId: id }).strict(),
   z.object({ action: z.literal("create-conflict"), itemId: id, otherItemId: id, reason: text(4000) }).strict(),
   z.object({ action: z.literal("resolve-conflict"), conflictId: id, resolution: z.enum(["KEEP_FIRST", "KEEP_SECOND", "KEEP_BOTH", "SUPERSEDED"]), notes: text(4000) }).strict(),
   z.object({ action: z.literal("record-usage"), versionId: id, consumer: text(120), missionId: id.optional(), purpose: text(500), specialty: text(80).optional(), missionContext: text(80).optional() }).strict(),
-  z.object({ action: z.literal("request-academy-release"), versionId: id, targetKind: z.enum(["COURSE", "ROBOT", "SPECIALTY"]), targetId: id, notes: text(4000) }).strict(),
+  z.object({ action: z.literal("request-academy-release"), versionId: id, targetKind: z.enum(["COURSE", "ROBOT", "SPECIALTY"]), targetId: id, notes: text(4000),
+    classification: z.enum(["SOURCE_KNOWLEDGE", "APPROVED_ASSET"]).default("SOURCE_KNOWLEDGE"), level: z.enum(["REFERENCE", "FOUNDATION", "ADVANCED"]).default("REFERENCE"),
+    mandatory: z.boolean().default(false), validFrom: z.iso.datetime().optional(), validTo: z.iso.datetime().optional() }).strict(),
   z.object({ action: z.literal("approve-academy-release"), releaseId: id, notes: text(4000) }).strict(),
   z.object({ action: z.literal("import-academy-source"), sourceId: id, resourceVersionId: id }).strict(),
 ]);
 export type CreateSourceInput = z.input<typeof sourceSchema>;
 export type CreateItemInput = z.input<typeof itemSchema>;
 export type DataCenterCommand = z.infer<typeof commandSchema>;
-export interface DataCenterActor { id: string; systemRole: string; kind: "HUMAN" | "AI"; }
+export interface DataCenterActor {
+  id: string; systemRole: string; kind: "HUMAN" | "AI";
+  /** Server-authenticated machine identity, never read from HTTP query parameters. */
+  robotId?: string; roleKey?: string; specialty?: string; missionId?: string;
+}
 export class DataCenterError extends Error {
   constructor(public readonly code: string, public readonly status = 400) { super(code); }
 }
@@ -52,6 +70,8 @@ export interface DataCenterContextRequest {
   specialty?: string; missionContext?: string; typeKey?: string;
   layer?: typeof layers[number]; limit?: number; page?: number;
   categoryKey?: string; departmentKey?: string;
+  geography?: string; dateFrom?: string; dateTo?: string;
+  maxCharacters?: number; maxTokens?: number;
 }
 export interface DataCenterSemanticAdapter {
   readonly name: string;

@@ -49,6 +49,15 @@ describe("Data Center navigation and truthful states", () => {
     expect(displayDataCenterValue(NaN)).toBe("غير متاح");
     expect(displayDataCenterValue(false)).toBe("لا");
   });
+  it("labels ownership, evidence and freshness in Arabic without changing command values", () => {
+    expect(displayDataCenterValue("ASSET")).toBe("أصل");
+    expect(displayDataCenterValue("JENAN_OWNED")).toBe("مملوك لجنان");
+    expect(displayDataCenterValue("VERIFIED")).toBe("متحقق منه");
+    expect(displayDataCenterValue("STALE")).toBe("قديم");
+    const html = renderToStaticMarkup(createElement(CommandForm, { definition: DATA_CENTER_COMMANDS.type, busy: false, onSubmit: async () => true }));
+    expect(html).toContain('value="ASSET"');
+    expect(html).toContain(">أصل</option>");
+  });
   it("disables unverified upload and semantic capabilities rather than promising unavailable providers", () => {
     const imports = renderToStaticMarkup(createElement(DataCenterWorkspace, { section: "imports" }));
     expect(imports).toContain('type="file"');
@@ -128,7 +137,8 @@ describe("Data Center provenance and forms", () => {
   it("scopes data and knowledge tabs and keeps robot retrieval separate from draft lists", () => {
     expect(sectionQuery("data", 1).get("layer")).toBe("DATA");
     expect(sectionQuery("knowledge", 2).get("layer")).toBe("KNOWLEDGE");
-    expect(sectionQuery("assets", 1).get("categoryKey")).toBe("assets");
+    expect(sectionQuery("assets", 1).get("layer")).toBe("ASSET");
+    expect(sectionQuery("assets", 1).has("categoryKey")).toBe(false);
     expect(sectionQuery("robot-knowledge", 1).get("area")).toBe("overview");
     expect(sectionQuery("usage", 3).get("page")).toBe("3");
   });

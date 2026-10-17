@@ -18,6 +18,16 @@ interface AuthorizedUser {
 export const ORGANIZATION_PERMISSIONS = {
   financeRead: "finance.read",
   financeWrite: "finance.write",
+  dataCenterView: "data-center.view",
+  dataCenterImport: "data-center.import",
+  dataCenterEdit: "data-center.edit",
+  dataCenterReview: "data-center.review",
+  dataCenterApprove: "data-center.approve",
+  dataCenterPublish: "data-center.publish",
+  dataCenterArchive: "data-center.archive",
+  dataCenterExport: "data-center.export",
+  dataCenterManageSources: "data-center.manage-sources",
+  dataCenterManageRobotAccess: "data-center.manage-robot-access",
 } as const;
 
 export function hasPlatformAdminAccess(role: SystemRole) {
