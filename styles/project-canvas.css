@@ -1,0 +1,38 @@
+/*
+ * Reference canvas for the three project flows (analysis, start, feasibility).
+ *
+ * The approved images are 1672x941. One reference pixel is `var(--u)`, so a size taken from an image is written as
+ * `calc(N * var(--u))`. Below 1200px wide (or 600px tall) the flows fall back to their ordinary responsive layouts;
+ * every rule that depends on the canvas lives inside the matching media query.
+ */
+:root {
+  --u: min(calc(100vw / 1672), calc(100vh / 941));
+}
+
+@media (min-width: 1200px) and (min-height: 600px) {
+  /* A popup placed by reference coordinates: set --fx/--fy/--fw/--fh (reference px) through FlowModal's `frame` prop. */
+  .pa-modal-layer:has(.pa-modal.cv-frame) {
+    display: block;
+    padding: 0;
+    overflow: hidden;
+  }
+  .pa-modal.cv-frame {
+    position: absolute;
+    top: calc(var(--fy) * var(--u));
+    left: calc(50% + (var(--fx) - 836) * var(--u));
+    box-sizing: border-box;
+    width: calc(var(--fw) * var(--u));
+    height: calc(var(--fh) * var(--u));
+    max-height: none;
+    padding: 0;
+    overflow: hidden;
+    border-width: max(1px, calc(2 * var(--u)));
+    border-radius: calc(30 * var(--u));
+  }
+  .pa-modal.cv-frame .pa-modal__close {
+    inset-block-start: calc(18 * var(--u));
+    inset-inline-end: calc(22 * var(--u));
+    width: calc(40 * var(--u));
+    height: calc(40 * var(--u));
+  }
+}

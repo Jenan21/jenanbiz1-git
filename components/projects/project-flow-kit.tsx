@@ -1,11 +1,14 @@
 "use client";
 
-import { useEffect, useRef, type ReactNode } from "react";
+import { useEffect, useRef, type CSSProperties, type ReactNode } from "react";
 import { Icon, type IconName } from "@/components/ui/icons";
 
 export type FlowCopy = readonly [string, string];
 
 export const flowText = (value: FlowCopy, ar: boolean) => (ar ? value[0] : value[1]);
+
+/** A popup rectangle in reference pixels of the 1672x941 approved images (see project-canvas.css). */
+export type FlowFrame = { h: number; w: number; x: number; y: number };
 
 /** The one dialog shell of every popup flow: backdrop, focus, Escape and the close button. */
 export function FlowModal({
@@ -13,6 +16,7 @@ export function FlowModal({
   children,
   className = "",
   closable = true,
+  frame,
   onClose,
   size = "default",
   step,
@@ -21,6 +25,7 @@ export function FlowModal({
   children: ReactNode;
   className?: string;
   closable?: boolean;
+  frame?: FlowFrame;
   onClose: () => void;
   size?: "default" | "wide" | "status" | "large";
   step: string;
@@ -45,10 +50,11 @@ export function FlowModal({
       <div
         aria-labelledby="pa-modal-title"
         aria-modal="true"
-        className={`pa-modal${size === "wide" ? " is-wide" : ""}${size === "status" ? " is-status" : ""}${size === "large" ? " is-large" : ""}${className ? ` ${className}` : ""}`}
+        className={`pa-modal${size === "wide" ? " is-wide" : ""}${size === "status" ? " is-status" : ""}${size === "large" ? " is-large" : ""}${frame ? " cv-frame" : ""}${className ? ` ${className}` : ""}`}
         data-step={step}
         ref={dialogRef}
         role="dialog"
+        style={frame ? ({ "--fx": frame.x, "--fy": frame.y, "--fw": frame.w, "--fh": frame.h } as CSSProperties) : undefined}
         tabIndex={-1}
       >
         {closable ? (

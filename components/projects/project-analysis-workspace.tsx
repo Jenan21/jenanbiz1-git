@@ -4,7 +4,7 @@ import dynamic from "next/dynamic";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties, type ReactNode } from "react";
-import { AnalysisFailed, AnalysisProgress, AnalysisReady } from "@/components/projects/project-analysis-dialogs";
+import { AnalysisFailed, AnalysisProgress, AnalysisReady, ANALYSIS_FRAMES } from "@/components/projects/project-analysis-dialogs";
 import { AnalysisStage } from "@/components/projects/project-analysis-stage";
 import { FlowModal } from "@/components/projects/project-flow-kit";
 import { JenanHeader } from "@/components/shell/jenan-header";
@@ -218,7 +218,7 @@ export function ProjectAnalysisWorkspace({
       <>
         <AnalysisStage ar={ar} reportHref={`/projects/analysis/result?project=${selected.id}`} testId="analysis-progress" />
         {statusClosed ? null : (
-          <FlowModal ar={ar} className="an-modal" closable={state !== "running"} onClose={() => setStatusClosed(true)} size={state === "running" ? "large" : "status"} step={state}>
+          <FlowModal ar={ar} className="an-modal" closable={state !== "running"} frame={ANALYSIS_FRAMES[state]} onClose={() => setStatusClosed(true)} size={state === "running" ? "large" : "status"} step={state}>
             {state === "running" ? <AnalysisProgress ar={ar} percent={percent} /> : null}
             {state === "done" ? <AnalysisReady ar={ar} onClose={() => setStatusClosed(true)} onOpen={() => router.push(`/projects/analysis/result?project=${selected.id}`)} /> : null}
             {state === "failed" ? <AnalysisFailed ar={ar} message={study.error ?? message} onRetry={() => void runAnalysis()} onReview={() => router.push("/projects/analysis")} /> : null}
@@ -238,12 +238,11 @@ export function ProjectAnalysisWorkspace({
   );
 }
 
-function Kpi({ bars, icon, label, note, tone, value }: { bars?: number[]; icon: IconName; label: string; note: string; tone?: string; value: string }) {
+function Kpi({ icon, label, note, tone, value }: { icon: IconName; label: string; note: string; tone?: string; value: string }) {
   return (
     <article className={`an-kpi${tone ? ` tone-${tone.toLowerCase()}` : ""}`}>
       <span className="an-kpi__icon"><Icon name={icon} /></span>
       <div><small>{label}</small><strong>{value}</strong><em>{note}</em></div>
-      {bars ? <span aria-hidden="true" className="an-kpi__bars">{bars.map((height, index) => <i key={index} style={{ height: `${height}%` }} />)}</span> : null}
     </article>
   );
 }
@@ -299,7 +298,6 @@ function ReportBoard({
   const quality = completeness >= 70 ? t(ar, "جيدة", "Good") : completeness >= 45 ? t(ar, "متوسطة", "Moderate") : t(ar, "منخفضة", "Low");
   const riskSteps = result?.dataRiskLevel === "HIGH" ? 3 : result?.dataRiskLevel === "MODERATE" ? 2 : 1;
   const competitorCount = result ? result.competitorCount : competitors.length ? competitors.length : null;
-  const limitationCount = result?.limitationCount ?? limitations.length;
   const riskText = result ? levelLabel(result.dataRiskLevel, ar, false) : t(ar, "غير متاح", "Unavailable");
   const money = (value?: number) => (value === undefined ? t(ar, "غير محدد", "Not specified") : `${new Intl.NumberFormat(ar ? "ar-SA" : "en-US", { maximumFractionDigits: 0 }).format(value)} ${t(ar, "ريال", "SAR")}`);
 
@@ -343,26 +341,26 @@ function ReportBoard({
       </header>
 
       <div className="an-rsummary">
-        <p className="is-wide"><Icon name="lightbulb" /><span><small>{t(ar, "فكرة المشروع", "Project idea")}</small><b>{input?.idea ?? project.name}</b></span></p>
+        <p className="is-wide"><Icon name="lightbulb" /><span><small>{t(ar, "فكرة المشروع", "Project idea")}</small><b title={input?.idea ?? project.name}>{input?.idea ?? project.name}</b></span></p>
         <p><Icon name="mapPin" /><span><small>{t(ar, "الموقع", "Location")}</small><b>{placeName}</b></span></p>
         <p><Icon name="wallet" /><span><small>{t(ar, "رأس المال المتوقع", "Expected capital")}</small><b>{money(input?.expectedCapital)}</b></span></p>
         <p><Icon name="people" /><span><small>{t(ar, "الفئة المستهدفة", "Target audience")}</small><b>{input && audienceLabels[input.targetAudience] ? t(ar, ...audienceLabels[input.targetAudience]) : "—"}</b></span></p>
         <p><Icon name="grid" /><span><small>{t(ar, "القطاع", "Sector")}</small><b>{sector ? t(ar, ...sector.label) : project.sector ?? t(ar, "غير محدد", "Not specified")}</b></span></p>
         <div className="an-rsummary__actions">
-          <button className="an-act is-primary" data-testid="analysis-print" onClick={() => window.print()} type="button"><Icon name="printer" />{t(ar, "طباعة التقرير", "Print report")}</button>
+          <Link className="an-act is-primary" href="/projects/analysis"><Icon name="plus" />{t(ar, "تحليل جديد", "New analysis")}</Link>
           <a className="an-act" href={`/api/projects/${project.id}/report`}><Icon name="fileText" />{t(ar, "تصدير PDF", "Export PDF")}</a>
-          <Link className="an-act" href="/projects/analysis"><Icon name="plus" />{t(ar, "تحليل جديد", "New analysis")}</Link>
+          <button className="an-act" data-testid="analysis-print" onClick={() => window.print()} type="button"><Icon name="printer" />{t(ar, "طباعة التقرير", "Print report")}</button>
         </div>
       </div>
 
       <h2 className="an-rtitle"><Icon name="barChart" />{t(ar, "المؤشرات الرئيسية للمشروع", "Key project indicators")}</h2>
       <div className="an-kpis">
-        <Kpi bars={[40, 55, 50, 75, 90]} icon="people" label={t(ar, "عدد السكان", "Population")} note={`${t(ar, "على مستوى الدولة", "Country level")}${population.period ? ` · ${population.period}` : ""}`} value={formatNumber(population.value, locale, 0)} />
-        <Kpi bars={[35, 60, 45, 80, 65]} icon="store" label={t(ar, "المنافسون", "Competitors")} note={t(ar, `مستوى المنافسة: ${levelLabel(result?.competitionLevel, ar)}`, `Competition: ${levelLabel(result?.competitionLevel, ar)}`)} tone={result?.competitionLevel} value={competitorCount === null ? t(ar, "غير متاح", "Unavailable") : String(competitorCount)} />
-        <Kpi bars={[30, 45, 60, 70, 90]} icon="wallet" label={t(ar, "القوة الشرائية", "Purchasing power")} note={purchasing.value === null ? t(ar, "مؤشر البنك الدولي", "World Bank indicator") : `${formatNumber(purchasing.value, locale, 0)}${purchasing.period ? ` · ${purchasing.period}` : ""}`} tone={result?.purchasingPowerLevel} value={levelLabel(result?.purchasingPowerLevel, ar)} />
-        <Kpi bars={[50, 40, 70, 55, 80]} icon="trend" label={t(ar, "تضخم التكلفة", "Cost inflation")} note={inflation.period ?? t(ar, "الفترة غير متاحة", "Period unavailable")} value={inflation.value === null ? t(ar, "غير متاح", "Unavailable") : `${formatNumber(inflation.value, locale)}%`} />
-        <Kpi bars={[45, 60, 55, 75, 85]} icon="check" label={t(ar, "اكتمال الأدلة", "Evidence complete")} note={t(ar, "ليس مقياسًا لفرصة النجاح", "Not a success probability")} value={`${completeness}%`} />
-        <Kpi bars={[80, 65, 55, 40, 30]} icon="shield" label={t(ar, "مخاطر البيانات", "Data risk")} note={t(ar, `${limitationCount} قيدًا مسجلًا`, `${limitationCount} recorded limits`)} tone={result?.dataRiskLevel} value={riskText} />
+        <Kpi icon="people" label={t(ar, "عدد السكان", "Population")} note={`${t(ar, "على مستوى الدولة", "Country level")}${population.period ? ` · ${population.period}` : ""}`} value={formatNumber(population.value, locale, 0)} />
+        <Kpi icon="store" label={t(ar, "المنافسون", "Competitors")} note={t(ar, `مستوى المنافسة: ${levelLabel(result?.competitionLevel, ar)}`, `Competition: ${levelLabel(result?.competitionLevel, ar)}`)} tone={result?.competitionLevel} value={competitorCount === null ? t(ar, "غير متاح", "Unavailable") : String(competitorCount)} />
+        <Kpi icon="wallet" label={t(ar, "القوة الشرائية", "Purchasing power")} note={purchasing.value === null ? t(ar, "مؤشر البنك الدولي", "World Bank indicator") : `${formatNumber(purchasing.value, locale, 0)}${purchasing.period ? ` · ${purchasing.period}` : ""}`} tone={result?.purchasingPowerLevel} value={levelLabel(result?.purchasingPowerLevel, ar)} />
+        <Kpi icon="car" label={t(ar, "حركة المرور", "Traffic")} note={t(ar, "لا يوجد مصدر بيانات متاح", "No data source available")} tone="unavailable" value={t(ar, "غير متاح", "Unavailable")} />
+        <Kpi icon="trend" label={t(ar, "الطلب المتوقع", "Expected demand")} note={t(ar, "يتطلب دراسة جدوى", "Needs a feasibility study")} tone="unavailable" value={t(ar, "غير متاح", "Unavailable")} />
+        <Kpi icon="target" label={t(ar, "فرصة السوق", "Market opportunity")} note={t(ar, "يتطلب دراسة جدوى", "Needs a feasibility study")} tone="unavailable" value={t(ar, "غير متاح", "Unavailable")} />
       </div>
 
       <div className="an-board">
@@ -377,8 +375,9 @@ function ReportBoard({
             />
           ) : <div className="pa-map-empty"><Icon name="globe" /><span>{t(ar, "تعذر تحديد الموقع على الخريطة", "The location could not be placed on the map")}</span></div>}
           <div className="an-map__badges">
-            <span><Icon name="store" /><b>{t(ar, "المنافسون", "Competitors")}</b>{competitors.length ? t(ar, `${competitors.length} منشأة مرصودة`, `${competitors.length} venues mapped`) : t(ar, "لم يُرصد منافسون", "None observed")}</span>
-            <span><Icon name="mapPin" /><b>{t(ar, "الموقع", "Location")}</b>{placeName}</span>
+            <span className="is-place"><Icon name="mapPin" /><b>{t(ar, "الموقع", "Location")}</b>{placeName}</span>
+            <span className="is-rivals"><Icon name="store" /><b>{t(ar, "المنافسون", "Competitors")}</b>{competitors.length ? t(ar, `${competitors.length} منشأة مرصودة`, `${competitors.length} venues mapped`) : t(ar, "لم يُرصد منافسون", "None observed")}</span>
+            <span className="is-people"><Icon name="people" /><b>{t(ar, "عدد السكان", "Population")}</b>{population.value === null ? t(ar, "غير متاح", "Unavailable") : `${formatNumber(population.value, locale, 0)} · ${t(ar, "الدولة", "country")}`}</span>
           </div>
         </Panel>
 
@@ -400,7 +399,12 @@ function ReportBoard({
             </ul>
           </Panel>
           <Panel className="an-risks" icon="warning" title={t(ar, "المخاطر والتحديات", "Risks and challenges")}>
-            <div className="an-risks__gauge"><small>{t(ar, "مستوى مخاطر البيانات", "Data-risk level")}</small><b>{riskText}</b><div aria-hidden="true">{[1, 2, 3].map((step) => <i className={step <= riskSteps ? "is-on" : undefined} key={step} />)}</div></div>
+            <div className="an-risks__gauge">
+              <small>{t(ar, "مستوى مخاطر البيانات", "Data-risk level")}</small>
+              <b>{riskText}</b>
+              <div aria-hidden="true">{[1, 2, 3].map((step) => <i className={step <= riskSteps ? "is-on" : undefined} key={step} />)}</div>
+              {inflation.value !== null ? <em>{t(ar, `تضخم التكلفة: ${formatNumber(inflation.value, locale)}%`, `Cost inflation: ${formatNumber(inflation.value, locale)}%`)}{inflation.period ? ` · ${inflation.period}` : ""}</em> : null}
+            </div>
             {limitations.length ? <ul>{limitations.map((item) => <li key={item}><Icon name="warning" />{item}</li>)}</ul> : <p className="pa-muted">{t(ar, "لا توجد قيود إضافية مسجلة.", "No additional limitations are recorded.")}</p>}
           </Panel>
         </div>
@@ -410,10 +414,10 @@ function ReportBoard({
       <AnalysisNotices ar={ar} study={study} />
 
       <footer className="an-rbar">
-        <Link className="an-act" href="/user"><Icon name="database" />{t(ar, "حفظ في بياناتي", "Saved in My data")}</Link>
-        <button className="an-act" onClick={() => void share()} type="button"><Icon name="share" />{t(ar, "مشاركة", "Share")}</button>
-        <a className="an-act" href={`/api/projects/${project.id}/report`}><Icon name="fileText" />{t(ar, "تصدير PDF", "Export PDF")}</a>
         <button className="an-act is-primary" onClick={() => window.print()} type="button"><Icon name="printer" />{t(ar, "طباعة التقرير", "Print report")}</button>
+        <a className="an-act" href={`/api/projects/${project.id}/report`}><Icon name="fileText" />{t(ar, "تصدير PDF", "Export PDF")}</a>
+        <button className="an-act" onClick={() => void share()} type="button"><Icon name="share" />{t(ar, "مشاركة", "Share")}</button>
+        <Link className="an-act" href="/user"><Icon name="database" />{t(ar, "حفظ في بياناتي", "Saved in My data")}</Link>
         {shared ? <span className="an-rbar__msg" role="status">{shared}</span> : null}
       </footer>
     </section>

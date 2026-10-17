@@ -7,11 +7,13 @@ import {
   AnalysisFailed,
   AnalysisProgress,
   AnalysisReady,
+  ANALYSIS_FRAMES,
   ANALYSIS_STEPS,
 } from "@/components/projects/project-analysis-dialogs";
 import { AnalysisStage, ANALYSIS_CENTER } from "@/components/projects/project-analysis-stage";
 import { FlowModal, FlowStepper, flowText, type FlowCopy } from "@/components/projects/project-flow-kit";
 import type { PickedPoint } from "@/components/projects/project-location-picker";
+import { PlaceThumb } from "@/components/projects/project-place-thumb";
 import { JenanHeader } from "@/components/shell/jenan-header";
 import { Icon } from "@/components/ui/icons";
 import { FLOW_AUDIENCES, FLOW_SECTORS, SAUDI_CITIES } from "@/lib/projects/flow-options";
@@ -230,7 +232,7 @@ export function ProjectAnalysisDashboard({
       <AnalysisStage ar={ar} onStart={() => setStep("data")} />
 
       {step !== "idle" ? (
-        <FlowModal ar={ar} className="an-modal" closable={!busy} onClose={close} size={modalSize} step={step}>
+        <FlowModal ar={ar} className="an-modal" closable={!busy} frame={ANALYSIS_FRAMES[step]} onClose={close} size={modalSize} step={step}>
           <>
             {step === "data" || step === "location" ? (
               <>
@@ -290,6 +292,7 @@ export function ProjectAnalysisDashboard({
                     <small>{point ? (ar ? "تم تحديد الموقع بنجاح" : "Location set successfully") : ar ? "اضغط على الخريطة أو ابحث عن مكان" : "Click the map or search for a place"}</small>
                   </div>
                   {point ? <span className="an-place__ok"><Icon name="check" /></span> : null}
+                  {point ? <PlaceThumb latitude={point.latitude} longitude={point.longitude} /> : null}
                 </div>
                 {message ? <p className="pa-modal__error" role="alert">{message}</p> : null}
                 <footer className="an-foot is-split">

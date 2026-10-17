@@ -1,7 +1,18 @@
 "use client";
 
 import { Icon, type IconName } from "@/components/ui/icons";
-import { flowText, type FlowCopy } from "@/components/projects/project-flow-kit";
+import { flowText, type FlowCopy, type FlowFrame } from "@/components/projects/project-flow-kit";
+
+const STATUS_FRAME: FlowFrame = { x: 361, y: 159, w: 950, h: 737 };
+
+/** Popup rectangles in reference pixels of the approved 1672x941 images; shared by the entry flow and the progress route. */
+export const ANALYSIS_FRAMES = {
+  data: { x: 502, y: 166, w: 739, h: 730 },
+  location: { x: 1165, y: 215, w: 487, h: 646 },
+  running: STATUS_FRAME,
+  done: STATUS_FRAME,
+  failed: STATUS_FRAME,
+} as const satisfies Record<string, FlowFrame>;
 
 export const ANALYSIS_STEPS: readonly FlowCopy[] = [
   ["بيانات المشروع", "Project data"],
@@ -16,7 +27,7 @@ export const ANALYSIS_UNITS: ReadonlyArray<{ id: string; icon: IconName; label: 
   { id: "population", icon: "people", label: ["تحليل السكان", "Population"] },
   { id: "market", icon: "barChart", label: ["مؤشرات السوق", "Market indicators"] },
   { id: "competitors", icon: "fileText", label: ["دراسة المنافسين", "Competitor study"] },
-  { id: "risk", icon: "chip", label: ["تقدير المخاطر", "Risk estimate"] },
+  { id: "risk", icon: "chip", label: ["التحليل الذكي", "Smart analysis"] },
   { id: "report", icon: "trend", label: ["إعداد التقرير", "Report"] },
 ];
 
@@ -34,7 +45,17 @@ export function AnalysisProgress({ ar, percent }: { ar: boolean; percent: number
     <div className="an-progress" data-testid="analysis-running">
       <span className="an-pill"><Icon name="check" />{ar ? "تم تحديد الموقع بنجاح" : "Location confirmed"}</span>
       <h2 id="pa-modal-title">{ar ? "جاري التحليل وإعداد التقرير" : "Analyzing and preparing the report"}</h2>
-      <p>{ar ? "تقوم المنصة الآن بتحليل بيانات المشروع والموقع الجغرافي والمنافسين والسكان ومؤشرات السوق من مصادرها المعلنة." : "The platform is analysing your project data, location, competitors, population and market indicators from its disclosed sources."}</p>
+      <p>
+        {ar ? (
+          <>
+            <span>تقوم المنصة الآن بتحليل بيانات المشروع والموقع الجغرافي</span> <span>والمنافسين والسكان ومؤشرات السوق من مصادرها المعلنة.</span>
+          </>
+        ) : (
+          <>
+            <span>The platform is analysing your project data, location,</span> <span>competitors, population and market indicators from disclosed sources.</span>
+          </>
+        )}
+      </p>
       <div className="an-progress__board">
         <ul className="an-progress__side is-start">{left.map(card)}</ul>
         <div aria-live="polite" className="an-ring" role="status">
@@ -43,7 +64,18 @@ export function AnalysisProgress({ ar, percent }: { ar: boolean; percent: number
         </div>
         <ul className="an-progress__side is-end">{right.map(card)}</ul>
       </div>
-      <p className="an-hint"><Icon name="lightbulb" />{ar ? "يتم تحليل البيانات من مصادر معلنة وموثقة لتقديم مؤشرات ورؤى قابلة للمراجعة." : "Data is analysed from disclosed, verifiable sources to give reviewable indicators and insight."}</p>
+      <p className="an-hint">
+        <Icon name="lightbulb" />
+        {ar ? (
+          <>
+            <span>يتم تحليل البيانات من مصادر معلنة وموثقة</span> <span>لتقديم مؤشرات ورؤى قابلة للمراجعة.</span>
+          </>
+        ) : (
+          <>
+            <span>Data is analysed from disclosed, verifiable sources</span> <span>to give reviewable indicators and insight.</span>
+          </>
+        )}
+      </p>
     </div>
   );
 }

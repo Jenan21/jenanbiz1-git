@@ -34,7 +34,7 @@
   background: #03101e;
 }
 .an-backdrop .leaflet-tile-pane {
-  filter: invert(1) hue-rotate(188deg) saturate(1.6) brightness(0.5) contrast(1.05) blur(0.4px);
+  filter: invert(1) grayscale(1) sepia(1) hue-rotate(170deg) saturate(2.4) brightness(1.25) contrast(1.2);
 }
 .an-backdrop .leaflet-control-attribution {
   color: rgba(157, 185, 198, 0.7);
@@ -48,10 +48,10 @@
   content: "";
   position: absolute;
   inset: 0;
+  z-index: 900;
   background:
-    radial-gradient(ellipse 34% 42% at 66% 46%, rgba(25, 240, 246, 0.2), transparent 70%),
-    linear-gradient(90deg, rgba(2, 10, 22, 0.96) 0, rgba(2, 10, 22, 0.82) 30%, rgba(2, 10, 22, 0.28) 55%, rgba(2, 10, 22, 0.5) 100%),
-    linear-gradient(180deg, rgba(2, 10, 22, 0.45), rgba(2, 10, 22, 0) 30%, rgba(2, 10, 22, 0.5));
+    linear-gradient(90deg, rgba(2, 10, 22, 0.97) 0, rgba(2, 10, 22, 0.95) 30%, rgba(2, 10, 22, 0.8) 38%, rgba(2, 10, 22, 0.2) 46%, rgba(2, 10, 22, 0) 55%, rgba(2, 10, 22, 0) 100%),
+    linear-gradient(180deg, rgba(2, 10, 22, 0.35), rgba(2, 10, 22, 0) 25%, rgba(2, 10, 22, 0) 75%, rgba(2, 10, 22, 0.3));
 }
 .an-copy {
   position: relative;
@@ -533,7 +533,7 @@
   position: absolute;
   inset-inline: 0;
   inset-block-start: calc(100% + 4px);
-  z-index: 20;
+  z-index: 1200;
   margin: 0;
   padding: 4px;
   list-style: none;
@@ -576,6 +576,10 @@
   height: clamp(200px, 34dvh, 300px);
   border: 0;
   border-radius: 0;
+}
+.an-mapframe .pa-entry-map .leaflet-tile-pane,
+.an-map .pa-entry-map .leaflet-tile-pane {
+  filter: invert(1) grayscale(1) sepia(1) hue-rotate(150deg) saturate(1.5) brightness(1.7) contrast(1.1);
 }
 .an-mapframe .leaflet-control-zoom {
   margin: 0 0 14px 12px;
@@ -1627,6 +1631,12 @@
     border-inline-start: 0;
     border-top: 1px solid rgba(40, 200, 240, 0.16);
   }
+  .an-rsummary__actions {
+    flex-wrap: wrap;
+  }
+  .an-rsummary__actions .an-act {
+    flex: 1 1 auto;
+  }
   .an-progress__board {
     grid-template-columns: minmax(0, 1fr);
     justify-items: center;
@@ -1664,6 +1674,51 @@
   .an-pill {
     padding-inline: 12px;
     font-size: 0.76rem;
+  }
+  .an-progress {
+    gap: 8px;
+    padding-top: 18px;
+  }
+  .an-progress h2 {
+    margin-top: 4px;
+    font-size: 1.25rem;
+  }
+  .an-progress > p {
+    font-size: 0.78rem;
+    line-height: 1.6;
+  }
+  .an-progress__board {
+    gap: 10px;
+    margin-block: 2px;
+  }
+  .an-progress__side {
+    gap: 6px;
+  }
+  .an-progress__side li {
+    padding: 6px 4px;
+    font-size: 0.66rem;
+  }
+  .an-progress__side li .icon {
+    width: 20px;
+    height: 20px;
+  }
+  .an-ring {
+    width: 136px;
+    height: 136px;
+  }
+  .an-ring i + i {
+    inset: 16px;
+  }
+  .an-ring span .icon {
+    width: 32px;
+    height: 32px;
+  }
+  .an-ring span b {
+    font-size: 1.4rem;
+  }
+  .an-hint {
+    padding: 8px 12px;
+    font-size: 0.7rem;
   }
 }
 @media (max-height: 820px) and (min-width: 981px) {
