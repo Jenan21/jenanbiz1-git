@@ -31,6 +31,8 @@ export async function mapRequest<T>(
         NO_PUBLISHED_RELEASE: "لا يوجد إصدار خريطة منشور متاح حالياً.",
         MAP_MAINTENANCE: "الخريطة تحت الصيانة حالياً.",
         MAP_DISABLED: "خدمة الخريطة معطلة حالياً.",
+        RELEASE_NOT_PUBLISHED:
+          "تغير الإصدار المنشور. أعد فتح الخريطة قبل حفظ الموقع.",
       };
       throw new Error(
         messages[body?.error] ??

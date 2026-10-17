@@ -70,6 +70,7 @@ test.describe("public map isolation", () => {
     const id = "00000000-0000-4000-8000-000000000001";
     for (const path of [
       "/api/jenan-map",
+      "/api/jenan-map/location",
       "/api/jenan-map/search?q=Riyadh",
       `/api/jenan-map/artifacts/${id}`,
       "/api/admin/jenan-map",
@@ -89,6 +90,18 @@ test.describe("public map isolation", () => {
       data: { latitude: 24.7136, longitude: 46.6753 },
     });
     expect(response.status()).toBe(401);
+    expect(
+      (
+        await request.put("/api/jenan-map/location", {
+          headers: { origin: new URL(baseURL!).origin },
+          data: {
+            latitude: 24.7136,
+            longitude: 46.6753,
+            source: "coordinates",
+          },
+        })
+      ).status(),
+    ).toBe(401);
   });
 });
 
@@ -110,10 +123,15 @@ test.describe("authenticated map harness — fixture states, not real-map accept
     await queryE2E('DELETE FROM "User" WHERE email = $1', [email]);
   });
 
-  test.beforeEach(async ({ context, baseURL }) => {
+  test.beforeEach(async ({ context, baseURL, page }) => {
     await context.addCookies([
       { name: "jenan_session", value: token, url: baseURL! },
     ]);
+    await page.route("**/api/jenan-map/location", (route) =>
+      route.request().method() === "GET"
+        ? route.fulfill({ json: { location: null } })
+        : route.continue(),
+    );
   });
 
   for (const viewport of viewports) {
@@ -177,7 +195,11 @@ test.describe("authenticated map harness — fixture states, not real-map accept
       await expect(trigger).toBeFocused();
       expect(manifestRequests).toBe(1);
       expect(
-        resources.filter((url) => !url.endsWith("/api/jenan-map")),
+        resources.filter(
+          (url) =>
+            !url.endsWith("/api/jenan-map") &&
+            !url.endsWith("/api/jenan-map/location"),
+        ),
       ).toEqual([]);
     });
   }
@@ -201,7 +223,7 @@ test.describe("authenticated map harness — fixture states, not real-map accept
       await page.getByRole("button", { name: "إلغاء", exact: true }).click();
       await expect(page.getByRole("dialog")).toHaveCount(0);
       await expect(
-        page.getByText("لم يتم تأكيد موقع بعد.", { exact: false }),
+        page.getByText("لا يوجد موقع محفوظ بعد.", { exact: false }),
       ).toBeVisible();
     });
   }
@@ -229,6 +251,18 @@ test.describe("authenticated map harness — fixture states, not real-map accept
         })
       ).status(),
     ).toBe(403);
+    expect(
+      (
+        await page.request.put("/api/jenan-map/location", {
+          headers: { origin: "https://other.example.test" },
+          data: {
+            latitude: 24.7136,
+            longitude: 46.6753,
+            source: "coordinates",
+          },
+        })
+      ).status(),
+    ).toBe(403);
   });
 
   test("manual drafts confirm only through validation and cancel leaves the saved value unchanged", async ({
@@ -248,12 +282,32 @@ test.describe("authenticated map harness — fixture states, not real-map accept
         },
       }),
     );
-    let validations = 0;
-    await page.route("**/api/jenan-map/validate", async (route) => {
+    let saves = 0;
+    let savedLocation: Record<string, unknown> | null = null;
+    await page.route("**/api/jenan-map/location", async (route) => {
+      if (route.request().method() === "GET") {
+        await route.fulfill({ json: { location: savedLocation } });
+        return;
+      }
+      expect(route.request().method()).toBe("PUT");
       const point = route.request().postDataJSON();
-      expect(point).toEqual({ latitude: 24.7136, longitude: 46.6753 });
-      validations++;
-      await route.fulfill({ json: { valid: true, ...point, releaseId } });
+      expect(point).toEqual({
+        latitude: 24.7136,
+        longitude: 46.6753,
+        source: "coordinates",
+        releaseId,
+      });
+      saves++;
+      savedLocation = {
+        ...point,
+        country: "SA",
+        region: null,
+        city: null,
+        district: null,
+        formattedAddress: null,
+        selectedAt: "2026-10-01T12:00:00.000Z",
+      };
+      await route.fulfill({ json: { location: savedLocation } });
     });
     await page.goto("/jenan-map");
     await page.getByRole("button", { name: "اختيار موقع على الخريطة" }).click();
@@ -265,17 +319,29 @@ test.describe("authenticated map harness — fixture states, not real-map accept
     await expect(
       page.getByText("24.713600, 46.675300", { exact: true }),
     ).toBeVisible();
-    expect(validations).toBe(1);
+    expect(saves).toBe(1);
     await page.getByRole("button", { name: "تعديل الموقع" }).click();
     await page.getByLabel("خط العرض", { exact: true }).fill("25");
     await page.getByRole("button", { name: "إلغاء", exact: true }).click();
     await expect(
       page.getByText("24.713600, 46.675300", { exact: true }),
     ).toBeVisible();
-    expect(validations).toBe(1);
+    expect(saves).toBe(1);
     await page.reload();
     await expect(
-      page.getByText("لم يتم تأكيد موقع بعد.", { exact: false }),
+      page.getByText("لم يتم تحميل الموقع المحفوظ بعد.", { exact: false }),
     ).toBeVisible();
+    await page.getByRole("button", { name: "اختيار موقع على الخريطة" }).click();
+    await expect(page.getByLabel("خط العرض", { exact: true })).toHaveValue(
+      "24.7136",
+    );
+    await expect(page.getByLabel("خط الطول", { exact: true })).toHaveValue(
+      "46.6753",
+    );
+    await page.getByRole("button", { name: "إلغاء", exact: true }).click();
+    await expect(
+      page.getByText("24.713600, 46.675300", { exact: true }),
+    ).toBeVisible();
+    expect(saves).toBe(1);
   });
 });

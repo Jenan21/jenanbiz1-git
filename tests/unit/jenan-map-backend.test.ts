@@ -16,8 +16,8 @@ vi.mock("@/lib/auth/request", () => ({ hasValidOrigin: mocks.origin }));
 vi.mock("@/lib/rate-limit/route-rate-limit", () => ({ enforceRouteRateLimit: mocks.rate }));
 
 import { byteRange, downloadMetadata, openArtifact, safeStorageKey, storageRoot } from "@/services/jenan-map/storage";
-import { commandSchema, locationSchema, searchSchema, type Artifact } from "@/services/jenan-map/contracts";
-import { command, exportManifest, manifest, previewManifest, publishedRelease, search, snapshot, validateLocation } from "@/services/jenan-map/service";
+import { commandSchema, locationSchema, savedLocationSchema, searchSchema, type Artifact } from "@/services/jenan-map/contracts";
+import { command, exportManifest, manifest, previewManifest, publishedRelease, saveLocation, savedLocation, search, snapshot, validateLocation } from "@/services/jenan-map/service";
 import { GET as publicManifest } from "@/app/api/jenan-map/route";
 import { GET as adminSnapshot, POST as adminCommand } from "@/app/api/admin/jenan-map/route";
 import { GET as publicArtifact } from "@/app/api/jenan-map/artifacts/[artifactId]/route";
@@ -27,6 +27,7 @@ import { GET as adminPreview } from "@/app/api/admin/jenan-map/preview/route";
 import { GET as adminSearch } from "@/app/api/admin/jenan-map/search/route";
 import { POST as adminValidate } from "@/app/api/admin/jenan-map/validate/route";
 import { GET as adminReleaseExport } from "@/app/api/admin/jenan-map/releases/[releaseId]/export/route";
+import { GET as getSavedLocation, PUT as putSavedLocation } from "@/app/api/jenan-map/location/route";
 import { POST as validateEndpoint } from "@/app/api/jenan-map/validate/route";
 import { GET as searchEndpoint } from "@/app/api/jenan-map/search/route";
 
@@ -192,6 +193,10 @@ describe("publication and owned spatial queries", () => {
       mocks.transaction.mockRejectedValueOnce(new Prisma.PrismaClientKnownRequestError("raw conflict", { code: "P2010", clientVersion: "7.10.0", meta: { code } }));
       await expect(command({ action: "publish", releaseId, expectedRevision: 4, expectedPublishedReleaseId: releaseId, confirmation: "PUBLISH", reason: "Reviewed release confirmed" }, "admin")).rejects.toMatchObject({ code: "CONCURRENT_CHANGE_RETRY", status: 409 });
     }
+    mocks.transaction.mockRejectedValueOnce(new Prisma.PrismaClientKnownRequestError("adapter conflict", {
+      code: "P2010", clientVersion: "7.10.0", meta: { driverAdapterError: { cause: { originalCode: "40001" } } },
+    }));
+    await expect(command({ action: "publish", releaseId, expectedRevision: 4, expectedPublishedReleaseId: releaseId, confirmation: "PUBLISH", reason: "Reviewed release confirmed" }, "admin")).rejects.toMatchObject({ code: "CONCURRENT_CHANGE_RETRY", status: 409 });
   });
   it("requires both the expected pointer and revision before publication", async () => {
     expect(commandSchema.safeParse({ action: "publish", releaseId, expectedRevision: 4, confirmation: "PUBLISH", reason: "Release confirmed" }).success).toBe(false);
@@ -299,9 +304,9 @@ describe("API authorization, origin and byte serving", () => {
     const responses = await Promise.all([
       publicManifest(request()), searchEndpoint(request("/api/jenan-map/search?q=Riyadh")),
       validateEndpoint(request()), adminSnapshot(request()), adminCommand(request()),
-      publicArtifact(request(), context), adminArtifact(request(), context), adminExport(request()), adminPreview(request()), adminSearch(request()), adminValidate(request()), adminReleaseExport(request(), { params: Promise.resolve({ releaseId }) }),
+      publicArtifact(request(), context), adminArtifact(request(), context), adminExport(request()), adminPreview(request()), adminSearch(request()), adminValidate(request()), adminReleaseExport(request(), { params: Promise.resolve({ releaseId }) }), getSavedLocation(request()), putSavedLocation(request()),
     ]);
-    expect(responses.map((response) => response.status)).toEqual(Array(12).fill(401));
+    expect(responses.map((response) => response.status)).toEqual(Array(14).fill(401));
     expect(mocks.query).not.toHaveBeenCalled();
   });
   it("requires admin on snapshots, exports, artifacts and commands", async () => {
@@ -315,6 +320,7 @@ describe("API authorization, origin and byte serving", () => {
     expect((await adminCommand(request())).status).toBe(403);
     expect((await validateEndpoint(request())).status).toBe(403);
     expect((await adminValidate(request())).status).toBe(403);
+    expect((await putSavedLocation(request())).status).toBe(403);
     expect(mocks.query).not.toHaveBeenCalled();
   });
   it("honors shared authenticated rate limits", async () => {
@@ -343,6 +349,59 @@ describe("API authorization, origin and byte serving", () => {
     expect((await publicArtifact(request(), { params: Promise.resolve({ artifactId }) })).status).toBe(404);
     mocks.admin.mockReturnValue(false);
     expect((await adminArtifact(request("/api/admin/jenan-map/artifacts/" + artifactId), { params: Promise.resolve({ artifactId }) })).status).toBe(403);
+  });
+});
+
+describe("owned saved map location", () => {
+  const input = { latitude: 24.7, longitude: 46.7, releaseId, source: "map" as const };
+  const location = { ...input, country: "SA", region: null, city: null, district: null, formattedAddress: null, selectedAt: new Date("2026-10-17T13:00:00Z") };
+
+  it("rejects client ownership, addresses, timestamps and unpinned writes", () => {
+    expect(savedLocationSchema.safeParse(input).success).toBe(true);
+    for (const extra of [{ userId: "another-user" }, { city: "invented" }, { selectedAt: new Date().toISOString() }]) {
+      expect(savedLocationSchema.safeParse({ ...input, ...extra }).success).toBe(false);
+    }
+    expect(savedLocationSchema.safeParse({ latitude: 24, longitude: 46, source: "map" }).success).toBe(false);
+  });
+  it("loads only session-owned locations, including an honest empty state", async () => {
+    mocks.query.mockResolvedValueOnce([]);
+    expect(await savedLocation("session-user")).toBeNull();
+    expect(mocks.query.mock.calls[0][0].values).toEqual(["session-user"]);
+    mocks.query.mockResolvedValueOnce([location]);
+    const response = await getSavedLocation(request("/api/jenan-map/location?userId=another-user"));
+    expect(await response.json()).toMatchObject({ location: { latitude: input.latitude, country: "SA", city: null } });
+    expect(mocks.query.mock.calls[1][0].values).toEqual(["user"]);
+  });
+  it("saves fresh server-only addresses/timestamp and audit atomically against the pinned Saudi boundary", async () => {
+    mocks.query.mockResolvedValueOnce([state]).mockResolvedValueOnce([release])
+      .mockResolvedValueOnce([{ inside: true }]).mockResolvedValueOnce([location]);
+    expect(await saveLocation(input, "session-user")).toEqual(location);
+    const write = mocks.query.mock.calls[3][0];
+    expect(write.text).toContain('ON CONFLICT ("userId") DO UPDATE');
+    expect(write.text).toContain('"selectedAt" = now()');
+    expect(write.text).toContain('"formattedAddress" = NULL');
+    expect(write.values).toContain("session-user");
+    expect(write.values).not.toContain("another-user");
+    expect(mocks.transaction.mock.calls[0][1]).toEqual({ isolationLevel: "Serializable" });
+    expect(mocks.execute.mock.calls[0][0].text).toContain("jenan_map.audit");
+    expect(mocks.execute.mock.calls[1][0].text).toContain('"AuditLog"');
+  });
+  it("never persists outside-country, missing-boundary or stale release selections", async () => {
+    mocks.query.mockResolvedValueOnce([state]).mockResolvedValueOnce([release]).mockResolvedValueOnce([{ inside: false }]);
+    await expect(saveLocation(input, "user")).rejects.toMatchObject({ code: "OUTSIDE_SAUDI_ARABIA", status: 422 });
+    mocks.query.mockResolvedValueOnce([state]).mockResolvedValueOnce([release]).mockResolvedValueOnce([]);
+    await expect(saveLocation(input, "user")).rejects.toMatchObject({ code: "AUTHORITATIVE_BOUNDARY_UNAVAILABLE", status: 503 });
+    mocks.query.mockResolvedValueOnce([{ ...state, publishedReleaseId: otherId }]);
+    await expect(saveLocation(input, "user")).rejects.toMatchObject({ code: "RELEASE_NOT_PUBLISHED", status: 409 });
+    expect(mocks.execute).not.toHaveBeenCalled();
+  });
+  it("PUT rejects spoofed user/address data before database writes", async () => {
+    const response = await putSavedLocation(new NextRequest("http://localhost/api/jenan-map/location", {
+      method: "PUT", headers: { "content-type": "application/json" },
+      body: JSON.stringify({ ...input, userId: "another-user", city: "invented" }),
+    }));
+    expect(response.status).toBe(400);
+    expect(mocks.query).not.toHaveBeenCalled();
   });
 });
 

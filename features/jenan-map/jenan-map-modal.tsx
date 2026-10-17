@@ -8,10 +8,12 @@ import {
   useId,
   useRef,
   useState,
+  type RefObject,
 } from "react";
 import { createPortal } from "react-dom";
 import { assertPinnedRelease, mapManifestUrl, mapRequest } from "./api";
 import { focusLoopTarget } from "./accessibility";
+import { saveOwnedMapLocation } from "./location-api";
 import { coordinateDraft, isCoordinate, MAP_RADII } from "./geometry";
 import { RendererBoundary } from "./renderer-boundary";
 import type {
@@ -34,10 +36,12 @@ export function JenanMapModal({
   value,
   onCancel,
   onConfirm,
+  returnFocusRef,
 }: {
   value: JenanLocation | null;
   onCancel: () => void;
   onConfirm: (location: JenanLocation) => void;
+  returnFocusRef?: RefObject<HTMLElement | null>;
 }) {
   const titleId = useId();
   const descriptionId = useId();
@@ -67,6 +71,7 @@ export function JenanMapModal({
   const geolocationVersion = useRef(0);
   const searchVersion = useRef(0);
   const validationController = useRef<AbortController | null>(null);
+  const saving = useRef(false);
   const preview =
     typeof window !== "undefined"
       ? new URLSearchParams(window.location.search).get("preview")
@@ -74,9 +79,10 @@ export function JenanMapModal({
 
   useEffect(() => {
     const focused =
-      document.activeElement instanceof HTMLElement
+      returnFocusRef?.current ??
+      (document.activeElement instanceof HTMLElement
         ? document.activeElement
-        : null;
+        : null);
     const previousOverflow = document.body.style.overflow;
     const geoGeneration = geolocationVersion;
     const selectionGeneration = selectionVersion;
@@ -86,7 +92,7 @@ export function JenanMapModal({
     const keydown = (event: KeyboardEvent) => {
       if (event.key === "Escape") {
         event.preventDefault();
-        onCancel();
+        if (!saving.current) onCancel();
       }
       if (event.key !== "Tab" || !element) return;
       const focusable = Array.from(
@@ -124,7 +130,7 @@ export function JenanMapModal({
       validationController.current?.abort();
       focused?.focus();
     };
-  }, [onCancel]);
+  }, [onCancel, returnFocusRef]);
 
   useEffect(() => {
     const controller = new AbortController();
@@ -187,7 +193,7 @@ export function JenanMapModal({
 
   const select = useCallback(
     (latitude: number, longitude: number, source: LocationSource = "map") => {
-      if (!isCoordinate(latitude, longitude)) return;
+      if (saving.current || !isCoordinate(latitude, longitude)) return;
       selectionVersion.current++;
       validationController.current?.abort();
       geolocationVersion.current++;
@@ -205,6 +211,7 @@ export function JenanMapModal({
   );
 
   function geolocate() {
+    if (saving.current) return;
     if (!navigator.geolocation) {
       setError("تحديد الموقع غير مدعوم في هذا المتصفح.");
       return;
@@ -238,6 +245,7 @@ export function JenanMapModal({
   }
 
   function editCoordinate(key: "latitude" | "longitude", text: string) {
+    if (saving.current) return;
     setCoordinates((current) => ({ ...current, [key]: text }));
     setDraft(null);
     selectionVersion.current++;
@@ -250,50 +258,42 @@ export function JenanMapModal({
   }
 
   async function confirm() {
-    if (!draft || validating || preview) return;
+    if (!draft || validating || preview || !manifest?.release) return;
+    if (!draft.source) {
+      setError("أعد اختيار النقطة لتحديد مصدر الموقع قبل الحفظ.");
+      return;
+    }
     const version = selectionVersion.current;
     const controller = new AbortController();
     validationController.current?.abort();
     validationController.current = controller;
+    saving.current = true;
+    geolocationVersion.current++;
+    setLocating(false);
     setValidating(true);
     setError("");
     try {
-      const result = await mapRequest<{
-        valid: boolean;
-        location?: Partial<JenanLocation>;
-        message?: string;
-      }>("/api/jenan-map/validate", {
-        method: "POST",
-        signal: controller.signal,
-        body: JSON.stringify({
+      const result = await saveOwnedMapLocation(
+        {
           latitude: draft.latitude,
           longitude: draft.longitude,
-        }),
-      });
+          source: draft.source,
+          releaseId: manifest.release.id,
+        },
+        controller.signal,
+      );
       if (version !== selectionVersion.current || controller.signal.aborted)
         return;
-      if (!result.valid) {
-        setError(
-          result.message ||
-            "يجب اختيار نقطة داخل الحدود المعتمدة للمملكة العربية السعودية.",
-        );
-        return;
-      }
-      onConfirm({
-        ...draft,
-        ...result.location,
-        latitude: draft.latitude,
-        longitude: draft.longitude,
-        country: "SA",
-        source: draft.source,
-        selectedAt: new Date().toISOString(),
-      });
+      onConfirm(result);
     } catch (reason) {
       if (!controller.signal.aborted)
         setError(
-          reason instanceof Error ? reason.message : "تعذر التحقق من الموقع.",
+          reason instanceof Error
+            ? reason.message
+            : "تعذر تأكيد حفظ الموقع. أعد فتح الخريطة للتحقق.",
         );
     } finally {
+      saving.current = false;
       if (!controller.signal.aborted) setValidating(false);
     }
   }
@@ -326,6 +326,7 @@ export function JenanMapModal({
           <button
             className={styles.close}
             aria-label="إغلاق الخريطة دون حفظ"
+            disabled={validating}
             onClick={onCancel}
           >
             ×
@@ -343,7 +344,7 @@ export function JenanMapModal({
               id={`${titleId}-search`}
               value={query}
               maxLength={120}
-              disabled={!enabled || Boolean(preview)}
+              disabled={!enabled || Boolean(preview) || validating}
               title={preview ? "البحث متاح للإصدار المنشور فقط" : undefined}
               onChange={(event) => {
                 searchVersion.current++;
@@ -385,7 +386,7 @@ export function JenanMapModal({
             )}
             <button
               className={styles.secondary}
-              disabled={!enabled || locating}
+              disabled={!enabled || locating || validating}
               onClick={geolocate}
             >
               {locating ? "جارٍ تحديد الموقع…" : "◎ استخدام موقعي الحالي"}
@@ -396,7 +397,10 @@ export function JenanMapModal({
                 الأرض.
               </p>
             )}
-            <fieldset disabled={!enabled} className={styles.coordinates}>
+            <fieldset
+              disabled={!enabled || validating}
+              className={styles.coordinates}
+            >
               <legend>الإحداثيات — اختيار بديل بلوحة المفاتيح</legend>
               <label>
                 خط العرض
@@ -587,15 +591,19 @@ export function JenanMapModal({
         <footer className={styles.footer}>
           <div>
             <p className={styles.note}>
-              الإصدار: {manifest?.release?.version ?? "غير متاح"} · الحفظ مؤقت
-              في الصفحة فقط
+              الإصدار: {manifest?.release?.version ?? "غير متاح"} · الحفظ في
+              حسابك فقط؛ المشاريع الحالية لا تتغير
             </p>
             <p role="alert" className={styles.error}>
               {error}
             </p>
           </div>
           <div className={styles.actions}>
-            <button className={styles.secondary} onClick={onCancel}>
+            <button
+              className={styles.secondary}
+              disabled={validating}
+              onClick={onCancel}
+            >
               إلغاء
             </button>
             <button
@@ -606,7 +614,7 @@ export function JenanMapModal({
               {preview
                 ? "معاينة للقراءة فقط"
                 : validating
-                  ? "جارٍ التحقق من الحدود…"
+                  ? "جارٍ التحقق وحفظ الموقع…"
                   : "تأكيد الموقع"}
             </button>
           </div>

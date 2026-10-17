@@ -2,6 +2,10 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { JenanMapHarness } from "@/features/jenan-map/jenan-map-harness";
+import {
+  loadOwnedMapLocation,
+  saveOwnedMapLocation,
+} from "@/features/jenan-map/location-api";
 import { focusLoopTarget } from "@/features/jenan-map/accessibility";
 import {
   assertPinnedRelease,
@@ -46,9 +50,107 @@ it("renders an Arabic standalone empty harness without loading the map engine", 
   const html = renderToStaticMarkup(createElement(JenanMapHarness));
   expect(html).toContain('dir="rtl"');
   expect(html).toContain("اختيار موقع على الخريطة");
-  expect(html).toContain("وليس في سجل مشروع أو قاعدة البيانات");
+  expect(html).toContain("لم يتم تحميل الموقع المحفوظ بعد");
+  expect(html).toContain("لا تتغير مواقع المشاريع الحالية");
   expect(html).not.toContain('role="dialog"');
   expect(html).not.toContain("<canvas");
+});
+
+describe("owned map location persistence boundary", () => {
+  const location = {
+    latitude: 24.7136,
+    longitude: 46.6753,
+    country: "SA",
+    region: null,
+    city: null,
+    district: null,
+    formattedAddress: null,
+    source: "coordinates",
+    selectedAt: "2026-10-01T12:00:00.000Z",
+  };
+  it("loads the owned saved point without guessing address or refreshing selectedAt", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValue(new Response(JSON.stringify({ location }))),
+    );
+    expect(await loadOwnedMapLocation()).toEqual(location);
+    expect(fetch).toHaveBeenCalledWith(
+      "/api/jenan-map/location",
+      expect.objectContaining({
+        credentials: "same-origin",
+        cache: "no-store",
+      }),
+    );
+  });
+  it("preserves a truthful empty saved location", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi
+        .fn()
+        .mockResolvedValue(new Response(JSON.stringify({ location: null }))),
+    );
+    expect(await loadOwnedMapLocation()).toBeNull();
+  });
+  it("sends only coordinates and source, using the server timestamp and fresh address verbatim", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValue(new Response(JSON.stringify({ location }))),
+    );
+    expect(
+      await saveOwnedMapLocation({
+        latitude: location.latitude,
+        longitude: location.longitude,
+        source: "coordinates",
+        releaseId: "release-one",
+      }),
+    ).toEqual(location);
+    expect(fetch).toHaveBeenCalledWith(
+      "/api/jenan-map/location",
+      expect.objectContaining({
+        method: "PUT",
+        body: JSON.stringify({
+          latitude: location.latitude,
+          longitude: location.longitude,
+          source: "coordinates",
+          releaseId: "release-one",
+        }),
+      }),
+    );
+  });
+  it.each([
+    { ...location, selectedAt: undefined },
+    { ...location, source: null },
+    { ...location, formattedAddress: undefined },
+  ])(
+    "does not manufacture missing server selection metadata",
+    async (value) => {
+      vi.stubGlobal(
+        "fetch",
+        vi
+          .fn()
+          .mockResolvedValue(new Response(JSON.stringify({ location: value }))),
+      );
+      await expect(loadOwnedMapLocation()).rejects.toThrow("غير صالحة");
+    },
+  );
+  it("never reports an authoritative rejection as a saved point", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValue(
+        new Response(JSON.stringify({ error: "OUTSIDE_SAUDI_ARABIA" }), {
+          status: 422,
+        }),
+      ),
+    );
+    await expect(
+      saveOwnedMapLocation({
+        latitude: 0,
+        longitude: 0,
+        source: "map",
+        releaseId: "release-one",
+      }),
+    ).rejects.toThrow("خارج الحدود");
+  });
 });
 
 describe("modal keyboard focus loop", () => {

@@ -12,6 +12,12 @@ export interface JenanLocation {
   selectedAt: string | null;
 }
 
+export type SavedJenanLocation = JenanLocation & {
+  country: "SA";
+  source: LocationSource;
+  selectedAt: string;
+};
+
 export interface MapLayer {
   id: string;
   label: string;

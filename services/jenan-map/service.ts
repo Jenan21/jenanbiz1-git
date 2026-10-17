@@ -15,10 +15,13 @@ function hasProductionArtifacts(files: Artifact[]) {
 
 function rethrowWriteError(error: unknown): never {
   if (error instanceof MapError) throw error;
-  if (error instanceof Prisma.PrismaClientKnownRequestError &&
-    (["P2034", "P2002"].includes(error.code) ||
-      (error.code === "P2010" && ["40001", "40P01", "23505"].includes(String(error.meta?.code))))) {
-    throw new MapError("CONCURRENT_CHANGE_RETRY");
+  if (error instanceof Prisma.PrismaClientKnownRequestError) {
+    const adapter = error.meta?.driverAdapterError as { cause?: { originalCode?: unknown } } | undefined;
+    const sqlCode = String(error.meta?.code ?? adapter?.cause?.originalCode ?? "");
+    if (["P2034", "P2002"].includes(error.code) ||
+      (error.code === "P2010" && ["40001", "40P01", "23505"].includes(sqlCode))) {
+      throw new MapError("CONCURRENT_CHANGE_RETRY");
+    }
   }
   throw error;
 }
