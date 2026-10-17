@@ -41,6 +41,29 @@ it("denies read and mutation before accessing layer data", async () => {
   expect(mocks.change).not.toHaveBeenCalled();
 });
 
+it("returns the stored layer catalog when provisioned", async () => {
+  const layers = [{ id: "roads", enabled: false, status: "unavailable" }];
+  mocks.list.mockResolvedValue(layers);
+  const response = await GET(new NextRequest("https://jenanpro.sa/api/admin/jenan-map/layers"));
+  expect(response.status).toBe(200);
+  expect(await response.json()).toEqual({ layers });
+  expect(mocks.access).toHaveBeenCalledWith(expect.any(NextRequest), true);
+});
+
+it("reports an unavailable optional catalog without exposing database errors or an empty success", async () => {
+  mocks.list.mockRejectedValue(new Error('relation "jenan_map.runtime" does not exist'));
+  const response = await GET(new NextRequest("https://jenanpro.sa/api/admin/jenan-map/layers"));
+  expect(response.status).toBe(200);
+  expect(await response.json()).toEqual({ layers: null, available: false, error: "MAP_UNAVAILABLE" });
+});
+
+it("does not treat access failures as catalog availability responses", async () => {
+  mocks.access.mockRejectedValue(new Error("session lookup unavailable"));
+  const response = await GET(new NextRequest("https://jenanpro.sa/api/admin/jenan-map/layers"));
+  expect(response.status).toBe(503);
+  expect(mocks.list).not.toHaveBeenCalled();
+});
+
 it("enforces administrator mutation/origin access and derives actor only from the session", async () => {
   const req = request(JSON.stringify({
     id: "roads", enabled: false, expectedRevision: 0, confirmation: "CHANGE LAYER",

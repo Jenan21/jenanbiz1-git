@@ -29,7 +29,11 @@ export async function GET(request: NextRequest) {
   try {
     const auth = await access(request, true);
     if (auth.response) return auth.response;
-    return json({ layers: await mapLayers() });
+    try {
+      return json({ layers: await mapLayers() });
+    } catch {
+      return json({ layers: null, available: false, error: "MAP_UNAVAILABLE" });
+    }
   } catch (error) { return failure(error); }
 }
 
