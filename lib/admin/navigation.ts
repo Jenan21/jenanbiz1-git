@@ -87,7 +87,7 @@ export const adminNavItems: readonly AdminNavItem[] = [
   },
   {
     href: "/admin/data-center",
-    label: { ar: "مركز البيانات", en: "Data Center" },
+    label: { ar: "مركز بيانات منصة جنان", en: "Jenan Platform Data Center" },
     icon: "globe",
   },
   {

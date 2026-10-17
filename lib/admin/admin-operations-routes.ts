@@ -1,8 +1,11 @@
+import { DATA_CENTER_AREAS, dataCenterPath } from "@/lib/admin/data-center-routes";
+
 export type AdminOperationGroup = "admin" | "factory" | "academy" | "organization" | "missions" | "intelligence" | "models" | "finance" | "observability" | "reports";
 
 const route = (path: string, title: string, kind: string, group: AdminOperationGroup) => ({ path, title, kind, group });
 
 export const ADMIN_OPERATION_ROUTES = [
+  ...DATA_CENTER_AREAS.map((area) => route(dataCenterPath(area.key), area.ar, "data-center", "admin")),
   route("/admin", "مركز قيادة Jenan PRO", "command", "admin"),
   route("/admin/operations", "مركز العمليات الحي", "command", "admin"),
   route("/admin/users", "إدارة المستخدمين", "list", "admin"),
