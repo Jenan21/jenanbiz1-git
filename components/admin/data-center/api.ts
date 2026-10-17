@@ -16,6 +16,11 @@ const errorMessages: Record<string, string> = {
   INVALID_DATA_CENTER_INPUT: "المدخلات غير صالحة. تحقق من الحقول والأطوال والتصنيفات.",
   ALREADY_EXISTS: "يوجد سجل بهذا المعرّف. استخدم مفتاحاً آخر.",
   DATA_CENTER_UNAVAILABLE: "الخدمة غير متاحة حالياً. لم تُحمّل بيانات بديلة؛ حاول مجدداً.",
+  UNKNOWN_AREA: "هذا العرض غير متاح في إعداد الخادم الحالي. لم تُحمّل بيانات بديلة.",
+  CATEGORY_NOT_FOUND: "الفئة غير مسجلة. سجّلها في الإعدادات أولاً.",
+  DEPARTMENT_NOT_FOUND: "القسم غير مسجل. سجّله في الإعدادات أولاً.",
+  MALWARE_SCANNER_UNAVAILABLE: "رفع الملفات غير متاح دون مزود فحص آمن.",
+  FILE_SIZE_LIMIT: "حجم الملف غير مسموح. الحد الأقصى 10 MB ولا تُقبل الملفات الفارغة.",
 };
 
 export function dataCenterErrorMessage(status: number, payload: DataCenterRecord | null) {

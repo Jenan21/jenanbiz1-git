@@ -12,11 +12,11 @@ import styles from "./data-center.module.css";
 
 const areas: Record<DataCenterSection, string> = {
   overview: "overview", data: "items", knowledge: "items", assets: "items", imports: "imports",
-  sources: "sources", evidence: "items", conflicts: "conflicts", versions: "items",
-  "robot-knowledge": "items", academy: "academy", publishing: "items", usage: "usage", audit: "audit", settings: "overview",
+  sources: "sources", evidence: "evidence", conflicts: "conflicts", versions: "items",
+  "robot-knowledge": "overview", academy: "academy", publishing: "items", usage: "usage", audit: "audit", settings: "overview",
 };
 const statLabels: Record<string, string> = {
-  sources: "مصادر موثقة", items: "سجلات المحتوى", published: "سجلات منشورة", reviews: "بانتظار المراجعة",
+  sources: "مصادر مسجلة", items: "سجلات المحتوى", published: "لها إصدار منشور", reviews: "بانتظار المراجعة",
   conflicts: "تعارضات مفتوحة", imports: "عمليات استيراد", usage: "سجلات استخدام", types: "أنواع مسجلة", academyReleases: "اقتراحات الأكاديمية",
 };
 type FormState = { definition: CommandDefinition; fixed?: DataCenterRecord } | null;
@@ -29,7 +29,6 @@ export function sectionQuery(section: DataCenterSection, page: number, query = "
   const sectionLayer = section === "data" ? "DATA" : section === "knowledge" ? "KNOWLEDGE" : layer;
   if (sectionLayer) params.set("layer", sectionLayer);
   if (section === "assets") params.set("categoryKey", "assets");
-  if (section === "robot-knowledge") params.set("status", "PUBLISHED");
   return params;
 }
 
@@ -65,10 +64,18 @@ export function DataCenterWorkspace({ section }: { section: DataCenterSection })
       const data = payloadData(payload);
       if (!signal.aborted) {
         if (section === "settings") {
-          setSnapshot({ rows: [], total: null, data: { capabilities: payload.capabilities ?? null, backup: data.backup ?? null } });
+          const registries = await Promise.all(["types", "categories", "departments"].map((area) => dataCenterRequest(`${DATA_CENTER_API}?area=${area}&limit=100`, { signal })));
+          if (!signal.aborted) setSnapshot({ rows: [], total: null, data: {
+            capabilities: payload.capabilities ?? null, backup: data.backup ?? null,
+            classificationRegistry: Object.fromEntries(registries.map((registry, index) => [["types", "categories", "departments"][index], {
+              total: payloadData(registry).total, rows: asRecords(payloadData(registry).rows),
+              limit: "أول 100 سجل في كل تصنيف؛ استخدم معرّفات السجل عند الحاجة.",
+            }])),
+          } });
         } else setSnapshot({ rows: asRecords(data.rows), total: typeof data.total === "number" ? data.total : null, data });
       }
-      if (section === "imports" || section === "robot-knowledge") {
+      if (section === "robot-knowledge" && !signal.aborted) setCapabilities(payload.capabilities as DataCenterRecord ?? null);
+      if (section === "imports") {
         const overview = await dataCenterRequest(`${DATA_CENTER_API}?area=overview`, { signal });
         if (!signal.aborted) setCapabilities(overview.capabilities as DataCenterRecord ?? null);
       }
@@ -225,6 +232,7 @@ export function DataCenterWorkspace({ section }: { section: DataCenterSection })
                   {section === "academy" ? <><button className={styles.button} disabled={busy} onClick={() => void openForm("release")}>اقتراح إصدار</button><button className={`${styles.button} ${styles.secondary}`} disabled={busy} onClick={() => void openForm("academySource")}>ربط مصدر الأكاديمية</button></> : null}
                   {section === "settings" ? <><button className={styles.button} disabled={busy} onClick={() => void openForm("type")}>تسجيل نوع</button><button className={`${styles.button} ${styles.secondary}`} disabled={busy} onClick={() => void openForm("category")}>تسجيل فئة</button><button className={`${styles.button} ${styles.secondary}`} disabled={busy} onClick={() => void openForm("department")}>تسجيل قسم</button></> : null}
                   {section === "usage" ? <button className={styles.button} disabled={busy} onClick={() => void openForm("usage")}>تسجيل مرجع استخدام</button> : null}
+                  {section === "evidence" ? <button className={styles.button} disabled={busy} onClick={() => void openForm("evidence")}>ربط دليل بإصدار</button> : null}
                 </div>
               </div>
             </Card>
@@ -247,6 +255,7 @@ export function DataCenterWorkspace({ section }: { section: DataCenterSection })
               {section === "assets" ? <p className={styles.muted}>الأصول تصنيف للمحتوى القابل لإعادة الاستخدام، وليست طبقة صلاحيات إضافية. استخدم نوعاً مسجلاً ضمن الفئة assets؛ تُدار الفئات والأقسام في الإعدادات.</p> : null}
               {section === "evidence" ? <p className={styles.muted}>عرض حالة الأدلة ومراجع المصدر للإصدارات. حالة VERIFIED لا تُمنح لمجرد اعتماد إداري.</p> : null}
               {section === "versions" ? <p className={styles.muted}>اختر سجلاً ثم افتح التفاصيل لعرض إصداراته ومراجعاته وبصمة محتواه. يُعرض حتى 100 إصدار لكل سجل وفق حد الخادم.</p> : null}
+              {section === "publishing" ? <p className={styles.muted}>مسودة الإصدار الجديد لا تستبدل الإصدار المنشور السابق. يبقى الإصدار المنشور متاحاً حتى نشر بديل أو أرشفة السجل؛ كل إصدار جديد يحتاج مراجعته الخاصة.</p> : null}
               <form className={styles.form} onSubmit={filter}>
                 <label>بحث بالعنوان<input name="query" type="search" maxLength={200} /></label>
                 <label>الحالة<select name="status"><option value="">كل الحالات</option>{["DRAFT", "IN_REVIEW", "APPROVED", "PUBLISHED", "REJECTED", "ARCHIVED"].map((status) => <option key={status}>{status}</option>)}</select></label>
@@ -277,7 +286,7 @@ export function DataCenterWorkspace({ section }: { section: DataCenterSection })
             {section === "imports" ? <ImportPanel capabilities={capabilities} busy={busy} setBusy={setBusy} onComplete={(message) => { setFeedback(message); setRefresh((value) => value + 1); }} onError={setError} /> : null}
             {section === "academy" ? <Card className={styles.panel}><h2>حوكمة محتوى الأكاديمية</h2><p className={styles.muted}>الاقتراح يربط إصداراً منشوراً بجهة تعليمية؛ لا ينسخ المحتوى تلقائياً إلى مكتبة الدورات ولا يحوّل المحتوى المولّد إلى مصدر موثوق.</p><button className={styles.button} disabled title="لا يوجد مولد محتوى أكاديمية في هذا الإصدار">توليد مادة تعليمية — غير متاح</button></Card> : null}
             {section === "settings" ? <Card className={styles.panel}><h2>السياسات والإمكانات</h2>{loading ? <p role="status">جارٍ تحميل السياسات…</p> : error ? <p className={styles.muted}>تعذر التحقق من إعدادات الخادم.</p> : <RecordDetails record={snapshot.data} />}<div className={styles.actions}><button className={styles.button} disabled title="إدارة النسخ الاحتياطية خارج مركز البيانات">استعادة قاعدة البيانات — غير متاحة هنا</button></div></Card> : null}
-            {section !== "overview" && section !== "settings" ? <Card className={styles.panel}>
+            {section !== "overview" && section !== "settings" && section !== "robot-knowledge" ? <Card className={styles.panel}>
               <div className={styles.toolbar}><h2>السجل</h2><span className={styles.muted}>{snapshot.total === null ? "العدد غير متاح" : `${snapshot.total} سجل`}</span></div>
               {loading ? <p className={styles.empty} role="status">جارٍ تحميل السجلات الفعلية…</p> : error && snapshot.total === null ? <p className={styles.empty}>البيانات غير متاحة؛ أعد المحاولة. لا يُفسر فشل التحميل على أنه سجل فارغ.</p> : !snapshot.rows.length ? <p className={styles.empty}>لا توجد سجلات تطابق هذا العرض. لم تُنشأ بيانات تجريبية.</p> : <div className={styles.records}>{snapshot.rows.map((record, index) => <article className={styles.record} key={String(record.id ?? index)}>
                 <div className={styles.toolbar}><div><h3>{displayDataCenterValue(record.title ?? record.name ?? record.action ?? record.filename ?? record.id)}</h3><small>{displayDataCenterValue(record.typeKey ?? record.kind ?? record.createdAt)}</small></div><div className={styles.actions}><span className={styles.badge}>{displayDataCenterValue(record.status ?? record.evidenceStatus ?? record.action)}</span><button className={`${styles.button} ${styles.secondary}`} disabled={busy} onClick={() => void inspect(record)}>التفاصيل</button></div></div>

@@ -2001,6 +2001,7 @@ model Evidence {
   missionRun     MissionRun?             @relation(fields: [missionRunId], references: [id], onDelete: SetNull)
   attempt        MissionAttempt?         @relation(fields: [attemptId], references: [id], onDelete: SetNull)
   knowledgeLinks KnowledgeEvidenceLink[]
+  dataCenterLinks DataCenterEvidenceLink[]
   createdAt      DateTime                @default(now())
   updatedAt      DateTime                @updatedAt
 
@@ -4327,6 +4328,7 @@ model DataCenterItem {
   status            DataCenterLifecycle @default(DRAFT)
   currentVersion    Int                 @default(1)
   publishedVersion  Int?
+  revision          Int                 @default(0)
   createdById       String
   createdAt         DateTime            @default(now())
   updatedAt         DateTime            @updatedAt
@@ -4365,6 +4367,7 @@ model DataCenterVersion {
   usage             DataCenterUsage[]
   imports           DataCenterImport[]
   academyReleases   DataCenterAcademyRelease[]
+  evidenceLinks     DataCenterEvidenceLink[]
 
   @@unique([itemId, number])
   @@index([createdAt])
@@ -4451,6 +4454,7 @@ model DataCenterImport {
 model DataCenterAcademyRelease {
   id                String             @id @default(cuid())
   versionId         String
+  parentRevision    Int                @default(0)
   version           DataCenterVersion  @relation(fields: [versionId], references: [id], onDelete: Restrict)
   targetKind        String
   targetId          String
@@ -4476,4 +4480,21 @@ model DataCenterDepartment {
   label             String
   createdAt         DateTime         @default(now())
   types             DataCenterType[]
+}
+
+model DataCenterEvidenceLink {
+  id                String              @id @default(cuid())
+  versionId         String
+  version           DataCenterVersion   @relation(fields: [versionId], references: [id], onDelete: Restrict)
+  evidenceId        String?
+  evidence          Evidence?           @relation(fields: [evidenceId], references: [id], onDelete: Restrict)
+  kind              String
+  reference         String
+  label             String
+  notes             String?
+  linkedById        String
+  createdAt         DateTime            @default(now())
+
+  @@unique([versionId, kind, reference])
+  @@index([evidenceId])
 }

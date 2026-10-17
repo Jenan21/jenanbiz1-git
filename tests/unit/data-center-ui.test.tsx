@@ -13,6 +13,7 @@ import { CommandForm, commandPayload, DATA_CENTER_COMMANDS } from "@/components/
 import { RecordDetails } from "@/components/admin/data-center/record-details";
 import { DataCenterWorkspace, sectionQuery } from "@/components/admin/data-center/workspace";
 import DataCenterSectionPage from "@/app/admin/data-center/[section]/page";
+import { commandSchema } from "@/services/data-center/contracts";
 
 afterEach(() => vi.unstubAllGlobals());
 
@@ -80,6 +81,7 @@ describe("Data Center provenance and forms", () => {
     for (const [key, value] of Object.entries({ name: "Source", kind: "MANUAL", scope: "PRIVATE", owner: "Owner", license: "Internal", freshnessDays: "90", allowExport: "false", allowRetrieval: "true" })) form.set(key, value);
     const payload = commandPayload(form, DATA_CENTER_COMMANDS.source);
     expect(payload).toMatchObject({ action: "create-source", freshnessDays: 90, allowExport: false, allowRetrieval: true });
+    expect(commandSchema.safeParse(payload).success).toBe(true);
     expect(payload).not.toHaveProperty("organizationId");
   });
   it("retains classification and separates dates, tags, provenance from raw text", () => {
@@ -90,6 +92,7 @@ describe("Data Center provenance and forms", () => {
     expect(payload).not.toHaveProperty("origin");
     expect(payload).not.toHaveProperty("category");
     expect(payload).not.toHaveProperty("department");
+    expect(commandSchema.safeParse(payload).success).toBe(true);
     expect(payload.sourcePublishedAt).toMatch(/^2026-10-01T/);
     expect(Array.isArray(payload.provenance)).toBe(true);
     expect(payload).not.toHaveProperty("expiresAt");
@@ -118,13 +121,15 @@ describe("Data Center provenance and forms", () => {
   it("classifies types through registered category and department keys", () => {
     const form = new FormData();
     for (const [key, value] of Object.entries({ key: "template", label: "Template", layer: "KNOWLEDGE", categoryKey: "assets", departmentKey: "operations", requiresIndependentReview: "true" })) form.set(key, value);
-    expect(commandPayload(form, DATA_CENTER_COMMANDS.type)).toMatchObject({ action: "register-type", categoryKey: "assets", departmentKey: "operations", requiresIndependentReview: true });
+    const payload = commandPayload(form, DATA_CENTER_COMMANDS.type);
+    expect(payload).toMatchObject({ action: "register-type", categoryKey: "assets", departmentKey: "operations", requiresIndependentReview: true });
+    expect(commandSchema.safeParse(payload).success).toBe(true);
   });
-  it("scopes data and knowledge tabs and makes retrieval published-only", () => {
+  it("scopes data and knowledge tabs and keeps robot retrieval separate from draft lists", () => {
     expect(sectionQuery("data", 1).get("layer")).toBe("DATA");
     expect(sectionQuery("knowledge", 2).get("layer")).toBe("KNOWLEDGE");
     expect(sectionQuery("assets", 1).get("categoryKey")).toBe("assets");
-    expect(sectionQuery("robot-knowledge", 1, "", "DRAFT").get("status")).toBe("PUBLISHED");
+    expect(sectionQuery("robot-knowledge", 1).get("area")).toBe("overview");
     expect(sectionQuery("usage", 3).get("page")).toBe("3");
   });
 });

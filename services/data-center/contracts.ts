@@ -30,6 +30,7 @@ export const commandSchema = z.discriminatedUnion("action", [
   z.object({ action: z.literal("register-type"), key: z.string().regex(/^[a-z][a-z0-9._-]{1,79}$/), label: text(240), layer: z.enum(layers), requiresIndependentReview: z.boolean().default(false), categoryKey: text(80).optional(), departmentKey: text(80).optional() }).strict(),
   z.object({ action: z.literal("register-category"), key: z.string().regex(/^[a-z][a-z0-9._-]{1,79}$/), label: text(240) }).strict(),
   z.object({ action: z.literal("register-department"), key: z.string().regex(/^[a-z][a-z0-9._-]{1,79}$/), label: text(240) }).strict(),
+  z.object({ action: z.literal("link-evidence"), versionId: id, evidenceId: id.optional(), kind: z.enum(["SOURCE", "DOCUMENT", "CALCULATION", "HUMAN_REVIEW", "EXISTING_EVIDENCE"]), reference: text(2000), label: text(240), notes: text(4000).optional() }).strict(),
   z.object({ action: z.literal("transition-item"), itemId: id, status: z.enum(lifecycleStates), reason: text(2000) }).strict(),
   z.object({ action: z.literal("review-item"), itemId: id, decision: z.enum(["APPROVED", "REJECTED"]), notes: text(4000) }).strict(),
   z.object({ action: z.literal("create-conflict"), itemId: id, otherItemId: id, reason: text(4000) }).strict(),

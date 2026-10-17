@@ -42,6 +42,7 @@ export async function createDataCenterItemInTransaction(tx: DbExecutor, input: C
   assertEvidence(data, actor);
   const item = await tx.dataCenterItem.create({ data: { sourceId: source.id, typeKey: type.key, layer: type.layer, title: data.title, createdById: actor.id } });
   const version = await tx.dataCenterVersion.create({ data: versionData(data, item.id, 1, actor, source.freshnessDays, source.kind) });
+  if (data.provenance.length) await tx.dataCenterEvidenceLink.createMany({ data: data.provenance.map((p) => ({ versionId: version.id, kind: p.kind, reference: p.reference, label: p.label, linkedById: actor.id })), skipDuplicates: true });
   await tx.dataCenterEvent.create({ data: { itemId: item.id, version: 1, toStatus: "DRAFT", actorId: actor.id, reason: "Initial proposal; review required" } });
   await auditDataCenter(tx, actor, "item.created", item.id, { versionId: version.id, evidenceStatus: version.evidenceStatus });
   return { ...item, version };
@@ -74,10 +75,11 @@ export async function createDataCenterVersion(input: zVersionInput, actor: DataC
     if (data.origin === "AI" && item.layer === "KNOWLEDGE") throw new DataCenterError("GENERATED_MATERIAL_IS_NOT_SOURCE_KNOWLEDGE");
     assertEvidence(data, actor);
     const version = await tx.dataCenterVersion.create({ data: versionData(data, item.id, item.currentVersion + 1, actor, item.source.freshnessDays, item.source.kind) });
-    await tx.dataCenterItem.update({ where: { id: item.id }, data: { currentVersion: version.number, title: data.title, status: "DRAFT" } });
+    if (data.provenance.length) await tx.dataCenterEvidenceLink.createMany({ data: data.provenance.map((p) => ({ versionId: version.id, kind: p.kind, reference: p.reference, label: p.label, linkedById: actor.id })), skipDuplicates: true });
+    const updatedItem = await tx.dataCenterItem.update({ where: { id: item.id }, data: { currentVersion: version.number, title: data.title, status: "DRAFT", revision: { increment: 1 } } });
     await tx.dataCenterEvent.create({ data: { itemId: item.id, version: version.number, fromStatus: item.status, toStatus: "DRAFT", actorId: actor.id, reason: data.reason } });
     await auditDataCenter(tx, actor, "version.created", item.id, { versionId: version.id, reason: data.reason });
-    return version;
+    return { ...version, item: updatedItem };
   });
 }
 type zVersionInput = Parameters<typeof versionSchema.parse>[0];
@@ -101,7 +103,7 @@ export async function transitionDataCenterItem(input: { itemId: string; status: 
       if (version.expiresAt && version.expiresAt <= new Date()) throw new DataCenterError("EXPIRED_VERSION", 409);
       if (version.effectiveTo && version.effectiveTo <= new Date()) throw new DataCenterError("EXPIRED_EFFECTIVE_PERIOD", 409);
     }
-    const result = await tx.dataCenterItem.update({ where: { id: item.id }, data: { status: input.status,
+    const result = await tx.dataCenterItem.update({ where: { id: item.id }, data: { status: input.status, revision: { increment: 1 },
       ...(input.status === "PUBLISHED" ? { publishedVersion: item.currentVersion } : input.status === "ARCHIVED" ? { publishedVersion: null } : {}) } });
     await tx.dataCenterEvent.create({ data: { itemId: item.id, version: version.number, fromStatus: item.status, toStatus: input.status, actorId: actor.id, reason: input.reason } });
     await auditDataCenter(tx, actor, "item.transitioned", item.id, { from: item.status, to: input.status, versionId: version.id, reason: input.reason });
@@ -129,6 +131,7 @@ export async function createDataCenterConflict(input: { itemId: string; otherIte
     const first = await getAccessibleItem(tx, actor, input.itemId);
     const second = await getAccessibleItem(tx, actor, input.otherItemId);
     const conflict = await tx.dataCenterConflict.create({ data: { ...input, itemVersion: first.currentVersion, otherVersion: second.currentVersion } });
+    await tx.dataCenterItem.updateMany({ where: { id: { in: [first.id, second.id] } }, data: { revision: { increment: 1 } } });
     await auditDataCenter(tx, actor, "conflict.created", conflict.id, input);
     return conflict;
   });
@@ -153,6 +156,7 @@ export async function resolveDataCenterConflict(input: { conflictId: string; res
       }
     }
     const result = await tx.dataCenterConflict.update({ where: { id: conflict.id }, data: { resolution: input.resolution, notes: input.notes, resolvedById: actor.id, resolvedAt: new Date() } });
+    await tx.dataCenterItem.updateMany({ where: { id: { in: [conflict.itemId, conflict.otherItemId] } }, data: { revision: { increment: 1 } } });
     await auditDataCenter(tx, actor, "conflict.resolved", result.id, { resolution: input.resolution, notes: input.notes });
     return result;
   });
@@ -167,10 +171,25 @@ export async function registerDataCenterType(input: { key: string; label: string
     return result;
   });
 }
+export async function linkDataCenterEvidence(input: { versionId: string; evidenceId?: string; kind: string; reference: string; label: string; notes?: string }, actor: DataCenterActor) {
+  requireDataCenterAdmin(actor);
+  return db.$transaction(async (tx) => {
+    const version = await tx.dataCenterVersion.findUnique({ where: { id: input.versionId } });
+    if (!version) throw new DataCenterError("VERSION_NOT_FOUND", 404);
+    await lockDataCenterItem(tx, version.itemId);
+    await getAccessibleItem(tx, actor, version.itemId, true);
+    if ((input.kind === "EXISTING_EVIDENCE") !== !!input.evidenceId) throw new DataCenterError("EVIDENCE_REFERENCE_MISMATCH");
+    if (input.evidenceId && !await tx.evidence.findUnique({ where: { id: input.evidenceId }, select: { id: true } })) throw new DataCenterError("EVIDENCE_NOT_FOUND", 404);
+    const link = await tx.dataCenterEvidenceLink.create({ data: { ...input, linkedById: actor.id } });
+    await tx.dataCenterItem.update({ where: { id: version.itemId }, data: { revision: { increment: 1 } } });
+    await auditDataCenter(tx, actor, "evidence.linked", link.id, { versionId: version.id, evidenceId: input.evidenceId ?? null, kind: input.kind });
+    return link;
+  });
+}
 export async function getDataCenterItem(itemId: string, actor: DataCenterActor) {
   requireDataCenterAdmin(actor);
   const item = await getAccessibleItem(db, actor, itemId);
-  const versions = await db.dataCenterVersion.findMany({ where: { itemId }, orderBy: { number: "desc" }, take: 100, include: { reviews: true } });
+  const versions = await db.dataCenterVersion.findMany({ where: { itemId }, orderBy: { number: "desc" }, take: 100, include: { reviews: true, evidenceLinks: true } });
   return { ...item, versions, events: await db.dataCenterEvent.findMany({ where: { itemId }, take: 100, orderBy: { createdAt: "desc" } }) };
 }
 export async function getDataCenterOverview(actor: DataCenterActor) {
@@ -206,6 +225,8 @@ export async function listDataCenterArea(area: string, actor: DataCenterActor, o
       [rows, total] = await Promise.all([db.dataCenterSource.findMany({ ...pagination, orderBy: { createdAt: "desc" } }), db.dataCenterSource.count()]); break;
     case "types":
       [rows, total] = await Promise.all([db.dataCenterType.findMany({ ...pagination, orderBy: { key: "asc" } }), db.dataCenterType.count()]); break;
+    case "evidence":
+      [rows, total] = await Promise.all([db.dataCenterEvidenceLink.findMany({ ...pagination, orderBy: { createdAt: "desc" } }), db.dataCenterEvidenceLink.count()]); break;
     case "categories":
       [rows, total] = await Promise.all([db.dataCenterCategory.findMany({ ...pagination, orderBy: { key: "asc" } }), db.dataCenterCategory.count()]); break;
     case "departments":
@@ -229,6 +250,7 @@ export async function dispatchDataCenterCommand(command: DataCenterCommand, acto
     case "create-item": return createDataCenterItem(input as Extract<DataCenterCommand, { action: "create-item" }>, actor);
     case "create-version": return createDataCenterVersion(input, actor);
     case "register-type": return registerDataCenterType(input as Extract<DataCenterCommand, { action: "register-type" }>, actor);
+    case "link-evidence": return linkDataCenterEvidence(input as Extract<DataCenterCommand, { action: "link-evidence" }>, actor);
     case "register-category": case "register-department":
       requireDataCenterAdmin(actor);
       return db.$transaction(async (tx) => {

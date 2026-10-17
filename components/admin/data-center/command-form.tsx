@@ -91,6 +91,12 @@ export const DATA_CENTER_COMMANDS: Record<string, CommandDefinition> = {
   department: { action: "register-department", title: "تسجيل قسم", fields: [
     input("key", "مفتاح القسم (حروف لاتينية صغيرة)"), input("label", "اسم القسم"),
   ] },
+  evidence: { action: "link-evidence", title: "ربط دليل بإصدار", fields: [
+    input("versionId", "معرّف الإصدار"), input("label", "وصف الدليل"),
+    input("kind", "نوع الدليل", { options: ["SOURCE", "DOCUMENT", "CALCULATION", "HUMAN_REVIEW", "EXISTING_EVIDENCE"] }),
+    input("reference", "المرجع أو رابط المصدر"), input("evidenceId", "معرّف دليل موجود (لنمط EXISTING_EVIDENCE)", { optional: true }),
+    input("notes", "ملاحظات الربط", { kind: "textarea", optional: true }),
+  ] },
 };
 
 export function commandPayload(form: FormData, definition: CommandDefinition, fixed: DataCenterRecord = {}) {
@@ -131,12 +137,12 @@ export function CommandForm({ definition, fixed, busy, onSubmit, sources = [], t
         return <label className={field.kind === "textarea" ? styles.wide : undefined} key={field.name}>
           {field.label}{field.optional ? " (اختياري)" : ""}
           {field.options ? <select name={field.name} required={!field.optional} defaultValue={field.defaultValue}>{field.options.map((value) => <option key={value} value={value}>{value === "true" ? "نعم" : value === "false" ? "لا" : value}</option>)}</select>
-            : choices.length ? <select name={field.name} required defaultValue="" onChange={(event) => {
+            : choices.length ? <><input name={field.name} required list={`dc-${field.name}-options`} placeholder="اختر اقتراحاً أو أدخل المعرّف المسجل" maxLength={128} onChange={(event) => {
               if (field.name !== "typeKey") return;
               const selectedType = types.find((record) => String(record.key) === event.target.value);
               const layer = event.currentTarget.form?.elements.namedItem("layer");
               if (layer instanceof HTMLSelectElement && selectedType?.layer) layer.value = String(selectedType.layer);
-            }}><option value="" disabled>اختر من السجلات المتاحة</option>{choices.map((record) => <option key={String(record.id ?? record.key)} value={String(record.id ?? record.key)}>{String(record.name ?? record.label ?? record.id ?? record.key)}</option>)}</select>
+            }} /><datalist id={`dc-${field.name}-options`}>{choices.map((record) => <option key={String(record.id ?? record.key)} value={String(record.id ?? record.key)}>{String(record.name ?? record.label ?? record.id ?? record.key)}</option>)}</datalist></>
             : field.kind === "textarea" ? <textarea name={field.name} required={!field.optional} rows={4} maxLength={field.name === "content" ? 200000 : 10000} placeholder={field.placeholder} defaultValue={field.defaultValue} />
             : <input name={field.name} required={!field.optional} type={field.kind ?? "text"} defaultValue={field.defaultValue} placeholder={field.placeholder} maxLength={2000} min={field.kind === "number" ? 1 : undefined} max={field.name === "freshnessDays" ? 3650 : undefined} />}
         </label>;

@@ -94,8 +94,8 @@ describe.runIf(enabled)("authenticated Data Center UI browser acceptance", () =>
     await goto("data");
     await page.getByRole("button", { name: "إنشاء سجل", exact: true }).click();
     const form = page.getByRole("form", { name: "إنشاء سجل" });
-    await browserExpect(form.locator('[name="sourceId"] option').filter({ hasText: sourceName })).toHaveCount(1);
-    await submitForm("إنشاء سجل", { title: itemTitle, content: `Searchable evidence ${suffix}` }, { sourceId: source.rows[0].id, typeKey, layer: "DATA" });
+    await browserExpect(form.locator('#dc-sourceId-options option').filter({ hasText: sourceName })).toHaveCount(1);
+    await submitForm("إنشاء سجل", { title: itemTitle, content: `Searchable evidence ${suffix}`, sourceId: source.rows[0].id, typeKey }, { layer: "DATA" });
     await inspect();
     await page.getByRole("button", { name: "تغيير الحالة / النشر", exact: true }).click();
     await submitForm("تغيير حالة السجل", { reason: "Request human review of test evidence" }, { status: "IN_REVIEW" });
@@ -119,6 +119,37 @@ describe.runIf(enabled)("authenticated Data Center UI browser acceptance", () =>
     let content = "";
     for await (const chunk of stream) content += chunk.toString();
     expect(content).toContain(itemTitle);
+  }, 180000);
+
+  it("creates an immutable revision, records exact-version use and resolves a documented conflict", async () => {
+    const first = await db.query('SELECT id,"publishedVersion" FROM "DataCenterItem" WHERE title=$1 AND "createdById"=$2', [itemTitle, userId]);
+    expect(first.rowCount).toBe(1);
+    const original = await db.query('SELECT id FROM "DataCenterVersion" WHERE "itemId"=$1 AND number=$2', [first.rows[0].id, first.rows[0].publishedVersion]);
+    await goto("versions");
+    await inspect();
+    await page.getByRole("button", { name: "إصدار جديد", exact: true }).click();
+    const versionForm = page.getByRole("form", { name: "إنشاء إصدار جديد" });
+    await browserExpect(versionForm.locator('[name="content"]')).toHaveValue(`Searchable evidence ${suffix}`);
+    await submitForm("إنشاء إصدار جديد", { content: `Updated draft ${suffix}`, reason: "Human revision of the local acceptance fixture" });
+    const versionState = await db.query('SELECT "currentVersion","publishedVersion",status FROM "DataCenterItem" WHERE id=$1', [first.rows[0].id]);
+    expect(versionState.rows[0]).toMatchObject({ currentVersion: 2, publishedVersion: 1, status: "DRAFT" });
+    await goto("usage");
+    await page.getByRole("button", { name: "تسجيل مرجع استخدام", exact: true }).click();
+    await submitForm("تسجيل مرجع استخدام", { versionId: original.rows[0].id, consumer: "UI acceptance", purpose: "Verify the exact published version reference" });
+    const source = await db.query('SELECT id FROM "DataCenterSource" WHERE name=$1 AND "ownerId"=$2', [sourceName, userId]);
+    await goto("data");
+    await page.getByRole("button", { name: "إنشاء سجل", exact: true }).click();
+    await submitForm("إنشاء سجل", { title: `${itemTitle} counterpoint`, content: "Alternative unverified claim for conflict review", sourceId: source.rows[0].id, typeKey }, { layer: "DATA" });
+    const second = await db.query('SELECT id FROM "DataCenterItem" WHERE title=$1 AND "createdById"=$2', [`${itemTitle} counterpoint`, userId]);
+    await goto("conflicts");
+    await page.getByRole("button", { name: "تسجيل تعارض", exact: true }).click();
+    await submitForm("تسجيل تعارض", { itemId: first.rows[0].id, otherItemId: second.rows[0].id, reason: "Local fixture contradictory claims require review" });
+    const conflict = await db.query('SELECT id FROM "DataCenterConflict" WHERE "itemId"=$1 AND "otherItemId"=$2', [first.rows[0].id, second.rows[0].id]);
+    await page.locator("article").filter({ hasText: conflict.rows[0].id }).getByRole("button", { name: "التفاصيل", exact: true }).click();
+    await page.getByRole("button", { name: "حسم التعارض", exact: true }).click();
+    await submitForm("حسم التعارض", { notes: "Both fixture claims retained with documented uncertainty" }, { resolution: "KEEP_BOTH" });
+    const resolved = await db.query('SELECT "resolvedAt" FROM "DataCenterConflict" WHERE id=$1', [conflict.rows[0].id]);
+    expect(resolved.rows[0].resolvedAt).not.toBeNull();
   }, 180000);
 
   it("loads all fifteen pages and checks every required viewport after API loading", async () => {
