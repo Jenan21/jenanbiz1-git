@@ -18,12 +18,15 @@ export type AdminMapLayer = {
   confidence: number | null;
   updatedAt: string | null;
   revision: number;
+  styleLayerIds: string[];
+  searchCategories: string[];
+  sourceDate: string | null;
+  license: string | null;
 };
 
 export function canChangeLayer(layer: AdminMapLayer, activeReleaseId: string | null) {
-  if (layer.status !== "ready") return false;
   if (layer.enabled) return true;
-  return Boolean(layer.source && layer.version && layer.visibility === "public" && activeReleaseId && layer.releaseId === activeReleaseId);
+  return Boolean(layer.status === "ready" && layer.styleLayerIds?.length && layer.source && layer.version && layer.visibility === "public" && activeReleaseId && layer.releaseId === activeReleaseId);
 }
 
 export function MapLayerCatalog({ activeReleaseId }: { activeReleaseId: string | null }) {
@@ -34,6 +37,7 @@ export function MapLayerCatalog({ activeReleaseId }: { activeReleaseId: string |
   const [pending, setPending] = useState<AdminMapLayer | null>(null);
 
   async function load() {
+    setPending(null);
     setLoading(true);
     try {
       const response = await fetch("/api/admin/jenan-map/layers", { cache: "no-store", credentials: "same-origin" });
@@ -51,7 +55,7 @@ export function MapLayerCatalog({ activeReleaseId }: { activeReleaseId: string |
   useEffect(() => {
     const timer = window.setTimeout(loadOnMount, 0);
     return () => window.clearTimeout(timer);
-  }, []);
+  }, [activeReleaseId]);
 
   async function changeLayer() {
     if (!pending || busy || loading || !canChangeLayer(pending, activeReleaseId)) return;
@@ -62,11 +66,11 @@ export function MapLayerCatalog({ activeReleaseId }: { activeReleaseId: string |
         method: "POST",
         credentials: "same-origin",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify({ id: pending.id, enabled: !pending.enabled, expectedRevision: pending.revision, confirmation: "CHANGE LAYER" }),
+        body: JSON.stringify({ id: pending.id, enabled: !pending.enabled, expectedRevision: pending.revision, expectedReleaseId: pending.releaseId, confirmation: "CHANGE LAYER" }),
       });
       const payload = await response.json().catch(() => null);
       if (!response.ok || !payload || payload.error) throw new Error(mapErrorMessage(payload?.error, response.status));
-      setMessage("حُفظت سياسة الطبقة على الخادم. لا يعني ذلك قبول البيانات أو إثبات ظهورها في المحرك.");
+      setMessage("حُفظت سياسة طبقة هذا الإصدار على الخادم. تعتمد الخريطة والبحث السياسة نفسها؛ أعد فتح الخريطة لقراءة الحالة الجديدة.");
     } catch (error) {
       setMessage(error instanceof Error ? error.message : mapErrorMessage());
     } finally {
@@ -77,13 +81,14 @@ export function MapLayerCatalog({ activeReleaseId }: { activeReleaseId: string |
   }
 
   return <MapPanel title="كتالوج الطبقات وسياسة الإتاحة">
-    <p>المصدر والإصدار والثقة قيم موثقة من المستورد الموثوق فقط، ولا يمكن تعديلها من المتصفح. التفعيل محجوب للبيانات غير الجاهزة أو الداخلية أو غير المرتبطة بإصدار الإنتاج الحالي.</p>
+    <p>ربط الطبقات ومعرّفات النمط وتصنيفات البحث يأتي من بيان الاستيراد الموثّق لكل إصدار. التفعيل محجوب للبيانات غير الجاهزة أو الداخلية أو غير المرتبطة بإصدار الإنتاج الحالي؛ يمكن دائماً تعطيل طبقة مفعّلة.</p>
     <Button type="button" variant="secondary" disabled={loading || busy} onClick={() => { setMessage(""); void load(); }}>{loading ? "جارٍ قراءة الكتالوج…" : "تحديث كتالوج الطبقات"}</Button>
     {message ? <p role="status">{message}</p> : null}
-    {layers?.length ? <MapTable headers={["الطبقة", "الحالة", "المصدر", "الإصدار", "تاريخ المصدر", "الترخيص", "الثقة", "الرؤية", "آخر تحديث السجل", "الإتاحة"]}>
+    {layers?.length ? <MapTable headers={["الطبقة", "الحالة", "المصدر", "الإصدار", "تاريخ المصدر", "الترخيص", "معرّفات النمط", "تصنيفات البحث", "الثقة", "الرؤية", "آخر تحديث السجل", "الإتاحة"]}>
       {layers.map((layer) => <tr key={layer.id}>
         <td>{layer.label}</td><td>{layer.status === "ready" ? "جاهز بحسب السجل" : layer.status === "warning" ? "يتطلب مراجعة" : "بيانات غير متاحة"}</td>
-        <td>{layer.source ?? "غير متاح"}</td><td>{layer.version ?? "غير متاح"}</td><td>غير موثق</td><td>غير موثق في الكتالوج</td>
+        <td>{layer.source ?? "غير متاح"}</td><td>{layer.version ?? "غير متاح"}</td><td>{displayDate(layer.sourceDate)}</td><td>{layer.license ?? "غير موثق"}</td>
+        <td><bdi>{layer.styleLayerIds?.join("، ") || "غير مرتبط"}</bdi></td><td><bdi>{layer.searchCategories?.join("، ") || "لا توجد تصنيفات بحث مرتبطة"}</bdi></td>
         <td>{layer.confidence === null ? "غير معروفة" : `${Math.round(layer.confidence * 100)}%`}</td><td>{layer.visibility === "public" ? "عامة بشرط النشر" : "داخلية"}</td><td>{displayDate(layer.updatedAt)}</td>
         <td><span>{layer.enabled ? "مفعّلة في السياسة" : "معطّلة"}</span><Button type="button" variant="secondary" disabled={loading || busy || !canChangeLayer(layer, activeReleaseId)} onClick={() => setPending(layer)}>{layer.enabled ? "تعطيل" : "تفعيل"}</Button></td>
       </tr>)}

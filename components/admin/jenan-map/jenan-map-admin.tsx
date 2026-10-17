@@ -6,8 +6,9 @@ import { Button } from "@/components/ui/button";
 import { mapAdminSections, type MapAdminSection } from "./sections";
 import { MapActionConfirmation, type MapConfirmation } from "./confirmation";
 import { displayDate, MapEmpty, MapPanel, MapTable } from "./display";
-import { canMapAction, isAuthorizedMapUrl, mapErrorMessage, readMapSnapshot, type AdminMapRelease, type AdminMapSnapshot } from "./snapshot";
+import { canDownloadMapArtifact, canMapAction, mapArtifactDownloadUrl, mapErrorMessage, readMapSnapshot, type AdminMapRelease, type AdminMapSnapshot } from "./snapshot";
 import { MapLayerCatalog } from "./layer-catalog";
+import { MapArtifactImport } from "./artifact-import";
 
 const releaseLabels: Record<string, string> = { Draft: "مسودة", Processing: "قيد المعالجة", Importing: "قيد الاستيراد", Ready: "جاهز للمراجعة", Approved: "معتمد", Published: "منشور", Archived: "مؤرشف", Failed: "فشل" };
 const runtimeLabels: Record<string, string> = { enabled: "مفعّل", maintenance: "صيانة", disabled: "معطّل" };
@@ -125,7 +126,7 @@ export function JenanMapAdmin({ section }: { section: MapAdminSection }) {
   }
 
   const versionsPanel = <MapPanel title="دورة حياة الإصدارات">
-    <p>مسودة ← استيراد فعلي خارج هذه الواجهة ← جاهز للمراجعة ← اعتماد بشري ← معاينة ← نشر. النشر والاسترجاع يستخدمان مراجعة الحالة ومؤشر الإنتاج المتوقع؛ لا تُغيّر المسودة الإنتاج.</p>
+    <p>مسودة ← استيراد ملفات مملوكة ← جاهز للمراجعة ← معاينة إدارية ← اعتماد بشري ← نشر. النشر والاسترجاع يستخدمان مراجعة الحالة ومؤشر الإنتاج المتوقع؛ لا تُغيّر المسودة الإنتاج.</p>
     {releases.length ? releases.map((release) => <article className="jenan-map-admin__panel" key={release.id}>
       <h3><bdi>{release.version}</bdi> <span className="jenan-map-admin__badge">{releaseLabels[release.status] ?? "حالة غير معروفة"}</span></h3>
       <dl><dt>معرّف الإصدار</dt><dd><code>{release.id}</code></dd><dt>المصدر</dt><dd>{release.source || "غير متاح"}</dd><dt>تاريخ المصدر</dt><dd>{displayDate(release.sourceDate)}</dd><dt>الترخيص</dt><dd>{release.license || "غير متاح"}</dd><dt>تاريخ المراجعة</dt><dd>{displayDate(release.reviewedAt)}</dd><dt>ملاحظات المراجعة</dt><dd>{release.reviewNotes || "لا توجد مراجعة مسجلة"}</dd><dt>أول نشر</dt><dd>{displayDate(release.publishedAt)}</dd></dl>
@@ -139,7 +140,7 @@ export function JenanMapAdmin({ section }: { section: MapAdminSection }) {
     <nav className="jenan-map-admin__nav" aria-label="أقسام إدارة خريطة جنان برو">{mapAdminSections.map(([key, label]) => <Link key={key} href={key === "overview" ? "/admin/jenan-map" : `/admin/jenan-map/${key}`} aria-current={key === section ? "page" : undefined}>{label}</Link>)}</nav>
     {message ? <div className="jenan-map-admin__notice" role="status">{message}</div> : null}
     {!snapshot && !loading ? <div className="jenan-map-admin__notice">المصدر غير متاح. الإصدارات والعدادات والحالة الصحية غير معروفة، وجميع إجراءات التغيير معطلة.</div> : null}
-    <div className="jenan-map-admin__notice">لا توجد مجموعة بيانات سعودية فعلية مرفقة بهذا التسليم؛ لا تُعد البنية أو بيانات الإصدارات الوصفية دليلاً على استيراد البيانات أو القبول التشغيلي.</div>
+    <div className="jenan-map-admin__notice">{releases.some((release) => ["Ready", "Approved", "Published", "Archived"].includes(release.status)) ? "الإصدارات المسجلة لا تثبت القبول التشغيلي: راجع المعاينة والحدود والتراخيص وسلامة الملفات قبل النشر." : "لا توجد مجموعة بيانات سعودية فعلية مرفقة بهذا التسليم؛ لا تُعد البنية أو بيانات الإصدارات الوصفية دليلاً على استيراد البيانات أو القبول التشغيلي."}</div>
 
     {section === "overview" ? <>
       <section className="jenan-map-admin__grid" aria-label="حالة الخريطة">
@@ -155,7 +156,7 @@ export function JenanMapAdmin({ section }: { section: MapAdminSection }) {
 
     {section === "versions" ? versionsPanel : null}
     {section === "updates" ? <>
-      <MapPanel title="سجل التحديثات"><p>كل إصدار مستقل عن الإنتاج حتى اكتمال مراجعة ونشر صريحين. لا يوجد رفع ملفات أو استيراد إلى رابط عام من هذه اللوحة.</p>{releases.length ? <MapTable headers={["الإصدار", "الحالة", "إنشاء", "المصدر", "تاريخ المصدر"]}>{releases.map((release) => <tr key={release.id}><td>{release.version}</td><td>{releaseLabels[release.status] ?? "غير معروفة"}</td><td>{displayDate(release.createdAt)}</td><td>{release.source}</td><td>{displayDate(release.sourceDate)}</td></tr>)}</MapTable> : <MapEmpty />}</MapPanel>
+      <MapPanel title="سجل التحديثات"><p>كل إصدار مستقل عن الإنتاج حتى اكتمال مراجعة ونشر صريحين. الملفات تُستورد إلى تخزين خاص ولا تُرفع إلى رابط عام.</p>{releases.length ? <MapTable headers={["الإصدار", "الحالة", "إنشاء", "المصدر", "تاريخ المصدر"]}>{releases.map((release) => <tr key={release.id}><td>{release.version}</td><td>{releaseLabels[release.status] ?? "غير معروفة"}</td><td>{displayDate(release.createdAt)}</td><td>{release.source}</td><td>{displayDate(release.sourceDate)}</td></tr>)}</MapTable> : <MapEmpty />}</MapPanel>
       <MapPanel title="إنشاء بيانات وصفية لمسودة"><p>هذا النموذج يسجل المصدر والتاريخ والترخيص فقط، ولا يرفع بيانات أو ينشئ مجموعة بيانات ولا يثبت جاهزيتها.</p><form onSubmit={createRelease}>
         <label>الإصدار<input name="version" required maxLength={80} pattern="[a-zA-Z0-9][a-zA-Z0-9._-]{0,79}" dir="ltr" disabled={!actionEnabled("create")} /></label>
         <label>المصدر<input name="source" required minLength={3} maxLength={1000} disabled={!actionEnabled("create")} /></label>
@@ -163,6 +164,7 @@ export function JenanMapAdmin({ section }: { section: MapAdminSection }) {
         <label>الترخيص وشروط الاستخدام<textarea name="license" required minLength={3} maxLength={2000} disabled={!actionEnabled("create")} /></label>
         <Button type="submit" disabled={!actionEnabled("create")}>حفظ مسودة وصفية</Button>
       </form>{!canMapAction(snapshot, "create") ? <p>إنشاء المسودة غير متاح من الخادم؛ النموذج معطّل.</p> : null}</MapPanel>
+      <MapArtifactImport snapshot={snapshot} disabled={loading || busy} onSettled={load} onBusyChange={setBusy} />
     </> : null}
 
     {section === "sources" ? <MapPanel title="المصادر وتواريخها وتراخيصها">{releases.length ? <MapTable headers={["الإصدار", "المصدر", "تاريخ المصدر", "الترخيص", "المراجعة"]}>{releases.map((release) => <tr key={release.id}><td>{release.version}</td><td>{release.source || "غير متاح"}</td><td>{displayDate(release.sourceDate)}</td><td>{release.license || "غير متاح"}</td><td>{release.reviewedAt ? displayDate(release.reviewedAt) : "لم يُراجع"}</td></tr>)}</MapTable> : <MapEmpty />}</MapPanel> : null}
@@ -170,8 +172,8 @@ export function JenanMapAdmin({ section }: { section: MapAdminSection }) {
     {section === "layers" ? <><MapLayerCatalog activeReleaseId={snapshot?.runtime.publishedReleaseId ?? null} /><MapPanel title="طبقات البيانات المسجلة"><p>تُعرض الملفات المسجلة فقط؛ لا تعني تهيئة الطبقة اكتمال تغطيتها أو قبول دقتها.</p>{artifacts.filter((artifact) => artifact.kind === "geojson").length ? <MapTable headers={["الطبقة", "الإصدار", "المصدر", "تاريخ المصدر", "الترخيص", "إتاحة الجمهور"]}>{artifacts.filter((artifact) => artifact.kind === "geojson").map((artifact) => { const release = releases.find((item) => item.id === artifact.releaseId); return <tr key={artifact.id}><td>{artifact.filename}</td><td>{release?.version ?? "غير معروف"}</td><td>{release?.source ?? "غير متاح"}</td><td>{displayDate(release?.sourceDate)}</td><td>{release?.license ?? "غير متاح"}</td><td>{artifact.publicSafe === true ? "ملف مصنف آمناً؛ النشر مستقل" : artifact.publicSafe === false ? "إداري فقط" : "غير معروفة"}</td></tr>; })}</MapTable> : <MapEmpty>{snapshot?.artifacts ? "لا توجد طبقات بيانات مسجلة. البيانات غائبة." : "لم تتوفر قائمة طبقات موثقة من الخادم؛ الحالة غير معروفة."}</MapEmpty>}</MapPanel></> : null}
 
     {section === "storage" ? <MapPanel title="التخزين والتصدير الإداري"><p>حالة التخزين: {snapshot?.storage?.status === "available" ? "مهيأ — سلامة كل ملف تتحقق عند القراءة" : "غير متاحة أو غير معروفة"}. التصدير قائمة manifest وملفات منفصلة عبر نقاط وصول إدارية محمية؛ لا توجد حزمة وهمية أو رفع إلى روابط عامة.</p>
-      {releases.map((release) => <div className="jenan-map-admin__actions" key={release.id}><span>{release.version}</span>{actionEnabled("export") ? <a href={`/api/admin/jenan-map/export?releaseId=${encodeURIComponent(release.id)}`} download>تنزيل manifest الإصدار</a> : <Button disabled variant="ghost">تصدير غير متاح</Button>}</div>)}
-      {artifacts.length ? <MapTable headers={["الملف", "النوع", "الحجم بالبايت", "SHA-256", "تنزيل"]}>{artifacts.map((artifact) => <tr key={artifact.id}><td>{artifact.filename}</td><td>{artifact.kind}</td><td>{artifact.byteSize}</td><td><code>{artifact.sha256}</code></td><td>{isAuthorizedMapUrl(artifact.url) ? <a href={artifact.url} download>تنزيل إداري</a> : "غير متاح"}</td></tr>)}</MapTable> : <MapEmpty>{snapshot?.artifacts ? "لا توجد ملفات مسجلة للتصدير." : "قائمة الملفات غير متاحة من الخادم."}</MapEmpty>}
+      {releases.map((release) => <div className="jenan-map-admin__actions" key={release.id}><span>{release.version}</span>{actionEnabled("export") && artifacts.some((artifact) => artifact.releaseId === release.id && canDownloadMapArtifact(artifact)) ? <a href={`/api/admin/jenan-map/export?releaseId=${encodeURIComponent(release.id)}`} download>تنزيل manifest الإصدار</a> : <Button disabled variant="ghost" title="لا توجد ملفات ذات إذن تصدير موثق">تصدير غير متاح</Button>}</div>)}
+      {artifacts.length ? <MapTable headers={["الملف", "النوع", "الحجم بالبايت", "SHA-256", "ترخيص التصدير", "تنزيل"]}>{artifacts.map((artifact) => <tr key={artifact.id}><td><bdi>{artifact.logicalFilename ?? artifact.filename}</bdi></td><td>{artifact.kind}</td><td>{artifact.byteSize}</td><td><code>{artifact.sha256}</code></td><td>{artifact.exportAllowed === true ? artifact.exportLicense || "الإذن غير موثق" : "التصدير غير مسموح أو غير موثق"}</td><td>{actionEnabled("artifact-download") && canDownloadMapArtifact(artifact) ? <a href={mapArtifactDownloadUrl(artifact)} download>تنزيل إداري</a> : <Button type="button" disabled variant="ghost" title="يلزم إذن تصدير موثق ورابط إداري من الخادم">تنزيل غير متاح</Button>}</td></tr>)}</MapTable> : <MapEmpty>{snapshot?.artifacts ? "لا توجد ملفات مسجلة للتصدير." : "قائمة الملفات غير متاحة من الخادم."}</MapEmpty>}
     </MapPanel> : null}
 
     {section === "health" ? <MapPanel title="حالة التشغيل — بلا ادعاء سلامة"><dl><dt>قراءة قاعدة البيانات</dt><dd>{snapshot ? "تمت قراءة الحالة في وقت التحديث" : "غير متاحة"}</dd><dt>فحص الملفات</dt><dd>غير معروف — التسجيل لا يثبت سلامة الملفات</dd><dt>التغطية السعودية</dt><dd>غير مقاسة</dd><dt>اختبار متصفح فعلي</dt><dd>غير مثبت</dd><dt>الأداء والتزامن</dt><dd>غير مقاس</dd><dt>بيانات الحي والنطاق</dt><dd>غير مقبولة تشغيلياً بعد</dd><dt>آخر قراءة</dt><dd>{displayDate(loadedAt)}</dd></dl><p>هذه ليست لوحة مراقبة نشطة. نجاح قراءة الحالة لا يعني صحة محرك الخرائط أو اكتمال البيانات.</p></MapPanel> : null}

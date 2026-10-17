@@ -103,11 +103,11 @@ The local adapter checks SHA-256 through the open file descriptor before trustin
 
 `/admin/jenan-map` has allowlisted child views for versions, updates, sources, layers, storage, health, audit and settings. All admin APIs independently check the session and platform administrator role; state changes also check origin, schema and rate limits. The standalone `/jenan-map` harness is authenticated and does not activate project analysis/start/feasibility integrations.
 
-The implemented HTTP surface includes manifest/search/validation/artifact reads, administrator snapshot/actions/private preview/export, and the administrator layer catalog. Unsupported browser upload/import, automatic scheduling, country-scale tile building, real categorized comparisons, raw bulk bundles and unmeasured health/telemetry controls must be disabled or described as deferred. The layer catalog starts with nullable provenance/confidence and unavailable records. A client toggle is never a permission to expose internal raw data or unpublished files.
+The implemented HTTP surface includes manifest/search/validation/artifact reads, owned location/preferences, administrator snapshot/actions/private preview/export, the administrator layer catalog, and bounded browser/private-staging artifact import. Automatic scheduling, country-scale tile building, real categorized comparisons, raw bulk bundles and unmeasured health/telemetry controls remain deferred. The layer catalog starts with nullable provenance/confidence and unavailable records. A client toggle is never a permission to expose internal raw data or unpublished files.
 
 ### Portability and retention
 
-Export rights depend on each source's license. Export retained PMTiles, style/assets and metadata individually via authorized streaming downloads; a screenshot is not a map export. Portable geometry is a separate licensed GeoJSON/NDJSON artifact when supplied. Do not include application environment files, access tokens or users' project positions. Asynchronous full-bundle export is deferred; it must not be exposed as a working button.
+Export rights depend on each source's license. Individual artifact exports require explicit `exportAllowed` and `exportLicense` evidence; existing artifacts default to no export permission. Raw source artifacts are excluded even when marked exportable. Authorized, release-pinned rendering is distinct from export permission. Portable geometry is a separate licensed GeoJSON artifact when supplied; NDJSON and asynchronous full-bundle export remain unavailable. Do not include application environment files, access tokens or users' project positions.
 
 To move an approved retained release: download its manifest and permitted artifacts, verify every SHA-256 and byte size, copy them into a **new private** storage deployment under immutable keys, stage the same metadata on the destination, revalidate Saudi coverage/search/style/asset URLs and range delivery, then preview and explicitly approve/publish there. Same-origin URLs must resolve through the destination's configured adapter, not a hardcoded provider hostname. Never restore a production pointer by hand or overwrite an existing release. This is a restore procedure requiring acceptance on the destination, not a claim that automated bundle restore exists.
 
@@ -150,3 +150,32 @@ The supplied statement does not enumerate the original fourteen items verbatim. 
 | 12 | Admin routes, runtime status, health and audit | Implementation under review; unmeasured health remains unknown |
 | 13 | Authorized portable exports, checksums, license and restore | Individual downloads planned; full bundle and destination restore acceptance pending |
 | 14 | Lint/types/Prisma/build/unit/E2E, review and handover | Baseline recorded; final results below when available; **v1 not accepted** |
+
+## Continuation from `08d1899` (2026-10-17)
+
+This follow-up preserves the inherited implementation rather than replacing it. It is on the continuation PR based on #24, not a merge into `main`. Data Center, the frozen homepage, Auth UI and Project Analysis are outside the change scope.
+
+### Import and owned assets
+
+`POST /api/admin/jenan-map/releases/<uuid>/artifacts` independently enforces the existing administrator session, origin and rate-limit checks. It accepts:
+
+- Multipart `file` plus JSON `metadata`, bounded to **32 MiB total while reading**.
+- JSON `{ "stagedFilename": "<private-local-filename>", "metadata": { ... } }` for streaming a staged artifact of up to **32 GiB**, without buffering the archive. Staging and storage must be separate private directories, outside `public/`. This does not configure persistent hosting storage.
+
+Metadata includes `kind` (`pmtiles`, `style`, `glyphs`, `sprite`, `schema`, `coverage`), logical `filename`, exact `sha256`, exact `byteSize`, `publicSafe`, optional `exportAllowed`/`exportLicense`, and `confirmation: "IMPORT OWNED MAP ARTIFACT"`. Imports retain immutable content-addressed files and audit records; an upload does not approve or publish a release. Sources/geometry still use the offline preparation entry above. No arbitrary URL download, executable builder, archive extraction or remote credentials are accepted by the import handler.
+
+Assets resolve through `/api/jenan-map/releases/<uuid>/<kind>/<filename>`, or its `/api/admin/jenan-map/` private-preview equivalent. The `/assets/<kind>/<filename>` form remains a compatibility alias. Canonical glyph templates are `glyphs/{fontstack}/{range}.pbf`; the sprite base is `sprites/sprite`, with `.json`, `.png`, `@2x.json` and `@2x.png` variants. The same immutable style uses public canonical references; the selected manifest resolves them to authenticated preview endpoints without falling back to the published release.
+
+Approval/publication validates PMTiles v3 structure, root directory and a decoded MVT sample, style/source-layer compatibility, glyph PBFs, sprite image/index bounds, schema evidence and matching boundary provenance. This detects invalid formats; it is **not** exhaustive geographical, Arabic-label or country-scale visual acceptance. A licensed real dataset and human review remain mandatory.
+
+### Account-owned display settings
+
+`GET/PUT /api/jenan-map/preferences` persists radius, visible layer IDs and camera viewport per authenticated **user and release**, with expected-revision conflict detection and audit metadata that excludes camera coordinates. The server rechecks the published pointer and available layers under the runtime lock. Neither the request nor query string can choose another account. The modal restores settings on open, preserves deliberately empty layer selections, and saves them only through **حفظ إعدادات العرض**. Location confirmation is a separate transaction; cancelling a location draft does not save it. Private previews do not write user preferences or locations.
+
+The additive isolated map migration also admits the existing frontend's `geolocation` source in the saved-location database constraint. The sign-in return path now preserves a pinned preview ID. No existing application migration is modified or removed.
+
+The existing global `Permissions-Policy` denied device geolocation. A narrowly scoped header override now permits browser-consented same-origin geolocation on `/jenan-map` only. Home, login, registration and other routes retain the existing denial; camera, microphone and other restrictions are unchanged.
+
+### Real acceptance still blocked
+
+No licensed Saudi PMTiles archive, authoritative boundary with independently reviewed provenance, matching real search dataset, complete Arabic glyph/sprite package or production shared-storage configuration was supplied. Therefore this continuation does not claim a production map, real-data acceptance, reference-fidelity percentage, measured country-scale latency, live publication or completed portable restore. Keep the truthful empty/unavailable states until the operator supplies and reviews those inputs.

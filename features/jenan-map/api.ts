@@ -33,6 +33,8 @@ export async function mapRequest<T>(
         MAP_DISABLED: "خدمة الخريطة معطلة حالياً.",
         RELEASE_NOT_PUBLISHED:
           "تغير الإصدار المنشور. أعد فتح الخريطة قبل حفظ الموقع.",
+        STALE_REVISION: "تغيرت إعدادات الخريطة في نافذة أخرى. أعد فتح الخريطة لاستعادتها.",
+        LAYER_DATA_UNAVAILABLE: "تغيرت الطبقات المتاحة. أعد فتح الخريطة قبل حفظ الإعدادات.",
       };
       throw new Error(
         messages[body?.error] ??
@@ -86,6 +88,11 @@ export function mapManifestUrl(preview: string | null) {
     : "/api/jenan-map";
 }
 
+export function mapSearchUrl(preview: string | null, releaseId: string, query: string, layerIds: string[]) {
+  const params = new URLSearchParams({ q: query.trim(), releaseId, layerIds: layerIds.join(",") });
+  return `/api/${preview ? "admin/" : ""}jenan-map/search?${params}`;
+}
+
 export function controlledReleaseMapUrl(
   value: string,
   origin: string,
@@ -93,16 +100,34 @@ export function controlledReleaseMapUrl(
   adminPreview = false,
 ) {
   const controlled = controlledMapUrl(value, origin, adminPreview);
-  const path = new URL(controlled.replace(/^pmtiles:\/\//, "")).pathname;
+  const protocol = controlled.startsWith("pmtiles://") ? "pmtiles://" : "";
+  const url = new URL(controlled.replace(/^pmtiles:\/\//, ""));
+  const path = url.pathname.replaceAll("%7B", "{").replaceAll("%7D", "}");
+  const publicPrefix = `/api/jenan-map/releases/${encodeURIComponent(release.id)}/`;
   const releasePrefix = `/api/${adminPreview ? "admin/" : ""}jenan-map/releases/${encodeURIComponent(release.id)}/`;
-  const artifactMatches = release.artifacts?.some((artifact) => {
+  if (path.startsWith(publicPrefix)) {
+    url.pathname = releasePrefix + path.slice(publicPrefix.length);
+    return protocol + url.href.replaceAll("%7B", "{").replaceAll("%7D", "}");
+  }
+  const artifact = release.artifacts?.find((artifact) => {
     const allowed = new URL(
       controlledMapUrl(artifact.url, origin, adminPreview),
     ).pathname;
-    return path === allowed || path.startsWith(`${allowed}/`);
+    const canonical = `/api/jenan-map/artifacts/${encodeURIComponent(artifact.id)}`;
+    const suffix = path.startsWith(`${canonical}/`) ? path.slice(canonical.length)
+      : path.startsWith(`${allowed}/`) ? path.slice(allowed.length) : "";
+    return path === allowed || path === canonical ||
+      (protocol && artifact.kind === "pmtiles" && /^\/(?:\d+|\{z\})\/(?:\d+|\{x\})\/(?:\d+|\{y\})$/.test(suffix));
   });
-  if (!path.startsWith(releasePrefix) && !artifactMatches) {
+  if (!path.startsWith(releasePrefix) && !artifact) {
     throw new Error("مصدر الخريطة غير مرتبط بالإصدار المحدد.");
+  }
+  if (artifact) {
+    const canonical = `/api/jenan-map/artifacts/${encodeURIComponent(artifact.id)}`;
+    const allowed = new URL(artifact.url, origin).pathname;
+    const base = path === canonical || path.startsWith(`${canonical}/`) ? canonical : allowed;
+    url.pathname = allowed + path.slice(base.length);
+    return protocol + url.href.replaceAll("%7B", "{").replaceAll("%7D", "}");
   }
   return controlled;
 }

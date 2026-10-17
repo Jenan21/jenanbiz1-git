@@ -4,16 +4,20 @@ import { mkdir, rm, symlink, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { NextRequest } from "next/server";
 import { Prisma } from "@/generated/prisma/client";
+import { readyFixtureFiles } from "./jenan-map-artifact-fixtures";
 
 const mocks = vi.hoisted(() => ({
   query: vi.fn(), execute: vi.fn(), transaction: vi.fn(), user: vi.fn(), admin: vi.fn(),
-  origin: vi.fn(), rate: vi.fn(), openArtifact: vi.fn(), storageRoot: vi.fn(),
+  origin: vi.fn(), rate: vi.fn(), openArtifact: vi.fn(), storageRoot: vi.fn(), releaseLayers: vi.fn(),
 }));
 vi.mock("@/lib/db", () => ({ db: { $queryRaw: mocks.query, $executeRaw: mocks.execute, $transaction: mocks.transaction } }));
 vi.mock("@/lib/auth/session", () => ({ getCurrentUser: mocks.user }));
 vi.mock("@/lib/auth/authorization", () => ({ hasPlatformAdminAccess: mocks.admin }));
 vi.mock("@/lib/auth/request", () => ({ hasValidOrigin: mocks.origin }));
 vi.mock("@/lib/rate-limit/route-rate-limit", () => ({ enforceRouteRateLimit: mocks.rate }));
+vi.mock("@/services/jenan-map/layers", async (original) => ({
+  ...await original<typeof import("@/services/jenan-map/layers")>(), releaseManifestLayers: mocks.releaseLayers,
+}));
 
 import { byteRange, downloadMetadata, openArtifact, safeStorageKey, storageRoot } from "@/services/jenan-map/storage";
 import { commandSchema, locationSchema, savedLocationSchema, searchSchema, type Artifact } from "@/services/jenan-map/contracts";
@@ -40,17 +44,10 @@ const root = path.resolve(".jenan-map-backend-test");
 const bytes = Buffer.from('{"type":"FeatureCollection","features":[]}');
 const checksum = createHash("sha256").update(bytes).digest("hex");
 const artifact: Artifact = { id: artifactId, releaseId, kind: "geojson", storageKey: `${releaseId}/${checksum}.geojson`, filename: "places.geojson", mime: "application/geo+json", byteSize: BigInt(bytes.length), sha256: checksum, publicSafe: true };
-const readyArtifacts: Artifact[] = [
-  artifact,
-  { ...artifact, id: otherId, kind: "style", storageKey: `${releaseId}/${checksum}.json`, filename: "style.json", mime: "application/json" },
-  { ...artifact, id: "4c1b5f07-9581-4e3b-a0a3-9fc7ea08ead4", kind: "pmtiles", storageKey: `${releaseId}/${checksum}.pmtiles`, filename: "basemap.pmtiles", mime: "application/vnd.pmtiles" },
-  { ...artifact, id: "5c1b5f07-9581-4e3b-a0a3-9fc7ea08ead5", kind: "glyphs", filename: "glyphs.bin" },
-  { ...artifact, id: "6c1b5f07-9581-4e3b-a0a3-9fc7ea08ead6", kind: "schema", filename: "schema.json", publicSafe: false },
-  { ...artifact, id: "7c1b5f07-9581-4e3b-a0a3-9fc7ea08ead7", kind: "coverage", filename: "coverage.json", publicSafe: false },
-];
+const readyArtifacts = readyFixtureFiles().map(({ artifact }) => artifact);
 async function writeReadyFixtures() {
   await mkdir(path.join(root, releaseId), { recursive: true });
-  for (const file of readyArtifacts) await writeFile(path.join(root, file.storageKey), bytes);
+  for (const file of readyFixtureFiles()) await writeFile(path.join(root, file.artifact.storageKey), file.bytes);
 }
 const request = (url = "/api/jenan-map") => new NextRequest(`http://localhost${url}`);
 
@@ -61,6 +58,7 @@ beforeEach(() => {
   mocks.origin.mockReturnValue(true);
   mocks.rate.mockResolvedValue(null);
   mocks.transaction.mockImplementation(async (callback) => callback({ $queryRaw: mocks.query, $executeRaw: mocks.execute }));
+  mocks.releaseLayers.mockResolvedValue([{ id: "base", label: "Basemap", enabled: true, available: true, styleLayerIds: ["places"], searchCategories: ["place"] }]);
   process.env.JENAN_MAP_STORAGE_ROOT = root;
 });
 afterEach(async () => {
@@ -223,7 +221,7 @@ describe("publication and owned spatial queries", () => {
     await writeReadyFixtures();
     mocks.query.mockResolvedValueOnce([{ ...state, publishedReleaseId: otherId }])
       .mockResolvedValueOnce([{ ...release, status: "Approved" }])
-      .mockResolvedValueOnce([{ boundaries: BigInt(1), features: BigInt(1) }])
+      .mockResolvedValueOnce([{ boundaries: BigInt(1), features: BigInt(1), authority: "Fixture authority", source: "Synthetic unit fixture only" }])
       .mockResolvedValueOnce(readyArtifacts);
     const result = await command({ action: "publish", releaseId, expectedRevision: 4, expectedPublishedReleaseId: otherId, reason: "Release review approved", confirmation: "PUBLISH" }, "admin");
     expect(result).toMatchObject({ action: "publish", revision: 5 });
@@ -238,7 +236,7 @@ describe("publication and owned spatial queries", () => {
     await writeReadyFixtures();
     mocks.query.mockResolvedValueOnce([{ ...state, publishedReleaseId: otherId }])
       .mockResolvedValueOnce([{ ...release, status: "Archived" }])
-      .mockResolvedValueOnce([{ boundaries: BigInt(1), features: BigInt(1) }])
+      .mockResolvedValueOnce([{ boundaries: BigInt(1), features: BigInt(1), authority: "Fixture authority", source: "Synthetic unit fixture only" }])
       .mockResolvedValueOnce(readyArtifacts);
     expect(await command({ action: "rollback", releaseId, expectedRevision: 4, expectedPublishedReleaseId: otherId, reason: "Restore reviewed release", confirmation: "ROLLBACK" }, "admin")).toMatchObject({ action: "rollback", revision: 5 });
     const statements = mocks.execute.mock.calls.map(([query]) => query.text).join(" ");
@@ -251,11 +249,11 @@ describe("publication and owned spatial queries", () => {
     await expect(command({ action: "approve", releaseId, reason: "Human review confirmed", confirmation: "APPROVE" }, "admin")).rejects.toThrow("RELEASE_NOT_READY");
     expect(mocks.execute).not.toHaveBeenCalled();
   });
-  it("exports private artifacts only in the admin portable manifest with checksums", async () => {
+  it("exports only explicitly licensed non-source artifacts in the admin portable manifest", async () => {
     await writeReadyFixtures();
-    mocks.query.mockResolvedValueOnce([release]).mockResolvedValueOnce([artifact, { ...artifact, id: otherId, publicSafe: false, kind: "source" }]);
+    mocks.query.mockResolvedValueOnce([release]).mockResolvedValueOnce([{ ...artifact, exportAllowed: true }, { ...artifact, id: otherId, publicSafe: false, kind: "source", exportAllowed: true }]);
     const value = await exportManifest(releaseId);
-    expect(value.artifacts).toHaveLength(2);
+    expect(value.artifacts).toHaveLength(1);
     expect(value.artifacts[0].url).toContain("/api/admin/jenan-map/");
     expect(value.artifacts[0].sha256).toBe(checksum);
     expect(value.portableGeojsonAvailable).toBe(true);
@@ -270,9 +268,13 @@ describe("publication and owned spatial queries", () => {
     mocks.query.mockResolvedValueOnce([{ ...release, status: "Ready" }]).mockResolvedValueOnce([artifact]);
     const result = await previewManifest(releaseId);
     expect(result.preview).toBe(true);
-    expect(result.release.layers[0].url).toContain("/api/admin/jenan-map/artifacts/");
+    expect(result.release.layers[0]).toMatchObject({ id: "base", available: true, styleLayerIds: ["places"] });
     mocks.query.mockResolvedValueOnce([{ ...release, status: "Processing" }]);
     await expect(previewManifest(releaseId)).rejects.toThrow("PREVIEW_NOT_READY");
+  });
+  it("does not advertise export for files without explicit license permission", async () => {
+    mocks.query.mockResolvedValueOnce([release]).mockResolvedValueOnce([artifact]);
+    await expect(exportManifest(releaseId)).rejects.toThrow("NO_LICENSED_EXPORT_ARTIFACTS");
   });
   it("does not advertise enabled map data when retained files are missing", async () => {
     mocks.query.mockResolvedValueOnce([state]).mockResolvedValueOnce([release]).mockResolvedValueOnce([artifact]);

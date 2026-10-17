@@ -19,7 +19,8 @@ function watchMapResources(page: Page) {
   const requests: string[] = [];
   page.on("request", (request) => {
     if (
-      /\/(?:api\/(?:admin\/)?jenan-map|jenan-map\/maplibre)|maplibre-gl|pmtiles|map-renderer/.test(
+      // Turbopack's tiny async-loader stub is not the renderer or its engine.
+      /\/(?:api\/(?:admin\/)?jenan-map|jenan-map\/maplibre)|maplibre-gl|pmtiles/.test(
         request.url(),
       )
     ) {
@@ -47,6 +48,7 @@ test.describe("public map isolation", () => {
         const resources = watchMapResources(page);
         const response = await page.goto(path);
         expect(response?.ok()).toBe(true);
+        expect(response?.headers()["permissions-policy"]).toContain("geolocation=()");
         await page.evaluate(() => document.fonts.ready);
         await expect(
           page.locator(".maplibregl-map, .maplibregl-canvas"),
@@ -62,6 +64,13 @@ test.describe("public map isolation", () => {
     await expect(page).toHaveURL(/\/auth\?next=%2Fjenan-map/);
     await expect(page.locator(".maplibregl-map")).toHaveCount(0);
   });
+  test("sign-in preserves an explicitly requested preview rather than substituting production", async ({ page }) => {
+    const id = "00000000-0000-4000-8000-000000000001";
+    await page.goto(`/jenan-map?preview=${id}`);
+    const url = new URL(page.url());
+    expect(url.pathname).toBe("/auth");
+    expect(url.searchParams.get("next")).toBe(`/jenan-map?preview=${id}`);
+  });
 
   test("anonymous callers cannot read map, search, artifacts, preview or administrator APIs", async ({
     request,
@@ -71,6 +80,7 @@ test.describe("public map isolation", () => {
     for (const path of [
       "/api/jenan-map",
       "/api/jenan-map/location",
+      `/api/jenan-map/preferences?releaseId=${id}`,
       "/api/jenan-map/search?q=Riyadh",
       `/api/jenan-map/artifacts/${id}`,
       "/api/admin/jenan-map",
@@ -132,6 +142,9 @@ test.describe("authenticated map harness — fixture states, not real-map accept
         ? route.fulfill({ json: { location: null } })
         : route.continue(),
     );
+    await page.route("**/api/jenan-map/preferences?*", (route) =>
+      route.fulfill({ json: { settings: null } }),
+    );
   });
 
   for (const viewport of viewports) {
@@ -169,6 +182,9 @@ test.describe("authenticated map harness — fixture states, not real-map accept
       await expect(
         dialog.getByRole("button", { name: "تأكيد الموقع" }),
       ).toBeDisabled();
+      expect(manifestRequests).toBeGreaterThanOrEqual(1);
+      expect(manifestRequests).toBeLessThanOrEqual(2);
+      const requestsWhileOpen = manifestRequests;
       const bounds = await dialog.boundingBox();
       expect(bounds).not.toBeNull();
       expect(bounds!.x).toBeGreaterThanOrEqual(0);
@@ -193,7 +209,7 @@ test.describe("authenticated map harness — fixture states, not real-map accept
       await page.keyboard.press("Escape");
       await expect(dialog).toHaveCount(0);
       await expect(trigger).toBeFocused();
-      expect(manifestRequests).toBe(1);
+      expect(manifestRequests).toBe(requestsWhileOpen);
       expect(
         resources.filter(
           (url) =>
@@ -238,6 +254,7 @@ test.describe("authenticated map harness — fixture states, not real-map accept
     for (const path of [
       `/api/admin/jenan-map/preview?releaseId=${id}`,
       `/api/admin/jenan-map/artifacts/${id}`,
+      `/api/admin/jenan-map/search?releaseId=${id}&q=Riyadh`,
     ]) {
       expect((await page.request.get(path)).status()).toBe(403);
     }
@@ -263,6 +280,104 @@ test.describe("authenticated map harness — fixture states, not real-map accept
         })
       ).status(),
     ).toBe(403);
+    expect((await page.request.put("/api/jenan-map/preferences", {
+      headers: { origin: "https://other.example.test" },
+      data: {},
+    })).status()).toBe(403);
+  });
+
+  test("display settings restore on reopen while cancelled location drafts remain unsaved", async ({ page }) => {
+    const releaseId = "00000000-0000-4000-8000-000000000001";
+    await page.route("**/api/jenan-map", (route) => route.fulfill({
+      json: { status: "enabled", release: {
+        id: releaseId, version: "settings-fixture-not-production", styleUrl: null,
+        layers: [{ id: "roads", label: "الطرق", available: true, styleLayerIds: ["road-line"] }],
+      } },
+    }));
+    let saved: Record<string, unknown> | null = null;
+    await page.route("**/api/jenan-map/preferences**", async (route) => {
+      if (route.request().method() === "GET") {
+        await route.fulfill({ json: { settings: saved } });
+        return;
+      }
+      const { expectedRevision, ...values } = route.request().postDataJSON();
+      expect(expectedRevision).toBe(0);
+      expect(values).toMatchObject({ radius: 3000, visibleLayers: [] });
+      saved = { ...values, revision: 1 };
+      await route.fulfill({ json: { settings: saved } });
+    });
+
+    await page.goto("/jenan-map");
+    await page.getByRole("button", { name: "اختيار موقع على الخريطة" }).click();
+    await page.getByRole("radio", { name: "3 كم" }).check();
+    await page.getByRole("checkbox", { name: "الطرق" }).uncheck();
+    await page.getByRole("button", { name: "حفظ إعدادات العرض", exact: true }).click();
+    await expect(page.getByText("تم حفظ إعدادات العرض في حسابك لهذا الإصدار.", { exact: false })).toBeVisible();
+    await page.getByRole("button", { name: "إلغاء", exact: true }).click();
+    await page.reload();
+    await page.getByRole("button", { name: "اختيار موقع على الخريطة" }).click();
+    await expect(page.getByRole("radio", { name: "3 كم" })).toBeChecked();
+    await expect(page.getByRole("checkbox", { name: "الطرق" })).not.toBeChecked();
+    await page.getByRole("button", { name: "إلغاء", exact: true }).click();
+    await expect(page.getByText("لا يوجد موقع محفوظ بعد.", { exact: false })).toBeVisible();
+  });
+
+  test("device geolocation is permitted only on the map and saves its actual source", async ({ page, context }) => {
+    const releaseId = "00000000-0000-4000-8000-000000000001";
+    await context.grantPermissions(["geolocation"]);
+    await context.setGeolocation({ latitude: 24.7136, longitude: 46.6753, accuracy: 10 });
+    await page.route("**/api/jenan-map", (route) => route.fulfill({
+      json: { status: "enabled", release: {
+        id: releaseId, version: "device-fixture-not-production", styleUrl: null, layers: [],
+      } },
+    }));
+    let source = "";
+    await page.route("**/api/jenan-map/location", (route) => {
+      if (route.request().method() === "GET") return route.fulfill({ json: { location: null } });
+      const point = route.request().postDataJSON();
+      source = point.source;
+      return route.fulfill({ json: { location: {
+        ...point, country: "SA", region: null, city: null, district: null,
+        formattedAddress: null, selectedAt: "2026-10-01T12:00:00.000Z",
+      } } });
+    });
+    const response = await page.goto("/jenan-map");
+    expect(response?.headers()["permissions-policy"]).toContain("geolocation=(self)");
+    await page.getByRole("button", { name: "اختيار موقع على الخريطة" }).click();
+    await page.getByRole("button", { name: "استخدام موقعي الحالي", exact: false }).click();
+    await expect(page.getByRole("button", { name: "تأكيد الموقع" })).toBeEnabled();
+    await page.getByRole("button", { name: "تأكيد الموقع" }).click();
+    await expect(page.getByRole("dialog")).toHaveCount(0);
+    expect(source).toBe("geolocation");
+  });
+
+  test("search follows visible layer changes without retaining stale category results", async ({ page }) => {
+    const releaseId = "00000000-0000-4000-8000-000000000001";
+    await page.route("**/api/jenan-map", (route) => route.fulfill({
+      json: { status: "enabled", release: {
+        id: releaseId, version: "search-fixture-not-production", styleUrl: null,
+        layers: [{ id: "roads", label: "الطرق", available: true, styleLayerIds: ["road-line"] }],
+      } },
+    }));
+    const selections: string[] = [];
+    await page.route("**/api/jenan-map/search?*", (route) => {
+      const params = new URL(route.request().url()).searchParams;
+      expect(params.get("releaseId")).toBe(releaseId);
+      const selected = params.get("layerIds")!;
+      selections.push(selected);
+      return route.fulfill({ json: { results: [{
+        id: selected ? "road" : "city", label: selected ? "نتيجة طبقة الطرق" : "نتيجة المدينة",
+        latitude: 24.7, longitude: 46.6,
+      }] } });
+    });
+    await page.goto("/jenan-map");
+    await page.getByRole("button", { name: "اختيار موقع على الخريطة" }).click();
+    await page.getByLabel("البحث عن موقع", { exact: true }).fill("الرياض");
+    await expect(page.getByRole("button", { name: "نتيجة طبقة الطرق" })).toBeVisible();
+    await page.getByRole("checkbox", { name: "الطرق" }).uncheck();
+    await expect(page.getByRole("button", { name: "نتيجة طبقة الطرق" })).toHaveCount(0);
+    await expect(page.getByRole("button", { name: "نتيجة المدينة" })).toBeVisible();
+    expect(selections).toEqual(["roads", ""]);
   });
 
   test("manual drafts confirm only through validation and cancel leaves the saved value unchanged", async ({

@@ -3,6 +3,8 @@ import { Prisma } from "@/generated/prisma/client";
 import { db, type DbExecutor } from "@/lib/db";
 import { type Artifact, type MapCommand, type MapRuntime, type Release, type SavedLocation, MapError } from "./contracts";
 import { downloadMetadata, openArtifact, storageRoot, storageState } from "./storage";
+import { releaseAssetBase, validateReleaseArtifacts } from "./validation";
+import { readyLayerSearchFilter, releaseManifestLayers } from "./layers";
 
 type SqlExecutor = Pick<DbExecutor, "$queryRaw" | "$executeRaw">;
 const sql = Prisma.sql;
@@ -64,6 +66,7 @@ function publicArtifact(artifact: Artifact, admin = false) {
   const download = downloadMetadata(artifact);
   return {
     id: artifact.id, kind: artifact.kind, filename: download.filename, mime: download.mime,
+    logicalFilename: artifact.kind === "glyphs" && /^[^/\\]{1,150}\/\d+-\d+\.pbf$/.test(artifact.filename) ? artifact.filename : download.filename,
     sha256: artifact.sha256, byteSize: artifact.byteSize.toString(),
     url: `/api/${admin ? "admin/" : ""}jenan-map/artifacts/${artifact.id}`,
   };
@@ -79,14 +82,14 @@ export async function manifest() {
   const registered = await artifacts(release.id);
   if (!hasProductionArtifacts(registered)) throw new MapError("OWNED_BASEMAP_STYLE_GLYPHS_SCHEMA_COVERAGE_REQUIRED", 503);
   const files = registered.filter((item) => item.publicSafe);
-  for (const file of files) await (await openArtifact(file)).close();
+  await validateReleaseArtifacts(registered);
   return {
     status: state.status,
     release: {
       id: release.id, version: release.version, publishedAt: release.publishedAt,
       source: release.source, sourceDate: release.sourceDate, license: release.license,
       styleUrl: files.find((item) => item.kind === "style") ? `/api/jenan-map/artifacts/${files.find((item) => item.kind === "style")!.id}` : null,
-      layers: files.filter((item) => item.kind === "geojson").map((item) => ({ id: item.id, label: item.filename, available: true, styleLayerIds: [] as string[], type: "geojson", url: `/api/jenan-map/artifacts/${item.id}` })),
+      layers: await releaseManifestLayers(release.id),
       artifacts: files.map((item) => publicArtifact(item)),
     },
   };
@@ -99,9 +102,11 @@ export async function snapshot() {
   const files = await db.$queryRaw<Artifact[]>(sql`SELECT * FROM jenan_map.artifact ORDER BY "createdAt" DESC LIMIT 500`);
   return {
     runtime: state, releases, audit,
-    artifacts: files.map((file) => ({ ...publicArtifact(file, true), releaseId: file.releaseId, publicSafe: file.publicSafe })),
+    artifacts: files.map((file) => ({ ...publicArtifact(file, true), releaseId: file.releaseId, publicSafe: file.publicSafe,
+      exportAllowed: file.kind !== "source" && (file as Artifact & { exportAllowed?: boolean }).exportAllowed === true })),
     storage: await storageState(),
-    capabilities: ["create", "approve", "publish", "rollback", "archive", "runtime", "preview", "export", "artifact-download"],
+    capabilities: ["create", "approve", "publish", "rollback", "archive", "runtime", "preview", "export", "artifact-download", "artifact-import"],
+    importLimits: { multipartRequestBytes: 32 * 1024 * 1024, localArtifactBytes: 32 * 1024 ** 3, countryTileBuildAvailable: false },
     previewAvailable: true, exportAvailable: true,
     blockers: !state.publishedReleaseId ? ["NO_PUBLISHED_RELEASE", "IMPORT_AND_REVIEW_REQUIRED"] : [],
   };
@@ -116,15 +121,21 @@ async function audit(executor: SqlExecutor, actor: string, action: string, relea
 }
 
 async function verifyReady(releaseId: string, executor: SqlExecutor) {
-  const [counts] = await executor.$queryRaw<{ boundaries: bigint; features: bigint }[]>(sql`
+  const [counts] = await executor.$queryRaw<{ boundaries: bigint; features: bigint; authority: string; source: string }[]>(sql`
     SELECT (SELECT count(*) FROM jenan_map.boundary WHERE "releaseId" = ${releaseId}::uuid) AS boundaries,
-      (SELECT count(*) FROM jenan_map.feature WHERE "releaseId" = ${releaseId}::uuid) AS features`);
+      (SELECT count(*) FROM jenan_map.feature WHERE "releaseId" = ${releaseId}::uuid) AS features,
+      (SELECT authority FROM jenan_map.boundary WHERE "releaseId" = ${releaseId}::uuid) AS authority,
+      (SELECT source FROM jenan_map.boundary WHERE "releaseId" = ${releaseId}::uuid) AS source`);
   const files = await artifacts(releaseId, executor);
   if (!counts || counts.boundaries !== BigInt(1) || counts.features < BigInt(1) ||
       !hasProductionArtifacts(files)) {
     throw new MapError("RELEASE_NOT_READY");
   }
-  for (const file of files) await (await openArtifact(file, true)).close();
+  const style = await validateReleaseArtifacts(files, true, { authority: counts.authority, source: counts.source });
+  const bindings = await releaseManifestLayers(releaseId, executor);
+  const styleIds = new Set(style.layers.map((layer: { id: string }) => layer.id));
+  if (!bindings.some((layer) => layer.available) ||
+      bindings.some((layer) => layer.styleLayerIds?.some((id) => !styleIds.has(id)))) throw new MapError("RELEASE_LAYERS_NOT_READY");
 }
 
 export async function command(input: MapCommand, actor: string) {
@@ -194,7 +205,7 @@ export async function validateLocation(latitude: number, longitude: number, rele
   return { valid: true, latitude, longitude, releaseId: release.id };
 }
 
-export async function search(input: { q: string; releaseId?: string; latitude?: number; longitude?: number; radiusMeters: number }, adminPreview = false) {
+export async function search(input: { q: string; releaseId?: string; latitude?: number; longitude?: number; radiusMeters: number; layerIds?: string[] }, adminPreview = false) {
   if (adminPreview && !input.releaseId) throw new MapError("PREVIEW_RELEASE_REQUIRED", 400);
   const release = adminPreview ? await previewRelease(input.releaseId!) : await publishedRelease(input.releaseId);
   const [boundary] = await db.$queryRaw<{ id: string }[]>(sql`SELECT id FROM jenan_map.boundary WHERE "releaseId" = ${release.id}::uuid`);
@@ -210,6 +221,7 @@ export async function search(input: { q: string; releaseId?: string; latitude?: 
     FROM jenan_map.feature f JOIN jenan_map.boundary b ON b."releaseId" = f."releaseId"
     WHERE f."releaseId" = ${release.id}::uuid
       AND f.search @@ plainto_tsquery('simple', ${input.q})
+      AND ${readyLayerSearchFilter(release.id, input.layerIds)}
       AND ST_Covers(b.geometry, f.geometry) ${proximity}
     ORDER BY ts_rank(f.search,plainto_tsquery('simple',${input.q})) DESC, f.id LIMIT 20`);
   return { results: rows, releaseId: release.id };
@@ -218,6 +230,7 @@ export async function search(input: { q: string; releaseId?: string; latitude?: 
 export async function authorizedArtifact(id: string, admin: boolean) {
   const [artifact] = await db.$queryRaw<Artifact[]>(sql`SELECT * FROM jenan_map.artifact WHERE id = ${id}::uuid`);
   if (!artifact) throw new MapError("ARTIFACT_NOT_FOUND", 404);
+  if (artifact.kind === "source") throw new MapError("RAW_SOURCE_DOWNLOAD_UNSUPPORTED", 403);
   if (!admin) {
     await publishedRelease(artifact.releaseId);
     if (!artifact.publicSafe) throw new MapError("ARTIFACT_NOT_FOUND", 404);
@@ -225,18 +238,50 @@ export async function authorizedArtifact(id: string, admin: boolean) {
   return artifact;
 }
 
-export async function exportManifest(releaseId: string) {
+export async function exportManifest(releaseId: string, actor?: string) {
   const release = await releaseById(releaseId);
-  const files = await artifacts(releaseId);
+  const files = (await artifacts(releaseId)).filter((file) =>
+    file.kind !== "source" && (file as Artifact & { exportAllowed?: boolean }).exportAllowed === true);
+  if (!files.length) throw new MapError("NO_LICENSED_EXPORT_ARTIFACTS", 409);
   for (const file of files) await (await openArtifact(file, true)).close();
+  if (actor) await db.$transaction((tx) => audit(tx, actor, "export.manifest", releaseId, { artifactIds: files.map((file) => file.id) }));
   return {
     format: "jenan-pro-map-portable-v1",
     release: { id: release.id, version: release.version, status: release.status, source: release.source, sourceDate: release.sourceDate, license: release.license, publishedAt: release.publishedAt },
     generatedAt: new Date().toISOString(),
     authorization: "Session-authenticated downloads have no independent link expiry; every request requires a current admin session. URLs are not bearer tokens.",
-    artifacts: files.map((item) => publicArtifact(item, true)),
+    artifacts: files.map((item) => ({ ...publicArtifact(item, true), url: `${publicArtifact(item, true).url}?download=1`,
+      exportLicense: (item as Artifact & { exportLicense?: string }).exportLicense ?? null })),
     portableGeojsonAvailable: files.some((item) => item.kind === "geojson"),
   };
+}
+
+export async function authorizedReleaseAsset(releaseId: string, kind: string, filename: string, admin: boolean) {
+  if (admin) await previewRelease(releaseId);
+  else await publishedRelease(releaseId);
+  const file = (await artifacts(releaseId)).find((f) => f.kind === kind && f.filename === filename && f.publicSafe);
+  if (!file || !["style", "pmtiles", "glyphs", "sprite"].includes(kind)) throw new MapError("ARTIFACT_NOT_FOUND", 404);
+  return file;
+}
+
+export async function servedStyle(artifact: Artifact, admin: boolean) {
+  const handle = await openArtifact(artifact);
+  try {
+    const { readJson } = await import("./validation");
+    const style = await readJson(handle);
+    const bindings = await releaseManifestLayers(artifact.releaseId);
+    const hidden = new Set(bindings.filter((layer) => !layer.available).flatMap((layer) => layer.styleLayerIds ?? []));
+    for (const layer of style.layers ?? []) {
+      if (hidden.has(layer.id)) layer.layout = { ...layer.layout, visibility: "none" };
+    }
+    const from = releaseAssetBase(artifact.releaseId), to = releaseAssetBase(artifact.releaseId, admin);
+    if (typeof style.glyphs === "string" && style.glyphs.startsWith(from + "/")) style.glyphs = to + style.glyphs.slice(from.length);
+    if (typeof style.sprite === "string" && style.sprite.startsWith(from + "/")) style.sprite = to + style.sprite.slice(from.length);
+    for (const source of Object.values(style.sources ?? {}) as { url?: string }[]) {
+      if (source.url?.startsWith(`pmtiles://${from}/`)) source.url = `pmtiles://${to}${source.url.slice(`pmtiles://${from}`.length)}`;
+    }
+    return style;
+  } finally { await handle.close(); }
 }
 
 export async function previewManifest(releaseId: string) {
@@ -253,7 +298,7 @@ export async function previewManifest(releaseId: string) {
       styleUrl: files.find((file) => file.kind === "style")
         ? publicArtifact(files.find((file) => file.kind === "style")!, true).url
         : null,
-      layers: files.filter((file) => file.kind === "geojson").map((file) => ({ id: file.id, label: file.filename, available: true, styleLayerIds: [] as string[], type: "geojson", url: publicArtifact(file, true).url })),
+      layers: await releaseManifestLayers(release.id),
       artifacts: files.map((file) => publicArtifact(file, true)),
     },
   };

@@ -11,15 +11,17 @@ import {
   type RefObject,
 } from "react";
 import { createPortal } from "react-dom";
-import { assertPinnedRelease, mapManifestUrl, mapRequest } from "./api";
+import { assertPinnedRelease, mapManifestUrl, mapRequest, mapSearchUrl } from "./api";
 import { focusLoopTarget } from "./accessibility";
 import { saveOwnedMapLocation } from "./location-api";
+import { availableLayerIds, loadMapPreferences, persistMapPreferences } from "./preferences-api";
 import { coordinateDraft, isCoordinate, MAP_RADII } from "./geometry";
 import { RendererBoundary } from "./renderer-boundary";
 import type {
   JenanLocation,
   LocationSource,
   MapManifest,
+  MapViewport,
   SearchResult,
 } from "./types";
 import styles from "./jenan-map.module.css";
@@ -58,6 +60,12 @@ export function JenanMapModal({
   });
   const [radius, setRadius] = useState<number>(1000);
   const [visibleLayers, setVisibleLayers] = useState<string[]>([]);
+  const [viewport, setViewport] = useState<MapViewport | null>(null);
+  const [settingsRevision, setSettingsRevision] = useState(0);
+  const [settingsReady, setSettingsReady] = useState(false);
+  const [settingsSaving, setSettingsSaving] = useState(false);
+  const [settingsMessage, setSettingsMessage] = useState("");
+  const settingsController = useRef<AbortController | null>(null);
   const [query, setQuery] = useState("");
   const [results, setResults] = useState<SearchResult[]>([]);
   const [searchState, setSearchState] = useState<
@@ -128,6 +136,7 @@ export function JenanMapModal({
       geoGeneration.current++;
       selectionGeneration.current++;
       validationController.current?.abort();
+      settingsController.current?.abort();
       focused?.focus();
     };
   }, [onCancel, returnFocusRef]);
@@ -137,15 +146,20 @@ export function JenanMapModal({
     mapRequest<MapManifest>(mapManifestUrl(preview), {
       signal: controller.signal,
     })
-      .then((data) => {
+      .then(async (data) => {
         if (controller.signal.aborted) return;
         assertPinnedRelease(data, preview);
+        let settings = null;
+        if (data.release && data.status === "enabled" && !preview) {
+          settings = await loadMapPreferences(data.release.id, data.release.layers, controller.signal);
+        }
+        if (controller.signal.aborted) return;
+        setRadius(settings?.radius ?? 1000);
+        setViewport(settings?.viewport ?? null);
+        setSettingsRevision(settings?.revision ?? 0);
+        setSettingsReady(Boolean(data.release) && !preview);
         setManifest(data);
-        setVisibleLayers(
-          data.release?.layers
-            .filter((layer) => layer.available && layer.styleLayerIds?.length)
-            .map((layer) => layer.id) ?? [],
-        );
+        setVisibleLayers(settings?.visibleLayers ?? availableLayerIds(data.release?.layers ?? []));
       })
       .catch((reason: Error) => {
         if (!controller.signal.aborted) setError(reason.message);
@@ -156,20 +170,42 @@ export function JenanMapModal({
     return () => controller.abort();
   }, [attempt, preview]);
 
+  async function saveSettings() {
+    if (!settingsReady || settingsSaving || !manifest?.release || preview) return;
+    const controller = new AbortController();
+    settingsController.current?.abort();
+    settingsController.current = controller;
+    setSettingsSaving(true);
+    setSettingsMessage("");
+    try {
+      const settings = await persistMapPreferences({
+        releaseId: manifest.release.id, radius, visibleLayers, viewport, revision: settingsRevision,
+      }, manifest.release.layers, controller.signal);
+      if (controller.signal.aborted) return;
+      setSettingsRevision(settings.revision);
+      setSettingsMessage("تم حفظ إعدادات العرض في حسابك لهذا الإصدار. لم يتغير الموقع المحفوظ.");
+    } catch (reason) {
+      if (!controller.signal.aborted) setSettingsMessage(
+        reason instanceof Error ? reason.message : "تعذر حفظ إعدادات العرض.",
+      );
+    } finally {
+      if (!controller.signal.aborted) setSettingsSaving(false);
+    }
+  }
+
   useEffect(() => {
     const version = ++searchVersion.current;
     const controller = new AbortController();
     if (
       query.trim().length < 2 ||
       !manifest?.release ||
-      manifest.status !== "enabled" ||
-      Boolean(preview)
+      manifest.status !== "enabled"
     ) {
       return () => controller.abort();
     }
     const timer = setTimeout(() => {
       mapRequest<{ results: SearchResult[] }>(
-        `/api/jenan-map/search?q=${encodeURIComponent(query.trim())}&releaseId=${encodeURIComponent(manifest.release!.id)}`,
+        mapSearchUrl(preview, manifest.release!.id, query, visibleLayers),
         { signal: controller.signal },
       )
         .then((data) => {
@@ -189,7 +225,7 @@ export function JenanMapModal({
       clearTimeout(timer);
       controller.abort();
     };
-  }, [query, manifest, preview]);
+  }, [query, manifest, preview, visibleLayers]);
 
   const select = useCallback(
     (latitude: number, longitude: number, source: LocationSource = "map") => {
@@ -344,8 +380,7 @@ export function JenanMapModal({
               id={`${titleId}-search`}
               value={query}
               maxLength={120}
-              disabled={!enabled || Boolean(preview) || validating}
-              title={preview ? "البحث متاح للإصدار المنشور فقط" : undefined}
+              disabled={!enabled || validating}
               onChange={(event) => {
                 searchVersion.current++;
                 setQuery(event.target.value);
@@ -454,7 +489,7 @@ export function JenanMapModal({
                 عرض النقطة
               </button>
             </fieldset>
-            <fieldset disabled={!enabled} className={styles.radius}>
+            <fieldset disabled={!enabled || settingsSaving} className={styles.radius}>
               <legend>نطاق المسافة</legend>
               {MAP_RADII.map((meters) => (
                 <label key={meters}>
@@ -471,7 +506,7 @@ export function JenanMapModal({
             <p className={styles.note}>
               دائرة مسافة جغرافية فقط؛ ليست تحليلاً للسوق أو زمن وصول.
             </p>
-            <fieldset className={styles.layers} disabled={!enabled}>
+            <fieldset className={styles.layers} disabled={!enabled || settingsSaving}>
               <legend>طبقات الخريطة</legend>
               {manifest?.release?.layers.map((layer) => (
                 <label key={layer.id} title={layer.reason}>
@@ -483,13 +518,17 @@ export function JenanMapModal({
                       Boolean(layer.styleLayerIds?.length) &&
                       visibleLayers.includes(layer.id)
                     }
-                    onChange={(event) =>
+                    onChange={(event) => {
+                      searchVersion.current++;
+                      setResults([]);
+                      setSearchError("");
+                      setSearchState(query.trim().length >= 2 ? "loading" : "idle");
                       setVisibleLayers((current) =>
                         event.target.checked
                           ? [...current, layer.id]
                           : current.filter((id) => id !== layer.id),
-                      )
-                    }
+                      );
+                    }}
                   />
                   {layer.label || "طبقة مكانية غير مدعومة في العارض"}
                   {(!layer.available || !layer.styleLayerIds?.length) && (
@@ -502,6 +541,18 @@ export function JenanMapModal({
                 تحليلات السوق <small>لا توجد بيانات معتمدة متاحة</small>
               </label>
             </fieldset>
+            <button
+              className={styles.secondary}
+              disabled={!enabled || !settingsReady || settingsSaving || Boolean(preview)}
+              onClick={saveSettings}
+            >
+              {settingsSaving ? "جارٍ حفظ إعدادات العرض…" : "حفظ إعدادات العرض"}
+            </button>
+            <p className={styles.note} role="status">{settingsMessage}</p>
+            <p className={styles.note}>
+              تُحفظ الطبقات ونطاق المسافة وموضع العرض عند الضغط على حفظ الإعدادات فقط.
+              لا تُحفظ مسودة الموقع إلا بعد تأكيد الموقع.
+            </p>
             {manifest?.release && (
               <div className={styles.note}>
                 <p>المصدر: {manifest.release.source || "غير متاح"}</p>
@@ -534,6 +585,8 @@ export function JenanMapModal({
                     location={draft}
                     radius={radius}
                     visibleLayers={visibleLayers}
+                    viewport={viewport}
+                    onViewportChange={setViewport}
                     onSelect={select}
                     onError={setRendererError}
                   />
@@ -563,6 +616,8 @@ export function JenanMapModal({
                       setManifestLoading(true);
                       setError("");
                       setRendererError("");
+                      setSettingsReady(false);
+                      setSettingsMessage("");
                       setResults([]);
                       setSearchState("idle");
                       setAttempt((current) => current + 1);

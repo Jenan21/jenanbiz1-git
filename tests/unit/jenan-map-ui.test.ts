@@ -13,6 +13,7 @@ import {
   controlledReleaseMapUrl,
   mapManifestUrl,
   mapRequest,
+  mapSearchUrl,
 } from "@/features/jenan-map/api";
 import {
   coordinateDraft,
@@ -352,6 +353,16 @@ describe("controlled map network", () => {
       },
     ],
   };
+  it("pins published and private-preview searches to their release and visible layer selection", () => {
+    const published = new URL(mapSearchUrl(null, release.id, " الرياض ", ["roads", "pois"]), origin);
+    expect(published.pathname).toBe("/api/jenan-map/search");
+    expect(published.searchParams.get("q")).toBe("الرياض");
+    expect(published.searchParams.get("releaseId")).toBe(release.id);
+    expect(published.searchParams.get("layerIds")).toBe("roads,pois");
+    const preview = new URL(mapSearchUrl(release.id, release.id, "حي", []), origin);
+    expect(preview.pathname).toBe("/api/admin/jenan-map/search");
+    expect(preview.searchParams.get("layerIds")).toBe("");
+  });
   it("pins styles, PMTiles and glyph templates to the selected immutable release", () => {
     expect(
       controlledReleaseMapUrl(release.artifacts[1].url, origin, release),
@@ -447,6 +458,22 @@ describe("controlled map network", () => {
       expect.any(AbortSignal),
     );
     expect(tile.data).toEqual(new Uint8Array(4));
+  });
+  it("resolves the same immutable style's public references through the private preview manifest", () => {
+    const preview = {
+      ...release,
+      artifacts: release.artifacts.map((artifact) => ({
+        ...artifact, url: artifact.url.replace("/api/", "/api/admin/"),
+      })),
+    };
+    expect(controlledReleaseMapUrl(release.artifacts[1].url, origin, preview, true))
+      .toBe(`${origin}/api/admin/jenan-map/artifacts/style-one`);
+    expect(controlledReleaseMapUrl(`pmtiles://${origin}${release.artifacts[0].url}/{z}/{x}/{y}`, origin, preview, true))
+      .toBe(`pmtiles://${origin}/api/admin/jenan-map/artifacts/tiles-one/{z}/{x}/{y}`);
+    expect(controlledReleaseMapUrl("/api/jenan-map/releases/release-one/glyphs/font/0-255.pbf", origin, preview, true))
+      .toBe(`${origin}/api/admin/jenan-map/releases/release-one/glyphs/font/0-255.pbf`);
+    expect(() => controlledReleaseMapUrl("/api/jenan-map/artifacts/tiles-other", origin, preview, true)).toThrow();
+    expect(() => controlledReleaseMapUrl(`${release.artifacts[1].url}/arbitrary`, origin, release)).toThrow();
   });
   it("uses the authenticated admin endpoint for pinned preview manifests", () => {
     expect(mapManifestUrl("release-id")).toBe(

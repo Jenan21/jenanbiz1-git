@@ -28,6 +28,7 @@ model Release {
   features     Feature[]
   boundaries   Boundary[]
   savedLocations SavedLocation[]
+  preferences Preference[]
 
   @@map("release")
   @@schema("jenan_map")
@@ -44,6 +45,8 @@ model Artifact {
   sha256      String   @db.Char(64)
   byteSize    BigInt
   publicSafe  Boolean  @default(false)
+  exportAllowed Boolean @default(false)
+  exportLicense String?
   createdAt   DateTime @default(now()) @db.Timestamptz
 
   @@index([releaseId])
@@ -118,5 +121,20 @@ model SavedLocation {
 
   @@index([releaseId])
   @@map("saved_location")
+  @@schema("jenan_map")
+}
+
+model Preference {
+  userId        String
+  releaseId     String   @db.Uuid
+  release       Release  @relation(fields: [releaseId], references: [id], onDelete: Restrict)
+  radius        Int
+  visibleLayers Json
+  viewport      Json?
+  revision      Int      @default(1)
+  updatedAt     DateTime @default(now()) @db.Timestamptz
+
+  @@id([userId, releaseId])
+  @@map("preference")
   @@schema("jenan_map")
 }

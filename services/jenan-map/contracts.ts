@@ -27,16 +27,32 @@ export const searchSchema = z.object({
   latitude: z.coerce.number().finite().min(-90).max(90).optional(),
   longitude: z.coerce.number().finite().min(-180).max(180).optional(),
   radiusMeters: z.coerce.number().int().min(1).max(50_000).default(10_000),
+  layerIds: z.string().max(4200).transform((value) => value ? value.split(",") : [])
+    .pipe(z.array(z.string().regex(/^[a-z][a-z-]{0,63}$/)).max(64)
+      .refine((ids) => new Set(ids).size === ids.length, "Duplicate layers")).optional(),
 }).refine((v) => (v.latitude === undefined) === (v.longitude === undefined), "Both coordinates required");
 export const savedLocationSchema = locationSchema.extend({
   releaseId: idSchema,
-  source: z.enum(["map", "search", "coordinates"]),
+  source: z.enum(["map", "search", "geolocation", "coordinates"]),
 });
 export type SavedLocation = {
   latitude: number; longitude: number; country: "SA";
   region: string | null; city: string | null; district: string | null; formattedAddress: string | null;
-  source: "map" | "search" | "coordinates"; selectedAt: Date; releaseId: string;
+  source: "map" | "search" | "geolocation" | "coordinates"; selectedAt: Date; releaseId: string;
 };
+
+export const mapPreferencesSchema = z.object({
+  releaseId: idSchema,
+  radius: z.union([z.literal(500), z.literal(1000), z.literal(3000), z.literal(5000)]),
+  visibleLayers: z.array(z.string().regex(/^[a-z][a-z-]{0,63}$/)).max(64)
+    .refine((ids) => new Set(ids).size === ids.length, "Duplicate layers"),
+  viewport: z.object({
+    latitude: z.number().finite().min(16).max(33),
+    longitude: z.number().finite().min(34).max(56.5),
+    zoom: z.number().finite().min(3).max(18),
+  }).strict().nullable(),
+  expectedRevision: z.number().int().nonnegative(),
+}).strict();
 
 export class MapError extends Error {
   constructor(public readonly code: string, public readonly status = 409) {

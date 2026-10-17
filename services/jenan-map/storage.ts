@@ -6,6 +6,7 @@ import type { Artifact } from "./contracts";
 import { MapError } from "./contracts";
 
 const verifiedFiles = new Map<string, string>();
+const pendingVerification = new Map<string, Promise<void>>();
 
 export function storageRoot() {
   const root = process.env.JENAN_MAP_STORAGE_ROOT?.trim();
@@ -72,15 +73,28 @@ export async function openArtifact(artifact: Artifact, forceVerification = false
     const key = `${root}/${artifact.storageKey}:${artifact.sha256}`;
     const identity = `${stat.dev}:${stat.ino}:${stat.size}:${stat.mtimeMs}:${stat.ctimeMs}`;
     if (forceVerification || verifiedFiles.get(key) !== identity) {
-      const hash = createHash("sha256");
-      for await (const chunk of handle.createReadStream({ autoClose: false, start: 0 })) hash.update(chunk);
+      const pendingKey = `${key}:${identity}`;
+      let verification = pendingVerification.get(pendingKey);
+      if (!verification) {
+        verification = (async () => {
+          const hash = createHash("sha256");
+          for await (const chunk of handle.createReadStream({ autoClose: false, start: 0 })) hash.update(chunk);
+          const after = await handle.stat();
+          if (hash.digest("hex") !== artifact.sha256 || after.size !== stat.size || after.mtimeMs !== stat.mtimeMs || after.ctimeMs !== stat.ctimeMs) {
+            verifiedFiles.delete(key);
+            throw new MapError("ARTIFACT_INTEGRITY_FAILED", 503);
+          }
+          if (verifiedFiles.size >= 128) verifiedFiles.delete(verifiedFiles.keys().next().value!);
+          verifiedFiles.set(key, identity);
+        })();
+        pendingVerification.set(pendingKey, verification);
+      }
+      try { await verification; }
+      finally { if (pendingVerification.get(pendingKey) === verification) pendingVerification.delete(pendingKey); }
       const after = await handle.stat();
-      if (hash.digest("hex") !== artifact.sha256 || after.size !== stat.size || after.mtimeMs !== stat.mtimeMs || after.ctimeMs !== stat.ctimeMs) {
-        verifiedFiles.delete(key);
+      if (`${after.dev}:${after.ino}:${after.size}:${after.mtimeMs}:${after.ctimeMs}` !== identity) {
         throw new MapError("ARTIFACT_INTEGRITY_FAILED", 503);
       }
-      if (verifiedFiles.size >= 128) verifiedFiles.delete(verifiedFiles.keys().next().value!);
-      verifiedFiles.set(key, identity);
     }
     return handle;
   } catch (error) {

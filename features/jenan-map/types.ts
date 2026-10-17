@@ -56,6 +56,22 @@ export interface RendererProps {
   location: JenanLocation | null;
   radius: number;
   visibleLayers: string[];
+  viewport?: MapViewport | null;
+  onViewportChange?: (viewport: MapViewport) => void;
   onSelect: (latitude: number, longitude: number) => void;
   onError: (message: string) => void;
+}
+
+export interface MapViewport {
+  latitude: number;
+  longitude: number;
+  zoom: number;
+}
+
+export interface MapPreferences {
+  releaseId: string;
+  radius: number;
+  visibleLayers: string[];
+  viewport: MapViewport | null;
+  revision: number;
 }

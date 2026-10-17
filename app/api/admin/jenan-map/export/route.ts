@@ -10,7 +10,7 @@ export async function GET(request: NextRequest) {
     if (auth.response) return auth.response;
     const parsed = idSchema.safeParse(request.nextUrl.searchParams.get("releaseId"));
     if (!parsed.success) return json({ error: "INVALID_RELEASE_ID" }, 400);
-    const response = json(await exportManifest(parsed.data));
+    const response = json(await exportManifest(parsed.data, auth.user!.id));
     response.headers.set("content-disposition", `attachment; filename="jenan-pro-map-${parsed.data}-manifest.json"`);
     return response;
   } catch (error) { return failure(error); }

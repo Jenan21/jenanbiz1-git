@@ -16,6 +16,8 @@ export default function MapRenderer({
   location,
   radius,
   visibleLayers,
+  viewport,
+  onViewportChange,
   onSelect,
   onError,
 }: RendererProps) {
@@ -24,11 +26,14 @@ export default function MapRenderer({
   const marker = useRef<Marker | null>(null);
   const selection = useRef(onSelect);
   const failure = useRef(onError);
+  const cameraChange = useRef(onViewportChange);
+  const initialViewport = useRef(viewport);
   const latest = useRef({ location, radius, visibleLayers });
   useEffect(() => {
     selection.current = onSelect;
     failure.current = onError;
-  }, [onSelect, onError]);
+    cameraChange.current = onViewportChange;
+  }, [onSelect, onError, onViewportChange]);
 
   function updateMap() {
     const instance = map.current;
@@ -40,7 +45,7 @@ export default function MapRenderer({
           instance.setLayoutProperty(
             id,
             "visibility",
-            current.visibleLayers.includes(layer.id) ? "visible" : "none",
+            layer.available && current.visibleLayers.includes(layer.id) ? "visible" : "none",
           );
       }
     }
@@ -196,11 +201,12 @@ export default function MapRenderer({
             throw new Error("مصدر بيانات غير مدعوم في الإصدار.");
         }
         const current = latest.current.location;
+        const camera = initialViewport.current;
         instance = new maplibregl.Map({
           container: container.current!,
           style,
-          center: current ? [current.longitude, current.latitude] : [45, 24],
-          zoom: current ? 12 : 5,
+          center: camera ? [camera.longitude, camera.latitude] : current ? [current.longitude, current.latitude] : [45, 24],
+          zoom: camera?.zoom ?? (current ? 12 : 5),
           minZoom: 3,
           maxZoom: 18,
           // Camera framing only; Saudi inclusion is validated authoritatively by PostGIS.
@@ -228,6 +234,13 @@ export default function MapRenderer({
         instance.on("click", (event) =>
           selection.current(event.lngLat.lat, event.lngLat.lng),
         );
+        instance.on("moveend", () => {
+          if (!instance || disposed) return;
+          const center = instance.getCenter();
+          cameraChange.current?.({
+            latitude: center.lat, longitude: center.lng, zoom: instance.getZoom(),
+          });
+        });
         instance.on("load", () => {
           loaded = true;
           clearTimeout(timeout);
