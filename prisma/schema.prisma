@@ -332,6 +332,47 @@ enum MapProviderReviewStatus {
   SUSPENDED
 }
 
+enum MapAvailabilityStatus {
+  ONLINE
+  MAINTENANCE
+  DISABLED
+}
+
+enum MapReleaseStatus {
+  DRAFT
+  PROCESSING
+  READY_FOR_REVIEW
+  APPROVED
+  PUBLISHED
+  ARCHIVED
+  FAILED
+}
+
+enum MapLayerVisibility {
+  PUBLIC
+  INTERNAL
+}
+
+enum MapDatasetOwnership {
+  JENAN_OWNED
+  LICENSED
+  OPEN_SOURCE_DERIVED
+  THIRD_PARTY_RESTRICTED
+}
+
+enum MapUpdateStatus {
+  PROCESSING
+  READY_FOR_REVIEW
+  FAILED
+}
+
+enum MapBackupStatus {
+  PROCESSING
+  READY
+  INCOMPLETE
+  FAILED
+}
+
 enum MarketListingKind {
   PROJECT
   BUSINESS
@@ -3252,6 +3293,125 @@ model MapProviderReview {
   updatedAt         DateTime                @updatedAt
 
   @@index([status, updatedAt])
+}
+
+model MapControlSettings {
+  id                String                @id @default("primary")
+  status            MapAvailabilityStatus @default(DISABLED)
+  currentReleaseId  String?
+  revision          Int                   @default(0)
+  updatedById       String?
+  updatedAt         DateTime              @updatedAt
+}
+
+model MapRelease {
+  id              String           @id @default(cuid())
+  regionCode      String           @default("SA")
+  version         String
+  status          MapReleaseStatus  @default(DRAFT)
+  source          String
+  dataDate        DateTime?
+  fileSize        Int              @default(0)
+  checksum        String?
+  artifactKey     String?
+  artifactFormat  String?
+  notes           String?
+  createdById     String
+  approvedById    String?
+  approvedAt      DateTime?
+  publishedAt     DateTime?
+  archivedAt      DateTime?
+  createdAt       DateTime         @default(now())
+  updatedAt       DateTime         @updatedAt
+  datasets        MapDataset[]
+  updates         MapUpdate[]
+
+  @@unique([regionCode, version])
+  @@index([status, createdAt])
+  @@index([regionCode, publishedAt])
+}
+
+model MapDataset {
+  id                       String             @id @default(cuid())
+  releaseId                String
+  release                  MapRelease         @relation(fields: [releaseId], references: [id], onDelete: Restrict)
+  key                      String
+  name                     String
+  sourceName               String
+  sourceType               String
+  dataDate                 DateTime?
+  ownership                MapDatasetOwnership
+  licenseName              String
+  licenseUrl               String?
+  internalUseAllowed       Boolean?
+  internalBackupAllowed    Boolean?
+  redistributionAllowed    Boolean?
+  licenseReviewedById      String?
+  licenseReviewedAt        DateTime?
+  originalFilename         String
+  rawArtifactKey           String
+  processedArtifactKey     String
+  checksum                 String
+  fileSize                 Int
+  recordCount              Int
+  comparisonStatus         String
+  comparison               Json?
+  createdAt                DateTime           @default(now())
+
+  @@unique([releaseId, key])
+  @@index([key, createdAt])
+  @@index([releaseId, createdAt])
+}
+
+model MapLayer {
+  id          String             @id @default(cuid())
+  key         String             @unique
+  name        String
+  enabled     Boolean            @default(false)
+  visibility  MapLayerVisibility @default(INTERNAL)
+  datasetKey  String?
+  dataSource  String?
+  version     String?
+  confidence  Float?
+  updatedAt   DateTime           @updatedAt
+  updatedById String?
+
+  @@index([enabled, visibility])
+}
+
+model MapUpdate {
+  id          String          @id @default(cuid())
+  releaseId   String
+  release     MapRelease      @relation(fields: [releaseId], references: [id], onDelete: Restrict)
+  datasetKey  String
+  status      MapUpdateStatus @default(PROCESSING)
+  stage       String
+  progress    Int             @default(0)
+  result      Json?
+  logs        Json?
+  createdById String
+  createdAt   DateTime        @default(now())
+  completedAt DateTime?
+
+  @@index([releaseId, createdAt])
+  @@index([status, createdAt])
+}
+
+model MapBackup {
+  id             String          @id @default(cuid())
+  backupId       String          @unique
+  mapVersion     String?
+  dataVersion    String?
+  size           Int             @default(0)
+  checksum       String?
+  status         MapBackupStatus @default(PROCESSING)
+  artifactKey    String?
+  manifest       Json
+  createdById    String
+  createdAt      DateTime        @default(now())
+  completedAt    DateTime?
+
+  @@index([status, createdAt])
 }
 
 model ProjectPhase {
