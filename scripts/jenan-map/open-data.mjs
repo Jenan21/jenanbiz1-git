@@ -1,6 +1,6 @@
 // Shared by the offline operator and release validation; no network or database side effects.
 export const OPEN_BOUNDARY_NOTICE = "Unofficial boundaries — حدود غير رسمية";
-export const OSM_ATTRIBUTION = "© OpenStreetMap contributors (ODbL 1.0)";
+export const OSM_ATTRIBUTION = "© OpenStreetMap contributors (ODbL 1.0; https://www.openstreetmap.org/copyright; https://opendatacommons.org/licenses/odbl/1.0/)";
 
 export function validateProvenance(value) {
   if (!value || typeof value !== "object") throw new Error("Layer provenance required");

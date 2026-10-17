@@ -3,7 +3,7 @@ vi.mock("@/lib/db", () => ({ db: {} }));
 import source from "../fixtures/jenan-map/saudi-source-excerpts.json";
 import { importedFeature, OPEN_BOUNDARY_NOTICE, validateCoverage, validateProvenance } from "../../scripts/jenan-map/open-data.mjs";
 import { normalizeFeatures } from "../../scripts/jenan-map/build.mjs";
-import { boundaryLicense } from "../../scripts/jenan-map/prepare-open-data.mjs";
+import { boundaryAttribution, boundaryLicense } from "../../scripts/jenan-map/prepare-open-data.mjs";
 import { releaseLayerBindingSchema } from "@/services/jenan-map/layers";
 
 const provenance = {
@@ -51,6 +51,16 @@ describe("Saudi source normalization and truthful open licensing", () => {
     expect(boundaryLicense(source.adm2Metadata)).toBe("CC-BY-SA-2.0");
     expect(boundaryLicense({ boundaryLicense: "Creative Commons Attribution 4.0" })).toBe("CC-BY-4.0");
     expect(() => boundaryLicense({ boundaryLicense: "Unknown" })).toThrow("Unreviewed");
+    for (const metadata of [source.adm1Metadata, source.adm2Metadata]) {
+      const attribution = boundaryAttribution(metadata);
+      expect(attribution).toContain("https://www.geoboundaries.org");
+      expect(attribution).toContain("https://www.openstreetmap.org/copyright");
+      expect(attribution).toContain("https://creativecommons.org/licenses/by/4.0/");
+      expect(attribution).toContain(boundaryLicense(metadata));
+      expect(attribution).toContain(metadata.boundarySource);
+    }
+    expect(boundaryAttribution(source.adm2Metadata)).toContain("https://creativecommons.org/licenses/by-sa/2.0/");
+    expect(() => boundaryAttribution({ boundaryLicense: "Creative Commons Attribution 4.0" })).toThrow("upstream boundary attribution");
   });
   it("requires dated per-layer license, attribution, organization and source URL", () => {
     expect(validateProvenance(provenance)).toEqual(provenance);

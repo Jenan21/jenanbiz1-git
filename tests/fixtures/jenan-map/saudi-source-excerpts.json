@@ -1,7 +1,7 @@
 {
   "sourceUrl": "https://media.githubusercontent.com/media/wmgeolab/geoBoundaries/9469f09592ced973a3448cf66b6100b741b64c0d/releaseData/gbOpen/SAU/ADM1/geoBoundaries-SAU-ADM1_simplified.geojson",
   "sourceSha256": "cf50a59ddcda0fc4539c12799c320b9936fd75f47c1b5562ef548436d9169e13",
-  "attribution": "geoBoundaries / William & Mary geoLab (product CC BY 4.0); OpenStreetMap contributors, Wambacher (ODbL 1.0)",
+  "attribution": "geoBoundaries / William & Mary geoLab (product CC BY 4.0; https://www.geoboundaries.org); OpenStreetMap contributors, Wambacher (ODbL 1.0; https://www.openstreetmap.org/copyright)",
   "modification": "Test-only excerpt: original Najran properties and first polygon vertex. The vertex is NOT a place, center or replacement administrative polygon.",
   "properties": {
     "shapeName": "Najran Region",

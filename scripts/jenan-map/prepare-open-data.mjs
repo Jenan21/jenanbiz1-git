@@ -63,6 +63,12 @@ export function boundaryLicense(metadata) {
   throw new Error(`Unreviewed upstream boundary license: ${license}`);
 }
 
+export function boundaryAttribution(metadata) {
+  const license = boundaryLicense(metadata);
+  if (typeof metadata.boundarySource !== "string" || !metadata.boundarySource.trim()) throw new Error("Individual upstream boundary attribution required");
+  return `geoBoundaries / William & Mary (product CC BY 4.0; https://www.geoboundaries.org; https://creativecommons.org/licenses/by/4.0/); upstream ${metadata.boundarySource}, ${license}${license === "CC-BY-SA-2.0" ? " (https://creativecommons.org/licenses/by-sa/2.0/)" : ""}; represented year precision; upstream simplified geometry; ${OSM_ATTRIBUTION}`;
+}
+
 export async function acquire(root, pinnedBoundariesOnly = false) {
   const importedAt = new Date().toISOString();
   const sources = [];
@@ -88,7 +94,7 @@ export async function acquire(root, pinnedBoundariesOnly = false) {
       source: `geoBoundaries gbOpen SAU ${level} ${metadata.boundaryID}`,
       organization: `geoBoundaries / William & Mary; upstream: ${metadata.boundarySource ?? "see retained metadata"}`,
       url: sourceUrl, sourceDate: `${year}-01-01T00:00:00.000Z`, importedAt,
-      license, attribution: `geoBoundaries / William & Mary (product CC BY 4.0); upstream ${metadata.boundarySource}, ${license}; represented year precision; upstream simplified geometry; © OpenStreetMap contributors`,
+      license, attribution: boundaryAttribution(metadata),
     } });
   }
   if (pinnedBoundariesOnly) {
