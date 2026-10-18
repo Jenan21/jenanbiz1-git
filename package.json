@@ -3,7 +3,7 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "jenan-map:assets": "mkdir -p public/jenan-map && cp node_modules/maplibre-gl/dist/maplibre-gl-worker.mjs public/jenan-map/maplibre-gl-worker.mjs && cp node_modules/maplibre-gl/LICENSE.txt public/jenan-map/maplibre-LICENSE.txt",
+    "jenan-map:assets": "node scripts/jenan-map/copy-assets.mjs",
     "predev": "npm run jenan-map:assets",
     "prebuild": "npm run jenan-map:assets",
     "dev": "next dev",
