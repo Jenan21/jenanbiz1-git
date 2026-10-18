@@ -36,3 +36,13 @@ describe("GeoJSON text sequence records", () => {
     expect(stripRecordSeparator(`{"a":"${separator}"}`)).toBe(`{"a":"${separator}"}`);
   });
 });
+
+describe("retained upstream metadata", () => {
+  it("keeps only the named fields, as bounded plain values", async () => {
+    const { retainedMetadata } = await import("../../scripts/jenan-map/prepare-open-data.mjs");
+    const kept = retainedMetadata({ boundaryID: "SAU-ADM0-1", boundaryYear: 2017, admUnitCount: 1, boundaryLicense: "x".repeat(5000),
+      evil: "<script>", nested: { a: 1 }, boundaryName: { toString: "x" }, __proto__: { polluted: true } });
+    expect(kept).toEqual({ boundaryID: "SAU-ADM0-1", boundaryYear: 2017, admUnitCount: 1, boundaryLicense: "x".repeat(2000) });
+    expect(retainedMetadata(null)).toEqual({});
+  });
+});

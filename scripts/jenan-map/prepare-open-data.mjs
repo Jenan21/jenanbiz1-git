@@ -23,9 +23,27 @@ const checksum = async (filename) => {
   return hash.digest("hex");
 };
 const json = async (filename) => {
-  if ((await stat(filename)).size > MAX_JSON) throw new Error("GeoJSON exceeds bounded preparation limit");
-  return JSON.parse(await readFile(filename, "utf8"));
+  // Size and content come from the same descriptor, so the file cannot change between the check and the read.
+  const handle = await open(filename, "r");
+  try {
+    if ((await handle.stat()).size > MAX_JSON) throw new Error("GeoJSON exceeds bounded preparation limit");
+    return JSON.parse(await handle.readFile({ encoding: "utf8" }));
+  } finally { await handle.close(); }
 };
+// Upstream metadata is untrusted text. Only the named fields below are kept (as bounded strings or numbers) before anything is
+// written, so a hostile response can neither add keys nor write large or structured values to disk.
+const METADATA_TEXT = ["boundaryID", "boundaryName", "boundaryISO", "boundaryYearRepresented", "boundaryYear", "boundaryType", "boundaryCanonical",
+  "boundarySource", "boundaryLicense", "licenseDetail", "licenseSource", "boundarySourceURL", "sourceDataUpdateDate", "buildDate", "Continent",
+  "UNSDG-region", "UNSDG-subregion", "worldBankIncomeGroup", "admUnitCount", "meanVertices", "minBoundaryYear", "maxBoundaryYear", "gjDownloadURL"];
+export function retainedMetadata(metadata) {
+  const kept = {};
+  for (const key of METADATA_TEXT) {
+    const value = metadata?.[key];
+    if (typeof value === "number" && Number.isFinite(value)) kept[key] = value;
+    else if (typeof value === "string") kept[key] = value.slice(0, 2000);
+  }
+  return kept;
+}
 const save = (filename, value) => writeFile(filename, JSON.stringify(value, null, 2) + "\n", { flag: "wx", mode: 0o600 });
 // GeoJSON text sequences (RFC 8142) prefix each record with the ASCII record separator.
 const RECORD_SEPARATOR = String.fromCharCode(0x1e);
@@ -101,7 +119,7 @@ export async function acquire(root, pinnedBoundariesOnly = false) {
     const metadata = await response.json();
     if (metadata.boundaryISO !== "SAU" || metadata.boundaryType !== level) throw new Error(`Unverified geoBoundaries ${level} country`);
     const license = boundaryLicense(metadata);
-    await save(path.join(root, `${level}-metadata.json`), metadata);
+    await save(path.join(root, `${level}-metadata.json`), retainedMetadata(metadata));
     const filename = path.join(root, `${level}.geojson`);
     const sourceUrl = pinnedBoundariesOnly
       ? `https://media.githubusercontent.com/media/wmgeolab/geoBoundaries/${REVISION}/releaseData/gbOpen/SAU/${level}/geoBoundaries-SAU-${level}_simplified.geojson`

@@ -4,3 +4,4 @@ export function acquire(root: string, pinnedBoundariesOnly?: boolean): Promise<u
 export function prepare(config: unknown, root: string, releaseId: string): Promise<void>;
 export function stripRecordSeparator(line: string): string;
 export function resolveTool(name: string, env?: Record<string, string | undefined>, exists?: (candidate: string) => boolean): string;
+export function retainedMetadata(metadata: unknown): Record<string, string | number>;

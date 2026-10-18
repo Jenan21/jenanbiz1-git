@@ -82,14 +82,18 @@ describe("real retained map artifact validation", () => {
     const { createCanvas } = await import("@napi-rs/canvas");
     const bytes = createCanvas(2, 2).toBuffer("image/png");
     const filename = path.join(root, "sprite.png");
-    await writeFile(filename, bytes); const handle = await open(filename, "r");
+    // One descriptor writes and reads each file, so nothing can swap it between the two steps.
     const artifact = { ...readyFixtureFiles()[0].artifact, kind: "sprite", filename: "sprite.png", byteSize: BigInt(bytes.length) };
-    try { expect(await validateArtifactFormat(artifact, handle)).toMatchObject({ width: 2, height: 2 }); }
-    finally { await handle.close(); }
-    await writeFile(filename, bytes.subarray(0, 33));
-    const broken = await open(filename, "r");
-    try { await expect(validateArtifactFormat({ ...artifact, byteSize: BigInt(33) }, broken)).rejects.toThrow("ARTIFACT_FORMAT_INVALID"); }
-    finally { await broken.close(); }
+    const handle = await open(filename, "wx+");
+    try {
+      await handle.writeFile(bytes);
+      expect(await validateArtifactFormat(artifact, handle)).toMatchObject({ width: 2, height: 2 });
+    } finally { await handle.close(); }
+    const broken = await open(path.join(root, "sprite-truncated.png"), "wx+");
+    try {
+      await broken.writeFile(bytes.subarray(0, 33));
+      await expect(validateArtifactFormat({ ...artifact, byteSize: BigInt(33) }, broken)).rejects.toThrow("ARTIFACT_FORMAT_INVALID");
+    } finally { await broken.close(); }
   });
   it("requires open-data coverage to match the actual imported boundary rather than an authority assertion", async () => {
     const fixtures = await files();
