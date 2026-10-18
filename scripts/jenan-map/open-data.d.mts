@@ -3,6 +3,8 @@ export type OpenProvenance = {
   importedAt: string; license: string; attribution: string;
 };
 export const OPEN_BOUNDARY_NOTICE: string;
+export const CLIP_TOLERANCE_DEGREES: number;
+export const COVERAGE_LAYER_IDS: readonly string[];
 export const OSM_ATTRIBUTION: string;
 export function validateProvenance(value: unknown): OpenProvenance;
 export function validateCoverage(value: unknown): Record<string, unknown>;

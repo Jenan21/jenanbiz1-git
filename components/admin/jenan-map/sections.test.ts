@@ -3,8 +3,9 @@ import { isMapAdminSection, mapAdminSections } from "./sections";
 import { adminNavItems } from "@/lib/admin/navigation";
 
 describe("Jenan PRO Map admin section allowlist", () => {
-  it("supports all nine isolated management sections", () => {
-    expect(mapAdminSections).toHaveLength(9);
+  it("supports all ten isolated management sections", () => {
+    expect(mapAdminSections).toHaveLength(10);
+    expect(mapAdminSections.map(([key]) => key)).toContain("backup");
     for (const [section] of mapAdminSections) expect(isMapAdminSection(section)).toBe(true);
   });
 

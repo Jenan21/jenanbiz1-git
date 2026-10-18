@@ -4,8 +4,8 @@ import { db, type DbExecutor } from "@/lib/db";
 import { type Artifact, type MapCommand, type MapRuntime, type Release, type SavedLocation, MapError } from "./contracts";
 import { downloadMetadata, logicalFilename, openArtifact, storageRoot, storageState } from "./storage";
 import { releaseAssetBase, validateReleaseArtifacts } from "./validation";
-import { readyLayerSearchFilter, releaseManifestLayers } from "./layers";
-import { OPEN_BOUNDARY_NOTICE, OSM_ATTRIBUTION, validateProvenance } from "../../scripts/jenan-map/open-data.mjs";
+import { layerProvenanceProblems, readyLayerSearchFilter, releaseManifestLayers } from "./layers";
+import { OPEN_BOUNDARY_NOTICE, OSM_ATTRIBUTION } from "../../scripts/jenan-map/open-data.mjs";
 
 type SqlExecutor = Pick<DbExecutor, "$queryRaw" | "$executeRaw">;
 const sql = Prisma.sql;
@@ -117,6 +117,28 @@ export async function snapshot() {
   };
 }
 
+/**
+ * Measured facts for the admin overview. Every value is read from the database (or is null when it cannot be read); nothing is assumed
+ * healthy. PostGIS is checked by asking it for its version, and the counts describe the published release only.
+ */
+export async function overviewFacts(publishedReleaseId: string | null) {
+  let postgis: { status: "available"; version: string } | { status: "unavailable" };
+  try {
+    const [row] = await db.$queryRaw<{ version: string }[]>(sql`SELECT PostGIS_Lib_Version() AS version`);
+    postgis = row?.version ? { status: "available", version: row.version } : { status: "unavailable" };
+  } catch { postgis = { status: "unavailable" }; }
+  const unknown = { postgis, activeLayers: null, datasets: null, features: null };
+  if (!publishedReleaseId) return unknown;
+  try {
+    const [row] = await db.$queryRaw<{ activeLayers: number; datasets: number; features: number }[]>(sql`SELECT
+      (SELECT count(*)::int FROM jenan_map.release_layer WHERE "releaseId" = ${publishedReleaseId}::uuid AND enabled AND status = 'ready'
+        AND visibility = 'public' AND cardinality("styleLayerIds") > 0) AS "activeLayers",
+      (SELECT count(DISTINCT "layerId")::int FROM jenan_map.feature WHERE "releaseId" = ${publishedReleaseId}::uuid AND "layerId" IS NOT NULL) AS datasets,
+      (SELECT count(*)::int FROM jenan_map.feature WHERE "releaseId" = ${publishedReleaseId}::uuid) AS features`);
+    return row ? { postgis, activeLayers: row.activeLayers, datasets: row.datasets, features: row.features } : unknown;
+  } catch { return unknown; }
+}
+
 export async function audit(executor: SqlExecutor, actor: string, action: string, releaseId: string | null, metadata: Record<string, unknown>) {
   await executor.$executeRaw(sql`INSERT INTO jenan_map.audit (id,"actorId",action,"releaseId",metadata)
     VALUES (${randomUUID()}::uuid,${actor},${action},${releaseId}::uuid,${JSON.stringify(metadata)}::jsonb)`);
@@ -145,16 +167,13 @@ async function verifyReady(releaseId: string, executor: SqlExecutor) {
       [...styleIds].some((id) => !claimed.has(id)) ||
       bindings.some((layer) => layer.styleLayerIds?.some((id) => !styleIds.has(id)))) throw new MapError("RELEASE_LAYERS_NOT_READY");
   if (counts.coverage?.authoritative === false) {
-    const expected = counts.coverage.layers as { id: string; provenance: unknown }[];
-    if (!Array.isArray(expected) || bindings.length !== expected.length || bindings.some((binding) => {
-      const source = expected.find((layer) => layer.id === binding.id);
-      if (!source || !binding.provenance) return true;
-      const categories = binding.id === "base" ? [] : [binding.id];
-      if (binding.searchCategories.length !== categories.length ||
-          categories.some((category) => !binding.searchCategories.includes(category))) return true;
-      const provenance = validateProvenance(source.provenance);
-      return Object.entries(provenance).some(([key, value]) => binding.provenance![key as keyof typeof provenance] !== value);
-    })) throw new MapError("RELEASE_LAYER_PROVENANCE_MISMATCH");
+    const [held] = await executor.$queryRaw<{ layers: string[]; categories: string[] }[]>(sql`
+      SELECT COALESCE(array_agg(DISTINCT "layerId") FILTER (WHERE "layerId" IS NOT NULL), ARRAY[]::text[]) AS layers,
+        COALESCE(array_agg(DISTINCT category), ARRAY[]::text[]) AS categories
+      FROM jenan_map.feature WHERE "releaseId" = ${releaseId}::uuid`);
+    if (layerProvenanceProblems(counts.coverage.layers, bindings, new Set(held?.layers ?? []), new Set(held?.categories ?? [])).length) {
+      throw new MapError("RELEASE_LAYER_PROVENANCE_MISMATCH");
+    }
   }
 }
 
@@ -242,7 +261,9 @@ export async function search(input: { q: string; releaseId?: string; latitude?: 
     WHERE f."releaseId" = ${release.id}::uuid
       AND f.search @@ plainto_tsquery('simple', ${input.q})
       AND ${readyLayerSearchFilter(release.id, input.layerIds)}
-      AND ST_Covers(b.geometry, f.geometry) ${proximity}
+      -- The returned position is the feature's representative point and must be inside the country. Whole-geometry coverage is not asked here:
+      -- clipped administrative polygons may lie a few millimetres outside the clipped boundary and must stay searchable.
+      AND ST_Covers(b.geometry, ST_PointOnSurface(f.geometry)) ${proximity}
     ORDER BY ts_rank(f.search,plainto_tsquery('simple',${input.q})) DESC, f.id LIMIT 20`);
   return { results: rows, releaseId: release.id };
 }
@@ -332,6 +353,19 @@ export async function savedLocation(userId: string): Promise<SavedLocation | nul
   return location ?? null;
 }
 
+export async function administrativeContext(executor: SqlExecutor, releaseId: string, latitude: number, longitude: number) {
+  const point = sql`ST_SetSRID(ST_MakePoint(${longitude},${latitude}),4326)`;
+  const containing = (layer: string) => sql`(SELECT f.label FROM jenan_map.feature f WHERE f."releaseId"=${releaseId}::uuid AND f."layerId"=${layer}
+    AND ST_Covers(f.geometry,${point}) ORDER BY ST_Area(f.geometry) LIMIT 1)`;
+  const [row] = await executor.$queryRaw<{ region: string | null; city: string | null; district: string | null }[]>(sql`
+    SELECT ${containing("regions")} AS region, ${containing("governorates")} AS city,
+      (SELECT f.label FROM jenan_map.feature f WHERE f."releaseId"=${releaseId}::uuid AND f."layerId"='places' AND f."sourceId" LIKE 'places:neighbourhood:%'
+        AND ST_DWithin(f.geometry::geography, ${point}::geography, 1500)
+        ORDER BY f.geometry::geography <-> ${point}::geography LIMIT 1) AS district`);
+  const region = row?.region ?? null, city = row?.city ?? null, district = row?.district ?? null;
+  return { region, city, district, address: [district, city, region].filter((part, index, all) => part && all.indexOf(part) === index).join("، ") || null };
+}
+
 export async function saveLocation(input: { latitude: number; longitude: number; releaseId: string; source: SavedLocation["source"] }, userId: string) {
   try {
     return await db.$transaction(async (tx) => {
@@ -345,14 +379,15 @@ export async function saveLocation(input: { latitude: number; longitude: number;
         FROM jenan_map.boundary WHERE "releaseId" = ${input.releaseId}::uuid`);
       if (!boundary) throw new MapError("AUTHORITATIVE_BOUNDARY_UNAVAILABLE", 503);
       if (!boundary.inside) throw new MapError("OUTSIDE_SAUDI_ARABIA", 422);
-      // No authoritative administrative-address hierarchy is imported in v1.
-      // Clear prior labels rather than retaining stale client-supplied addresses.
+      // Administrative context comes only from the release's own imported data (never from the client): the region and governorate
+      // polygons that contain the point, and the nearest imported neighbourhood within 1.5 km. Anything the release lacks stays empty.
+      const context = await administrativeContext(tx, input.releaseId, input.latitude, input.longitude);
       const [location] = await tx.$queryRaw<SavedLocation[]>(sql`
         INSERT INTO jenan_map.saved_location ("userId","releaseId",latitude,longitude,country,region,city,district,"formattedAddress",source,"selectedAt")
-        VALUES (${userId},${input.releaseId}::uuid,${input.latitude},${input.longitude},'SA',NULL,NULL,NULL,NULL,${input.source},now())
+        VALUES (${userId},${input.releaseId}::uuid,${input.latitude},${input.longitude},'SA',${context.region},${context.city},${context.district},${context.address},${input.source},now())
         ON CONFLICT ("userId") DO UPDATE SET
           "releaseId" = EXCLUDED."releaseId",latitude = EXCLUDED.latitude,longitude = EXCLUDED.longitude,
-          country = 'SA',region = NULL,city = NULL,district = NULL,"formattedAddress" = NULL,
+          country = 'SA',region = EXCLUDED.region,city = EXCLUDED.city,district = EXCLUDED.district,"formattedAddress" = EXCLUDED."formattedAddress",
           source = EXCLUDED.source,"selectedAt" = now()
         RETURNING latitude,longitude,country,region,city,district,"formattedAddress",source,"selectedAt","releaseId"`);
       if (!location) throw new MapError("LOCATION_SAVE_FAILED", 503);

@@ -17,7 +17,9 @@ export function MapEmpty({ children = "لا توجد بيانات مسجلة. ل
 }
 
 export function MapTable({ headers, children }: { headers: readonly string[]; children: ReactNode }) {
-  return <div className="jenan-map-admin__table-wrap" role="region" aria-label={headers.join("، ")} tabIndex={0}>
+  return <div className="jenan-map-admin__table-wrap" role="region" aria-label={headers.join("، ")}
+    tabIndex={0} // NOSONAR a scrollable region has to take keyboard focus so a wide table can be scrolled without a mouse (WCAG 2.1.1)
+  >
     <table><thead><tr>{headers.map((header) => <th key={header} scope="col">{header}</th>)}</tr></thead><tbody>{children}</tbody></table>
   </div>;
 }

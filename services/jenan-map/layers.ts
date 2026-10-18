@@ -93,6 +93,35 @@ export function assertPublicStyleLayerBindings(bindings: { visibility: string; s
   if (!actualStyleIds.length || actualStyleIds.some((id) => !claimed.has(id))) throw new MapError("UNBOUND_PUBLIC_STYLE_LAYER");
 }
 
+/**
+ * Open (unofficial) coverage lists the reviewed provenance of every dataset the release holds: each public layer binding and each imported
+ * feature layer, and nothing else. A bound layer carries exactly that provenance and is searchable by its own category when the release has
+ * features of that category (tile-only layers such as the base map have none). Returns the problems; an empty list means they agree.
+ */
+export function layerProvenanceProblems(
+  expected: unknown,
+  bindings: ReadonlyArray<{ id: string; provenance?: OpenProvenance | null; searchCategories: string[] }>,
+  featureLayers: ReadonlySet<string>,
+  featureCategories: ReadonlySet<string>,
+) {
+  if (!Array.isArray(expected)) return ["coverage: layers missing"];
+  const problems: string[] = [];
+  const listed = new Map<string, unknown>((expected as Array<{ id: string; provenance: unknown }>).map((layer) => [layer.id, layer.provenance]));
+  const bound = new Set(bindings.map((binding) => binding.id));
+  for (const binding of bindings) {
+    if (!listed.has(binding.id) || !binding.provenance) { problems.push(`${binding.id}: provenance missing`); continue; }
+    const categories = featureCategories.has(binding.id) ? [binding.id] : [];
+    if (binding.searchCategories.length !== categories.length || categories.some((category) => !binding.searchCategories.includes(category))) problems.push(`${binding.id}: search categories`);
+    try {
+      const reviewed = validateProvenance(listed.get(binding.id));
+      if (Object.entries(reviewed).some(([key, value]) => binding.provenance![key as keyof OpenProvenance] !== value)) problems.push(`${binding.id}: provenance differs`);
+    } catch { problems.push(`${binding.id}: reviewed provenance invalid`); }
+  }
+  for (const id of featureLayers) if (!listed.has(id)) problems.push(`${id}: imported layer has no reviewed provenance`);
+  for (const id of listed.keys()) if (!bound.has(id) && !featureLayers.has(id)) problems.push(`${id}: provenance for a layer the release does not contain`);
+  return problems;
+}
+
 function projectedLayers(releaseId: string | null) {
   return Prisma.sql`SELECT l.id, l.label, COALESCE(b.enabled, false) AS enabled,
     COALESCE(b.visibility, l.visibility) AS visibility, COALESCE(b.status, 'unavailable') AS status,

@@ -21,7 +21,7 @@ const artifact = (kind: string, filename: string, extra: Partial<BackupArtifact>
 const input = (): BackupInput => ({
   release: { id: "r", version: "2026.10.17", status: "Published", source: "Protomaps/OSM", sourceDate: "2026-10-17T04:00:00.000Z", license: "ODbL-1.0", publishedAt: "2026-10-18T00:00:00.000Z" },
   artifacts: [artifact("pmtiles", "saudi.pmtiles"), artifact("style", "style.json", { ownership: "JENAN_OWNED", exportLicense: null }), artifact("schema", "schema.json"), artifact("coverage", "coverage.json")],
-  layers: [{ id: "roads", label: "الطرق", styleLayerIds: ["roads-major"], visibility: "public", status: "ready", provenance: { license: "ODbL-1.0" } }],
+  layers: [{ id: "roads", label: "الطرق", styleLayerIds: ["roads-major"], searchCategories: ["roads"], confidence: null, visibility: "public", status: "ready", provenance: { license: "ODbL-1.0" } }],
   runtime: { status: "enabled", maintenanceMessage: null, publishedReleaseId: "r", revision: 4 },
   sources: [{ name: "OpenStreetMap", url: "https://www.openstreetmap.org", license: "ODbL-1.0", ownership: "OPEN_LICENSE" }, { name: "Jenan styles", url: "https://jenanpro.sa", license: "", ownership: "JENAN_OWNED" }],
   createdAt: "2026-10-18T07:00:00.000Z", createdBy: "admin-1",
@@ -40,11 +40,11 @@ describe("ownership classes", () => {
   });
   it("separates purchased licences from restricted third-party data", () => {
     expect(ownershipOf({ license: "Commercial agreement 2026-04", author: "third-party" })).toBe("LICENSED");
-    expect(ownershipOf({ license: "anything", restricted: true })).toBe("THIRD_PARTY_RESTRICTED");
-    expect(ownershipOf({})).toBe("THIRD_PARTY_RESTRICTED");
+    expect(ownershipOf({ license: "anything", restricted: true })).toBe("RESTRICTED");
+    expect(ownershipOf({})).toBe("RESTRICTED");
   });
   it("lets restricted data stay inside even when marked exportable", () => {
-    expect(mayRedistribute("THIRD_PARTY_RESTRICTED", true)).toBe(false);
+    expect(mayRedistribute("RESTRICTED", true)).toBe(false);
     expect(mayRedistribute("OPEN_LICENSE", false)).toBe(false);
     expect(mayRedistribute("OPEN_LICENSE", true)).toBe(true);
   });
@@ -55,10 +55,13 @@ describe("backup manifest", () => {
     const a = buildBackupManifest(input()), b = buildBackupManifest({ ...input(), artifacts: [...input().artifacts].reverse() });
     expect(a.digest).toBe(b.digest);
     expect(a.manifest).toMatchObject({ format: "jenan-pro-map-backup-v1", mapVersion: "2026.10.17", dataVersion: "2026-10-17T04:00:00.000Z",
-      ownershipSummary: { OPEN_LICENSE: 3, JENAN_OWNED: 1, LICENSED: 0, THIRD_PARTY_RESTRICTED: 0 }, runtime: { revision: 4 } });
+      ownershipSummary: { OPEN_LICENSE: 3, JENAN_OWNED: 1, LICENSED: 0, RESTRICTED: 0 }, runtime: { revision: 4 } });
     expect(a.manifest.configuration.layers[0].id).toBe("roads");
     expect(a.manifest.artifacts.every((item) => item.file === `artifacts/${item.sha256}`)).toBe(true);
     expect(canonicalJson({ b: 1, a: { d: 1, c: 2 } })).toBe(canonicalJson({ a: { c: 2, d: 1 }, b: 1 }));
+  });
+  it("orders keys by code unit, never by the machine's locale", () => {
+    expect(Object.keys(JSON.parse(canonicalJson({ b: 1, B: 2, "ä": 3, a: 4, Z: 5 })))).toEqual(["B", "Z", "a", "b", "ä"]);
   });
   it.each(["pmtiles", "style", "schema", "coverage"])("refuses a backup without %s", (kind) => {
     expect(() => buildBackupManifest({ ...input(), artifacts: input().artifacts.filter((item) => item.kind !== kind) })).toThrow(/BACKUP_REQUIRES/);
@@ -82,6 +85,19 @@ describe("restore validation (folder on disk)", () => {
     const out = path.join(dir, "backup");
     await mkdir(out);
     await expect(writeBackup(out, input(), open)).rejects.toThrow("BACKUP_FOLDER_EXISTS");
+  });
+  it("stores identical bytes once and keeps private source evidence in the backup", async () => {
+    const out = path.join(dir, "backup");
+    bytesOf.source = Buffer.from('{"type":"Feature"}');
+    try {
+      const withSource = { ...input(), artifacts: [...input().artifacts,
+        artifact("source", "boundary-source.bin", { publicSafe: false, exportAllowed: false, exportLicense: null }),
+        artifact("source", "boundary-copy.bin", { id: "id-source-2", publicSafe: false, exportAllowed: false, exportLicense: null })] };
+      const written = await writeBackup(out, withSource, open);
+      expect(written.artifacts).toBe(6);
+      expect(readdirSync(path.join(out, "artifacts")).sort()).toEqual([sha(bytesOf.coverage), sha(bytesOf.pmtiles), sha(bytesOf.schema), sha(bytesOf.source), sha(bytesOf.style)].sort());
+      expect(await validateBackupDirectory(out)).toMatchObject({ ok: true, problems: [] });
+    } finally { delete bytesOf.source; }
   });
   it("detects a flipped byte, a missing file, a truncated file, an extra file and a tampered manifest", async () => {
     const out = path.join(dir, "backup");

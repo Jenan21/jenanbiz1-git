@@ -167,13 +167,15 @@ export async function validateArtifactFormat(file: Artifact, handle: FileHandle)
     const bytes = await readAt(handle, 0, Number(file.byteSize));
     const stacks = protobuf(bytes).get(1);
     if (!stacks?.length) invalid();
+    let glyphs = 0;
     for (const stack of stacks) {
       const fields = protobuf(stack);
       // The name embedded by the font tool is free text ("Sans Regular" inside "Noto Sans Regular/…"); the release's file name is the identity.
-      // The range, however, must be the one the file name promises.
+      // The range, however, must be the one the file name promises. A range may hold no glyphs at all (a font simply has none there);
+      // whether a font covers the scripts the map draws is decided per release, from the glyph counts, not per file.
       const name = fields.get(1)?.[0]?.toString(), range = fields.get(2)?.[0]?.toString();
-      if (!name || `${range}.pbf` !== file.filename.split("/")[1] || !fields.get(3)?.length) invalid();
-      for (const glyph of fields.get(3)!) {
+      if (!name || `${range}.pbf` !== file.filename.split("/")[1]) invalid();
+      for (const glyph of fields.get(3) ?? []) {
         const values = protobuf(glyph);
         if (![1, 3, 4, 5, 6, 7].every((field) => values.has(field))) invalid();
         const id = Number(values.get(1)![0].toString());
@@ -181,9 +183,10 @@ export async function validateArtifactFormat(file: Artifact, handle: FileHandle)
         // A MapLibre SDF bitmap carries a three-pixel border on every side of the glyph's metric box.
         const expected = width * height > 0 ? (width + 6) * (height + 6) : 0;
         if (id < start || id > end || width > 512 || height > 512 || (values.get(2)?.[0]?.length ?? 0) !== expected) invalid();
+        glyphs++;
       }
     }
-    return { type: "glyphs" };
+    return { type: "glyphs", glyphs };
   }
   if (file.kind === "sprite" && file.filename.endsWith(".png")) {
     const png = await readAt(handle, 0, 33);
@@ -217,6 +220,22 @@ export async function validateArtifactFormat(file: Artifact, handle: FileHandle)
 
 export function releaseAssetBase(releaseId: string, admin = false) {
   return `/api/${admin ? "admin/" : ""}jenan-map/releases/${releaseId}`;
+}
+
+/**
+ * The map is Arabic-first and Saudi-only, so every font a label layer draws with must have glyphs in the Latin block (0-255) and the
+ * Arabic block (1536-1791). A font whose range is empty or missing would draw blank names; such a release must not be approved.
+ * Returns the `font/range` entries that are missing or empty.
+ */
+export function labelFontGaps(fonts: Iterable<string>, glyphFiles: ReadonlyArray<{ filename: string; glyphs: number }>) {
+  const gaps: string[] = [];
+  for (const font of fonts) {
+    for (const range of ["0-255", "1536-1791"]) {
+      const found = glyphFiles.find((file) => file.filename === `${font}/${range}.pbf`);
+      if (!found || found.glyphs < 1) gaps.push(`${font}/${range}`);
+    }
+  }
+  return gaps;
 }
 
 export async function validateReleaseArtifacts(files: Artifact[], forceVerification = false, boundary?: { authority: string; source: string; coverage?: Record<string, unknown> | null }) {
@@ -278,11 +297,8 @@ export async function validateReleaseArtifacts(files: Artifact[], forceVerificat
     if (!Array.isArray(stack) || !stack.length || stack.some((v: unknown) => typeof v !== "string")) invalid();
     fonts.add(stack.join(","));
   }
-  for (const font of fonts) {
-    for (const range of ["0-255", "1536-1791"]) {
-      if (!files.some((f) => f.kind === "glyphs" && f.publicSafe && f.filename === `${font}/${range}.pbf`)) invalid();
-    }
-  }
+  const glyphFiles = files.filter((f) => f.kind === "glyphs" && f.publicSafe).map((f) => ({ filename: f.filename, glyphs: results.get(f.id)?.glyphs ?? 0 }));
+  if (labelFontGaps(fonts, glyphFiles).length) invalid();
   if (style.sprite) {
     if (style.sprite !== `${base}/sprites/sprite`) invalid();
     for (const scale of ["", "@2x"]) {

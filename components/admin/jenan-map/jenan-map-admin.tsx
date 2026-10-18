@@ -6,9 +6,10 @@ import { Button } from "@/components/ui/button";
 import { mapAdminSections, type MapAdminSection } from "./sections";
 import { MapActionConfirmation, type MapConfirmation } from "./confirmation";
 import { displayDate, MapEmpty, MapPanel, MapTable } from "./display";
-import { canDownloadMapArtifact, canMapAction, mapArtifactDownloadUrl, mapErrorMessage, readMapSnapshot, type AdminMapRelease, type AdminMapSnapshot } from "./snapshot";
+import { canDownloadMapArtifact, canMapAction, formatBytes, mapArtifactDownloadUrl, mapErrorMessage, overviewSummary, readMapSnapshot, type AdminMapRelease, type AdminMapSnapshot } from "./snapshot";
 import { MapLayerCatalog } from "./layer-catalog";
 import { MapArtifactImport } from "./artifact-import";
+import { MapBackupPanel } from "./backup-panel";
 import { MapLayerBinding } from "./layer-binding";
 
 const releaseLabels: Record<string, string> = { Draft: "مسودة", Processing: "قيد المعالجة", Importing: "قيد الاستيراد", Ready: "جاهز للمراجعة", Approved: "معتمد", Published: "منشور", Archived: "مؤرشف", Failed: "فشل" };
@@ -111,6 +112,7 @@ export function JenanMapAdmin({ section }: { section: MapAdminSection }) {
   const releases = snapshot?.releases ?? [];
   const artifacts = snapshot?.artifacts ?? [];
   const active = releases.find((release) => release.id === snapshot?.runtime.publishedReleaseId);
+  const summary = overviewSummary(snapshot);
   const title = mapAdminSections.find(([key]) => key === section)?.[1] ?? "نظرة عامة";
 
   function releaseActions(release: AdminMapRelease) {
@@ -148,6 +150,13 @@ export function JenanMapAdmin({ section }: { section: MapAdminSection }) {
         {[
           ["حالة التشغيل", snapshot ? runtimeLabels[snapshot.runtime.status] ?? "غير معروفة" : "غير معروفة"],
           ["إصدار الإنتاج", active?.version ?? (snapshot?.runtime.publishedReleaseId ? "مؤشر غير متحقق" : snapshot ? "لا يوجد إصدار منشور" : "غير معروف")],
+          ["آخر تحديث للإصدارات", displayDate(summary?.lastUpdate)],
+          ["آخر نشر أو استرجاع", displayDate(summary?.lastPublish)],
+          ["حجم ملف PMTiles المنشور", formatBytes(summary?.tilesBytes ?? null)],
+          ["مجموعات البيانات في الإصدار المنشور", summary?.datasets === null || summary?.datasets === undefined ? "غير معروف" : String(summary.datasets)],
+          ["الطبقات الفعالة", summary?.activeLayers === null || summary?.activeLayers === undefined ? "غير معروف" : String(summary.activeLayers)],
+          ["PostGIS", summary?.postgis ? (summary.postgis.status === "available" ? `متاح (${summary.postgis.version})` : "غير متاح") : "غير معروف"],
+          ["التخزين وCDN", `${snapshot?.storage?.status === "available" ? "التخزين مهيأ" : snapshot ? "التخزين غير متاح" : "التخزين غير معروف"} · CDN غير مقيس`],
           ["إصدارات ضمن القراءة", snapshot ? String(releases.length) : "غير معروف"],
           ["مراجعة الحالة", snapshot ? String(snapshot.runtime.revision) : "غير معروفة"],
         ].map(([label, value]) => <MapPanel key={label} title={label}><strong className="jenan-map-admin__metric">{value}</strong></MapPanel>)}
@@ -176,6 +185,8 @@ export function JenanMapAdmin({ section }: { section: MapAdminSection }) {
       {releases.map((release) => <div className="jenan-map-admin__actions" key={release.id}><span>{release.version}</span>{actionEnabled("export") && artifacts.some((artifact) => artifact.releaseId === release.id && canDownloadMapArtifact(artifact)) ? <a href={`/api/admin/jenan-map/export?releaseId=${encodeURIComponent(release.id)}`} download>تنزيل manifest الإصدار</a> : <Button disabled variant="ghost" title="لا توجد ملفات ذات إذن تصدير موثق">تصدير غير متاح</Button>}</div>)}
       {artifacts.length ? <MapTable headers={["الملف", "النوع", "الحجم بالبايت", "SHA-256", "ترخيص التصدير", "تنزيل"]}>{artifacts.map((artifact) => <tr key={artifact.id}><td><bdi>{artifact.logicalFilename ?? artifact.filename}</bdi></td><td>{artifact.kind}</td><td>{artifact.byteSize}</td><td><code>{artifact.sha256}</code></td><td>{artifact.exportAllowed === true ? artifact.exportLicense || "الإذن غير موثق" : "التصدير غير مسموح أو غير موثق"}</td><td>{actionEnabled("artifact-download") && canDownloadMapArtifact(artifact) ? <a href={mapArtifactDownloadUrl(artifact)} download>تنزيل إداري</a> : <Button type="button" disabled variant="ghost" title="يلزم إذن تصدير موثق ورابط إداري من الخادم">تنزيل غير متاح</Button>}</td></tr>)}</MapTable> : <MapEmpty>{snapshot?.artifacts ? "لا توجد ملفات مسجلة للتصدير." : "قائمة الملفات غير متاحة من الخادم."}</MapEmpty>}
     </MapPanel> : null}
+
+    {section === "backup" ? <MapBackupPanel snapshot={snapshot} disabled={loading || busy} onSettled={load} /> : null}
 
     {section === "health" ? <MapPanel title="حالة التشغيل — بلا ادعاء سلامة"><dl><dt>قراءة قاعدة البيانات</dt><dd>{snapshot ? "تمت قراءة الحالة في وقت التحديث" : "غير متاحة"}</dd><dt>فحص الملفات</dt><dd>غير معروف — التسجيل لا يثبت سلامة الملفات</dd><dt>التغطية السعودية</dt><dd>غير مقاسة</dd><dt>اختبار متصفح فعلي</dt><dd>غير مثبت</dd><dt>الأداء والتزامن</dt><dd>غير مقاس</dd><dt>بيانات الحي والنطاق</dt><dd>غير مقبولة تشغيلياً بعد</dd><dt>آخر قراءة</dt><dd>{displayDate(loadedAt)}</dd></dl><p>هذه ليست لوحة مراقبة نشطة. نجاح قراءة الحالة لا يعني صحة محرك الخرائط أو اكتمال البيانات.</p></MapPanel> : null}
 

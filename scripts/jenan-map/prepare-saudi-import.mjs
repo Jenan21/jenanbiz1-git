@@ -5,10 +5,12 @@
 import { createHash } from "node:crypto";
 import { mkdir, readFile, stat, writeFile } from "node:fs/promises";
 import path from "node:path";
+import { fileURLToPath } from "node:url";
 import pg from "pg";
 import { importedFeature, OPEN_BOUNDARY_NOTICE, OSM_ATTRIBUTION } from "./open-data.mjs";
 import { boundaryAttribution, boundaryLicense } from "./prepare-open-data.mjs";
 import { collectSearchFeatures } from "./pmtiles-features.mjs";
+import { buildStyle, styleLayerGroups } from "./styles.mjs";
 
 const sha256 = (data) => createHash("sha256").update(data).digest("hex");
 
@@ -76,19 +78,27 @@ export async function main(argv) {
   const boundaryBytes = Buffer.from(JSON.stringify(boundaryFeature));
   const featuresBytes = Buffer.from(JSON.stringify({ type: "FeatureCollection", features }));
   const clipNote = "; modified by Jenan PRO: PostGIS ST_Intersection with reviewed unofficial ADM0; original source retained privately";
+  // Bindings come from the real style, so every style layer is claimed by exactly one catalog layer. Governorates are data without a style
+  // layer: they stay in the release as administrative context (they fill the city of a saved location) and carry their own reviewed provenance.
+  const groups = styleLayerGroups(buildStyle({ theme: "light", language: "ar", releaseBase: "/api/jenan-map/releases/layout", tileFilename: "layout.pmtiles" }));
+  const regionsProvenance = { ...levels.ADM1.provenance, attribution: levels.ADM1.provenance.attribution + clipNote };
+  const governoratesProvenance = { ...levels.ADM2.provenance, attribution: levels.ADM2.provenance.attribution + clipNote };
   const layers = [
-    { id: "base", styleLayerIds: ["background", "earth"], searchCategories: [], visibility: "public", confidence: null, provenance: tilesProvenance },
-    { id: "roads", styleLayerIds: ["roads-highway"], searchCategories: ["roads"], visibility: "public", confidence: null, provenance: tilesProvenance },
-    { id: "places", styleLayerIds: ["labels-city"], searchCategories: ["places"], visibility: "public", confidence: null, provenance: tilesProvenance },
-    { id: "pois", styleLayerIds: ["pois-dot"], searchCategories: ["pois"], visibility: "public", confidence: null, provenance: tilesProvenance },
-    { id: "regions", styleLayerIds: ["boundaries-region"], searchCategories: ["regions"], visibility: "public", confidence: null, provenance: { ...levels.ADM1.provenance, attribution: levels.ADM1.provenance.attribution + clipNote } },
-    { id: "governorates", styleLayerIds: ["boundaries-region"], searchCategories: ["governorates"], visibility: "public", confidence: null, provenance: { ...levels.ADM2.provenance, attribution: levels.ADM2.provenance.attribution + clipNote } },
-  ];
+    { id: "base", searchCategories: [], provenance: tilesProvenance },
+    { id: "roads", searchCategories: ["roads"], provenance: tilesProvenance },
+    { id: "places", searchCategories: ["places"], provenance: tilesProvenance },
+    { id: "pois", searchCategories: ["pois"], provenance: tilesProvenance },
+    { id: "buildings", searchCategories: [], provenance: tilesProvenance },
+    { id: "regions", searchCategories: ["regions"], provenance: regionsProvenance },
+  ].map((layer) => {
+    if (!groups[layer.id]?.length) throw new Error(`The style has no layers for ${layer.id}`);
+    return { ...layer, styleLayerIds: groups[layer.id], visibility: "public", confidence: null };
+  });
   const coverage = {
     countryCode: "SA", authoritative: false, coverageBasis: "geoBoundaries-ADM0", coverageVerified: true, unofficial: true, notice: OPEN_BOUNDARY_NOTICE,
     boundaryAuthority: "geoBoundaries open data — not a Saudi government authority",
     boundarySource: levels.ADM0.provenance.source, boundarySha256: sha256(boundaryBytes), provenance: levels.ADM0.provenance,
-    layers: layers.filter((layer) => layer.id !== "base").map(({ id, provenance }) => ({ id, provenance })),
+    layers: [...layers, { id: "governorates", provenance: governoratesProvenance }].map(({ id, provenance }) => ({ id, provenance })),
   };
   const sourceFiles = Object.entries(levels).map(([level, item]) => ({ level, filename: `original-${level}.geojson`, sha256: item.sha256 }));
   const write = (name, data) => writeFile(path.join(out, name), data, { flag: "wx", mode: 0o600 });
@@ -103,6 +113,6 @@ export async function main(argv) {
   return summary;
 }
 
-if (process.argv[1] && path.resolve(process.argv[1]) === new URL(import.meta.url).pathname.replace(/^\/([A-Za-z]:)/, "$1")) {
+if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
   main(process.argv.slice(2)).catch((error) => { console.error(error.message); process.exit(1); });
 }

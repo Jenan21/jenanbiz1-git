@@ -1,11 +1,14 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import { mkdir, mkdtemp, rm, utimes, writeFile } from "node:fs/promises";
+import os from "node:os";
+import path from "node:path";
 
 const mocks = vi.hoisted(() => ({ query: vi.fn() }));
 vi.mock("@/lib/db", () => ({ db: { $queryRaw: mocks.query } }));
 vi.mock("@/services/jenan-map/service", () => ({ audit: vi.fn(), artifacts: vi.fn(), releaseById: vi.fn(), runtime: vi.fn() }));
 
 import { csvCell, exportFeatures, featuresToCsv, featuresToGeoJson, type ExportFeature } from "@/services/jenan-map/export-features";
-import { backupFolderName, backupRoot } from "@/services/jenan-map/backup-service";
+import { backupFolderName, backupRoot, listBackups } from "@/services/jenan-map/backup-service";
 
 const feature = (over: Partial<ExportFeature> = {}): ExportFeature => ({
   id: "f1", label: "حي النرجس", category: "neighbourhood", layerId: "places", sourceId: "node/1", aliases: ["Narjis", "النرجس"],
@@ -79,6 +82,24 @@ describe("backup location", () => {
       process.env.JENAN_MAP_BACKUP_ROOT = "/srv/map-backups";
       expect(backupRoot()).toMatch(/map-backups$/);
     } finally { process.env = saved; }
+  });
+  it("reports an unconfigured backup folder as a state, not a server error, and lists real backups newest first", async () => {
+    const saved = { ...process.env };
+    const dir = await mkdtemp(path.join(os.tmpdir(), "jenan-backups-"));
+    try {
+      delete process.env.JENAN_MAP_BACKUP_ROOT;
+      await expect(listBackups()).resolves.toEqual({ configured: false, backups: [] });
+      process.env.JENAN_MAP_BACKUP_ROOT = dir;
+      await mkdir(path.join(dir, "older")); await mkdir(path.join(dir, "newer")); await mkdir(path.join(dir, "half.partial"));
+      await writeFile(path.join(dir, "stray.txt"), "x");
+      await utimes(path.join(dir, "older"), new Date("2026-10-01T00:00:00Z"), new Date("2026-10-01T00:00:00Z"));
+      await utimes(path.join(dir, "newer"), new Date("2026-10-02T00:00:00Z"), new Date("2026-10-02T00:00:00Z"));
+      const listed = await listBackups();
+      expect(listed.configured).toBe(true);
+      expect(listed.backups.map((item) => item.folder)).toEqual(["newer", "older"]);
+      process.env.JENAN_MAP_BACKUP_ROOT = `${process.cwd()}/public/backups`;
+      await expect(listBackups()).rejects.toMatchObject({ code: "PRIVATE_BACKUP_ROOT_REQUIRED", status: 503 });
+    } finally { process.env = saved; await rm(dir, { recursive: true, force: true }); }
   });
 });
 function release() { return "1c1b5f07-9581-4e3b-a0a3-9fc7ea08ead1"; }

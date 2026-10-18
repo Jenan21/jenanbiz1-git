@@ -1,6 +1,6 @@
 export const THEMES: readonly string[];
 export const SOURCE_LAYERS: readonly string[];
-export const STYLE_FONTS: Record<"regular" | "medium" | "italic", string>;
+export const STYLE_FONTS: Record<"regular" | "medium", string>;
 export function labelField(language?: string, detailed?: boolean): unknown[];
 export function buildStyle(input: { theme?: string; language?: string; releaseBase: string; tileFilename: string }): {
   version: 8; name: string; metadata: Record<string, string>; glyphs: string;

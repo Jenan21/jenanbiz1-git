@@ -31,11 +31,12 @@ export async function backupInputFor(releaseId: string, actor: string): Promise<
   const release = await releaseById(releaseId);
   const files = await artifacts(releaseId);
   const state = await runtime();
-  const layers = await db.$queryRaw<Array<{ id: string; label: string; styleLayerIds: string[] | null; visibility: string; status: string; provenance: unknown }>>(sql`
-    SELECT l.id, l.label, rl."styleLayerIds", rl.visibility, rl.status, rl.provenance
+  const layers = await db.$queryRaw<Array<{ id: string; label: string; styleLayerIds: string[] | null; searchCategories: string[] | null; confidence: number | null; visibility: string; status: string; provenance: unknown }>>(sql`
+    SELECT l.id, l.label, rl."styleLayerIds", rl."searchCategories", rl.confidence, rl.visibility, rl.status, rl.provenance
     FROM jenan_map.release_layer rl JOIN jenan_map.layer l ON l.id = rl."layerId"
     WHERE rl."releaseId" = ${releaseId}::uuid ORDER BY l.id`);
-  const backupArtifacts: BackupArtifact[] = files.filter((file) => file.kind !== "source").map((file) => ({
+  // A full backup holds every artifact, including the private source evidence (boundary and original sources) a restore rebuilds from.
+  const backupArtifacts: BackupArtifact[] = files.map((file) => ({
     id: file.id, kind: file.kind, filename: file.filename, mime: file.mime, sha256: file.sha256, byteSize: Number(file.byteSize),
     publicSafe: file.publicSafe, exportAllowed: file.exportAllowed === true, exportLicense: file.exportLicense ?? null,
     // Jenan's own styles carry no third-party licence; tiles and data follow the licence recorded for them.
@@ -51,10 +52,20 @@ export async function backupInputFor(releaseId: string, actor: string): Promise<
   return {
     release: { id: release.id, version: release.version, status: release.status, source: release.source, sourceDate: new Date(release.sourceDate).toISOString(), license: release.license, publishedAt: release.publishedAt ? new Date(release.publishedAt).toISOString() : null },
     artifacts: backupArtifacts,
-    layers: layers.map((layer) => ({ id: layer.id, label: layer.label, styleLayerIds: layer.styleLayerIds ?? [], visibility: layer.visibility, status: layer.status, provenance: layer.provenance })),
+    layers: layers.map((layer) => ({ id: layer.id, label: layer.label, styleLayerIds: layer.styleLayerIds ?? [], searchCategories: layer.searchCategories ?? [], confidence: layer.confidence ?? null,
+      visibility: layer.visibility, status: layer.status, provenance: layer.provenance })),
     runtime: { status: state.status, maintenanceMessage: state.maintenanceMessage, publishedReleaseId: state.publishedReleaseId, revision: state.revision },
     sources: [...seen.values()], createdAt: new Date().toISOString(), createdBy: actor,
   };
+}
+
+/** The backup code is plain `BACKUP_*` text (some with a `:detail`); the API reports the code and never the detail. */
+export function asBackupError(error: unknown): never {
+  if (error instanceof Error && !(error instanceof MapError) && /^BACKUP_[A-Z_]+/.test(error.message)) {
+    const code = error.message.split(":")[0];
+    throw new MapError(code, code === "BACKUP_FOLDER_EXISTS" ? 409 : 422);
+  }
+  throw error;
 }
 
 /** Creates a full backup of one release in a new folder and records the action; it changes nothing that customers see. */
@@ -69,30 +80,35 @@ export async function createFullBackup(releaseId: string, actor: string) {
     if (!file) throw new MapError("ARTIFACT_NOT_FOUND", 404);
     const handle = await openArtifact(file, true);
     return handle.createReadStream({ autoClose: true, start: 0 });
-  });
+  }).catch(asBackupError);
   await db.$transaction((tx) => audit(tx, actor, "backup.created", releaseId, { folder: name, digest: written.digest, artifacts: written.artifacts }));
   return { folder: name, digest: written.digest, artifacts: written.artifacts, releaseId, mapVersion: input.release.version };
 }
 
+/** A server with no backup folder says so plainly (`configured: false`); that is a reportable state, not a server fault. */
 export async function listBackups() {
-  const root = backupRoot();
+  const backups: Array<{ folder: string; modifiedAt: string }> = [];
+  let root: string;
+  try { root = backupRoot(); } catch (error) {
+    if (error instanceof MapError && error.code === "BACKUP_ROOT_NOT_CONFIGURED") return { configured: false, backups };
+    throw error;
+  }
   const names = await readdir(root).catch(() => [] as string[]);
-  const out: Array<{ folder: string; modifiedAt: string }> = [];
   for (const name of names) {
     const info = await stat(path.join(root, name)).catch(() => null);
-    if (info?.isDirectory() && !name.endsWith(".partial")) out.push({ folder: name, modifiedAt: info.mtime.toISOString() });
+    if (info?.isDirectory() && !name.endsWith(".partial")) backups.push({ folder: name, modifiedAt: info.mtime.toISOString() });
   }
-  return out.sort((a, b) => b.modifiedAt.localeCompare(a.modifiedAt));
+  return { configured: true, backups: backups.sort((a, b) => b.modifiedAt.localeCompare(a.modifiedAt)) };
 }
 
 /**
- * Restore, step 1: prove a backup is complete and intact. It never imports anything and never touches the published map; a
- * restore continues only as a new unreviewed candidate through the normal Validate → Preview → Approve → Publish path.
+ * Restore, step 1: prove a backup is complete and intact. It never imports anything and never touches the published map; step 2
+ * (`restoreBackupAsCandidate`) imports it as a new unreviewed candidate that goes through the normal Preview → Approve → Publish path.
  */
 export async function validateBackupFolder(folder: string, actor: string) {
   if (!/^[A-Za-z0-9][A-Za-z0-9._-]{0,200}$/.test(folder) || folder.endsWith(".partial")) throw new MapError("INVALID_BACKUP_NAME", 400);
-  const verdict = await validateBackupDirectory(path.join(backupRoot(), folder), { requireStyleMatchesTiles: false });
+  const verdict = await validateBackupDirectory(path.join(backupRoot(), folder), { requireStyleMatchesTiles: false }).catch(asBackupError);
   await db.$transaction((tx) => audit(tx, actor, "backup.validated", null, { folder, ok: verdict.ok, problems: verdict.problems.map((p) => p.code) }));
   return { folder, ok: verdict.ok, problems: verdict.problems, mapVersion: verdict.manifest?.mapVersion ?? null, dataVersion: verdict.manifest?.dataVersion ?? null,
-    nextStep: verdict.ok ? "Import as a new unreviewed candidate, then Preview → Approve → Publish. Production is not modified by validation." : "Fix or discard this backup." };
+    nextStep: verdict.ok ? "Restore it as a new unreviewed candidate, then Preview → Approve → Publish. Production is not modified by validation or restore." : "Fix or discard this backup." };
 }

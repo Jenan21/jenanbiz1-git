@@ -84,19 +84,22 @@ describe("Jenan PRO Map Light and Dark styles", () => {
   });
 
   const real = path.resolve(".jenan-map-data/glyphs/manifest.json");
-  it.skipIf(!existsSync(real))("downloaded glyphs pass the platform's glyph validation (Arabic ranges, SDF border)", async () => {
+  it.skipIf(!existsSync(real))("downloaded glyphs pass the platform's glyph validation and every style font has Latin and Arabic glyphs", async () => {
     const { open } = await import("node:fs/promises");
-    const { validateArtifactFormat } = await import("@/services/jenan-map/validation");
+    const { labelFontGaps, validateArtifactFormat } = await import("@/services/jenan-map/validation");
     const manifest = JSON.parse(readFileSync(real, "utf8"));
-    let checked = 0;
-    for (const entry of manifest.files.filter((f: { filename: string }) => /Regular\/(0-255|1536-1791|1792-2047|65024-65279)\.pbf$/.test(f.filename))) {
+    const used = Object.values(STYLE_FONTS);
+    const counted: Array<{ filename: string; glyphs: number }> = [];
+    for (const entry of manifest.files.filter((f: { filename: string }) => FONT_STACKS.includes(f.filename.split("/")[0]))) {
       const handle = await open(path.resolve(".jenan-map-data/glyphs", entry.filename), "r");
       try {
         const artifact = { id: "x", releaseId, kind: "glyphs", filename: entry.filename, sha256: entry.sha256, storageKey: "x", byteSize: BigInt(entry.byteSize), publicSafe: true, mime: "application/x-protobuf" };
-        await expect(validateArtifactFormat(artifact as never, handle)).resolves.toEqual({ type: "glyphs" });
-        checked++;
+        const verdict = await validateArtifactFormat(artifact as never, handle);
+        expect(verdict).toMatchObject({ type: "glyphs" });
+        counted.push({ filename: entry.filename, glyphs: verdict.glyphs ?? 0 });
       } finally { await handle.close(); }
     }
-    expect(checked).toBe(4);
+    expect(counted).toHaveLength(FONT_STACKS.length * GLYPH_RANGES.length);
+    expect(labelFontGaps(used, counted)).toEqual([]);
   });
 });

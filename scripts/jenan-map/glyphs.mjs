@@ -19,7 +19,7 @@ export const GLYPH_SOURCE = {
   copyright: "Copyright 2022 The Noto Project Authors (https://github.com/notofonts)",
   ownership: "OPEN_LICENSE",
 };
-export const FONT_STACKS = ["Noto Sans Regular", "Noto Sans Medium", "Noto Sans Italic"];
+export const FONT_STACKS = ["Noto Sans Regular", "Noto Sans Medium"];
 // Latin + Latin Extended, Arabic, Arabic Supplement/Extended, general punctuation, Arabic Presentation Forms A and B (shaped letters).
 export const GLYPH_RANGES = ["0-255", "256-511", "1536-1791", "1792-2047", "8192-8447", "64256-64511", "64512-64767", "64768-65023", "65024-65279", "65280-65535"];
 

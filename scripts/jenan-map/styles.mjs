@@ -2,7 +2,8 @@
 // The style is data: `buildStyle` returns plain MapLibre style JSON that the platform validates like any other artifact.
 export const THEMES = ["light", "dark"];
 export const SOURCE_LAYERS = ["boundaries", "buildings", "earth", "landcover", "landuse", "places", "pois", "roads", "water"];
-export const STYLE_FONTS = { regular: "Noto Sans Regular", medium: "Noto Sans Medium", italic: "Noto Sans Italic" };
+// Arabic has no italic and Noto Sans Italic carries no Arabic glyphs, so the style never uses it: every face below has Latin and Arabic.
+export const STYLE_FONTS = { regular: "Noto Sans Regular", medium: "Noto Sans Medium" };
 
 const palettes = {
   light: {
@@ -98,7 +99,7 @@ export function buildStyle({ theme = "light", language = "ar", releaseBase, tile
 
     // Labels: Arabic first, shown progressively so a zoom level never carries every name at once.
     { id: "labels-water", type: "symbol", source: src, "source-layer": "water", minzoom: 3, filter: ["has", "name"],
-      layout: { "text-field": labelField(language), "text-font": font("italic"), "text-size": ["interpolate", ["linear"], ["zoom"], 3, 10, 14, 14], "text-letter-spacing": 0.08, "symbol-sort-key": ["coalesce", ["get", "sort_rank"], 0] },
+      layout: { "text-field": labelField(language), "text-font": font("regular"), "text-size": ["interpolate", ["linear"], ["zoom"], 3, 10, 14, 14], "text-letter-spacing": 0.08, "symbol-sort-key": ["coalesce", ["get", "sort_rank"], 0] },
       paint: text(c.waterText) },
     { id: "labels-roads-highway", type: "symbol", source: src, "source-layer": "roads", minzoom: 9, filter: ["all", kind("highway"), ["has", "name"]],
       layout: { "symbol-placement": "line", "text-field": labelField(language), "text-font": font("medium"), "text-size": ["interpolate", ["linear"], ["zoom"], 9, 10, 16, 14], "symbol-spacing": 320, "text-max-angle": 30 },
@@ -149,18 +150,19 @@ export function buildStyle({ theme = "light", language = "ar", releaseBase, tile
   };
 }
 
-/** Groups the style's layer ids by the catalog layer they belong to, for release layer bindings. */
+/**
+ * Groups the style's layer ids by the catalog layer they belong to, for release layer bindings. Water and land use are part of the base
+ * map (the catalog has no separate layers for them), so one binding owns every style layer and none is left unclaimed.
+ */
 export function styleLayerGroups(style) {
-  const groups = { base: [], roads: [], places: [], regions: [], buildings: [], pois: [], water: [], landuse: [] };
+  const groups = { base: [], roads: [], places: [], regions: [], buildings: [], pois: [] };
   for (const { id } of style.layers) {
-    if (id === "background" || id === "earth" || id.startsWith("landcover")) groups.base.push(id);
+    if (id === "background" || id === "earth" || id.startsWith("landcover") || id.startsWith("water") || id === "labels-water" || id.startsWith("landuse")) groups.base.push(id);
     else if (id.startsWith("roads")) groups.roads.push(id);
     else if (id.startsWith("labels-roads")) groups.roads.push(id);
     else if (id.startsWith("boundaries")) groups.regions.push(id);
     else if (id.startsWith("buildings")) groups.buildings.push(id);
     else if (id.startsWith("pois") || id === "labels-pois") groups.pois.push(id);
-    else if (id.startsWith("water") || id === "labels-water") groups.water.push(id);
-    else if (id.startsWith("landuse")) groups.landuse.push(id);
     else groups.places.push(id);
   }
   return groups;

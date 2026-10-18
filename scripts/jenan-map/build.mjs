@@ -8,7 +8,7 @@ import { constants } from "node:fs";
 import { chmod, mkdir, realpath } from "node:fs/promises";
 import path from "node:path";
 import pg from "pg";
-import { validateCoverage } from "./open-data.mjs";
+import { CLIP_TOLERANCE_DEGREES, validateCoverage } from "./open-data.mjs";
 
 const MAX_BYTES = 128 * 1024 * 1024;
 const MAX_FEATURES = 100_000;
@@ -180,18 +180,24 @@ export async function build(args) {
       boundaryAuthority: input.boundaryAuthority, boundarySource: input.boundarySource,
       boundarySha256: input.boundarySha256, provenance: input.provenance, layers: input.layers,
     }) : null]);
+    // Clipped administrative polygons are checked against the boundary widened by CLIP_TOLERANCE_DEGREES (see open-data.mjs);
+    // points, lines and every unclipped feature still need exact coverage.
+    await client.query(`CREATE TEMP TABLE jenan_map_clip_limit (geometry geometry) ON COMMIT DROP`);
+    await client.query(`INSERT INTO jenan_map_clip_limit SELECT ST_Buffer(geometry,$2::float8) FROM jenan_map.boundary WHERE "releaseId"=$1`, [releaseId, CLIP_TOLERANCE_DEGREES]);
     for (const feature of features.features) {
       const inserted = await client.query(`INSERT INTO jenan_map.feature (id,"releaseId",label,category,geometry,search,"sourceId","layerId",aliases)
         SELECT $1,$2,$3,$4,clipped.geometry,to_tsvector('simple',$6),$7,$8,$9::text[]
         FROM (SELECT ST_SetSRID(ST_GeomFromGeoJSON($5),4326) AS geometry) g
         JOIN jenan_map.boundary b ON b."releaseId"=$2
-        CROSS JOIN LATERAL (SELECT CASE WHEN $10::boolean AND $8 IN ('regions','governorates')
-          AND ST_GeometryType(g.geometry) IN ('ST_Polygon','ST_MultiPolygon')
+        CROSS JOIN jenan_map_clip_limit widened
+        CROSS JOIN LATERAL (SELECT ($10::boolean AND $8 IN ('regions','governorates')
+          AND ST_GeometryType(g.geometry) IN ('ST_Polygon','ST_MultiPolygon')) AS applied) clip
+        CROSS JOIN LATERAL (SELECT CASE WHEN clip.applied
           THEN ST_Multi(ST_CollectionExtract(ST_Intersection(g.geometry,b.geometry),3))
           ELSE g.geometry END AS geometry) clipped
         WHERE ST_IsValid(g.geometry) AND NOT ST_IsEmpty(g.geometry)
           AND ST_IsValid(clipped.geometry) AND NOT ST_IsEmpty(clipped.geometry)
-          AND ST_Covers(b.geometry,clipped.geometry)
+          AND ST_Covers(CASE WHEN clip.applied THEN widened.geometry ELSE b.geometry END,clipped.geometry)
         RETURNING ST_AsGeoJSON(geometry,15) AS geometry`,
       [randomUUID(), releaseId, feature.properties.label, feature.properties.category, JSON.stringify(feature.geometry),
         [feature.properties.label, ...(feature.properties.aliases ?? [])].join(" "),

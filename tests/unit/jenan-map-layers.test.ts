@@ -6,7 +6,7 @@ const database = vi.hoisted(() => ({
 }));
 vi.mock("@/lib/db", () => ({ db: database }));
 
-import { assertLayerCanEnable, assertPublicStyleLayerBindings, bindReleaseLayers, changeMapLayer, layerChangeSchema, mapLayers, readyLayerSearchFilter, releaseManifestLayers, releaseMapLayers, validateReleaseLayerBindings, type StoredMapLayer } from "@/services/jenan-map/layers";
+import { assertLayerCanEnable, assertPublicStyleLayerBindings, bindReleaseLayers, changeMapLayer, layerChangeSchema, layerProvenanceProblems, mapLayers, readyLayerSearchFilter, releaseManifestLayers, releaseMapLayers, validateReleaseLayerBindings, type StoredMapLayer } from "@/services/jenan-map/layers";
 
 const layer: StoredMapLayer = {
   id: "population", label: "السكان", enabled: false, visibility: "public",
@@ -187,5 +187,39 @@ describe("Jenan map layer publication boundary", () => {
   it("permits only an explicitly sourced public layer pinned to the active release", () => {
     expect(() => assertLayerCanEnable(layer, "approved-release")).not.toThrow();
     expect(layer.confidence).toBeNull();
+  });
+});
+
+describe("open-data coverage must list the provenance of every dataset the release holds", () => {
+  const provenance = { source: "OSM", organization: "OpenStreetMap contributors", url: "https://www.openstreetmap.org", sourceDate: "2026-10-01T00:00:00.000Z", importedAt: "2026-10-02T00:00:00.000Z", license: "ODbL-1.0", attribution: "© OpenStreetMap contributors" };
+  const other = { ...provenance, source: "geoBoundaries", license: "CC-BY-4.0" };
+  const coverage = [{ id: "base", provenance }, { id: "roads", provenance }, { id: "regions", provenance: other }, { id: "governorates", provenance: other }];
+  const bound = [
+    { id: "base", provenance, searchCategories: [] as string[] },
+    { id: "roads", provenance, searchCategories: ["roads"] },
+    { id: "regions", provenance: other, searchCategories: ["regions"] },
+  ];
+  const held = new Set(["roads", "regions", "governorates"]);
+  const categories = new Set(["roads", "regions", "governorates"]);
+
+  it("accepts bound layers, a data-only layer such as governorates, and tile-only layers without search categories", () => {
+    expect(layerProvenanceProblems(coverage, bound, held, categories)).toEqual([]);
+  });
+  it("refuses a bound layer whose provenance differs from the reviewed one", () => {
+    const changed = bound.map((b) => b.id === "roads" ? { ...b, provenance: { ...provenance, license: "CC-BY-4.0" } } : b);
+    expect(layerProvenanceProblems(coverage, changed, held, categories)).toEqual(["roads: provenance differs"]);
+  });
+  it("refuses an imported layer with no reviewed provenance, and provenance for a layer the release does not hold", () => {
+    expect(layerProvenanceProblems(coverage.filter((c) => c.id !== "governorates"), bound, held, categories)).toEqual(["governorates: imported layer has no reviewed provenance"]);
+    expect(layerProvenanceProblems([...coverage, { id: "pois", provenance }], bound, held, categories)).toEqual(["pois: provenance for a layer the release does not contain"]);
+  });
+  it("requires a layer to be searchable by its own category exactly when the release has features of it", () => {
+    expect(layerProvenanceProblems(coverage, bound.map((b) => b.id === "roads" ? { ...b, searchCategories: [] } : b), held, categories)).toEqual(["roads: search categories"]);
+    expect(layerProvenanceProblems(coverage, bound.map((b) => b.id === "base" ? { ...b, searchCategories: ["base"] } : b), held, categories)).toEqual(["base: search categories"]);
+  });
+  it("refuses a binding with no stored provenance and malformed coverage", () => {
+    expect(layerProvenanceProblems(coverage, bound.map((b) => b.id === "base" ? { id: "base", searchCategories: [] } : b), held, categories)).toEqual(["base: provenance missing"]);
+    expect(layerProvenanceProblems(undefined, bound, held, categories)).toEqual(["coverage: layers missing"]);
+    expect(layerProvenanceProblems([{ id: "base", provenance: { source: "x" } }, ...coverage.slice(1)], bound, held, categories)).toEqual(["base: reviewed provenance invalid"]);
   });
 });

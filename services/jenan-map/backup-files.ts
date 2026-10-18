@@ -23,7 +23,11 @@ export async function writeBackup(directory: string, input: BackupInput, open: (
   const built = buildBackupManifest(input);
   await mkdir(path.join(partial, "artifacts"), { recursive: true, mode: 0o700 });
   try {
+    const written = new Set<string>();
     for (const artifact of input.artifacts) {
+      // Two artifacts with identical bytes share one stored file (named by its checksum); it is written and verified once.
+      if (written.has(artifact.sha256)) continue;
+      written.add(artifact.sha256);
       const file = path.join(partial, backupFileName(artifact.sha256));
       await pipeline(await open(artifact), createWriteStream(file, { flags: "wx", mode: 0o600 }));
       if (await hashFile(file) !== artifact.sha256 || (await stat(file)).size !== artifact.byteSize) throw new Error(`BACKUP_ARTIFACT_CHANGED:${artifact.filename}`);

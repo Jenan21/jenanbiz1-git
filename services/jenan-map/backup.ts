@@ -10,7 +10,7 @@ import { createHash } from "node:crypto";
  * Validate → Preview → Approve → Publish path.
  */
 
-export const OWNERSHIP_CLASSES = ["JENAN_OWNED", "OPEN_LICENSE", "LICENSED", "THIRD_PARTY_RESTRICTED"] as const;
+export const OWNERSHIP_CLASSES = ["JENAN_OWNED", "OPEN_LICENSE", "LICENSED", "RESTRICTED"] as const;
 export type OwnershipClass = (typeof OWNERSHIP_CLASSES)[number];
 
 const OPEN_LICENSES = /^(ODbL-1\.0|CC-BY-4\.0|CC-BY-SA-[0-9.]+|CC0-1\.0|OFL-1\.1|PDDL-1\.0|OGL-UK-3\.0)$/;
@@ -20,27 +20,31 @@ const OPEN_LICENSES = /^(ODbL-1\.0|CC-BY-4\.0|CC-BY-SA-[0-9.]+|CC0-1\.0|OFL-1\.1
  * tiles are never presented as Jenan's own even when Jenan built the archive; Jenan's code, styles and designs are Jenan's.
  */
 export function ownershipOf(input: { license?: string | null; author?: "jenan" | "third-party" | null; restricted?: boolean }): OwnershipClass {
-  if (input.restricted) return "THIRD_PARTY_RESTRICTED";
+  if (input.restricted) return "RESTRICTED";
   const license = (input.license ?? "").trim();
   if (OPEN_LICENSES.test(license)) return "OPEN_LICENSE";
   if (input.author === "jenan" && (license === "" || /^(proprietary|jenan)/i.test(license))) return "JENAN_OWNED";
   if (license) return "LICENSED";
-  return "THIRD_PARTY_RESTRICTED";
+  return "RESTRICTED";
 }
 
 /** What may leave the platform: only content whose class and licence allow redistribution. */
 export function mayRedistribute(ownership: OwnershipClass, exportAllowed: boolean) {
-  return exportAllowed && ownership !== "THIRD_PARTY_RESTRICTED";
+  return exportAllowed && ownership !== "RESTRICTED";
 }
 
 export type BackupArtifact = {
   id: string; kind: string; filename: string; mime: string; sha256: string; byteSize: number;
   publicSafe: boolean; exportAllowed: boolean; exportLicense: string | null; ownership: OwnershipClass;
 };
+export type BackupLayer = {
+  id: string; label: string; styleLayerIds: string[]; searchCategories: string[]; confidence: number | null;
+  visibility: string; status: string; provenance: unknown;
+};
 export type BackupInput = {
   release: { id: string; version: string; status: string; source: string; sourceDate: string; license: string; publishedAt: string | null };
   artifacts: BackupArtifact[];
-  layers: Array<{ id: string; label: string; styleLayerIds: string[]; visibility: string; status: string; provenance: unknown }>;
+  layers: BackupLayer[];
   runtime: { status: string; maintenanceMessage: string | null; publishedReleaseId: string | null; revision: number };
   sources: Array<{ name: string; url: string; license: string; ownership: OwnershipClass; attribution?: string }>;
   createdAt: string;
@@ -56,10 +60,13 @@ export function backupFileName(sha256: string) {
   return `artifacts/${sha256}`;
 }
 
+/** UTF-16 code-unit order, never the machine's locale, so a manifest and its digest are identical on every server. */
+export const byCodeUnit = (a: string, b: string) => (a < b ? -1 : a > b ? 1 : 0);
+
 /** Deterministic JSON: object keys sorted, so the same content always produces the same manifest and digest. */
 export function canonicalJson(value: unknown): string {
   const sort = (input: unknown): unknown => Array.isArray(input) ? input.map(sort)
-    : input && typeof input === "object" ? Object.fromEntries(Object.keys(input).sort().map((key) => [key, sort((input as Record<string, unknown>)[key])]))
+    : input && typeof input === "object" ? Object.fromEntries(Object.keys(input).sort(byCodeUnit).map((key) => [key, sort((input as Record<string, unknown>)[key])]))
       : input;
   return JSON.stringify(sort(value), null, 2) + "\n";
 }
@@ -80,7 +87,7 @@ export function buildBackupManifest(input: BackupInput) {
     configuration: { layers: input.layers },
     sourceRegistry: input.sources,
     ownershipSummary: Object.fromEntries(OWNERSHIP_CLASSES.map((cls) => [cls, input.artifacts.filter((artifact) => artifact.ownership === cls).length])),
-    artifacts: [...input.artifacts].sort((a, b) => a.kind.localeCompare(b.kind) || a.filename.localeCompare(b.filename))
+    artifacts: [...input.artifacts].sort((a, b) => byCodeUnit(a.kind, b.kind) || byCodeUnit(a.filename, b.filename))
       .map((artifact) => ({ ...artifact, file: backupFileName(artifact.sha256) })),
   };
   const text = canonicalJson(manifest);

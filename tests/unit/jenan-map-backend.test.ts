@@ -402,18 +402,29 @@ describe("owned saved map location", () => {
     expect(mocks.query.mock.calls[1][0].values).toEqual(["user"]);
   });
   it("saves fresh server-only addresses/timestamp and audit atomically against the pinned Saudi boundary", async () => {
+    // The address comes only from the release's own regions, governorates and neighbourhoods, found by one more read inside the transaction.
     mocks.query.mockResolvedValueOnce([state]).mockResolvedValueOnce([release])
-      .mockResolvedValueOnce([{ inside: true }]).mockResolvedValueOnce([location]);
+      .mockResolvedValueOnce([{ inside: true }]).mockResolvedValueOnce([{ region: "منطقة الرياض", city: "الرياض", district: "حي النرجس" }])
+      .mockResolvedValueOnce([location]);
     expect(await saveLocation(input, "session-user")).toEqual(location);
-    const write = mocks.query.mock.calls[3][0];
+    expect(mocks.query.mock.calls[3][0].text).toContain("jenan_map.feature");
+    const write = mocks.query.mock.calls[4][0];
     expect(write.text).toContain('ON CONFLICT ("userId") DO UPDATE');
     expect(write.text).toContain('"selectedAt" = now()');
-    expect(write.text).toContain('"formattedAddress" = NULL');
-    expect(write.values).toContain("session-user");
+    expect(write.text).toContain('"formattedAddress" = EXCLUDED."formattedAddress"');
+    expect(write.values).toEqual(expect.arrayContaining(["session-user", "منطقة الرياض", "الرياض", "حي النرجس", "حي النرجس، الرياض، منطقة الرياض"]));
     expect(write.values).not.toContain("another-user");
     expect(mocks.transaction.mock.calls[0][1]).toEqual({ isolationLevel: "Serializable" });
     expect(mocks.execute.mock.calls[0][0].text).toContain("jenan_map.audit");
     expect(mocks.execute.mock.calls[1][0].text).toContain('"AuditLog"');
+  });
+  it("leaves every address field empty when the release holds no administrative data, never inventing one", async () => {
+    mocks.query.mockResolvedValueOnce([state]).mockResolvedValueOnce([release])
+      .mockResolvedValueOnce([{ inside: true }]).mockResolvedValueOnce([{ region: null, city: null, district: null }])
+      .mockResolvedValueOnce([location]);
+    await saveLocation(input, "session-user");
+    const write = mocks.query.mock.calls[4][0];
+    expect((write.values as unknown[]).filter((value) => value === null)).toHaveLength(4);
   });
   it("never persists outside-country, missing-boundary or stale release selections", async () => {
     mocks.query.mockResolvedValueOnce([state]).mockResolvedValueOnce([release]).mockResolvedValueOnce([{ inside: false }]);

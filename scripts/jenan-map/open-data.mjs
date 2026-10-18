@@ -1,5 +1,10 @@
 // Shared by the offline operator and release validation; no network or database side effects.
 export const OPEN_BOUNDARY_NOTICE = "Unofficial boundaries — حدود غير رسمية";
+// ST_Intersection rounds the vertices it creates, so a polygon clipped to the country can lie millimetres outside the very boundary it was
+// cut with. Clipped administrative polygons are accepted within this distance (about 11 cm); every other feature must be exactly inside.
+export const CLIP_TOLERANCE_DEGREES = 0.000001;
+// The datasets a Saudi open-data release can contain; coverage lists the reviewed provenance of each one the release actually holds.
+export const COVERAGE_LAYER_IDS = ["base", "roads", "places", "pois", "buildings", "regions", "governorates"];
 export const OSM_ATTRIBUTION = "© OpenStreetMap contributors (ODbL 1.0; https://www.openstreetmap.org/copyright; https://opendatacommons.org/licenses/odbl/1.0/)";
 
 export function validateProvenance(value) {
@@ -35,10 +40,10 @@ export function validateCoverage(value) {
       !/geoBoundaries.*\bSAU\b.*\bADM0\b/i.test(provenance.source) ||
       !/\/SAU\/ADM0(?:\/|$)/.test(url.pathname) ||
       (githubSource && !/^\/(?:media\/)?wmgeolab\/geoBoundaries\//.test(url.pathname)) ||
-      !Array.isArray(value.layers) || !value.layers.length || value.layers.length > 5 ||
+      !Array.isArray(value.layers) || !value.layers.length || value.layers.length > COVERAGE_LAYER_IDS.length ||
       new Set(value.layers.map((layer) => layer.id)).size !== value.layers.length) throw new Error("Reviewed geoBoundaries open coverage required");
   for (const layer of value.layers) {
-    if (!["base", "roads", "places", "regions", "governorates"].includes(layer.id)) throw new Error("Unrecognized normalized source layer");
+    if (!COVERAGE_LAYER_IDS.includes(layer.id)) throw new Error("Unrecognized normalized source layer");
     validateProvenance(layer.provenance);
   }
   return value;

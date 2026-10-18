@@ -28,6 +28,11 @@ export type AdminMapArtifact = {
   url?: string;
 };
 
+export type AdminMapFacts = {
+  postgis: { status: "available"; version: string } | { status: "unavailable" };
+  activeLayers: number | null; datasets: number | null; features: number | null;
+};
+
 export type AdminMapSnapshot = {
   runtime: { status: string; publishedReleaseId: string | null; revision: number; maintenanceMessage?: string | null };
   releases: AdminMapRelease[];
@@ -36,7 +41,36 @@ export type AdminMapSnapshot = {
   artifacts?: AdminMapArtifact[];
   capabilities?: string[];
   storage?: { status: string; message?: string };
+  facts?: AdminMapFacts;
 };
+
+/** What the overview shows, derived only from what the server returned; `null` means "not known", never zero. */
+export function overviewSummary(snapshot: AdminMapSnapshot | null) {
+  if (!snapshot) return null;
+  const active = snapshot.releases.find((release) => release.id === snapshot.runtime.publishedReleaseId);
+  const tiles = (snapshot.artifacts ?? []).filter((artifact) => artifact.releaseId === snapshot.runtime.publishedReleaseId && artifact.kind === "pmtiles");
+  const lastPublish = snapshot.audit.find((entry) => ["publish", "rollback"].includes(entry.action) && entry.releaseId === snapshot.runtime.publishedReleaseId);
+  const bytes = tiles.reduce<bigint | null>((sum, artifact) => sum !== null && /^\d+$/.test(artifact.byteSize) ? sum + BigInt(artifact.byteSize) : null, BigInt(0));
+  return {
+    activeVersion: active?.version ?? null,
+    lastUpdate: snapshot.releases.reduce<string | null>((latest, release) => !latest || release.createdAt > latest ? release.createdAt : latest, null),
+    lastPublish: lastPublish?.createdAt ?? null,
+    tilesBytes: active && tiles.length ? bytes : null,
+    postgis: snapshot.facts?.postgis ?? null,
+    datasets: snapshot.facts?.datasets ?? null,
+    activeLayers: snapshot.facts?.activeLayers ?? null,
+    features: snapshot.facts?.features ?? null,
+  };
+}
+
+/** Binary units for a byte count; the figure is a stored file size, not a measured load size. */
+export function formatBytes(value: bigint | null) {
+  if (value === null) return "غير معروف";
+  const units = ["بايت", "ك.ب", "م.ب", "ج.ب"];
+  let size = Number(value), unit = 0;
+  while (size >= 1024 && unit < units.length - 1) { size /= 1024; unit++; }
+  return `${unit ? size.toFixed(1) : size} ${units[unit]}`;
+}
 
 export function readMapSnapshot(payload: unknown): AdminMapSnapshot | null {
   if (!payload || typeof payload !== "object") return null;

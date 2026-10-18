@@ -16,7 +16,7 @@ vi.mock("@/lib/db", () => ({ db: {} }));
 import JenanMapPage from "@/app/jenan-map/page";
 import type { Artifact } from "@/services/jenan-map/contracts";
 import { logicalFilename, openArtifact } from "@/services/jenan-map/storage";
-import { validateArtifactFormat, validGeometry } from "@/services/jenan-map/validation";
+import { labelFontGaps, validateArtifactFormat, validGeometry } from "@/services/jenan-map/validation";
 import { fixtureReleaseId, pmtilesFixture, readyFixtureFiles } from "./jenan-map-artifact-fixtures";
 
 const varint = (value: number) => {
@@ -91,11 +91,31 @@ describe("review: glyph bitmaps carry the standard three-pixel SDF border", () =
   };
 
   it("accepts an 8x8 glyph whose bitmap is (8+6)x(8+6) = 196 bytes", async () => {
-    expect(await validate(glyphArtifact, glyphFile(Buffer.alloc(196, 7), 8, 8))).toEqual({ type: "glyphs" });
+    expect(await validate(glyphArtifact, glyphFile(Buffer.alloc(196, 7), 8, 8))).toEqual({ type: "glyphs", glyphs: 1 });
+  });
+  it("accepts a well-formed range that has no glyphs, as real fonts have for scripts they do not cover", async () => {
+    const empty = field(10, Buffer.concat([field(10, Buffer.from("Sans Italic")), field(18, Buffer.from("1536-1791"))]));
+    expect(await validate({ ...glyphArtifact, filename: "Noto/1536-1791.pbf" }, empty)).toEqual({ type: "glyphs", glyphs: 0 });
+    await expect(validate({ ...glyphArtifact, filename: "Noto/0-255.pbf" }, empty)).rejects.toMatchObject({ code: "ARTIFACT_FORMAT_INVALID" });
   });
   it("rejects a bitmap without the border and one with a wrong size", async () => {
     await expect(validate(glyphArtifact, glyphFile(Buffer.alloc(64, 7), 8, 8))).rejects.toMatchObject({ code: "ARTIFACT_FORMAT_INVALID" });
     await expect(validate(glyphArtifact, glyphFile(Buffer.alloc(197, 7), 8, 8))).rejects.toMatchObject({ code: "ARTIFACT_FORMAT_INVALID" });
+  });
+});
+
+describe("review: every label font must carry Latin and Arabic glyphs", () => {
+  const files = (entries: Array<[string, number]>) => entries.map(([filename, glyphs]) => ({ filename, glyphs }));
+  it("accepts fonts with glyphs in both blocks", () => {
+    expect(labelFontGaps(["Noto Sans Regular"], files([["Noto Sans Regular/0-255.pbf", 190], ["Noto Sans Regular/1536-1791.pbf", 210]]))).toEqual([]);
+  });
+  it("reports an empty Arabic range (Noto Sans Italic has none) and a missing file, so such a release cannot be approved", () => {
+    expect(labelFontGaps(["Noto Sans Italic"], files([["Noto Sans Italic/0-255.pbf", 190], ["Noto Sans Italic/1536-1791.pbf", 0]]))).toEqual(["Noto Sans Italic/1536-1791"]);
+    expect(labelFontGaps(["Noto Sans Medium"], files([["Noto Sans Medium/0-255.pbf", 190]]))).toEqual(["Noto Sans Medium/1536-1791"]);
+  });
+  it("checks each font on its own", () => {
+    const present = files([["A/0-255.pbf", 1], ["A/1536-1791.pbf", 1]]);
+    expect(labelFontGaps(["A", "B"], present)).toEqual(["B/0-255", "B/1536-1791"]);
   });
 });
 

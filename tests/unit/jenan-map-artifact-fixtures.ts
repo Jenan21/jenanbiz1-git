@@ -18,9 +18,10 @@ export function pmtilesFixture(extraMetadata: Record<string, unknown> = {}) {
   header.writeInt32LE(55e7, 110); header.writeInt32LE(32e7, 114);
   return Buffer.concat([header, directory, metadata, tile]);
 }
-export function readyFixtureFiles(releaseId = fixtureReleaseId, coverage = {
+const fixtureCoverage = {
   countryCode: "SA", authoritative: true, boundaryAuthority: "Fixture authority", boundarySource: "Synthetic unit fixture only",
-}) {
+};
+export function readyFixtureFiles(releaseId = fixtureReleaseId, coverage = fixtureCoverage) {
   const font = Buffer.from("Noto");
   const range = Buffer.from("0-255");
   const glyph = Buffer.from([8, 65, 24, 0, 32, 0, 40, 0, 48, 0, 56, 1]);
