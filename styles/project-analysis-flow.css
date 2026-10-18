@@ -1,0 +1,858 @@
+/*
+ * Project analysis popups: data, location, progress and the success / failure notices.
+ *
+ * One dialog shell (`.af-modal`) changes size from step to step, so closing one step and opening the next reads as a single
+ * continuous experience. Nothing here scrolls at ordinary screen sizes: the content is sized to the dialog, and the
+ * location map flexes into whatever height is left. A scrollbar can only appear on a very short screen, and then it is the
+ * dark thin one below, never the browser's white one.
+ */
+.pa-modal.af-modal {
+  --af-cyan: #19f0f6;
+  --af-ink: #e9fbff;
+  --af-mute: #9db9c6;
+  --af-line: rgba(40, 200, 240, 0.38);
+  display: flex;
+  flex-direction: column;
+  width: min(680px, 100%);
+  height: min(640px, calc(100dvh - 32px));
+  max-height: calc(100dvh - 32px);
+  padding: 0;
+  overflow: hidden;
+  border-radius: 22px;
+  color-scheme: dark;
+  scrollbar-color: rgba(25, 240, 246, 0.4) transparent;
+  scrollbar-width: thin;
+  transition: width 0.3s ease, height 0.3s ease;
+}
+.pa-modal.af-modal[data-step="location"] {
+  width: min(980px, 100%);
+  height: min(720px, calc(100dvh - 32px));
+}
+.pa-modal.af-modal[data-step="running"] {
+  width: min(580px, 100%);
+  height: min(600px, calc(100dvh - 32px));
+}
+.pa-modal.af-modal[data-step="done"] {
+  width: min(480px, 100%);
+  height: min(420px, calc(100dvh - 32px));
+}
+.pa-modal.af-modal[data-step="failed"] {
+  width: min(480px, 100%);
+  height: min(460px, calc(100dvh - 32px));
+}
+.af-modal *::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+.af-modal *::-webkit-scrollbar-thumb {
+  border-radius: 8px;
+  background: rgba(25, 240, 246, 0.35);
+}
+.af-modal *::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+/* The content of the current step; it fades in on every step change and is the only thing that moves. */
+.af-step {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  min-height: 0;
+  overflow: auto;
+  animation: af-step-in 0.24s ease both;
+}
+@keyframes af-step-in {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+/* Shared header of the data and location steps */
+.af-head {
+  display: flex;
+  flex: none;
+  align-items: center;
+  gap: 14px;
+  padding: 24px 64px 0 28px;
+}
+[dir="rtl"] .af-head {
+  padding: 24px 28px 0 64px;
+}
+.af-head__badge {
+  display: grid;
+  flex: none;
+  place-items: center;
+  width: 46px;
+  height: 46px;
+  border: 1px solid rgba(25, 240, 246, 0.55);
+  border-radius: 14px;
+  color: var(--af-cyan);
+  background: rgba(25, 240, 246, 0.08);
+  box-shadow: 0 0 22px rgba(25, 240, 246, 0.18);
+}
+.af-head__badge .icon {
+  width: 22px;
+  height: 22px;
+}
+.af-head h2 {
+  margin: 0;
+  font-size: clamp(1.15rem, 2.4vw, 1.4rem);
+  line-height: 1.3;
+}
+.af-head p {
+  margin: 3px 0 0;
+  color: var(--af-mute);
+  font-size: 0.86rem;
+  line-height: 1.6;
+}
+.af-back {
+  margin-inline-start: auto;
+  padding: 7px 16px;
+  border: 1px solid rgba(25, 240, 246, 0.4);
+  border-radius: 999px;
+  color: var(--af-ink);
+  background: transparent;
+  font: inherit;
+  font-size: 0.82rem;
+  cursor: pointer;
+}
+.af-back:hover,
+.af-back:focus-visible {
+  border-color: var(--af-cyan);
+  color: #fff;
+}
+.pa-modal.af-modal .pa-steps {
+  flex: none;
+  margin: 18px 28px 0;
+}
+
+/* Data step */
+.af-form {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: 16px;
+  min-height: 0;
+  padding: 18px 28px 26px;
+}
+.af-fields {
+  display: grid;
+  flex: 1;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-template-rows: minmax(96px, 1fr) auto auto;
+  gap: 14px 16px;
+  min-height: 0;
+}
+.af-fields label {
+  position: relative;
+  display: grid;
+  align-content: start;
+  gap: 7px;
+  min-width: 0;
+}
+.af-fields .is-idea {
+  grid-column: 1 / -1;
+  grid-template-rows: auto minmax(0, 1fr);
+}
+.af-fields:not(.has-area) .is-audience {
+  grid-column: 1 / -1;
+}
+.af-fields label > span {
+  color: var(--af-ink);
+  font-size: 0.86rem;
+  font-weight: 600;
+}
+.af-fields label > span b {
+  color: #ff8a94;
+}
+.pa-modal.af-modal .af-fields input,
+.pa-modal.af-modal .af-fields select,
+.pa-modal.af-modal .af-fields textarea {
+  width: 100%;
+  min-height: 48px;
+  border-radius: 12px;
+  font-size: 0.95rem;
+}
+.pa-modal.af-modal .af-fields textarea {
+  height: 100%;
+  min-height: 96px;
+  padding-bottom: 30px;
+  resize: none;
+  line-height: 1.7;
+}
+.af-fields label > em {
+  position: absolute;
+  inset-block-end: 9px;
+  inset-inline-end: 14px;
+  color: var(--af-mute);
+  font-size: 0.72rem;
+  font-style: normal;
+  pointer-events: none;
+}
+.af-money {
+  display: flex;
+  align-items: stretch;
+  overflow: hidden;
+  border: 1px solid var(--af-line);
+  border-radius: 12px;
+  background: rgba(2, 14, 28, 0.9);
+}
+.af-money:focus-within {
+  border-color: var(--af-cyan);
+  box-shadow: 0 0 0 3px rgba(25, 240, 246, 0.14);
+}
+.af-money i {
+  display: grid;
+  flex: none;
+  place-items: center;
+  padding-inline: 14px;
+  border-inline-end: 1px solid var(--af-line);
+  color: var(--af-mute);
+  background: rgba(25, 240, 246, 0.06);
+  font-size: 0.8rem;
+  font-style: normal;
+  white-space: nowrap;
+}
+.pa-modal.af-modal .af-money input {
+  flex: 1;
+  min-width: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+  appearance: textfield;
+  -moz-appearance: textfield;
+}
+.af-money input::-webkit-outer-spin-button,
+.af-money input::-webkit-inner-spin-button {
+  margin: 0;
+  appearance: none;
+  -webkit-appearance: none;
+}
+.af-foot {
+  display: flex;
+  flex: none;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+/* Buttons of every step */
+.af-primary,
+.af-secondary {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-height: 48px;
+  padding: 0 28px;
+  border-radius: 12px;
+  font: inherit;
+  font-size: 0.95rem;
+  font-weight: 700;
+  cursor: pointer;
+}
+.af-primary {
+  border: 0;
+  color: #03222b;
+  background: linear-gradient(135deg, #19f0f6, #1fb2ea);
+  box-shadow: 0 0 24px rgba(25, 240, 246, 0.3);
+}
+.af-primary:hover:not(:disabled),
+.af-primary:focus-visible {
+  filter: brightness(1.08);
+  box-shadow: 0 0 30px rgba(25, 240, 246, 0.45);
+}
+.af-primary:disabled {
+  opacity: 0.45;
+  box-shadow: none;
+  cursor: not-allowed;
+}
+.af-secondary {
+  border: 1px solid rgba(25, 240, 246, 0.4);
+  color: var(--af-ink);
+  background: transparent;
+}
+.af-secondary:hover,
+.af-secondary:focus-visible {
+  border-color: var(--af-cyan);
+  background: rgba(25, 240, 246, 0.07);
+}
+.af-primary .icon,
+.af-secondary .icon {
+  width: 18px;
+  height: 18px;
+}
+
+/* Location step: the map fills the dialog; the search, "my location" and the confirm card float over it */
+.af-locate {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  min-height: 0;
+}
+.af-locate > .af-head {
+  padding-bottom: 16px;
+}
+.af-stagebox {
+  position: relative;
+  flex: 1;
+  min-height: 0;
+  border-top: 1px solid var(--af-line);
+}
+.af-map,
+.af-map .pa-entry-map {
+  position: absolute;
+  inset: 0;
+  height: 100%;
+  border: 0;
+  border-radius: 0;
+}
+.af-map .leaflet-top.leaflet-left {
+  margin-top: 66px;
+  margin-left: 4px;
+}
+.af-map .pa-entry-map .leaflet-control-attribution {
+  color: #9db9c6;
+  background: rgba(3, 20, 38, 0.82);
+}
+.af-map .pa-entry-map .leaflet-control-attribution a {
+  color: #4ff6ff;
+}
+.af-search {
+  position: absolute;
+  z-index: 5;
+  inset-block-start: 14px;
+  inset-inline: 14px 74px;
+  height: 48px;
+}
+.af-search > .icon {
+  position: absolute;
+  inset-block-start: 15px;
+  inset-inline-start: 15px;
+  width: 18px;
+  height: 18px;
+  color: var(--af-cyan);
+  pointer-events: none;
+}
+.pa-modal.af-modal .af-search input {
+  width: 100%;
+  height: 48px;
+  min-height: 48px;
+  padding-inline: 44px 14px;
+  border-radius: 14px;
+  background: rgba(3, 18, 36, 0.94);
+  box-shadow: 0 6px 22px rgba(0, 0, 0, 0.4);
+}
+.af-hits {
+  position: absolute;
+  inset-block-start: calc(100% + 6px);
+  inset-inline: 0;
+  max-height: min(268px, 42dvh);
+  margin: 0;
+  padding: 6px;
+  overflow: auto;
+  border: 1px solid var(--af-line);
+  border-radius: 14px;
+  background: rgba(3, 18, 36, 0.98);
+  box-shadow: 0 14px 34px rgba(0, 0, 0, 0.5);
+  list-style: none;
+}
+.af-hits button {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  width: 100%;
+  padding: 10px 12px;
+  border: 0;
+  border-radius: 10px;
+  color: var(--af-ink);
+  background: transparent;
+  font: inherit;
+  font-size: 0.86rem;
+  line-height: 1.55;
+  text-align: start;
+  cursor: pointer;
+}
+.af-hits button:hover,
+.af-hits button:focus-visible {
+  background: rgba(25, 240, 246, 0.1);
+}
+.af-hits .icon {
+  flex: none;
+  width: 16px;
+  height: 16px;
+  margin-top: 3px;
+  color: var(--af-cyan);
+}
+.af-me {
+  position: absolute;
+  z-index: 5;
+  inset-block-start: 14px;
+  inset-inline-end: 14px;
+  display: grid;
+  place-items: center;
+  width: 48px;
+  height: 48px;
+  padding: 0;
+  border: 1px solid var(--af-line);
+  border-radius: 14px;
+  color: var(--af-cyan);
+  background: rgba(3, 18, 36, 0.94);
+  box-shadow: 0 6px 22px rgba(0, 0, 0, 0.4);
+  cursor: pointer;
+}
+.af-me:hover:not(:disabled),
+.af-me:focus-visible {
+  border-color: var(--af-cyan);
+  box-shadow: 0 0 20px rgba(25, 240, 246, 0.35);
+}
+.af-me:disabled {
+  opacity: 0.55;
+  cursor: progress;
+}
+.af-me .icon {
+  width: 22px;
+  height: 22px;
+}
+.af-card {
+  position: absolute;
+  z-index: 5;
+  inset-block-end: 30px;
+  inset-inline: 14px;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 12px 14px;
+  border: 1px solid var(--af-line);
+  border-radius: 16px;
+  background: rgba(3, 18, 36, 0.94);
+  box-shadow: 0 10px 32px rgba(0, 0, 0, 0.5);
+}
+.af-card__pin {
+  display: grid;
+  flex: none;
+  place-items: center;
+  width: 42px;
+  height: 42px;
+  border-radius: 12px;
+  color: var(--af-mute);
+  background: rgba(157, 185, 198, 0.1);
+}
+.af-card.is-set .af-card__pin {
+  color: var(--af-cyan);
+  background: rgba(25, 240, 246, 0.12);
+}
+.af-card__text {
+  display: grid;
+  flex: 1;
+  gap: 2px;
+  min-width: 0;
+}
+.af-card__text b {
+  font-size: 0.95rem;
+  line-height: 1.5;
+  overflow-wrap: anywhere;
+}
+.af-card__text small {
+  color: var(--af-mute);
+  font-size: 0.78rem;
+  line-height: 1.5;
+}
+.af-card.is-set .af-card__text small {
+  color: #7ff0c4;
+}
+.af-card__error {
+  color: #ffb3ba;
+}
+.af-card .af-primary {
+  flex: none;
+}
+
+/* Progress */
+.af-progress {
+  display: grid;
+  flex: 1;
+  align-content: center;
+  justify-items: center;
+  gap: 16px;
+  padding: 34px clamp(18px, 4vw, 34px) 28px;
+  text-align: center;
+}
+.af-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 14px;
+  border: 1px solid rgba(46, 230, 168, 0.5);
+  border-radius: 999px;
+  color: #7ff0c4;
+  background: rgba(16, 110, 84, 0.2);
+  font-size: 0.8rem;
+}
+.af-pill .icon {
+  width: 15px;
+  height: 15px;
+}
+.af-progress h2 {
+  margin: 0;
+  font-size: clamp(1.25rem, 3vw, 1.55rem);
+  line-height: 1.3;
+}
+.af-lead {
+  margin: 0;
+  color: var(--af-mute);
+  font-size: 0.92rem;
+  line-height: 1.8;
+}
+.af-lead span {
+  display: block;
+}
+.af-ring {
+  position: relative;
+  display: grid;
+  place-items: center;
+  width: 128px;
+  height: 128px;
+  margin-block: 4px;
+}
+.af-ring svg {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  transform: rotate(-90deg);
+}
+.af-ring__track,
+.af-ring__bar {
+  fill: none;
+  stroke-width: 8;
+}
+.af-ring__track {
+  stroke: rgba(25, 240, 246, 0.14);
+}
+.af-ring__bar {
+  stroke: var(--af-cyan);
+  stroke-linecap: round;
+  filter: drop-shadow(0 0 6px rgba(25, 240, 246, 0.6));
+  transition: stroke-dashoffset 0.6s ease;
+}
+.af-ring > span {
+  position: relative;
+  display: grid;
+  place-items: center;
+  font-size: 1.55rem;
+}
+.af-ring > span .icon {
+  width: 30px;
+  height: 30px;
+  color: var(--af-cyan);
+}
+.af-stages {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  width: 100%;
+  margin: 6px 0 0;
+  padding: 0;
+  list-style: none;
+}
+.af-stages li {
+  position: relative;
+  display: grid;
+  align-content: start;
+  justify-items: center;
+  gap: 8px;
+  color: var(--af-mute);
+  font-size: 0.74rem;
+  line-height: 1.45;
+  text-align: center;
+}
+.af-stages li:not(:last-child)::after {
+  content: "";
+  position: absolute;
+  inset-block-start: 13px;
+  inset-inline-start: calc(50% + 20px);
+  width: calc(100% - 40px);
+  height: 2px;
+  background: rgba(80, 130, 160, 0.4);
+}
+.af-stages li.is-done:not(:last-child)::after {
+  background: var(--af-cyan);
+}
+.af-stages__dot {
+  display: grid;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  border: 1px solid rgba(90, 140, 170, 0.6);
+  border-radius: 50%;
+  background: #04182c;
+  font-size: 0.78rem;
+  font-weight: 700;
+}
+.af-stages__dot .icon {
+  width: 14px;
+  height: 14px;
+}
+.af-stages li.is-done .af-stages__dot {
+  border-color: var(--af-cyan);
+  color: #03222b;
+  background: var(--af-cyan);
+}
+.af-stages li.is-current {
+  color: var(--af-ink);
+}
+.af-stages li.is-current .af-stages__dot {
+  border-color: var(--af-cyan);
+  box-shadow: 0 0 0 4px rgba(25, 240, 246, 0.16);
+}
+.af-stages__dot i {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--af-cyan);
+}
+.af-sr {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+}
+.af-hint {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  width: 100%;
+  margin: 6px 0 0;
+  padding-top: 14px;
+  border-top: 1px solid rgba(40, 200, 240, 0.18);
+  color: var(--af-mute);
+  font-size: 0.78rem;
+  line-height: 1.7;
+  text-align: start;
+}
+.af-hint .icon {
+  flex: none;
+  width: 16px;
+  height: 16px;
+  margin-top: 2px;
+  color: var(--af-cyan);
+}
+
+/* Success and failure notices */
+.af-notice {
+  display: grid;
+  flex: 1;
+  align-content: center;
+  justify-items: center;
+  gap: 14px;
+  padding: 36px clamp(20px, 5vw, 40px) 34px;
+  text-align: center;
+}
+.af-seal {
+  position: relative;
+  display: grid;
+  place-items: center;
+  width: 92px;
+  height: 92px;
+  margin-bottom: 6px;
+  border-radius: 50%;
+  color: #03221a;
+  background: radial-gradient(circle at 35% 30%, #86fbd9, #19c98f 62%, #0e9f78);
+  box-shadow: 0 0 0 10px rgba(25, 201, 143, 0.12), 0 0 40px rgba(25, 201, 143, 0.45);
+}
+.af-seal i {
+  position: absolute;
+  inset: -16px;
+  border: 1px solid rgba(46, 230, 168, 0.3);
+  border-radius: 50%;
+}
+.af-seal .icon {
+  width: 44px;
+  height: 44px;
+  stroke-width: 3;
+}
+.af-notice.is-failed .af-seal {
+  color: #2a0a10;
+  background: radial-gradient(circle at 35% 30%, #ffb3ba, #ff6d7a 62%, #d6414f);
+  box-shadow: 0 0 0 10px rgba(255, 109, 122, 0.12), 0 0 40px rgba(255, 109, 122, 0.4);
+}
+.af-notice.is-failed .af-seal i {
+  border-color: rgba(255, 109, 122, 0.3);
+}
+.af-notice h2 {
+  margin: 0;
+  font-size: clamp(1.4rem, 4vw, 1.75rem);
+  line-height: 1.3;
+}
+.af-notice h2 b {
+  color: var(--af-cyan);
+}
+.af-notice.is-failed h2 b {
+  color: #ff8a94;
+}
+.af-notice p {
+  max-width: 34ch;
+  margin: 0;
+  color: var(--af-mute);
+  line-height: 1.8;
+}
+.af-notice > .af-primary {
+  min-width: min(240px, 100%);
+  margin-top: 8px;
+}
+.af-notice__actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 10px;
+  margin-top: 8px;
+}
+
+@media (max-width: 640px) {
+  .pa-modal-layer:has(.af-modal) {
+    padding: 8px;
+  }
+  .pa-modal.af-modal {
+    transition: none;
+  }
+  .pa-modal.af-modal[data-step="data"],
+  .pa-modal.af-modal[data-step="location"] {
+    width: 100%;
+    height: calc(100dvh - 16px);
+    max-height: none;
+  }
+  .pa-modal.af-modal[data-step="running"],
+  .pa-modal.af-modal[data-step="done"],
+  .pa-modal.af-modal[data-step="failed"] {
+    width: 100%;
+    height: auto;
+  }
+  .af-head,
+  [dir="rtl"] .af-head {
+    gap: 12px;
+    padding-top: 18px;
+    padding-inline: 16px 56px;
+  }
+  .af-head__badge {
+    width: 40px;
+    height: 40px;
+  }
+  .pa-modal.af-modal .pa-steps {
+    margin: 14px 12px 0;
+  }
+  .pa-modal.af-modal .pa-steps small,
+  .pa-modal.af-modal .pa-steps li.is-current small {
+    display: block;
+    position: static;
+    font-size: 0.68rem;
+    white-space: normal;
+  }
+  .af-form {
+    padding: 14px 16px 18px;
+  }
+  .af-fields {
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-rows: none;
+  }
+  .af-fields .is-idea {
+    grid-template-rows: auto auto;
+  }
+  .pa-modal.af-modal .af-fields textarea {
+    height: auto;
+    min-height: 110px;
+  }
+  .af-card {
+    flex-wrap: wrap;
+    inset-inline: 10px;
+    inset-block-end: 28px;
+  }
+  .af-card .af-primary {
+    width: 100%;
+  }
+  .af-search {
+    inset-inline: 10px 66px;
+    inset-block-start: 10px;
+  }
+  .af-me {
+    inset-block-start: 10px;
+    inset-inline-end: 10px;
+  }
+  .af-progress {
+    padding-block: 28px 22px;
+  }
+  .af-stages li {
+    font-size: 0.68rem;
+  }
+}
+
+/* On a narrow screen five labels cannot sit side by side; the dots stay and the current step is named under them. */
+@media (max-width: 520px) {
+  .af-stages small {
+    display: none;
+  }
+  .af-sr {
+    position: static;
+    width: auto;
+    height: auto;
+    overflow: visible;
+    clip: auto;
+    color: var(--af-cyan);
+    font-size: 0.9rem;
+    font-weight: 600;
+    white-space: normal;
+  }
+}
+
+@media (max-height: 700px) and (min-width: 641px) {
+  .af-head,
+  [dir="rtl"] .af-head {
+    padding-top: 16px;
+  }
+  .pa-modal.af-modal .pa-steps {
+    margin-top: 12px;
+  }
+  .af-form {
+    gap: 12px;
+    padding: 12px 28px 18px;
+  }
+  .af-fields {
+    gap: 10px 16px;
+    grid-template-rows: minmax(72px, 1fr) auto auto;
+  }
+  .af-fields label {
+    gap: 5px;
+  }
+  .pa-modal.af-modal .af-fields textarea {
+    min-height: 72px;
+  }
+  .pa-modal.af-modal .af-fields input,
+  .pa-modal.af-modal .af-fields select {
+    min-height: 44px;
+  }
+  .af-seal {
+    width: 72px;
+    height: 72px;
+  }
+  .af-seal .icon {
+    width: 34px;
+    height: 34px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .af-step {
+    animation: none;
+  }
+  .pa-modal.af-modal,
+  .af-ring__bar {
+    transition: none;
+  }
+}

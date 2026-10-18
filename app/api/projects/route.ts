@@ -36,6 +36,7 @@ import {
   runProjectAnalysis,
   saveProjectAnalysisInput,
 } from "@/services/projects/project-analysis";
+import { saveAnalysisReportCopy } from "@/services/projects/analysis-report-service";
 import { saveProjectLaunchPlanSection } from "@/services/projects/project-launch";
 
 const projectStatuses = ["DRAFT", "ANALYSIS", "FEASIBILITY", "EVALUATION", "APPROVED", "IN_PROGRESS", "ON_HOLD", "COMPLETED", "REJECTED", "ARCHIVED"] as const;
@@ -88,6 +89,7 @@ const projectAnalysisInput = z.object({
   latitude: z.number().min(-90).max(90).optional(),
   longitude: z.number().min(-180).max(180).optional(),
   expectedCapital: z.number().finite().positive().max(1_000_000_000_000).optional(),
+  areaSqm: z.number().finite().positive().max(10_000_000).optional(),
   projectSize: z.enum(["SMALL", "MEDIUM", "LARGE"]).optional(),
   placeLabel: z.string().trim().min(2).max(160).optional(),
 }).refine((value) => (value.latitude === undefined) === (value.longitude === undefined), {
@@ -266,6 +268,7 @@ function actionRateLimit(action: (typeof commandSchema)["_output"]["action"]): P
   if (action === "saveProjectAnalysis") return "assessment";
   if (action === "saveProjectLaunchPlan") return "phase";
   if (action === "runProjectAnalysis") return "intelligence";
+  if (action === "saveAnalysisReport") return "save";
   if (action === "searchIntelligence") return "intelligence";
   if (action === "createRisk" || action === "updateRiskStatus" || action === "calculateRisk") return "risk";
   if (action === "recordDecision") return "decision";
@@ -341,6 +344,11 @@ const commandSchema = z.discriminatedUnion("action", [
   z.object({
     action: z.literal("runProjectAnalysis"),
     projectId: z.string().cuid(),
+  }),
+  z.object({
+    action: z.literal("saveAnalysisReport"),
+    projectId: z.string().cuid(),
+    locale: z.enum(["ar", "en"]).default("ar"),
   }),
   z.object({
     action: z.literal("saveProjectLaunchPlan"),
@@ -455,6 +463,8 @@ export async function POST(request: NextRequest) {
                 )
             : input.action === "runProjectAnalysis"
               ? await runProjectAnalysis(input.projectId, user.id)
+            : input.action === "saveAnalysisReport"
+              ? await saveAnalysisReportCopy(input.projectId, user.id, input.locale)
             : input.action === "saveProjectLaunchPlan"
               ? await saveProjectLaunchPlanSection(input.projectId, input.payload, user.id)
             : input.action === "recordDecision"

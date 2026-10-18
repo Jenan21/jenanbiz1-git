@@ -69,10 +69,10 @@ describe("response headers", () => {
     expect(csp).not.toMatch(/unsafe-inline|unsafe-eval/);
   });
 
-  it("caches only the versioned world-map asset for good, and nothing else", async () => {
+  it("caches only the versioned world-map and report-banner assets for good, and nothing else", async () => {
     const rules = await nextConfig.headers!();
     const cached = rules.filter((rule) => rule.headers.some((header) => header.key === "Cache-Control" && /immutable/.test(header.value)));
-    expect(cached.map((rule) => rule.source)).toEqual(["/assets/gateway-world.v1.svg"]);
+    expect(cached.map((rule) => rule.source)).toEqual(["/assets/gateway-world.v1.svg", "/assets/analysis/city-lights.v1.svg"]);
   });
 
   it("does not advertise the framework", () => {

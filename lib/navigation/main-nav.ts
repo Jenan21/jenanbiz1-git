@@ -5,15 +5,13 @@ export interface NavItem {
   label: Copy;
 }
 
-/** The main sections of the platform, in the order they appear in the header. */
+/** The final header of the platform: these five sections only, in this order. The brand logo is the way home. */
 export const MAIN_NAV: readonly NavItem[] = [
-  { href: "/dashboard", label: ["الرئيسية", "Home"] },
   { href: "/projects", label: ["المشاريع والاستثمار", "Projects"] },
   { href: "/software", label: ["البرمجيات والحلول", "Software"] },
   { href: "/business", label: ["منظومة الأعمال", "Business"] },
   { href: "/user", label: ["بياناتي", "My data"] },
   { href: "/notifications", label: ["الإشعارات", "Notifications"] },
-  { href: "/benefits", label: ["من نحن", "About"] },
 ];
 
 /**
@@ -34,10 +32,6 @@ const BELONGS_TO: ReadonlyArray<readonly [string, string]> = [
   ["/user", "/user"],
   ["/account", "/user"],
   ["/notifications", "/notifications"],
-  ["/pricing", "/benefits"],
-  ["/benefits", "/benefits"],
-  ["/programs", "/dashboard"],
-  ["/dashboard", "/dashboard"],
 ];
 
 /** The header item that stands for the page being shown, or undefined when no item does. */

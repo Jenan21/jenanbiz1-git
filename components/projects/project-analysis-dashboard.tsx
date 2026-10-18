@@ -10,11 +10,14 @@ import {
   ANALYSIS_STEPS,
 } from "@/components/projects/project-analysis-dialogs";
 import { AnalysisStage, ANALYSIS_CENTER } from "@/components/projects/project-analysis-stage";
-import { FlowModal, FlowStepper, flowText, type FlowCopy } from "@/components/projects/project-flow-kit";
+import { FlowModal, FlowStepper, flowText } from "@/components/projects/project-flow-kit";
 import type { PickedPoint } from "@/components/projects/project-location-picker";
+import { useAnalysisProgress } from "@/components/projects/use-analysis-progress";
 import { JenanHeader } from "@/components/shell/jenan-header";
 import { Icon } from "@/components/ui/icons";
-import { FLOW_AUDIENCES, FLOW_SECTORS, SAUDI_CITIES } from "@/lib/projects/flow-options";
+import { AnalysisRequestError, analysisFailureMessage } from "@/lib/projects/analysis-errors";
+import { completedStages } from "@/lib/projects/analysis-study";
+import { FLOW_AUDIENCES, FLOW_SECTORS, SAUDI_CITIES, sectorNeedsArea } from "@/lib/projects/flow-options";
 import { budgetRangeFor } from "@/lib/projects/feasibility-simple";
 import { textProblem, textProblemMessage } from "@/lib/projects/text-quality";
 import type { Locale } from "@/types/i18n";
@@ -27,24 +30,18 @@ const ProjectLocationPicker = dynamic(
 type Step = "idle" | "data" | "location" | "running" | "done" | "failed";
 type Place = { label: string; city: string; district?: string; latitude: number; longitude: number };
 
-const SIZES: ReadonlyArray<{ value: "SMALL" | "MEDIUM" | "LARGE"; label: FlowCopy }> = [
-  { value: "SMALL", label: ["صغير", "Small"] },
-  { value: "MEDIUM", label: ["متوسط", "Medium"] },
-  { value: "LARGE", label: ["كبير", "Large"] },
-];
-
 const RIYADH = ANALYSIS_CENTER;
 
-type ApiPayload<T> = { message?: string; result?: T; success?: boolean } | null;
+type ApiPayload<T> = { code?: string; result?: T; success?: boolean } | null;
 
-async function command<T>(body: Record<string, unknown>, fallback: string) {
+async function command<T>(body: Record<string, unknown>) {
   const response = await fetch("/api/projects", {
     method: "POST",
     headers: { "content-type": "application/json" },
     body: JSON.stringify(body),
   });
   const payload = (await response.json().catch(() => null)) as ApiPayload<T>;
-  if (!response.ok || !payload?.success) throw new Error(payload?.message ?? fallback);
+  if (!response.ok || !payload?.success) throw new AnalysisRequestError(response.status, payload?.code);
   return payload.result as T;
 }
 
@@ -63,10 +60,13 @@ function nearestCity(point: PickedPoint) {
 
 export function ProjectAnalysisDashboard({
   initialStep = "idle",
+  latestReportId = null,
   locale,
   userLabel,
 }: {
   initialStep?: "idle" | "data";
+  /** The user's latest finished analysis; the landing offers «عرض التقرير» only when there is one. */
+  latestReportId?: string | null;
   locale: Locale;
   userLabel: string;
 }) {
@@ -77,7 +77,7 @@ export function ProjectAnalysisDashboard({
   const [capital, setCapital] = useState("");
   const [sector, setSector] = useState("");
   const [audience, setAudience] = useState("");
-  const [size, setSize] = useState("");
+  const [area, setArea] = useState("");
   const [point, setPoint] = useState<PickedPoint | null>(null);
   const [place, setPlace] = useState<Place | null>(null);
   const [view, setView] = useState<{ center: PickedPoint; zoom: number }>({ center: RIYADH, zoom: 12 });
@@ -85,24 +85,21 @@ export function ProjectAnalysisDashboard({
   const [hits, setHits] = useState<Place[]>([]);
   const [message, setMessage] = useState("");
   const [locating, setLocating] = useState(false);
-  const [percent, setPercent] = useState(8);
+  const [runId, setRunId] = useState<string | null>(null);
+  const [finished, setFinished] = useState(false);
   const projectId = useRef<string | null>(null);
   const savedKey = useRef("");
   const lookupSeq = useRef(0);
 
   const busy = step === "running";
+  const showArea = sectorNeedsArea(sector);
+  const progress = useAnalysisProgress(runId, step === "running");
+  const completed = finished ? 5 : completedStages(progress.stage, progress.status);
   const close = useCallback(() => {
     if (busy) return;
     setMessage("");
     setStep("idle");
   }, [busy]);
-
-  // The percent only advances with finished requests; while the long one is pending it creeps but never passes 92.
-  useEffect(() => {
-    if (step !== "running" || percent < 50 || percent >= 92) return;
-    const timer = window.setTimeout(() => setPercent((value) => Math.min(92, value + 3)), 900);
-    return () => window.clearTimeout(timer);
-  }, [percent, step]);
 
   useEffect(() => {
     const text = search.trim();
@@ -118,6 +115,7 @@ export function ProjectAnalysisDashboard({
     const problem = textProblem(idea);
     if (problem) return setMessage(textProblemMessage(problem, locale));
     if (!(Number(capital) > 0)) return setMessage(ar ? "أدخل رأس المال بقيمة أكبر من صفر." : "Enter a capital above zero.");
+    if (showArea && area.trim() && !(Number(area) > 0)) return setMessage(ar ? "أدخل مساحة أكبر من صفر أو اترك الحقل فارغًا." : "Enter an area above zero, or leave the field empty.");
     setMessage("");
     setStep("location");
   }
@@ -161,22 +159,12 @@ export function ProjectAnalysisDashboard({
     );
   }
 
-  function reset() {
-    lookupSeq.current += 1;
-    setPoint(null);
-    setPlace(null);
-    setSearch("");
-    setHits([]);
-    setMessage("");
-    setView({ center: RIYADH, zoom: 12 });
-  }
-
   async function analyse() {
     if (!point) return setMessage(ar ? "اضغط على الخريطة أو ابحث عن مكان لتحديد الموقع." : "Click the map or search for a place to set the location.");
     const city = place?.city || flowText(nearestCity(point).label, true);
     setMessage("");
+    setFinished(false);
     setStep("running");
-    setPercent(8);
     const input = {
       idea: idea.trim(),
       city,
@@ -185,34 +173,32 @@ export function ProjectAnalysisDashboard({
       longitude: Number(point.longitude.toFixed(6)),
       expectedCapital: Number(capital),
       ...(budgetRangeFor(Number(capital)) ? { budgetRange: budgetRangeFor(Number(capital)) } : {}),
-      ...(size ? { projectSize: size } : {}),
+      ...(showArea && Number(area) > 0 ? { areaSqm: Number(area) } : {}),
       ...(place?.label ? { placeLabel: place.label } : {}),
     };
     try {
       // A retry after a failed run must not create a second project for the same answers.
       const key = JSON.stringify({ input, sector });
       if (!projectId.current || savedKey.current !== key) {
-        const created = await command<{ id: string }>(
-          {
-            action: "create",
-            name: input.idea.slice(0, 160),
-            description: [input.idea, place?.label ? `${ar ? "الموقع" : "Location"}: ${place.label}` : ""].filter(Boolean).join("\n"),
-            sector,
-            countryCode: "SA",
-          },
-          ar ? "تعذر إنشاء سجل المشروع." : "The project record could not be created.",
-        );
+        const created = await command<{ id: string }>({
+          action: "create",
+          name: input.idea.slice(0, 160),
+          description: [input.idea, place?.label ? `${ar ? "الموقع" : "Location"}: ${place.label}` : ""].filter(Boolean).join("\n"),
+          sector,
+          countryCode: "SA",
+        });
         projectId.current = created.id;
-        setPercent(30);
-        await command({ action: "saveProjectAnalysis", projectId: created.id, input }, ar ? "تعذر حفظ مدخلات التحليل." : "The analysis input could not be saved.");
+        await command({ action: "saveProjectAnalysis", projectId: created.id, input });
         savedKey.current = key;
       }
-      setPercent(50);
-      await command({ action: "runProjectAnalysis", projectId: projectId.current }, ar ? "تعذر إكمال التحليل." : "The analysis could not be completed.");
-      setPercent(100);
+      setRunId(projectId.current);
+      await command({ action: "runProjectAnalysis", projectId: projectId.current });
+      // A real finish: let the ring show it for a moment before the next popup replaces it.
+      setFinished(true);
+      await new Promise((resolve) => window.setTimeout(resolve, 600));
       setStep("done");
     } catch (error) {
-      setMessage(error instanceof Error ? error.message : ar ? "تعذر بدء التحليل." : "The analysis could not be started.");
+      setMessage(analysisFailureMessage(error, ar));
       setStep("failed");
     }
   }
@@ -220,89 +206,84 @@ export function ProjectAnalysisDashboard({
   const openReport = () => {
     if (projectId.current) router.push(`/projects/analysis/result?project=${projectId.current}`);
   };
+  const backToData = () => {
+    setMessage("");
+    setStep("data");
+  };
   const stepIndex = step === "location" ? 1 : 0;
-  const modalSize = step === "location" ? "wide" : step === "running" ? "large" : step === "done" || step === "failed" ? "status" : "default";
 
   return (
     <main className="pa-entry an-page" data-project-analysis-route="/projects/analysis" data-testid="project-analysis-entry" dir={ar ? "rtl" : "ltr"}>
       <JenanHeader locale={locale} userLabel={userLabel} />
 
-      <AnalysisStage ar={ar} onStart={() => setStep("data")} />
+      <AnalysisStage ar={ar} onStart={() => setStep("data")} reportHref={latestReportId ? `/projects/analysis/result?project=${latestReportId}` : undefined} />
 
       {step !== "idle" ? (
-        <FlowModal ar={ar} className="an-modal" closable={!busy} onClose={close} size={modalSize} step={step}>
-          <>
-            {step === "data" || step === "location" ? (
+        <FlowModal ar={ar} className="af-modal" closable={!busy} onClose={close} step={step}>
+          <div className="af-step" key={step}>
+            {step === "data" ? (
               <>
-                {step === "data" ? (
-                  <header className="an-head">
-                    <span className="an-head__badge"><Icon name="fileText" /></span>
-                    <div><h2 id="pa-modal-title">{ar ? "تحليل مشروع جديد" : "New project analysis"}</h2><p>{ar ? "أدخل بيانات مشروعك للحصول على تحليل شامل ودقيق" : "Enter your project data for a complete, precise analysis"}</p></div>
-                  </header>
-                ) : (
-                  <header className="an-head">
-                    <span className="an-head__badge"><Icon name="mapPin" /></span>
-                    <div><h2 id="pa-modal-title">{ar ? "تحديد موقع المشروع" : "Project location"}</h2><p>{ar ? "اختر الموقع على الخريطة أو ابحث عن المدينة أو الحي" : "Pick the spot on the map or search for the city or district"}</p></div>
-                  </header>
-                )}
+                <header className="af-head">
+                  <span className="af-head__badge"><Icon name="fileText" /></span>
+                  <div><h2 id="pa-modal-title">{ar ? "تحليل مشروع جديد" : "New project analysis"}</h2><p>{ar ? "أدخل بيانات مشروعك للحصول على تحليل شامل ودقيق" : "Enter your project data for a complete, precise analysis"}</p></div>
+                </header>
                 <FlowStepper ar={ar} current={stepIndex} label={ar ? "مراحل التحليل" : "Analysis steps"} steps={ANALYSIS_STEPS} />
+                <form className="af-form" onSubmit={submitData}>
+                  <div className={`af-fields${showArea ? " has-area" : ""}`}>
+                    <label className="is-idea"><span>{ar ? "فكرة المشروع" : "Project idea"} <b>*</b></span><textarea autoFocus maxLength={500} minLength={10} onChange={(event) => setIdea(event.target.value)} placeholder={ar ? "صف فكرة مشروعك بشكل مختصر" : "Describe your idea briefly"} required value={idea} /><em>{idea.length}/500</em></label>
+                    <label className="is-capital"><span>{ar ? "رأس المال المتوقع" : "Expected capital"} <b>*</b></span><div className="af-money"><i>{ar ? "ريال سعودي" : "SAR"}</i><input inputMode="decimal" min={1} onChange={(event) => setCapital(event.target.value)} placeholder={ar ? "مثال: 500,000" : "Example: 500,000"} required type="number" value={capital} /></div></label>
+                    <label className="is-sector"><span>{ar ? "القطاع" : "Sector"} <b>*</b></span><select onChange={(event) => setSector(event.target.value)} required value={sector}><option value="">{ar ? "اختر القطاع المناسب" : "Choose a sector"}</option>{FLOW_SECTORS.map((item) => <option key={item.value} value={item.value}>{flowText(item.label, ar)}</option>)}</select></label>
+                    <label className="is-audience"><span>{ar ? "الفئة المستهدفة" : "Target audience"} <b>*</b></span><select onChange={(event) => setAudience(event.target.value)} required value={audience}><option value="">{ar ? "اختر الفئة المستهدفة" : "Choose an audience"}</option>{FLOW_AUDIENCES.map((item) => <option key={item.value} value={item.value}>{flowText(item.label, ar)}</option>)}</select></label>
+                    {showArea ? (
+                      <label className="is-area"><span>{ar ? "المساحة التقريبية (اختياري)" : "Approximate area (optional)"}</span><div className="af-money"><i>{ar ? "م²" : "m²"}</i><input inputMode="decimal" max={10000000} min={1} onChange={(event) => setArea(event.target.value)} placeholder={ar ? "مثال: 150" : "Example: 150"} type="number" value={area} /></div></label>
+                    ) : null}
+                  </div>
+                  {message ? <p className="pa-modal__error" role="alert">{message}</p> : null}
+                  <footer className="af-foot">
+                    <button className="af-secondary" onClick={close} type="button">{ar ? "إلغاء" : "Cancel"}</button>
+                    <button className="af-primary" data-testid="analysis-to-location" type="submit"><Icon name="mapPin" />{ar ? "تحديد الموقع" : "Set location"}</button>
+                  </footer>
+                </form>
               </>
             ) : null}
 
-            {step === "data" ? (
-              <form className="an-form" onSubmit={submitData}>
-                <h3 className="an-form__title"><b>1</b><span><strong>{ar ? "بيانات المشروع" : "Project data"}</strong><small>{ar ? "أدخل المعلومات الأساسية لمشروعك" : "Enter the basics of your project"}</small></span></h3>
-                <div className="an-fields">
-                  <label className="is-idea"><span>{ar ? "فكرة المشروع" : "Project idea"} <b>*</b></span><textarea autoFocus maxLength={500} minLength={10} onChange={(event) => setIdea(event.target.value)} placeholder={ar ? "صف فكرة مشروعك بشكل مختصر" : "Describe your idea briefly"} required value={idea} /><em>{idea.length}/500</em></label>
-                  <label className="is-capital"><span>{ar ? "رأس المال المتوقع" : "Expected capital"} <b>*</b></span><div className="an-money"><i>{ar ? "ريال سعودي" : "SAR"}</i><input inputMode="decimal" min={1} onChange={(event) => setCapital(event.target.value)} placeholder={ar ? "مثال: 500,000" : "Example: 500,000"} required type="number" value={capital} /></div></label>
-                  <label className="is-sector"><span>{ar ? "القطاع" : "Sector"} <b>*</b></span><select onChange={(event) => setSector(event.target.value)} required value={sector}><option value="">{ar ? "اختر القطاع المناسب" : "Choose a sector"}</option>{FLOW_SECTORS.map((item) => <option key={item.value} value={item.value}>{flowText(item.label, ar)}</option>)}</select></label>
-                  <label className="is-audience"><span>{ar ? "الفئة المستهدفة" : "Target audience"} <b>*</b></span><select onChange={(event) => setAudience(event.target.value)} required value={audience}><option value="">{ar ? "اختر الفئة المستهدفة" : "Choose an audience"}</option>{FLOW_AUDIENCES.map((item) => <option key={item.value} value={item.value}>{flowText(item.label, ar)}</option>)}</select></label>
-                  <label className="is-size"><span>{ar ? "حجم المشروع" : "Project size"} <b>*</b></span><select onChange={(event) => setSize(event.target.value)} required value={size}><option value="">{ar ? "اختر حجم المشروع" : "Choose a size"}</option>{SIZES.map((item) => <option key={item.value} value={item.value}>{flowText(item.label, ar)}</option>)}</select></label>
-                </div>
-                {message ? <p className="pa-modal__error" role="alert">{message}</p> : null}
-                <footer className="an-foot">
-                  <button className="an-btn is-cancel" onClick={close} type="button">{ar ? "إلغاء" : "Cancel"}</button>
-                  <button className="an-btn is-go" data-testid="analysis-to-location" type="submit"><Icon name="mapPin" />{ar ? "تحديد الموقع" : "Set location"}<Icon name="arrow" /></button>
-                </footer>
-              </form>
-            ) : null}
-
             {step === "location" ? (
-              <div className="an-locate">
-                <div className="an-search">
-                  <Icon name="search" />
-                  <input aria-label={ar ? "ابحث عن مدينة أو حي" : "Search a city or district"} data-testid="analysis-search" onChange={(event) => { setSearch(event.target.value); if (event.target.value.trim().length < 2) setHits([]); }} placeholder={ar ? "ابحث عن مدينة، حي، شارع..." : "Search a city, district, street..."} value={search} />
-                  {hits.length ? (
-                    <ul className="an-hits">
-                      {hits.map((hit) => <li key={`${hit.latitude}-${hit.longitude}`}><button onClick={() => choose(hit)} type="button"><Icon name="mapPin" />{hit.label}</button></li>)}
-                    </ul>
-                  ) : null}
-                </div>
-                <div className="an-mapframe">
-                  <ProjectLocationPicker center={view.center} label={ar ? "خريطة تحديد الموقع" : "Location map"} onPick={(next) => void pick(next)} point={point} zoom={view.zoom} />
-                  <div className="an-tabs"><button aria-pressed="true" type="button">{ar ? "خريطة" : "Map"}</button><button disabled title={ar ? "غير متاح حاليًا" : "Not available yet"} type="button">{ar ? "قمر صناعي" : "Satellite"}</button></div>
-                  <button aria-label={ar ? "استخدم موقعي" : "Use my location"} className="an-me" data-testid="analysis-locate" disabled={locating} onClick={locateMe} type="button"><Icon name="crosshair" /></button>
-                </div>
-                <div className={`an-place${point ? " is-set" : ""}`}>
-                  <span className="an-place__icon"><Icon name="mapPin" /></span>
-                  <div>
-                    <b data-testid="analysis-place">{point ? (place?.label ?? (ar ? "جارٍ تحديد اسم المكان..." : "Finding the place name...")) : ar ? "لم يُحدد موقع بعد" : "No location chosen yet"}</b>
-                    <small>{point ? (ar ? "تم تحديد الموقع بنجاح" : "Location set successfully") : ar ? "اضغط على الخريطة أو ابحث عن مكان" : "Click the map or search for a place"}</small>
+              <div className="af-locate">
+                <header className="af-head">
+                  <span className="af-head__badge"><Icon name="mapPin" /></span>
+                  <div><h2 id="pa-modal-title">{ar ? "تحديد موقع المشروع" : "Project location"}</h2><p>{ar ? "ابحث عن المكان أو اضغط على الخريطة" : "Search for the place or click the map"}</p></div>
+                  <button className="af-back" onClick={backToData} type="button">{ar ? "رجوع" : "Back"}</button>
+                </header>
+                <div className="af-stagebox">
+                  <div className="af-map">
+                    <ProjectLocationPicker center={view.center} label={ar ? "خريطة تحديد الموقع" : "Location map"} onPick={(next) => void pick(next)} point={point} zoom={view.zoom} />
                   </div>
-                  {point ? <span className="an-place__ok"><Icon name="check" /></span> : null}
+                  <div className="af-search">
+                    <Icon name="search" />
+                    <input aria-label={ar ? "ابحث عن مدينة أو حي" : "Search a city or district"} data-testid="analysis-search" onChange={(event) => { setSearch(event.target.value); if (event.target.value.trim().length < 2) setHits([]); }} placeholder={ar ? "ابحث عن مدينة، حي، شارع..." : "Search a city, district, street..."} value={search} />
+                    {hits.length ? (
+                      <ul className="af-hits">
+                        {hits.slice(0, 5).map((hit) => <li key={`${hit.latitude}-${hit.longitude}`}><button onClick={() => choose(hit)} type="button"><Icon name="mapPin" />{hit.label}</button></li>)}
+                      </ul>
+                    ) : null}
+                  </div>
+                  <button aria-label={ar ? "استخدم موقعي" : "Use my location"} className="af-me" data-testid="analysis-locate" disabled={locating} onClick={locateMe} title={ar ? "استخدم موقعي" : "Use my location"} type="button"><Icon name="crosshair" /></button>
+                  <div className={`af-card${point ? " is-set" : ""}`}>
+                    <span className="af-card__pin"><Icon name="mapPin" /></span>
+                    <div className="af-card__text">
+                      <b data-testid="analysis-place">{point ? (place?.label ?? (ar ? "جارٍ تحديد اسم المكان..." : "Finding the place name...")) : ar ? "لم يُحدد موقع بعد" : "No location chosen yet"}</b>
+                      <small>{message ? <span className="af-card__error" role="alert">{message}</span> : point ? (ar ? "تم تحديد الموقع بنجاح" : "Location set successfully") : ar ? "اضغط على الخريطة أو ابحث عن مكان" : "Click the map or search for a place"}</small>
+                    </div>
+                    <button className="af-primary" data-testid="analysis-confirm-location" disabled={!point} onClick={() => void analyse()} type="button"><Icon name="check" />{ar ? "تأكيد الموقع" : "Confirm location"}</button>
+                  </div>
                 </div>
-                {message ? <p className="pa-modal__error" role="alert">{message}</p> : null}
-                <footer className="an-foot is-split">
-                  <button className="an-btn is-cancel" data-testid="analysis-reset" onClick={reset} type="button"><Icon name="refresh" />{ar ? "إعادة التحديد" : "Reset"}</button>
-                  <button className="an-btn is-go" data-testid="analysis-confirm-location" disabled={!point} onClick={() => void analyse()} type="button"><Icon name="check" />{ar ? "موافق" : "Confirm"}</button>
-                </footer>
               </div>
             ) : null}
 
-            {step === "running" ? <AnalysisProgress ar={ar} percent={percent} /> : null}
-            {step === "done" ? <AnalysisReady ar={ar} onClose={close} onOpen={openReport} /> : null}
-            {step === "failed" ? <AnalysisFailed ar={ar} message={message} onRetry={() => void analyse()} onReview={() => setStep("location")} /> : null}
-          </>
+            {step === "running" ? <AnalysisProgress ar={ar} completed={completed} known={finished || progress.known} /> : null}
+            {step === "done" ? <AnalysisReady ar={ar} onOpen={openReport} /> : null}
+            {step === "failed" ? <AnalysisFailed ar={ar} message={message} onRetry={() => void analyse()} onReview={backToData} /> : null}
+          </div>
         </FlowModal>
       ) : null}
     </main>

@@ -27,14 +27,32 @@ function Recenter({ center, zoom }: { center: PickedPoint; zoom: number }) {
   return null;
 }
 
-function FitToPoints({ competitors, point }: { competitors: MapCompetitor[]; point: PickedPoint }) {
+/** A dialog that changes size while the map is open (or a window that is resized) must not leave grey, untiled edges. */
+function KeepSize() {
+  const map = useMap();
+  useEffect(() => {
+    if (typeof ResizeObserver === "undefined") return;
+    const observer = new ResizeObserver(() => map.invalidateSize());
+    observer.observe(map.getContainer());
+    return () => observer.disconnect();
+  }, [map]);
+  return null;
+}
+
+export type FitPadding = { top?: number; right?: number; bottom?: number; left?: number };
+
+function FitToPoints({ competitors, padding, point }: { competitors: MapCompetitor[]; padding?: FitPadding; point: PickedPoint }) {
   const map = useMap();
   // The parent rebuilds the array on every render; the signature keeps the view from being re-fitted each time.
-  const signature = JSON.stringify([point.latitude, point.longitude, competitors.map((item) => [item.latitude, item.longitude])]);
+  const signature = JSON.stringify([point.latitude, point.longitude, competitors.map((item) => [item.latitude, item.longitude]), padding ?? null]);
   useEffect(() => {
-    const [latitude, longitude, others] = JSON.parse(signature) as [number, number, Array<[number, number]>];
+    const [latitude, longitude, others, space] = JSON.parse(signature) as [number, number, Array<[number, number]>, FitPadding | null];
     if (!others.length) return;
-    map.fitBounds([[latitude, longitude], ...others], { padding: [28, 28], maxZoom: 15 });
+    map.fitBounds([[latitude, longitude], ...others], {
+      paddingTopLeft: [space?.left ?? 28, space?.top ?? 28],
+      paddingBottomRight: [space?.right ?? 28, space?.bottom ?? 28],
+      maxZoom: 15,
+    });
   }, [map, signature]);
   return null;
 }
@@ -43,6 +61,7 @@ function FitToPoints({ competitors, point }: { competitors: MapCompetitor[]; poi
 export function ProjectLocationPicker({
   center,
   competitors = [],
+  fitPadding,
   label,
   onPick,
   point,
@@ -50,6 +69,8 @@ export function ProjectLocationPicker({
 }: {
   center: PickedPoint;
   competitors?: MapCompetitor[];
+  /** Room kept free around the competitors when the read-only map fits them in view (for overlays drawn on the map). */
+  fitPadding?: FitPadding;
   label: string;
   onPick?: (point: PickedPoint) => void;
   point: PickedPoint | null;
@@ -61,7 +82,8 @@ export function ProjectLocationPicker({
       <MapContainer center={[center.latitude, center.longitude]} className="pa-entry-map__canvas" scrollWheelZoom zoom={zoom} zoomControl>
         <TileLayer attribution={tileAttribution} url={tileUrl} />
         <Recenter center={center} zoom={zoom} />
-        {!onPick && point && visible.length ? <FitToPoints competitors={visible} point={point} /> : null}
+        <KeepSize />
+        {!onPick && point && visible.length ? <FitToPoints competitors={visible} padding={fitPadding} point={point} /> : null}
         {onPick ? <ClickToPick onPick={onPick} /> : null}
         {visible.map((item, index) => (
           <CircleMarker center={[item.latitude, item.longitude]} key={`${item.name}-${index}`} pathOptions={{ color: "#ffb347", fillColor: "#ffb347", fillOpacity: 0.85, weight: 1 }} radius={6}>

@@ -488,10 +488,9 @@ test.describe.serial("projects section acceptance", () => {
     await page.getByPlaceholder("Example: 500,000").fill("500000");
     await page.getByLabel("Sector *").selectOption("Technology");
     await page.getByLabel("Target audience *").selectOption("BUSINESSES");
-    await page.getByLabel("Project size *").selectOption("SMALL");
     await page.getByTestId("analysis-to-location").click();
     // The place name comes from an external geocoder; the click alone fixes the coordinates the analysis uses.
-    await page.locator(".pa-entry-map__canvas").click({ position: { x: 220, y: 130 } });
+    await page.locator(".af-map .pa-entry-map__canvas").click({ position: { x: 300, y: 260 } });
     await page.getByTestId("analysis-confirm-location").click();
     await expect(page.getByTestId("analysis-ready")).toBeVisible({ timeout: 60_000 });
     await Promise.all([
@@ -510,14 +509,32 @@ test.describe.serial("projects section acceptance", () => {
       waitUntil: "networkidle",
     });
     await expect(page.locator("[data-testid='analysis-report']")).toBeVisible();
-    await expect(page.locator(".an-rsummary")).toContainText("Verified E2E analysis entry");
+    await expect(page.locator(".rp-facts")).toContainText("Verified E2E analysis entry");
+    // «Save to My data» stores a private copy that opens from My reports; the PDF comes from the live report and from the copy.
+    await page.getByTestId("analysis-save").click();
+    const openSaved = page.getByRole("link", { name: "Open the saved copy" });
+    await expect(openSaved).toBeVisible({ timeout: 20_000 });
+    const savedHref = await openSaved.getAttribute("href");
+    expect(savedHref).toMatch(/^\/user\/reports\/[a-z0-9]+$/);
+    await page.goto("/user/reports", { waitUntil: "networkidle" });
+    await expect(page.locator(`a[href="${savedHref}"]`)).toBeVisible();
+    await page.goto(savedHref!, { waitUntil: "networkidle" });
+    await expect(page.locator("[data-testid='analysis-saved-report']")).toBeVisible();
+    await expect(page.locator(".rp-facts")).toContainText("Verified E2E analysis entry");
+    const livePdf = await page.request.get(`/api/projects/${analysisProjectId}/analysis-report?locale=en`);
+    expect(livePdf.status()).toBe(200);
+    expect(livePdf.headers()["content-type"]).toBe("application/pdf");
+    expect((await livePdf.body()).subarray(0, 5).toString("latin1")).toBe("%PDF-");
+    const savedPdf = await page.request.get(`/api/user/reports/${savedHref!.split("/").pop()}/pdf`);
+    expect(savedPdf.status()).toBe(200);
+    expect(savedPdf.headers()["content-type"]).toBe("application/pdf");
     await page.goto(`/projects/analysis/print?project=${analysisProjectId}`, {
       waitUntil: "networkidle",
     });
     await expect(page.locator("[data-testid='analysis-export']")).toBeVisible();
     await expect(page.getByRole("link", { name: "Export PDF" }).first()).toHaveAttribute(
       "href",
-      `/api/projects/${analysisProjectId}/report`,
+      `/api/projects/${analysisProjectId}/analysis-report?locale=en`,
     );
 
     const intelligence = await page.request.post("/api/projects", {

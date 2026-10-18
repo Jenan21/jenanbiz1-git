@@ -1,5 +1,6 @@
 import { ProjectMemberRole, ProjectStatus, Prisma } from "@/generated/prisma/client";
 import { db } from "@/lib/db";
+import { readStage, type AnalysisStage, type AnalysisStatus } from "@/lib/projects/analysis-study";
 import {
   saveProjectIntelligenceSnapshot,
   searchProjectIntelligence,
@@ -14,6 +15,7 @@ export type ProjectAnalysisInput = {
   latitude?: number;
   longitude?: number;
   expectedCapital?: number;
+  areaSqm?: number;
   projectSize?: "SMALL" | "MEDIUM" | "LARGE";
   placeLabel?: string;
 };
@@ -51,6 +53,39 @@ function analysisAccessWhere(userId: string) {
       },
     ],
   };
+}
+
+function analysisReadWhere(userId: string) {
+  return { OR: [{ createdById: userId }, { members: { some: { userId } } }] };
+}
+
+/** Where the run of a project has got to; the screens poll this while the analysis is working. */
+export async function getProjectAnalysisStatus(projectId: string, userId: string) {
+  const project = await db.project.findFirst({
+    where: { id: projectId, ...analysisReadWhere(userId) },
+    select: { analysisStudy: true },
+  });
+  if (!project) return null;
+  const study = jsonObject(project.analysisStudy);
+  const status = ["PENDING", "PROCESSING", "COMPLETED", "FAILED"].includes(String(study?.status))
+    ? (study?.status as AnalysisStatus)
+    : "PENDING";
+  return {
+    status,
+    stage: status === "PROCESSING" ? (readStage(study?.processingStep) ?? null) : null,
+  };
+}
+
+/** The user's most recent finished analysis, so the landing page offers «عرض التقرير» only when there is one. */
+export async function findLatestAnalysisReportId(userId: string) {
+  const project = await db.project.findFirst({
+    where: {
+      AND: [analysisReadWhere(userId), { analysisStudy: { path: ["status"], equals: "COMPLETED" } }],
+    },
+    orderBy: { analysisStudyUpdatedAt: "desc" },
+    select: { id: true },
+  });
+  return project?.id ?? null;
 }
 
 function jsonObject(value: unknown) {
@@ -102,6 +137,7 @@ function persistedInput(value: unknown): ProjectAnalysisInput | undefined {
     ...(typeof input.expectedCapital === "number" && input.expectedCapital > 0
       ? { expectedCapital: input.expectedCapital }
       : {}),
+    ...(typeof input.areaSqm === "number" && input.areaSqm > 0 ? { areaSqm: input.areaSqm } : {}),
     ...(["SMALL", "MEDIUM", "LARGE"].includes(String(input.projectSize))
       ? { projectSize: input.projectSize as ProjectAnalysisInput["projectSize"] }
       : {}),
@@ -256,24 +292,49 @@ export async function runProjectAnalysis(projectId: string, userId: string) {
         version: 1,
         status: "PROCESSING",
         input: JSON.parse(JSON.stringify(input)),
-        processingStep: "MARKET_INTELLIGENCE",
+        processingStep: "LOCATION",
         updatedAt: processingAt.toISOString(),
       },
       analysisStudyUpdatedAt: processingAt,
     },
   });
 
+  // The recorded step is only a progress hint for the screens: failing to write it must never fail the analysis.
+  const markStage = async (stage: AnalysisStage) => {
+    const at = new Date();
+    await db.project
+      .update({
+        where: { id: projectId },
+        data: {
+          analysisStudy: {
+            version: 1,
+            status: "PROCESSING",
+            input: JSON.parse(JSON.stringify(input)),
+            processingStep: stage,
+            updatedAt: at.toISOString(),
+          },
+          analysisStudyUpdatedAt: at,
+        },
+      })
+      .catch(() => undefined);
+  };
+
   try {
-    const intelligence = await searchProjectIntelligence({
-      query: input.city,
-      ...(input.latitude !== undefined && input.longitude !== undefined
-        ? { latitude: input.latitude, longitude: input.longitude }
-        : {}),
-      countryCode: project.countryCode ?? undefined,
-      sector: project.sector ?? undefined,
-    });
-    await saveProjectIntelligenceSnapshot(projectId, input.city, intelligence);
+    const intelligence = await searchProjectIntelligence(
+      {
+        query: input.city,
+        ...(input.latitude !== undefined && input.longitude !== undefined
+          ? { latitude: input.latitude, longitude: input.longitude }
+          : {}),
+        countryCode: project.countryCode ?? undefined,
+        sector: project.sector ?? undefined,
+      },
+      markStage,
+    );
+    await markStage("RECOMMENDATIONS");
     const result = buildProjectAnalysisResult(intelligence);
+    await markStage("REPORT");
+    await saveProjectIntelligenceSnapshot(projectId, input.city, intelligence);
     const completedAt = new Date();
     const analysisStudy: Prisma.InputJsonObject = {
       version: 1,
