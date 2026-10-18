@@ -41,7 +41,7 @@ export async function artifacts(releaseId: string, executor: SqlExecutor = db) {
   return executor.$queryRaw<Artifact[]>(sql`SELECT * FROM jenan_map.artifact WHERE "releaseId" = ${releaseId}::uuid ORDER BY "createdAt", id`);
 }
 
-async function releaseById(id: string, executor: SqlExecutor = db) {
+export async function releaseById(id: string, executor: SqlExecutor = db) {
   const [release] = await executor.$queryRaw<Release[]>(sql`SELECT * FROM jenan_map.release WHERE id = ${id}::uuid`);
   if (!release) throw new MapError("RELEASE_NOT_FOUND", 404);
   return release;
@@ -117,7 +117,7 @@ export async function snapshot() {
   };
 }
 
-async function audit(executor: SqlExecutor, actor: string, action: string, releaseId: string | null, metadata: Record<string, unknown>) {
+export async function audit(executor: SqlExecutor, actor: string, action: string, releaseId: string | null, metadata: Record<string, unknown>) {
   await executor.$executeRaw(sql`INSERT INTO jenan_map.audit (id,"actorId",action,"releaseId",metadata)
     VALUES (${randomUUID()}::uuid,${actor},${action},${releaseId}::uuid,${JSON.stringify(metadata)}::jsonb)`);
   await executor.$executeRaw(sql`INSERT INTO "AuditLog" (id,"actorId",action,"entityType","entityId",metadata)
