@@ -5,6 +5,8 @@
   "scripts": {
     "jenan-map:assets": "node scripts/jenan-map/copy-assets.mjs",
     "jenan-map:saudi-pmtiles": "node scripts/jenan-map/saudi-pmtiles.mjs",
+    "jenan-map:glyphs": "node scripts/jenan-map/glyphs.mjs",
+    "jenan-map:styles": "node scripts/jenan-map/make-styles.mjs",
     "predev": "npm run jenan-map:assets",
     "prebuild": "npm run jenan-map:assets",
     "dev": "next dev",

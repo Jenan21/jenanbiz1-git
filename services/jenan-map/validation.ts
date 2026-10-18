@@ -169,8 +169,10 @@ export async function validateArtifactFormat(file: Artifact, handle: FileHandle)
     if (!stacks?.length) invalid();
     for (const stack of stacks) {
       const fields = protobuf(stack);
+      // The name embedded by the font tool is free text ("Sans Regular" inside "Noto Sans Regular/…"); the release's file name is the identity.
+      // The range, however, must be the one the file name promises.
       const name = fields.get(1)?.[0]?.toString(), range = fields.get(2)?.[0]?.toString();
-      if (`${name}/${range}.pbf` !== file.filename || !fields.get(3)?.length) invalid();
+      if (!name || `${range}.pbf` !== file.filename.split("/")[1] || !fields.get(3)?.length) invalid();
       for (const glyph of fields.get(3)!) {
         const values = protobuf(glyph);
         if (![1, 3, 4, 5, 6, 7].every((field) => values.has(field))) invalid();
