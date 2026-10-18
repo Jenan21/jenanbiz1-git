@@ -2,6 +2,7 @@ import { Prisma } from "@/generated/prisma/client";
 import { db, type DbExecutor } from "@/lib/db";
 import { z } from "zod";
 import { MapError } from "./contracts";
+import { layerExportable } from "./backup";
 import { validateProvenance, type OpenProvenance } from "../../scripts/jenan-map/open-data.mjs";
 
 export const layerChangeSchema = z.object({
@@ -173,7 +174,19 @@ export function assertLayerCanEnable(layer: StoredMapLayer, activeReleaseId: str
 export async function mapLayers() {
   const [runtime] = await db.$queryRaw<{ publishedReleaseId: string | null }[]>(
     Prisma.sql`SELECT "publishedReleaseId" FROM jenan_map.runtime WHERE id = 1`);
-  return db.$queryRaw<StoredMapLayer[]>(Prisma.sql`${projectedLayers(runtime?.publishedReleaseId ?? null)} ORDER BY l.id`);
+  const releaseId = runtime?.publishedReleaseId ?? null;
+  const layers = await db.$queryRaw<StoredMapLayer[]>(Prisma.sql`${projectedLayers(releaseId)} ORDER BY l.id`);
+  // How many features each layer holds, so the catalog offers a data export only where there is data and the licence allows it.
+  const held = new Map<string, number>();
+  if (releaseId) {
+    const counts = await db.$queryRaw<{ layerId: string; n: number }[]>(Prisma.sql`
+      SELECT "layerId", count(*)::int AS n FROM jenan_map.feature WHERE "releaseId" = ${releaseId}::uuid GROUP BY "layerId"`);
+    for (const row of counts) held.set(row.layerId, row.n);
+  }
+  return layers.map((layer) => {
+    const featureCount = held.get(layer.id) ?? 0;
+    return { ...layer, featureCount, exportable: Boolean(layer.releaseId) && featureCount > 0 && layerExportable(layer.provenance) };
+  });
 }
 
 export async function changeMapLayer(input: z.infer<typeof layerChangeSchema>, actorId: string) {

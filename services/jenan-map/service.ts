@@ -1,8 +1,8 @@
-import { randomUUID } from "node:crypto";
+import { createHash, randomUUID } from "node:crypto";
 import { Prisma } from "@/generated/prisma/client";
 import { db, type DbExecutor } from "@/lib/db";
 import { type Artifact, type MapCommand, type MapRuntime, type Release, type SavedLocation, MapError } from "./contracts";
-import { downloadMetadata, logicalFilename, openArtifact, storageRoot, storageState } from "./storage";
+import { assertStorageConfigured, downloadMetadata, logicalFilename, openArtifact, storageState } from "./storage";
 import { releaseAssetBase, validateReleaseArtifacts } from "./validation";
 import { layerProvenanceProblems, readyLayerSearchFilter, releaseManifestLayers } from "./layers";
 import { OPEN_BOUNDARY_NOTICE, OSM_ATTRIBUTION } from "../../scripts/jenan-map/open-data.mjs";
@@ -79,7 +79,7 @@ export async function manifest() {
   if (!state.publishedReleaseId) return { status: "unavailable", release: null, reason: "NO_PUBLISHED_RELEASE" };
   const release = await releaseById(state.publishedReleaseId);
   if (release.status !== "Published") return { status: "unavailable", release: null, reason: "NO_PUBLISHED_RELEASE" };
-  storageRoot();
+  assertStorageConfigured();
   const registered = await artifacts(release.id);
   if (!hasProductionArtifacts(registered)) throw new MapError("OWNED_BASEMAP_STYLE_GLYPHS_SCHEMA_COVERAGE_REQUIRED", 503);
   const files = registered.filter((item) => item.publicSafe);
@@ -147,19 +147,41 @@ export async function audit(executor: SqlExecutor, actor: string, action: string
       ${JSON.stringify({ ...metadata, result: "success" })}::jsonb)`);
 }
 
-async function verifyReady(releaseId: string, executor: SqlExecutor) {
+type BoundaryEvidence = { authority: string; source: string; coverage?: Record<string, unknown> | null };
+type ReleaseStyle = Awaited<ReturnType<typeof validateReleaseArtifacts>>;
+
+/** The outcome of hashing and validating a release's stored artifacts ahead of the transaction that needs it (see `preverifyCommand`). */
+export type PreverifiedRelease = { releaseId: string; fingerprint: string; style: ReleaseStyle };
+
+/** Names exactly what was verified: the artifacts with their bytes' checksums, and the boundary evidence they were checked against. */
+function evidenceFingerprint(files: Artifact[], boundary: BoundaryEvidence) {
+  return createHash("sha256").update(JSON.stringify([
+    files.map((file) => [file.id, file.kind, file.filename, file.sha256, String(file.byteSize), file.publicSafe]),
+    boundary.authority, boundary.source, boundary.coverage ?? null,
+  ])).digest("hex");
+}
+
+async function readEvidence(releaseId: string, executor: SqlExecutor) {
   const [counts] = await executor.$queryRaw<{ boundaries: bigint; features: bigint; authority: string; source: string; coverage?: Record<string, unknown> | null }[]>(sql`
     SELECT (SELECT count(*) FROM jenan_map.boundary WHERE "releaseId" = ${releaseId}::uuid) AS boundaries,
       (SELECT count(*) FROM jenan_map.feature WHERE "releaseId" = ${releaseId}::uuid) AS features,
       (SELECT authority FROM jenan_map.boundary WHERE "releaseId" = ${releaseId}::uuid) AS authority,
       (SELECT source FROM jenan_map.boundary WHERE "releaseId" = ${releaseId}::uuid) AS source,
       (SELECT coverage FROM jenan_map.boundary WHERE "releaseId" = ${releaseId}::uuid) AS coverage`);
-  const files = await artifacts(releaseId, executor);
+  return { counts, files: await artifacts(releaseId, executor) };
+}
+
+async function verifyReady(releaseId: string, executor: SqlExecutor, verified?: PreverifiedRelease) {
+  const { counts, files } = await readEvidence(releaseId, executor);
   if (!counts || counts.boundaries !== BigInt(1) || counts.features < BigInt(1) ||
       !hasProductionArtifacts(files)) {
     throw new MapError("RELEASE_NOT_READY");
   }
-  const style = await validateReleaseArtifacts(files, true, { authority: counts.authority, source: counts.source, coverage: counts.coverage });
+  const boundary = { authority: counts.authority, source: counts.source, coverage: counts.coverage };
+  // Hashing and parsing multi-gigabyte archives normally happened before this transaction opened; it is repeated here only when what was
+  // verified is no longer exactly what the release holds.
+  const style = verified?.releaseId === releaseId && verified.fingerprint === evidenceFingerprint(files, boundary)
+    ? verified.style : await validateReleaseArtifacts(files, true, boundary);
   const bindings = await releaseManifestLayers(releaseId, executor);
   const styleIds = new Set<string>(style.layers.map((layer: { id: string }) => layer.id));
   const claimed = new Set(bindings.flatMap((layer) => layer.styleLayerIds ?? []));
@@ -177,7 +199,31 @@ async function verifyReady(releaseId: string, executor: SqlExecutor) {
   }
 }
 
-export async function command(input: MapCommand, actor: string) {
+/**
+ * Approving, publishing, rolling back and enabling the map each verify every stored artifact in full (checksum, format, cross-references).
+ * Reading multi-gigabyte archives from shared storage takes longer than a database transaction should stay open, so that work is done here,
+ * before the transaction; the transaction then only checks that the release still holds exactly what was verified. Returns undefined when the
+ * command does not verify artifacts or the release is not in a state where verification could succeed: the transaction reports exactly why.
+ */
+export async function preverifyCommand(input: MapCommand): Promise<PreverifiedRelease | undefined> {
+  let target: Release | null = null;
+  if (input.action === "approve" || input.action === "publish" || input.action === "rollback") {
+    const wanted = { approve: "Ready", publish: "Approved", rollback: "Archived" }[input.action];
+    target = await releaseById(input.releaseId).catch(() => null);
+    if (target?.status !== wanted) return undefined;
+  } else if (input.action === "runtime" && input.status === "enabled") {
+    const { publishedReleaseId } = await runtime();
+    target = publishedReleaseId ? await releaseById(publishedReleaseId).catch(() => null) : null;
+    if (target?.status !== "Published") return undefined;
+  }
+  if (!target) return undefined;
+  const { counts, files } = await readEvidence(target.id, db);
+  if (!counts || counts.boundaries !== BigInt(1) || counts.features < BigInt(1) || !hasProductionArtifacts(files)) return undefined;
+  const boundary = { authority: counts.authority, source: counts.source, coverage: counts.coverage };
+  return { releaseId: target.id, fingerprint: evidenceFingerprint(files, boundary), style: await validateReleaseArtifacts(files, true, boundary) };
+}
+
+export async function command(input: MapCommand, actor: string, verified?: PreverifiedRelease) {
   try {
     return await db.$transaction(async (tx) => {
       const state = await runtime(tx, true);
@@ -196,7 +242,7 @@ export async function command(input: MapCommand, actor: string) {
           if (!state.publishedReleaseId) throw new MapError("NO_PUBLISHED_RELEASE");
           const release = await releaseById(state.publishedReleaseId, tx);
           if (release.status !== "Published") throw new MapError("NO_PUBLISHED_RELEASE");
-          await verifyReady(release.id, tx);
+          await verifyReady(release.id, tx, verified);
         }
         const maintenanceMessage = input.status === "maintenance" ? input.maintenanceMessage ?? "الخريطة قيد الصيانة مؤقتًا. يرجى المحاولة لاحقًا." : null;
         await tx.$executeRaw(sql`UPDATE jenan_map.runtime SET status = ${input.status}, "maintenanceMessage" = ${maintenanceMessage}, revision = revision + 1, "updatedAt" = now() WHERE id = 1`);
@@ -206,7 +252,7 @@ export async function command(input: MapCommand, actor: string) {
       const release = await releaseById(input.releaseId, tx);
       if (input.action === "approve") {
         if (release.status !== "Ready") throw new MapError("RELEASE_NOT_READY");
-        await verifyReady(release.id, tx);
+        await verifyReady(release.id, tx, verified);
         await tx.$executeRaw(sql`UPDATE jenan_map.release SET status = 'Approved', "reviewedBy" = ${actor}, "reviewedAt" = now(), "reviewNotes" = ${input.reason} WHERE id = ${release.id}::uuid`);
       } else if (input.action === "archive") {
         if (state.publishedReleaseId === release.id) throw new MapError("ACTIVE_RELEASE_CANNOT_BE_ARCHIVED");
@@ -218,7 +264,7 @@ export async function command(input: MapCommand, actor: string) {
         if (state.publishedReleaseId !== input.expectedPublishedReleaseId) throw new MapError("STALE_PUBLISHED_POINTER");
         if (input.action === "publish" ? release.status !== "Approved" : release.status !== "Archived" || !release.publishedAt) throw new MapError("INVALID_TRANSITION");
         if (!release.reviewedBy || !release.reviewedAt) throw new MapError("REVIEW_REQUIRED");
-        await verifyReady(release.id, tx);
+        await verifyReady(release.id, tx, verified);
         if (state.publishedReleaseId) {
           await tx.$executeRaw(sql`UPDATE jenan_map.release SET status = 'Archived' WHERE id = ${state.publishedReleaseId}::uuid AND status = 'Published'`);
         }
@@ -329,7 +375,7 @@ export async function previewManifest(releaseId: string) {
   const release = await previewRelease(releaseId);
   const files = (await artifacts(release.id)).filter((file) => file.publicSafe);
   if (!files.some((file) => file.kind === "geojson")) throw new MapError("PREVIEW_DATA_UNAVAILABLE", 503);
-  storageRoot();
+  assertStorageConfigured();
   for (const file of files) await (await openArtifact(file)).close();
   return {
     status: "enabled", preview: true,

@@ -7,7 +7,7 @@ import { z } from "zod";
 import { Prisma } from "@/generated/prisma/client";
 import { db } from "@/lib/db";
 import { idSchema, MapError, type Artifact } from "./contracts";
-import { assertPrivateDirectory, openArtifact, openNoFollow, storageRoot, syncDirectory } from "./storage";
+import { assertPrivateDirectory, objectStore, openArtifact, openNoFollow, scratchDirectory, storageRoot, storeFailure, syncDirectory } from "./storage";
 import { validateArtifactFormat } from "./validation";
 
 export const importSchema = z.object({
@@ -40,10 +40,11 @@ export async function localImportStream(filename: string) {
   if (!/^[a-zA-Z0-9][a-zA-Z0-9._-]{0,180}$/.test(filename)) throw new MapError("INVALID_STAGED_FILENAME", 400);
   const configured = process.env.JENAN_MAP_STAGING_ROOT;
   if (!configured || !path.isAbsolute(configured)) throw new MapError("PRIVATE_STAGING_NOT_CONFIGURED", 503);
-  const root = await realpath(configured), storage = await realpath(storageRoot());
+  // With the shared object store there is no local storage root to keep the staging folder apart from.
+  const root = await realpath(configured), storage = objectStore() ? null : await realpath(storageRoot());
   const publicRoot = await realpath(path.resolve("public")).catch(() => path.resolve("public"));
-  if (root === publicRoot || root.startsWith(publicRoot + path.sep) || root === storage ||
-      root.startsWith(storage + path.sep) || storage.startsWith(root + path.sep)) throw new MapError("PRIVATE_STAGING_REQUIRED", 503);
+  if (root === publicRoot || root.startsWith(publicRoot + path.sep) || (storage !== null && (root === storage ||
+      root.startsWith(storage + path.sep) || storage.startsWith(root + path.sep)))) throw new MapError("PRIVATE_STAGING_REQUIRED", 503);
   await assertPrivateDirectory(root, "PRIVATE_STAGING_REQUIRED");
   const handle = await openNoFollow(path.join(root, filename), constants.O_RDONLY);
   if (!(await handle.stat()).isFile()) { await handle.close(); throw new MapError("INVALID_STAGED_FILE", 400); }
@@ -55,13 +56,20 @@ export async function ingestArtifact(releaseId: string, input: ImportInput, stre
   input = importSchema.parse(input);
   try { await assertImportCandidate(releaseId); }
   catch (error) { if (stream instanceof Readable) stream.destroy(); throw error; }
-  const root = await realpath(storageRoot());
-  const publicRoot = await realpath(path.resolve("public")).catch(() => path.resolve("public"));
-  if (root === publicRoot || root.startsWith(publicRoot + path.sep)) throw new MapError("PRIVATE_STORAGE_REQUIRED", 503);
-  await assertPrivateDirectory(root, "PRIVATE_STORAGE_REQUIRED");
-  const folder = path.join(root, releaseId);
-  await mkdir(folder, { mode: 0o700, recursive: true });
-  if (await realpath(folder) !== folder) throw new MapError("INVALID_STORAGE_KEY", 503);
+  // Local storage keeps the upload beside its final place so it can be hard-linked into it; with the shared object store the upload is
+  // staged in private scratch and put under its immutable key once it has been validated.
+  const store = objectStore();
+  let root: string | null = null, folder: string;
+  if (store) folder = await scratchDirectory();
+  else {
+    root = await realpath(storageRoot());
+    const publicRoot = await realpath(path.resolve("public")).catch(() => path.resolve("public"));
+    if (root === publicRoot || root.startsWith(publicRoot + path.sep)) throw new MapError("PRIVATE_STORAGE_REQUIRED", 503);
+    await assertPrivateDirectory(root, "PRIVATE_STORAGE_REQUIRED");
+    folder = path.join(root, releaseId);
+    await mkdir(folder, { mode: 0o700, recursive: true });
+    if (await realpath(folder) !== folder) throw new MapError("INVALID_STORAGE_KEY", 503);
+  }
   const pending = path.join(folder, `.upload-${randomUUID()}`);
   const handle = await openNoFollow(pending, constants.O_CREAT | constants.O_EXCL | constants.O_RDWR, 0o600);
   try {
@@ -85,18 +93,23 @@ export async function ingestArtifact(releaseId: string, input: ImportInput, stre
     const validator = await openNoFollow(pending, constants.O_RDONLY);
     try { await validateArtifactFormat(file, validator); } finally { await validator.close(); }
     await chmod(pending, 0o400);
+    // Shared object storage is written before the transaction (a large archive would outlast it); the key is content-addressed and the
+    // put refuses to replace anything, so an upload whose transaction later fails leaves only an immutable, retained object.
+    if (store) await store.putFile(file.storageKey, pending, count, input.sha256).catch(storeFailure);
     await db.$transaction(async (tx) => {
       const [release] = await tx.$queryRaw<{ status: string }[]>(Prisma.sql`SELECT status FROM jenan_map.release WHERE id=${releaseId}::uuid FOR UPDATE`);
       if (!release || !["Draft", "Ready"].includes(release.status)) throw new MapError("IMPORT_REQUIRES_UNREVIEWED_RELEASE");
-      // Linking is atomic and never overwrites a retained artifact.
-      try { await link(pending, path.join(root, file.storageKey)); }
-      catch (error) {
-        if ((error as NodeJS.ErrnoException).code !== "EEXIST") throw error;
-        // A prior failed/ambiguous transaction may have retained these exact bytes.
-        // Never overwrite them or remove a file that a committed record may reference.
-        await (await openArtifact(file, true)).close();
+      if (root) {
+        // Linking is atomic and never overwrites a retained artifact.
+        try { await link(pending, path.join(root, file.storageKey)); }
+        catch (error) {
+          if ((error as NodeJS.ErrnoException).code !== "EEXIST") throw error;
+          // A prior failed/ambiguous transaction may have retained these exact bytes.
+          // Never overwrite them or remove a file that a committed record may reference.
+          await (await openArtifact(file, true)).close();
+        }
+        await syncDirectory(folder);
       }
-      await syncDirectory(folder);
       await tx.$executeRaw(Prisma.sql`INSERT INTO jenan_map.artifact
         (id,"releaseId",kind,"storageKey",filename,mime,sha256,"byteSize","publicSafe","exportAllowed","exportLicense")
         VALUES (${file.id}::uuid,${releaseId}::uuid,${file.kind},${file.storageKey},${file.filename},${file.mime},

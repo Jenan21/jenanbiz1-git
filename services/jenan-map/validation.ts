@@ -1,9 +1,8 @@
-import type { FileHandle } from "node:fs/promises";
 import { gunzipSync } from "node:zlib";
 import { validateStyleMin } from "@maplibre/maplibre-gl-style-spec";
 import { PMTiles, tileIdToZxy } from "pmtiles";
 import { MapError, type Artifact } from "./contracts";
-import { openArtifact } from "./storage";
+import { openArtifact, type ArtifactHandle } from "./storage";
 import { validateCoverage, validateProvenance } from "../../scripts/jenan-map/open-data.mjs";
 
 const JSON_LIMIT = 16 * 1024 * 1024;
@@ -13,14 +12,14 @@ function invalid(): never { throw new MapError("ARTIFACT_FORMAT_INVALID", 422); 
 function internal(value: { visibility?: unknown; internal?: unknown; publicSafe?: unknown } | undefined) {
   return value?.visibility === "internal" || value?.internal === true || value?.publicSafe === false;
 }
-export async function readJson(handle: FileHandle, limit = JSON_LIMIT) {
+export async function readJson(handle: ArtifactHandle, limit = JSON_LIMIT) {
   const info = await handle.stat();
   if (info.size > limit) invalid();
   try { return JSON.parse((await handle.readFile()).toString("utf8")); }
   catch { return invalid(); }
 }
 
-async function readAt(handle: FileHandle, offset: number, size: number) {
+async function readAt(handle: ArtifactHandle, offset: number, size: number) {
   if (!Number.isSafeInteger(offset) || !Number.isSafeInteger(size) || size < 1 || size > JSON_LIMIT) invalid();
   const data = Buffer.alloc(size);
   if ((await handle.read(data, 0, size, offset)).bytesRead !== size) invalid();
@@ -88,7 +87,7 @@ export function validGeometry(type: number, data: Buffer | undefined) {
   if (type === 1 ? state !== "moved" : type === 2 ? state !== "drawn" : state !== "closed") invalid();
 }
 
-export async function validateArtifactFormat(file: Artifact, handle: FileHandle) {
+export async function validateArtifactFormat(file: Artifact, handle: ArtifactHandle) {
   if (file.kind === "pmtiles") {
     const h = await readAt(handle, 0, 127);
     if (h.subarray(0, 7).toString() !== "PMTiles" || h[7] !== 3 || h[99] !== 1 ||

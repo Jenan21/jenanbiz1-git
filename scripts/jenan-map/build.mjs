@@ -9,6 +9,7 @@ import { chmod, mkdir, realpath } from "node:fs/promises";
 import path from "node:path";
 import pg from "pg";
 import { CLIP_TOLERANCE_DEGREES, validateCoverage } from "./open-data.mjs";
+import { createS3Store, s3ConfigFromEnv } from "./s3-store.mjs";
 
 const MAX_BYTES = 128 * 1024 * 1024;
 const MAX_FEATURES = 100_000;
@@ -78,21 +79,24 @@ export function normalizeFeatures(value) {
   }) };
 }
 
-async function persistArtifact(client, root, releaseId, bytes, kind, publicSafe, filename) {
+async function persistArtifact(client, root, store, releaseId, bytes, kind, publicSafe, filename) {
   const sha256 = createHash("sha256").update(bytes).digest("hex");
   const extension = kind === "geojson" ? "geojson" : "bin";
   const storageKey = `${releaseId}/${sha256}.${extension}`;
-  const folder = path.join(root, releaseId);
-  await mkdir(folder, { recursive: true, mode: 0o700 });
-  const actual = await realpath(folder);
-  if (actual !== folder) throw new Error("Storage directory symlink refused");
-  const target = path.join(folder, `${sha256}.${extension}`);
-  const handle = await openNoFollow(target, constants.O_WRONLY | constants.O_CREAT | constants.O_EXCL, 0o400);
-  try {
-    await handle.writeFile(bytes);
-    await handle.sync();
-  } finally { await handle.close(); }
-  await chmod(target, 0o400);
+  if (store) await store.putBytes(storageKey, bytes, sha256);
+  else {
+    const folder = path.join(root, releaseId);
+    await mkdir(folder, { recursive: true, mode: 0o700 });
+    const actual = await realpath(folder);
+    if (actual !== folder) throw new Error("Storage directory symlink refused");
+    const target = path.join(folder, `${sha256}.${extension}`);
+    const handle = await openNoFollow(target, constants.O_WRONLY | constants.O_CREAT | constants.O_EXCL, 0o400);
+    try {
+      await handle.writeFile(bytes);
+      await handle.sync();
+    } finally { await handle.close(); }
+    await chmod(target, 0o400);
+  }
   await client.query(`INSERT INTO jenan_map.artifact (id,"releaseId",kind,"storageKey",filename,mime,sha256,"byteSize","publicSafe")
     VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9)`,
   [randomUUID(), releaseId, kind, storageKey, filename, kind === "geojson" ? "application/geo+json" : "application/octet-stream", sha256, bytes.length, publicSafe]);
@@ -106,21 +110,78 @@ async function log(client, actor, releaseId, action, metadata) {
   [randomUUID(), actor, `jenan_map.${action}`, releaseId, JSON.stringify({ ...metadata, result: action === "build.failed" ? "failure" : "success" })]);
 }
 
+const FEATURE_BATCH = 2_000;
+// Administrative polygons are large and are cut against the country boundary, so only a few go into one statement.
+const ADMINISTRATIVE_BATCH = 10;
+
+// What every batch selects: the features of one JSON array, with their geometry parsed once (OFFSET 0 keeps the planner from inlining the
+// parse into every place the geometry is used).
+const PARSED_FEATURES = `SELECT e.f->>'id' AS id, e.f->>'label' AS label, e.f->>'category' AS category, e.f->>'search' AS search,
+    e.f->>'sourceId' AS "sourceId", e.f->>'layerId' AS "layerId", ARRAY(SELECT jsonb_array_elements_text(e.f->'aliases')) AS aliases,
+    ST_SetSRID(ST_GeomFromGeoJSON((e.f->'geometry')::text),4326) AS geometry
+  FROM jsonb_array_elements($1::jsonb) AS e(f) OFFSET 0`;
+
+// Unclipped features must lie exactly inside the boundary.
+const INSERT_EXACT = `INSERT INTO jenan_map.feature (id,"releaseId",label,category,geometry,search,"sourceId","layerId",aliases)
+  SELECT p.id::uuid, $2::uuid, p.label, p.category, p.geometry, to_tsvector('simple',p.search), p."sourceId", p."layerId", p.aliases
+  FROM (${PARSED_FEATURES}) p
+  CROSS JOIN jenan_map.boundary b
+  WHERE b."releaseId"=$2::uuid AND ST_IsValid(p.geometry) AND NOT ST_IsEmpty(p.geometry) AND ST_Covers(b.geometry,p.geometry)
+  RETURNING id, ST_AsGeoJSON(geometry,15) AS geometry`;
+
+// Administrative polygons are cut to the boundary; the cut may lie within CLIP_TOLERANCE_DEGREES of it (see open-data.mjs).
+const INSERT_CLIPPED = `INSERT INTO jenan_map.feature (id,"releaseId",label,category,geometry,search,"sourceId","layerId",aliases)
+  SELECT p.id::uuid, $2::uuid, p.label, p.category, clipped.geometry, to_tsvector('simple',p.search), p."sourceId", p."layerId", p.aliases
+  FROM (${PARSED_FEATURES}) p
+  CROSS JOIN jenan_map.boundary b
+  CROSS JOIN jenan_map_clip_limit widened
+  CROSS JOIN LATERAL (SELECT ST_Multi(ST_CollectionExtract(ST_Intersection(p.geometry,b.geometry),3)) AS geometry) clipped
+  WHERE b."releaseId"=$2::uuid AND ST_IsValid(p.geometry) AND NOT ST_IsEmpty(p.geometry)
+    AND ST_IsValid(clipped.geometry) AND NOT ST_IsEmpty(clipped.geometry) AND ST_Covers(widened.geometry,clipped.geometry)
+  RETURNING id, ST_AsGeoJSON(geometry,15) AS geometry`;
+
+/**
+ * Inserts the features in batches. One statement per feature rebuilt PostGIS's prepared form of the country boundary every time, which made a
+ * full Saudi build take ten minutes; a batch reuses it. Each feature's final stored geometry is written back, so the public artifact and
+ * the owned search reflect the same PostGIS result.
+ */
+async function insertFeatures(client, releaseId, features, clipAdministrative) {
+  const isClipped = (feature) => clipAdministrative && ["regions", "governorates"].includes(feature.properties.layerId) &&
+    ["Polygon", "MultiPolygon"].includes(feature.geometry.type);
+  for (const [group, statement, size] of [[features.filter((f) => !isClipped(f)), INSERT_EXACT, FEATURE_BATCH], [features.filter(isClipped), INSERT_CLIPPED, ADMINISTRATIVE_BATCH]]) {
+    for (let start = 0; start < group.length; start += size) {
+      const batch = group.slice(start, start + size);
+      const rows = batch.map((feature) => ({
+        id: randomUUID(), label: feature.properties.label, category: feature.properties.category, geometry: feature.geometry,
+        search: [feature.properties.label, ...(feature.properties.aliases ?? [])].join(" "),
+        sourceId: feature.properties.sourceId ?? null, layerId: feature.properties.layerId ?? null, aliases: feature.properties.aliases ?? [],
+      }));
+      const inserted = await client.query(statement, [JSON.stringify(rows), releaseId]);
+      if (inserted.rowCount !== batch.length) throw new Error("Feature invalid or outside reviewed Saudi boundary");
+      const stored = new Map(inserted.rows.map((row) => [row.id, row.geometry]));
+      batch.forEach((feature, index) => { feature.geometry = JSON.parse(stored.get(rows[index].id)); });
+    }
+  }
+}
+
 export async function build(args) {
   const { releaseId, manifest } = parseArguments(args);
   const actor = process.env.JENAN_MAP_BUILD_ACTOR?.trim();
   const stagingConfigured = process.env.JENAN_MAP_STAGING_ROOT;
   const storageConfigured = process.env.JENAN_MAP_STORAGE_ROOT;
-  if (!actor || !process.env.DATABASE_URL || !stagingConfigured || !storageConfigured ||
-    !path.isAbsolute(stagingConfigured) || !path.isAbsolute(storageConfigured)) throw new Error("Database, operator identity, private staging and storage roots required");
+  // With JENAN_MAP_STORAGE_DRIVER=s3 the immutable artifacts go to the shared object store and there is no local storage root.
+  const objectConfig = s3ConfigFromEnv();
+  const store = objectConfig ? createS3Store(objectConfig) : null;
+  if (!actor || !process.env.DATABASE_URL || !stagingConfigured || (!store && !storageConfigured) ||
+    !path.isAbsolute(stagingConfigured) || (!store && !path.isAbsolute(storageConfigured))) throw new Error("Database, operator identity, private staging and storage roots required");
   const stagingRoot = await realpath(stagingConfigured);
-  const storageRoot = await realpath(storageConfigured);
+  const storageRoot = store ? null : await realpath(storageConfigured);
   const publicRoot = await realpath(path.resolve("public")).catch(() => path.resolve("public"));
-  for (const root of [stagingRoot, storageRoot]) {
+  for (const root of [stagingRoot, storageRoot].filter(Boolean)) {
     if (root === publicRoot || root.startsWith(publicRoot + path.sep)) throw new Error("Public directory cannot hold private data");
     if (!(await isPrivateDirectory(root))) throw new Error("Private roots must have permissions 0700");
   }
-  if (stagingRoot === storageRoot || stagingRoot.startsWith(storageRoot + path.sep) || storageRoot.startsWith(stagingRoot + path.sep)) throw new Error("Separate staging and immutable storage roots required");
+  if (storageRoot && (stagingRoot === storageRoot || stagingRoot.startsWith(storageRoot + path.sep) || storageRoot.startsWith(stagingRoot + path.sep))) throw new Error("Separate staging and immutable storage roots required");
   const input = JSON.parse((await readStaged(stagingRoot, manifest)).toString("utf8"));
   validateCoverage(input);
   if (input.countryCode !== "SA" || typeof input.boundaryAuthority !== "string" ||
@@ -184,35 +245,13 @@ export async function build(args) {
     // points, lines and every unclipped feature still need exact coverage.
     await client.query(`CREATE TEMP TABLE jenan_map_clip_limit (geometry geometry) ON COMMIT DROP`);
     await client.query(`INSERT INTO jenan_map_clip_limit SELECT ST_Buffer(geometry,$2::float8) FROM jenan_map.boundary WHERE "releaseId"=$1`, [releaseId, CLIP_TOLERANCE_DEGREES]);
-    for (const feature of features.features) {
-      const inserted = await client.query(`INSERT INTO jenan_map.feature (id,"releaseId",label,category,geometry,search,"sourceId","layerId",aliases)
-        SELECT $1,$2,$3,$4,clipped.geometry,to_tsvector('simple',$6),$7,$8,$9::text[]
-        FROM (SELECT ST_SetSRID(ST_GeomFromGeoJSON($5),4326) AS geometry) g
-        JOIN jenan_map.boundary b ON b."releaseId"=$2
-        CROSS JOIN jenan_map_clip_limit widened
-        CROSS JOIN LATERAL (SELECT ($10::boolean AND $8 IN ('regions','governorates')
-          AND ST_GeometryType(g.geometry) IN ('ST_Polygon','ST_MultiPolygon')) AS applied) clip
-        CROSS JOIN LATERAL (SELECT CASE WHEN clip.applied
-          THEN ST_Multi(ST_CollectionExtract(ST_Intersection(g.geometry,b.geometry),3))
-          ELSE g.geometry END AS geometry) clipped
-        WHERE ST_IsValid(g.geometry) AND NOT ST_IsEmpty(g.geometry)
-          AND ST_IsValid(clipped.geometry) AND NOT ST_IsEmpty(clipped.geometry)
-          AND ST_Covers(CASE WHEN clip.applied THEN widened.geometry ELSE b.geometry END,clipped.geometry)
-        RETURNING ST_AsGeoJSON(geometry,15) AS geometry`,
-      [randomUUID(), releaseId, feature.properties.label, feature.properties.category, JSON.stringify(feature.geometry),
-        [feature.properties.label, ...(feature.properties.aliases ?? [])].join(" "),
-        feature.properties.sourceId ?? null, feature.properties.layerId ?? null, feature.properties.aliases ?? [],
-        input.clipAdministrativeToBoundary === true]);
-      if (inserted.rowCount !== 1) throw new Error("Feature invalid or outside reviewed Saudi boundary");
-      // Public geometry and owned search must reflect the same final PostGIS intersection.
-      feature.geometry = JSON.parse(inserted.rows[0].geometry);
-    }
-    await persistArtifact(client, storageRoot, releaseId, featureBytes, "source", false, "features-source.bin");
-    await persistArtifact(client, storageRoot, releaseId, boundaryBytes, "source", false, "boundary-source.bin");
+    await insertFeatures(client, releaseId, features.features, input.clipAdministrativeToBoundary === true);
+    await persistArtifact(client, storageRoot, store, releaseId, featureBytes, "source", false, "features-source.bin");
+    await persistArtifact(client, storageRoot, store, releaseId, boundaryBytes, "source", false, "boundary-source.bin");
     for (const source of sourceFiles) {
-      await persistArtifact(client, storageRoot, releaseId, source.bytes, "source", false, `original-${source.level}.bin`);
+      await persistArtifact(client, storageRoot, store, releaseId, source.bytes, "source", false, `original-${source.level}.bin`);
     }
-    await persistArtifact(client, storageRoot, releaseId, Buffer.from(JSON.stringify(features)), "geojson", true, "places.geojson");
+    await persistArtifact(client, storageRoot, store, releaseId, Buffer.from(JSON.stringify(features)), "geojson", true, "places.geojson");
     await client.query(`UPDATE jenan_map.release SET status='Ready' WHERE id=$1 AND status='Processing'`, [releaseId]);
     await log(client, actor, releaseId, "build.ready", {
       featureCount: features.features.length, boundaryAuthority: input.boundaryAuthority,

@@ -107,10 +107,40 @@ describe("Jenan map layer publication boundary", () => {
       });
 
       it("loads the catalog binding for the current pointer, not a mutable legacy release ID", async () => {
-        database.$queryRaw.mockResolvedValueOnce([{ publishedReleaseId: "release-b" }]).mockResolvedValueOnce([]);
+        database.$queryRaw.mockResolvedValueOnce([{ publishedReleaseId: "release-b" }]).mockResolvedValueOnce([]).mockResolvedValueOnce([]);
         await mapLayers();
         expect(database.$queryRaw.mock.calls[1][0].values).toContain("release-b");
         expect(database.$queryRaw.mock.calls[1][0].sql).toContain("LEFT JOIN jenan_map.release_layer");
+      });
+
+      it("offers a data export only for a bound layer that holds features and has a redistributable licence", async () => {
+        const open = { license: "ODbL-1.0" };
+        database.$queryRaw
+          .mockResolvedValueOnce([{ publishedReleaseId: "release-b" }])
+          .mockResolvedValueOnce([
+            { ...layer, id: "places", releaseId: "release-b", provenance: open },
+            { ...layer, id: "base", releaseId: "release-b", provenance: open },
+            { ...layer, id: "pois", releaseId: "release-b", provenance: { license: "" } },
+            { ...layer, id: "roads", releaseId: "release-b", provenance: null },
+            { ...layer, id: "buildings", releaseId: null, provenance: null },
+          ])
+          .mockResolvedValueOnce([{ layerId: "places", n: 16010 }, { layerId: "pois", n: 3883 }, { layerId: "roads", n: 35028 }]);
+        const result = await mapLayers();
+        expect(result.map(({ id, featureCount, exportable }) => ({ id, featureCount, exportable }))).toEqual([
+          { id: "places", featureCount: 16010, exportable: true },
+          { id: "base", featureCount: 0, exportable: false },
+          { id: "pois", featureCount: 3883, exportable: false },
+          { id: "roads", featureCount: 35028, exportable: false },
+          { id: "buildings", featureCount: 0, exportable: false },
+        ]);
+        expect(database.$queryRaw.mock.calls[2][0].sql).toContain("FROM jenan_map.feature");
+        expect(database.$queryRaw.mock.calls[2][0].values).toContain("release-b");
+      });
+
+      it("does not count features when nothing is published", async () => {
+        database.$queryRaw.mockResolvedValueOnce([]).mockResolvedValueOnce([{ ...layer, releaseId: null }]);
+        expect(await mapLayers()).toEqual([expect.objectContaining({ featureCount: 0, exportable: false })]);
+        expect(database.$queryRaw).toHaveBeenCalledTimes(2);
       });
 
       it("narrows optional selected layers without dropping bound base city/address search", () => {

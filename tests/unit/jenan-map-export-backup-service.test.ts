@@ -61,6 +61,28 @@ describe("feature export is gated by licence", () => {
     mocks.query.mockResolvedValueOnce(Array.from({ length: 100_001 }, (_, i) => feature({ id: `f${i}` })));
     await expect(exportFeatures({ releaseId: release, layerId: "places", format: "csv" })).rejects.toMatchObject({ code: "EXPORT_TOO_LARGE", status: 413 });
   });
+  it("exports a layer as a GeoPackage that carries the same provenance", async () => {
+    mocks.query.mockResolvedValueOnce([{ provenance: { license: "ODbL-1.0", attribution: "© OpenStreetMap contributors", source: "OSM" }, status: "ready" }]);
+    const wkb = Buffer.alloc(21);
+    wkb.writeUInt8(1, 0); wkb.writeUInt32LE(1, 1); wkb.writeDoubleLE(46.6633, 5); wkb.writeDoubleLE(24.8216, 13);
+    mocks.query.mockResolvedValueOnce([{ id: "f1", label: "حي النرجس", category: "neighbourhood", layerId: "places", sourceId: "node/1", aliases: ["Narjis"], wkb: new Uint8Array(wkb), minX: 46.6633, minY: 24.8216, maxX: 46.6633, maxY: 24.8216 }]);
+    const out = await exportFeatures({ releaseId: release, layerId: "places", format: "gpkg" });
+    expect(out).toMatchObject({ contentType: "application/geopackage+sqlite3", count: 1, meta: { license: "ODbL-1.0", ownership: "OPEN_LICENSE" } });
+    expect(Buffer.isBuffer(out.body)).toBe(true);
+    expect(out.body.subarray(0, 16).toString("latin1")).toBe("SQLite format 3\0");
+    expect(out.body.includes(Buffer.from("© OpenStreetMap contributors"))).toBe(true);
+    expect(out.body.includes(Buffer.from("حي النرجس"))).toBe(true);
+  });
+  it("refuses a GeoPackage of a layer without a redistributable licence before reading any feature", async () => {
+    mocks.query.mockResolvedValueOnce([{ provenance: null, status: "ready" }]);
+    await expect(exportFeatures({ releaseId: release, layerId: "places", format: "gpkg" })).rejects.toMatchObject({ code: "EXPORT_LICENSE_PERMISSION_REQUIRED", status: 403 });
+    expect(mocks.query).toHaveBeenCalledTimes(1);
+  });
+  it("never returns a partial GeoPackage when the layer exceeds the limit", async () => {
+    mocks.query.mockResolvedValueOnce([{ provenance: { license: "ODbL-1.0" }, status: "ready" }]);
+    mocks.query.mockResolvedValueOnce(Array.from({ length: 100_001 }, (_, i) => ({ id: `f${i}`, label: "x", category: "c", layerId: "places", sourceId: null, aliases: null, wkb: new Uint8Array(21), minX: 0, minY: 0, maxX: 0, maxY: 0 })));
+    await expect(exportFeatures({ releaseId: release, layerId: "places", format: "gpkg" })).rejects.toMatchObject({ code: "EXPORT_TOO_LARGE", status: 413 });
+  });
 });
 
 describe("backup location", () => {

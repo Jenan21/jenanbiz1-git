@@ -13,7 +13,7 @@ import { MapError } from "./contracts";
 import { importSchema, ingestArtifact } from "./ingestion";
 import { bindLayersSchema, ingestLayerBindings } from "./layer-ingestion";
 import { audit, command } from "./service";
-import { assertPrivateDirectory, openNoFollow, storageRoot } from "./storage";
+import { assertPrivateDirectory, objectStore, openNoFollow, storageRoot, storeFailure } from "./storage";
 import { releaseAssetBase } from "./validation";
 
 const sql = Prisma.sql;
@@ -41,7 +41,27 @@ type Entry = {
   id: string; kind: string; filename: string; mime: string; sha256: string; byteSize: number;
   publicSafe: boolean; exportAllowed: boolean; exportLicense: string | null; file: string;
 };
-type Feature = { type?: string; properties?: { label?: unknown }; geometry?: unknown };
+type Feature = { type?: string; properties?: { label?: unknown; layerId?: unknown }; geometry?: unknown };
+
+const FEATURE_BATCH = 5_000;
+// Administrative polygons are large; a handful per statement keeps each one short.
+const ADMINISTRATIVE_BATCH = 10;
+const isAdministrative = (row: Feature) => row.properties?.layerId === "regions" || row.properties?.layerId === "governorates";
+
+/** One bounded INSERT of restored features, each checked against the boundary (`limit` names the exact or the tolerance-widened one). */
+function insertFeatures(tx: Prisma.TransactionClient, releaseId: string, batch: Feature[], limit: "geometry" | "widened") {
+  const boundary = limit === "widened" ? sql`b.widened` : sql`b.geometry`;
+  return tx.$executeRaw(sql`INSERT INTO jenan_map.feature (id,"releaseId",label,category,geometry,search,"sourceId","layerId",aliases)
+    SELECT gen_random_uuid(), ${releaseId}::uuid, p.label, p.category, p.geometry,
+      to_tsvector('simple', array_to_string(ARRAY[p.label] || p.aliases, ' ')), p."sourceId", p."layerId", p.aliases
+    FROM jsonb_array_elements(${JSON.stringify(batch)}::jsonb) AS e(f)
+    CROSS JOIN LATERAL (SELECT e.f->'properties'->>'label' AS label, COALESCE(e.f->'properties'->>'category', e.f->'properties'->>'layerId', 'place') AS category,
+      e.f->'properties'->>'sourceId' AS "sourceId", e.f->'properties'->>'layerId' AS "layerId",
+      ARRAY(SELECT jsonb_array_elements_text(COALESCE(e.f->'properties'->'aliases', '[]'::jsonb))) AS aliases,
+      ST_SetSRID(ST_GeomFromGeoJSON((e.f->'geometry')::text), 4326) AS geometry OFFSET 0) p
+    CROSS JOIN jenan_map_restore_limit b
+    WHERE ST_IsValid(p.geometry) AND NOT ST_IsEmpty(p.geometry) AND ST_Covers(${boundary}, p.geometry)`);
+}
 
 function parseJson(bytes: Buffer, code: string) {
   try { return JSON.parse(bytes.toString("utf8")); } catch { throw new MapError(code, 422); }
@@ -58,16 +78,20 @@ async function readStaged(file: string) {
 
 /** Writes bytes the build job produced (features, boundary and original sources) into the release's immutable storage, then records them. */
 async function persistTrusted(tx: Prisma.TransactionClient, releaseId: string, entry: Entry, bytes: Buffer) {
-  const root = await realpath(storageRoot());
-  await assertPrivateDirectory(root, "PRIVATE_STORAGE_REQUIRED");
-  const folder = path.join(root, releaseId);
-  await mkdir(folder, { recursive: true, mode: 0o700 });
-  if (await realpath(folder) !== folder) throw new MapError("INVALID_STORAGE_KEY", 503);
   const storageKey = `${releaseId}/${entry.sha256}.${entry.kind === "geojson" ? "geojson" : "bin"}`;
-  const target = path.join(root, storageKey);
-  const handle = await openNoFollow(target, constants.O_WRONLY | constants.O_CREAT | constants.O_EXCL, 0o400);
-  try { await handle.writeFile(bytes); await handle.sync(); } finally { await handle.close(); }
-  await chmod(target, 0o400);
+  const store = objectStore();
+  if (store) await store.putBytes(storageKey, bytes, entry.sha256).catch(storeFailure);
+  else {
+    const root = await realpath(storageRoot());
+    await assertPrivateDirectory(root, "PRIVATE_STORAGE_REQUIRED");
+    const folder = path.join(root, releaseId);
+    await mkdir(folder, { recursive: true, mode: 0o700 });
+    if (await realpath(folder) !== folder) throw new MapError("INVALID_STORAGE_KEY", 503);
+    const target = path.join(root, storageKey);
+    const handle = await openNoFollow(target, constants.O_WRONLY | constants.O_CREAT | constants.O_EXCL, 0o400);
+    try { await handle.writeFile(bytes); await handle.sync(); } finally { await handle.close(); }
+    await chmod(target, 0o400);
+  }
   await tx.$executeRaw(sql`INSERT INTO jenan_map.artifact (id,"releaseId",kind,"storageKey",filename,mime,sha256,"byteSize","publicSafe","exportAllowed","exportLicense")
     VALUES (${randomUUID()}::uuid,${releaseId}::uuid,${entry.kind},${storageKey},${entry.filename},${entry.mime},${entry.sha256},${bytes.length},${entry.publicSafe},${entry.exportAllowed},${entry.exportAllowed ? entry.exportLicense : null})`);
 }
@@ -131,21 +155,16 @@ export async function restoreBackupAsCandidate(folder: string, actor: string) {
         VALUES (${randomUUID()}::uuid,${releaseId}::uuid,${evidence.boundaryAuthority as string},${evidence.boundarySource as string},
           ST_Multi(ST_SetSRID(ST_GeomFromGeoJSON(${JSON.stringify(boundaryGeometry)}),4326)),
           ${evidence.authoritative === false ? JSON.stringify(evidence) : null}::jsonb)`);
-      // Set-based: every feature must still be valid and inside the restored boundary (clipped administrative polygons within the shared tolerance).
-      // The widened boundary is computed once (MATERIALIZED), not per feature.
-      const inserted = await tx.$executeRaw(sql`WITH b AS MATERIALIZED (
-          SELECT geometry, ST_Buffer(geometry, ${CLIP_TOLERANCE_DEGREES}::float8) AS widened FROM jenan_map.boundary WHERE "releaseId" = ${releaseId}::uuid)
-        INSERT INTO jenan_map.feature (id,"releaseId",label,category,geometry,search,"sourceId","layerId",aliases)
-        SELECT gen_random_uuid(), ${releaseId}::uuid, p.label, p.category, p.geometry,
-          to_tsvector('simple', array_to_string(ARRAY[p.label] || p.aliases, ' ')), p."sourceId", p."layerId", p.aliases
-        FROM jsonb_array_elements(${JSON.stringify(rows)}::jsonb) AS e(f)
-        CROSS JOIN LATERAL (SELECT e.f->'properties'->>'label' AS label, COALESCE(e.f->'properties'->>'category', e.f->'properties'->>'layerId', 'place') AS category,
-          e.f->'properties'->>'sourceId' AS "sourceId", e.f->'properties'->>'layerId' AS "layerId",
-          ARRAY(SELECT jsonb_array_elements_text(COALESCE(e.f->'properties'->'aliases', '[]'::jsonb))) AS aliases,
-          ST_SetSRID(ST_GeomFromGeoJSON((e.f->'geometry')::text), 4326) AS geometry) p
-        CROSS JOIN b
-        WHERE ST_IsValid(p.geometry) AND NOT ST_IsEmpty(p.geometry)
-          AND ST_Covers(CASE WHEN p."layerId" IN ('regions','governorates') THEN b.widened ELSE b.geometry END, p.geometry)`);
+      // Every feature must still be valid and inside the restored boundary (clipped administrative polygons within the shared tolerance).
+      // The widened boundary is computed once per transaction, and features go in batches so that no single statement outlasts the
+      // database query timeout however large the layer is.
+      await tx.$executeRaw(sql`CREATE TEMP TABLE jenan_map_restore_limit ON COMMIT DROP AS
+        SELECT geometry, ST_Buffer(geometry, ${CLIP_TOLERANCE_DEGREES}::float8) AS widened FROM jenan_map.boundary WHERE "releaseId" = ${releaseId}::uuid`);
+      const administrative = rows.filter(isAdministrative), others = rows.filter((row) => !isAdministrative(row));
+      let inserted = 0;
+      for (const [group, limit, size] of [[others, "geometry", FEATURE_BATCH], [administrative, "widened", ADMINISTRATIVE_BATCH]] as const) {
+        for (let start = 0; start < group.length; start += size) inserted += await insertFeatures(tx, releaseId, group.slice(start, start + size), limit);
+      }
       if (inserted !== rows.length) throw new MapError("BACKUP_FEATURES_OUTSIDE_BOUNDARY", 422);
       for (const entry of entries.filter((item) => item.kind === "source" || item.kind === "geojson")) {
         await persistTrusted(tx, releaseId, entry, verified(await readStaged(path.join(directory, entry.file)), entry));

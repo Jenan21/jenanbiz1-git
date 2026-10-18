@@ -7,11 +7,14 @@ import pg from "pg";
 import { build } from "../../scripts/jenan-map/build.mjs";
 import { FONT_STACKS } from "../../scripts/jenan-map/glyphs.mjs";
 import { buildStyle } from "../../scripts/jenan-map/styles.mjs";
+import type { MapCommand } from "@/services/jenan-map/contracts";
 
 // ACCEPTANCE on REAL data (no fixtures): the real Saudi PMTiles, real OSM-derived places/streets/POIs, real geoBoundaries, real glyphs and
 // the real Jenan style. Opt-in: needs the files from `npm run jenan-map:saudi-pmtiles|glyphs` and prepare-saudi-import, and a disposable PostGIS.
 //   RUN_JENAN_MAP_ACCEPTANCE=1 JENAN_MAP_ACCEPTANCE_STAGE=.jenan-map-data/stage DATABASE_URL=postgresql://.../jenan_map_test
 const enabled = process.env.RUN_JENAN_MAP_ACCEPTANCE === "1";
+// Also runnable against a real S3-compatible store (JENAN_MAP_STORAGE_DRIVER=s3 and the JENAN_MAP_S3_* settings): then no artifact may touch local disk.
+const sharedStorage = process.env.JENAN_MAP_STORAGE_DRIVER === "s3";
 const data = path.resolve(".jenan-map-data");
 const root = path.resolve(`work/map-acceptance-${randomUUID()}`);
 const staging = path.join(root, "staging"), storage = path.join(root, "storage");
@@ -28,6 +31,9 @@ const saved = new Map<string, string | undefined>();
 const releases: { a?: string; b?: string } = {};
 
 const sha = async (file: string) => { const h = createHash("sha256"); h.update(await readFile(file)); return h.digest("hex"); };
+// The admin route verifies the stored archives before a command's transaction opens; the suite does the same, so a slow object store
+// cannot make an approval outlive its transaction.
+const execute = async (input: MapCommand) => service.command(input, adminId, await service.preverifyCommand(input));
 
 type TilesManifest = { source: { name: string; build: string; osmReplicationTime: string; schema: string | number } };
 
@@ -118,6 +124,11 @@ describe.skipIf(!enabled)("Jenan PRO Map acceptance on real Saudi data", () => {
     for (const [key, value] of Object.entries({ JENAN_MAP_BUILD_ACTOR: adminId, JENAN_MAP_STAGING_ROOT: staging, JENAN_MAP_STORAGE_ROOT: storage })) {
       saved.set(key, process.env[key]); process.env[key] = value;
     }
+    if (sharedStorage) {
+      // Each run keeps its objects under its own prefix so repeated runs never meet each other's artifacts.
+      saved.set("JENAN_MAP_S3_PREFIX", process.env.JENAN_MAP_S3_PREFIX);
+      process.env.JENAN_MAP_S3_PREFIX = `acceptance-${randomUUID().slice(0, 8)}/`;
+    }
   });
   afterAll(async () => {
     for (const [key, value] of saved) { if (value === undefined) delete process.env[key]; else process.env[key] = value; }
@@ -139,11 +150,11 @@ describe.skipIf(!enabled)("Jenan PRO Map acceptance on real Saudi data", () => {
     expect((await pool!.query(`SELECT status FROM jenan_map.release WHERE id=$1`, [releases.a])).rows[0].status).toBe("Ready");
     const counts = (await pool!.query(`SELECT "layerId", count(*)::int AS n FROM jenan_map.feature WHERE "releaseId"=$1 GROUP BY 1 ORDER BY 1`, [releases.a])).rows;
     expect(Object.fromEntries(counts.map((r) => [r.layerId, r.n]))).toMatchObject({ governorates: expect.any(Number), pois: expect.any(Number), places: expect.any(Number), regions: expect.any(Number), roads: expect.any(Number) });
-    await service.command({ action: "approve", releaseId: releases.a, confirmation: "APPROVE", reason: "Acceptance: real Saudi data version A reviewed" }, adminId);
+    await execute({ action: "approve", releaseId: releases.a, confirmation: "APPROVE", reason: "Acceptance: real Saudi data version A reviewed" });
     const state = await service.runtime();
-    await service.command({ action: "publish", releaseId: releases.a, expectedRevision: state.revision, expectedPublishedReleaseId: state.publishedReleaseId, confirmation: "PUBLISH", reason: "Acceptance publish A" }, adminId);
+    await execute({ action: "publish", releaseId: releases.a, expectedRevision: state.revision, expectedPublishedReleaseId: state.publishedReleaseId, confirmation: "PUBLISH", reason: "Acceptance publish A" });
     const published = await service.runtime();
-    await service.command({ action: "runtime", status: "enabled", expectedRevision: published.revision, expectedPublishedReleaseId: releases.a, confirmation: "CHANGE RUNTIME", reason: "Acceptance enable" }, adminId);
+    await execute({ action: "runtime", status: "enabled", expectedRevision: published.revision, expectedPublishedReleaseId: releases.a, confirmation: "CHANGE RUNTIME", reason: "Acceptance enable" });
     expect((await service.runtime())).toMatchObject({ status: "enabled", publishedReleaseId: releases.a });
   }, 900_000);
 
@@ -195,6 +206,40 @@ describe.skipIf(!enabled)("Jenan PRO Map acceptance on real Saudi data", () => {
     expect(Math.min(counts[3], 20)).toBe(Math.min(exact.rows[0].n, 20));
   });
 
+  it("exports a real layer as GeoJSON, CSV and GeoPackage: the same features, geometry and licence in each", async () => {
+    const { exportFeatures } = await import("@/services/jenan-map/export-features");
+    const releaseId = releases.a!;
+    const inDatabase = Number((await pool!.query(`SELECT count(*) AS n FROM jenan_map.feature WHERE "releaseId"=$1 AND "layerId"='places'`, [releaseId])).rows[0].n);
+    expect(inDatabase).toBeGreaterThan(10_000);
+    const geojson = await exportFeatures({ releaseId, layerId: "places", format: "geojson" });
+    const csv = await exportFeatures({ releaseId, layerId: "places", format: "csv" });
+    const gpkg = await exportFeatures({ releaseId, layerId: "places", format: "gpkg" });
+    expect(JSON.parse(geojson.body).features).toHaveLength(inDatabase);
+    expect(csv.body.split("\r\n").filter(Boolean)).toHaveLength(inDatabase + 1);
+    expect(gpkg).toMatchObject({ count: inDatabase, meta: { license: "ODbL-1.0", ownership: "OPEN_LICENSE" } });
+
+    // Read the GeoPackage back with SQLite, and compare one feature's geometry with the bytes PostGIS itself produces.
+    const { DatabaseSync } = await import("node:sqlite");
+    const file = path.join(root, "places.gpkg");
+    await writeFile(file, gpkg.body);
+    const db = new DatabaseSync(file, { readOnly: true });
+    try {
+      expect(db.prepare("PRAGMA integrity_check").get()).toEqual({ integrity_check: "ok" });
+      expect(db.prepare("SELECT count(*) AS n FROM places").get()).toEqual({ n: inDatabase });
+      const contents = db.prepare("SELECT description, min_x, min_y, max_x, max_y FROM gpkg_contents").get() as Record<string, number | string>;
+      expect(contents.description).toContain("ODbL-1.0");
+      expect(contents).toMatchObject({ min_x: expect.any(Number) });
+      expect(Number(contents.min_x)).toBeGreaterThan(34);
+      expect(Number(contents.max_x)).toBeLessThan(56);
+      expect(Number(contents.min_y)).toBeGreaterThan(15);
+      expect(Number(contents.max_y)).toBeLessThan(33);
+      expect((db.prepare("SELECT count(*) AS n FROM places WHERE label GLOB '*[ء-ي]*'").get() as { n: number }).n).toBeGreaterThan(inDatabase / 2);
+      const [sample] = (await pool!.query(`SELECT id, encode(ST_AsBinary(geometry), 'hex') AS wkb FROM jenan_map.feature WHERE "releaseId"=$1 AND "layerId"='places' ORDER BY id LIMIT 1`, [releaseId])).rows;
+      const stored = db.prepare("SELECT hex(substr(geom, 41)) AS wkb FROM places WHERE id = ?").get(sample.id) as { wkb: string };
+      expect(stored.wkb.toLowerCase()).toBe(sample.wkb);
+    } finally { db.close(); }
+  }, 300_000);
+
   it("previews version B (z15) without touching customers, then publishes it atomically", async () => {
     const b = await archive("saudi");
     releases.b = await newRelease("versionB", b.file, b.manifest);
@@ -203,15 +248,15 @@ describe.skipIf(!enabled)("Jenan PRO Map acceptance on real Saudi data", () => {
     expect(preview.release.id).toBe(releases.b);
     expect((await service.runtime()).publishedReleaseId).toBe(releases.a);
     expect((await service.manifest() as { release: { id: string } }).release.id).toBe(releases.a);
-    await service.command({ action: "approve", releaseId: releases.b, confirmation: "APPROVE", reason: "Acceptance: real Saudi data version B reviewed" }, adminId);
-    await service.command({ action: "publish", releaseId: releases.b, expectedRevision: before.revision, expectedPublishedReleaseId: releases.a!, confirmation: "PUBLISH", reason: "Acceptance publish B" }, adminId);
+    await execute({ action: "approve", releaseId: releases.b, confirmation: "APPROVE", reason: "Acceptance: real Saudi data version B reviewed" });
+    await execute({ action: "publish", releaseId: releases.b, expectedRevision: before.revision, expectedPublishedReleaseId: releases.a!, confirmation: "PUBLISH", reason: "Acceptance publish B" });
     expect((await service.runtime()).publishedReleaseId).toBe(releases.b);
     expect((await pool!.query(`SELECT id,status FROM jenan_map.release WHERE id = ANY($1) ORDER BY status`, [[releases.a, releases.b]])).rows.map((r) => r.status).sort()).toEqual(["Archived", "Published"]);
   }, 1_200_000);
 
   it("rolls back to version A after confirmation, keeping both versions and the audit trail", async () => {
     const state = await service.runtime();
-    await service.command({ action: "rollback", releaseId: releases.a!, expectedRevision: state.revision, expectedPublishedReleaseId: releases.b!, confirmation: "ROLLBACK", reason: "Acceptance rollback to A" }, adminId);
+    await execute({ action: "rollback", releaseId: releases.a!, expectedRevision: state.revision, expectedPublishedReleaseId: releases.b!, confirmation: "ROLLBACK", reason: "Acceptance rollback to A" });
     expect((await service.runtime()).publishedReleaseId).toBe(releases.a);
     const rows = (await pool!.query(`SELECT id,status FROM jenan_map.release WHERE id = ANY($1)`, [[releases.a, releases.b]])).rows;
     expect(rows).toHaveLength(2);
@@ -220,7 +265,8 @@ describe.skipIf(!enabled)("Jenan PRO Map acceptance on real Saudi data", () => {
     expect(audit).toEqual(expect.arrayContaining(["create", "approve", "publish", "rollback", "build.ready"]));
     // The saved location still opens after the rollback because it is stored independently of the release choice.
     expect((await service.savedLocation(userId))).toMatchObject({ latitude: 24.8216, longitude: 46.6633 });
-  });
+    // Rolling back verifies the release's stored archives in full, which on shared storage takes far longer than a default test timeout.
+  }, 600_000);
 
   it("backs up the published version, restores it as a NEW candidate and approves it without touching production", async () => {
     const backups = path.join(root, "backups");
@@ -242,17 +288,20 @@ describe.skipIf(!enabled)("Jenan PRO Map acceptance on real Saudi data", () => {
     const bindings = async (id: string) => (await pool!.query(`SELECT "layerId","styleLayerIds","searchCategories",visibility FROM jenan_map.release_layer WHERE "releaseId"=$1 ORDER BY 1`, [id])).rows;
     expect(await bindings(restored.releaseId)).toEqual(await bindings(releases.a!));
 
-    // The style of the copy points at the copy, never at the release it came from.
-    const styleKey = (await pool!.query(`SELECT "storageKey" FROM jenan_map.artifact WHERE "releaseId"=$1 AND kind='style'`, [restored.releaseId])).rows[0].storageKey as string;
-    const style = await readFile(path.join(storage, styleKey), "utf8");
+    // The style of the copy points at the copy, never at the release it came from. It is read through the storage layer, whichever driver holds it.
+    const { openArtifact } = await import("@/services/jenan-map/storage");
+    const styleArtifact = (await service.artifacts(restored.releaseId)).find((file) => file.kind === "style")!;
+    const styleHandle = await openArtifact(styleArtifact);
+    const style = await styleHandle.readFile({ encoding: "utf8" }).finally(() => styleHandle.close());
     expect(style).toContain(`/api/jenan-map/releases/${restored.releaseId}/`);
     expect(style).not.toContain(releases.a!);
+    if (sharedStorage) expect(await readdir(storage)).toEqual([]);
 
     const preview = await service.previewManifest(restored.releaseId) as { release: { id: string } };
     expect(preview.release.id).toBe(restored.releaseId);
     const found = await service.search({ q: "الرياض", releaseId: restored.releaseId, radiusMeters: 10_000 }, true);
     expect((found.results as unknown[]).length).toBeGreaterThan(0);
-    await service.command({ action: "approve", releaseId: restored.releaseId, confirmation: "APPROVE", reason: "Acceptance: restored candidate reviewed" }, adminId);
+    await execute({ action: "approve", releaseId: restored.releaseId, confirmation: "APPROVE", reason: "Acceptance: restored candidate reviewed" });
     expect((await pool!.query(`SELECT status FROM jenan_map.release WHERE id=$1`, [restored.releaseId])).rows[0].status).toBe("Approved");
     expect(await service.runtime()).toEqual(before);
     expect((await pool!.query(`SELECT action FROM jenan_map.audit WHERE "releaseId"=$1`, [restored.releaseId])).rows.map((r) => r.action)).toEqual(expect.arrayContaining(["create", "backup.restore_started", "backup.restore_rows", "backup.restored", "approve"]));

@@ -1,12 +1,25 @@
 import { createHash } from "node:crypto";
 import { constants, lstatSync } from "node:fs";
-import { access, open, realpath, stat } from "node:fs/promises";
+import { access, mkdir, open, realpath, stat } from "node:fs/promises";
+import os from "node:os";
 import path from "node:path";
+import { PassThrough, Readable } from "node:stream";
+import { createS3Store, ObjectStoreError, s3ConfigFromEnv, type S3Store } from "../../scripts/jenan-map/s3-store.mjs";
 import type { Artifact } from "./contracts";
 import { MapError } from "./contracts";
 
 const verifiedFiles = new Map<string, string>();
 const pendingVerification = new Map<string, Promise<void>>();
+
+/** What every consumer of a stored artifact needs; a local file handle and an object-store reader both provide it. */
+export type ArtifactHandle = {
+  stat(): Promise<{ size: number }>;
+  read(buffer: Buffer, offset: number, length: number, position: number): Promise<{ bytesRead: number }>;
+  readFile(): Promise<Buffer>;
+  readFile(options: { encoding: BufferEncoding }): Promise<string>;
+  createReadStream(options?: { start?: number; end?: number; autoClose?: boolean }): Readable;
+  close(): Promise<void>;
+};
 
 /** Windows has no O_NOFOLLOW; there a final symlink is refused with an lstat check before the open instead. */
 export const NO_FOLLOW = constants.O_NOFOLLOW ?? 0;
@@ -80,6 +93,10 @@ export function logicalFilename(artifact: Pick<Artifact, "id" | "filename" | "ki
 }
 
 export async function storageState() {
+  let store: S3Store | null;
+  try { store = objectStore(); } catch { return { status: "unavailable", configured: false, driver: "s3" }; }
+  // Object storage is measured by actually listing the bucket with the configured credentials.
+  if (store) return { status: (await store.ping()) ? "available" : "unavailable", configured: true, driver: "s3" };
   const configured = Boolean(process.env.JENAN_MAP_STORAGE_ROOT?.trim());
   try {
     const root = await realpath(storageRoot());
@@ -94,8 +111,134 @@ export async function storageState() {
   }
 }
 
+let cachedStore: { key: string; store: S3Store } | null = null;
+
+/**
+ * The configured S3-compatible store (`JENAN_MAP_STORAGE_DRIVER=s3`), or null when the private filesystem is used. A broken configuration is
+ * an operator error reported as 503, never a silent fallback to local disk, which would hide that the shared store is not in use.
+ */
+export function objectStore(): S3Store | null {
+  let config;
+  try { config = s3ConfigFromEnv(process.env); }
+  catch (error) { throw new MapError(error instanceof ObjectStoreError ? error.message : "OBJECT_STORE_NOT_CONFIGURED", 503); }
+  if (!config) { cachedStore = null; return null; }
+  const key = JSON.stringify([config.endpoint, config.bucket, config.region, config.prefix, config.pathStyle, config.accessKeyId,
+    createHash("sha256").update(config.secretAccessKey).digest("hex").slice(0, 16)]);
+  if (cachedStore?.key !== key) { cachedStore = { key, store: createS3Store(config) }; resetObjectStoreCache(); }
+  return cachedStore.store;
+}
+
+/** Forgets what was learned about stored objects (their size and checksum). Done automatically when the store configuration changes. */
+export function resetObjectStoreCache() {
+  objectInfo.clear();
+  verifiedObjects.clear();
+}
+
+/** Both drivers need to be configured before the map can serve; reading this never touches the network. */
+export function assertStorageConfigured() {
+  if (!objectStore()) storageRoot();
+}
+
+/** An object-store failure reaches callers as a MapError, with no store detail in it. */
+export function storeFailure(error: unknown): never {
+  if (error instanceof MapError) throw error;
+  if (error instanceof ObjectStoreError && error.status === 404) throw new MapError("ARTIFACT_INTEGRITY_FAILED", 503);
+  throw new MapError(error instanceof ObjectStoreError && error.status === 409 ? "OBJECT_CONFLICT" : "OBJECT_STORE_UNAVAILABLE", 503);
+}
+
+/** Reads one stored object through ranged requests; the same shape as a local file handle, so validation and streaming are unchanged. */
+class ObjectHandle implements ArtifactHandle {
+  constructor(private readonly store: S3Store, private readonly key: string, private readonly size: number) {}
+  async stat() { return { size: this.size }; }
+  private async bytes(start: number, end: number) {
+    const chunks: Buffer[] = [];
+    const body = await this.store.range(this.key, start, end).catch(storeFailure);
+    for await (const chunk of Readable.fromWeb(body as never) as AsyncIterable<Uint8Array>) chunks.push(Buffer.from(chunk));
+    return Buffer.concat(chunks);
+  }
+  async read(buffer: Buffer, offset: number, length: number, position: number) {
+    if (length < 1 || position < 0 || position >= this.size) return { bytesRead: 0 };
+    const data = await this.bytes(position, Math.min(position + length, this.size) - 1);
+    return { bytesRead: data.copy(buffer, offset, 0, Math.min(data.length, length)) };
+  }
+  readFile(): Promise<Buffer>;
+  readFile(options: { encoding: BufferEncoding }): Promise<string>;
+  async readFile(options?: { encoding?: BufferEncoding }): Promise<string | Buffer> {
+    const data = await this.bytes(0, this.size - 1);
+    return options?.encoding ? data.toString(options.encoding) : data;
+  }
+  createReadStream(options: { start?: number; end?: number } = {}) {
+    const controller = new AbortController();
+    const out = new PassThrough();
+    // The request is cancelled as soon as the consumer goes away (a closed browser tab), so abandoned ranges do not keep downloading.
+    out.once("close", () => controller.abort());
+    this.store.range(this.key, options.start ?? 0, options.end ?? this.size - 1, controller.signal).then(
+      (body) => { const source = Readable.fromWeb(body as never); source.once("error", (error) => out.destroy(error)); source.pipe(out); },
+      (error) => out.destroy(error instanceof MapError ? error : new MapError("OBJECT_STORE_UNAVAILABLE", 503)),
+    );
+    return out;
+  }
+  async close() { /* nothing is held open */ }
+}
+
+const objectInfo = new Map<string, { size: number; sha256: string | null }>();
+const verifiedObjects = new Set<string>();
+
+async function verifyObject(store: S3Store, key: string, sha256: string, size: number) {
+  const hash = createHash("sha256");
+  const body = await store.range(key, 0, size - 1).catch(storeFailure);
+  for await (const chunk of Readable.fromWeb(body as never) as AsyncIterable<Uint8Array>) hash.update(chunk);
+  if (hash.digest("hex") !== sha256) throw new MapError("ARTIFACT_INTEGRITY_FAILED", 503);
+}
+
+/**
+ * Objects are immutable and content-addressed, so size and the checksum recorded at upload are compared with the database record on open
+ * (one HEAD per object, then cached). A caller that forces verification (approval, backup) reads and hashes the whole object, coalesced
+ * across concurrent callers like the local adapter; a store that returned no checksum metadata is hashed once instead.
+ */
+async function openObjectArtifact(store: S3Store, artifact: Artifact, forceVerification: boolean): Promise<ArtifactHandle> {
+  const key = safeStorageKey(artifact.storageKey);
+  const size = Number(artifact.byteSize);
+  if (!Number.isSafeInteger(size) || size < 1) throw new MapError("ARTIFACT_INTEGRITY_FAILED", 503);
+  const cacheKey = `${key}:${artifact.sha256}`;
+  let info = objectInfo.get(cacheKey);
+  if (!info) {
+    const found = await store.head(key).catch(storeFailure);
+    if (!found) throw new MapError("ARTIFACT_INTEGRITY_FAILED", 503);
+    info = { size: found.size, sha256: found.sha256 };
+  }
+  if (info.size !== size || (info.sha256 !== null && info.sha256 !== artifact.sha256)) throw new MapError("ARTIFACT_INTEGRITY_FAILED", 503);
+  if (forceVerification || (info.sha256 === null && !verifiedObjects.has(cacheKey))) {
+    let verification = pendingVerification.get(cacheKey);
+    if (!verification) {
+      verification = verifyObject(store, key, artifact.sha256, size);
+      pendingVerification.set(cacheKey, verification);
+    }
+    try { await verification; } finally { if (pendingVerification.get(cacheKey) === verification) pendingVerification.delete(cacheKey); }
+    if (verifiedObjects.size >= 128) verifiedObjects.delete(verifiedObjects.values().next().value!);
+    verifiedObjects.add(cacheKey);
+  }
+  if (objectInfo.size >= 512) objectInfo.delete(objectInfo.keys().next().value!);
+  objectInfo.set(cacheKey, info);
+  return new ObjectHandle(store, key, size);
+}
+
+/** Where an upload is staged before validation (private local scratch; never the shared store) and how it is placed afterwards. */
+export async function scratchDirectory() {
+  const directory = path.join(process.env.JENAN_MAP_SCRATCH_ROOT?.trim() || os.tmpdir(), "jenan-map-uploads");
+  await mkdir(directory, { recursive: true, mode: 0o700 });
+  const resolved = await realpath(directory);
+  await assertPrivateDirectory(resolved, "PRIVATE_STORAGE_REQUIRED");
+  return resolved;
+}
+
 /** Verify the same open file descriptor that will be streamed; never follow a final symlink. */
-export async function openArtifact(artifact: Artifact, forceVerification = false) {
+export async function openArtifact(artifact: Artifact, forceVerification = false): Promise<ArtifactHandle> {
+  const store = objectStore();
+  return store ? openObjectArtifact(store, artifact, forceVerification) : openLocalArtifact(artifact, forceVerification);
+}
+
+async function openLocalArtifact(artifact: Artifact, forceVerification: boolean) {
   const root = await realpath(storageRoot());
   const publicRoot = await realpath(path.resolve(process.cwd(), "public")).catch(() => path.resolve(process.cwd(), "public"));
   if (root === publicRoot || root.startsWith(publicRoot + path.sep)) throw new MapError("PRIVATE_STORAGE_REQUIRED", 503);

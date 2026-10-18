@@ -33,6 +33,12 @@ export function mayRedistribute(ownership: OwnershipClass, exportAllowed: boolea
   return exportAllowed && ownership !== "RESTRICTED";
 }
 
+/** Whether a layer's recorded provenance lets its data leave the platform. The export gate and the admin catalog share this one rule. */
+export function layerExportable(provenance: { license?: string | null } | null | undefined) {
+  const license = provenance?.license ?? "";
+  return mayRedistribute(ownershipOf({ license, author: null }), license.length > 0);
+}
+
 export type BackupArtifact = {
   id: string; kind: string; filename: string; mime: string; sha256: string; byteSize: number;
   publicSafe: boolean; exportAllowed: boolean; exportLicense: string | null; ownership: OwnershipClass;
