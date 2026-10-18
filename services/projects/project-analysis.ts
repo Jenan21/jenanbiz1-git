@@ -93,6 +93,34 @@ export async function findLatestAnalysisReportId(userId: string) {
   return project?.id ?? null;
 }
 
+export async function findActiveAnalysisProjectId(userId: string) {
+  const project = await db.project.findFirst({
+    where: {
+      AND: [
+        analysisReadWhere(userId),
+        {
+          OR: [
+            { analysisStudy: { path: ["status"], equals: "PROCESSING" } },
+            {
+              AND: [
+                { analysisStudy: { path: ["status"], equals: "PENDING" } },
+                { analysisStudy: { path: ["runId"], string_starts_with: "", not: "" } },
+              ],
+            },
+          ],
+        },
+      ],
+    },
+    orderBy: [
+      { analysisStudyUpdatedAt: { sort: "desc", nulls: "last" } },
+      { updatedAt: "desc" },
+      { id: "asc" },
+    ],
+    select: { id: true },
+  });
+  return project?.id ?? null;
+}
+
 function jsonObject(value: unknown) {
   return value && typeof value === "object" && !Array.isArray(value)
     ? (value as Record<string, unknown>)
@@ -333,7 +361,7 @@ export async function runProjectAnalysis(projectId: string, userId: string) {
 
 const QUEUE_KEY = "PROJECT_ANALYSIS";
 const LEASE_MS = 60_000;
-const EXECUTION_TIMEOUT_MS = 180_000;
+const EXECUTION_TIMEOUT_MS = LEASE_MS - 10_000;
 type Transaction = Prisma.TransactionClient;
 type AnalysisJob = { id: string; leaseToken: string; attempts: number; maxAttempts: number; payload: unknown };
 type JobPayload = { projectId: string; userId: string; inputRevision: string; input: ProjectAnalysisInput; countryCode?: string; sector?: string };
@@ -405,6 +433,7 @@ async function writeStudy(transaction: Transaction, projectId: string, study: Re
 export async function executeProjectAnalysisJob(job: AnalysisJob) {
   const payload = job.payload as JobPayload;
   const controller = new AbortController();
+  const deadlineAt = Date.now() + EXECUTION_TIMEOUT_MS;
   let timeout: ReturnType<typeof setTimeout> | undefined;
   let lostLease = false;
   const heartbeat = setInterval(() => {
@@ -415,6 +444,7 @@ export async function executeProjectAnalysisJob(job: AnalysisJob) {
   const stage = async (processingStep: AnalysisStage) => {
     if (lostLease || !await withOwnedRun(job, payload, (transaction, study) =>
       writeStudy(transaction, payload.projectId, { ...study, status: "PROCESSING", processingStep }))) {
+      controller.abort();
       throw new Error("Analysis lease lost");
     }
   };
@@ -424,7 +454,7 @@ export async function executeProjectAnalysisJob(job: AnalysisJob) {
       const intelligence = await searchProjectIntelligence({
         query: payload.input.city, countryCode: payload.countryCode ?? undefined, sector: payload.sector ?? undefined,
         latitude: payload.input.latitude, longitude: payload.input.longitude,
-      }, stage, { signal: controller.signal });
+      }, stage, { signal: controller.signal, deadlineAt: deadlineAt - 10_000 });
       await stage("RECOMMENDATIONS");
       const result = buildProjectAnalysisResult(intelligence);
       await stage("REPORT");
@@ -436,7 +466,7 @@ export async function executeProjectAnalysisJob(job: AnalysisJob) {
         timeout = setTimeout(() => {
           controller.abort();
           reject(new Error("Analysis deadline exceeded"));
-        }, EXECUTION_TIMEOUT_MS);
+        }, Math.max(0, deadlineAt - Date.now()));
       }),
     ]);
     if (lostLease) return;

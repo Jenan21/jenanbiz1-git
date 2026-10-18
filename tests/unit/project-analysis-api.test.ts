@@ -8,6 +8,7 @@ const mocks = vi.hoisted(() => ({
   create: vi.fn(),
   detail: vi.fn(),
   status: vi.fn(),
+  list: vi.fn(),
 }));
 vi.mock("@/lib/db", () => ({ db: {} }));
 vi.mock("@/lib/auth/session", () => ({ getCurrentUser: async () => mocks.user }));
@@ -24,9 +25,10 @@ vi.mock("@/services/projects/project-service", async (original) => ({
   ...await original<typeof import("@/services/projects/project-service")>(),
   createProject: mocks.create,
   getUserProject: mocks.detail,
+  listUserProjectsPage: mocks.list,
 }));
 
-import { POST } from "@/app/api/projects/route";
+import { GET as listProjects, POST } from "@/app/api/projects/route";
 import { GET as getProject } from "@/app/api/projects/[projectId]/route";
 import { GET as getStatus } from "@/app/api/projects/[projectId]/analysis-status/route";
 
@@ -39,6 +41,7 @@ beforeEach(() => {
   mocks.user = { id: "owner" };
   mocks.allowed = true;
   mocks.run.mockResolvedValue({ projectId, runId: "run-id", inputRevision: "revision", status: "PENDING", reused: false });
+  mocks.list.mockResolvedValue({ projects: [], page: { total: 0, limit: 1, offset: 0, hasMore: false } });
 });
 
 describe("durable analysis API contracts", () => {
@@ -79,5 +82,13 @@ describe("durable analysis API contracts", () => {
     expect((await POST(command({ action: "runProjectAnalysis", projectId }))).status).toBe(401);
     expect((await getStatus(request(), context)).status).toBe(401);
     expect((await getProject(request(), context)).status).toBe(401);
+  });
+
+  it("filters active analyses before pagination and rejects invalid status filters", async () => {
+    const response = await listProjects(new NextRequest("http://localhost/api/projects?analysisStatus=PENDING,PROCESSING&limit=1&offset=0"));
+    expect(response.status).toBe(200);
+    expect(mocks.list).toHaveBeenCalledWith("owner", expect.objectContaining({ analysisStatus: ["PENDING", "PROCESSING"], limit: 1, offset: 0 }));
+    expect((await listProjects(new NextRequest("http://localhost/api/projects?analysisStatus=INVALID"))).status).toBe(400);
+    expect((await listProjects(new NextRequest("http://localhost/api/projects?analysisStatus="))).status).toBe(400);
   });
 });

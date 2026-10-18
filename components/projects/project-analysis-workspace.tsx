@@ -7,12 +7,12 @@ import { AnalysisReportView } from "@/components/projects/analysis-report-view";
 import { AnalysisFailed, AnalysisProgress, AnalysisReady } from "@/components/projects/project-analysis-dialogs";
 import { AnalysisStage } from "@/components/projects/project-analysis-stage";
 import { FlowModal } from "@/components/projects/project-flow-kit";
-import { fetchAnalysisProject, startAnalysisRun, useAnalysisProgress } from "@/components/projects/use-analysis-progress";
+import { fetchAnalysisProject, reloadTerminalAnalysisProject, startAnalysisRun, useAnalysisProgress } from "@/components/projects/use-analysis-progress";
 import { JenanHeader } from "@/components/shell/jenan-header";
 import { Icon } from "@/components/ui/icons";
 import { AnalysisRequestError, analysisFailureMessage, analysisSignInHref, analysisStoppedMessage } from "@/lib/projects/analysis-errors";
 import { buildReport } from "@/lib/projects/analysis-report";
-import { completedStages, readStudy, t, type AnalysisProject, type IntelligenceSnapshot } from "@/lib/projects/analysis-study";
+import { analysisReportIsCurrent, completedStages, readStudy, t, type AnalysisProject, type IntelligenceSnapshot } from "@/lib/projects/analysis-study";
 import type { ProjectFlowDefinition } from "@/lib/projects/project-flow-routes";
 import type { Locale } from "@/types/i18n";
 
@@ -45,6 +45,7 @@ export function ProjectAnalysisWorkspace({
   const searchParams = useSearchParams();
   const route = flow.route;
   const requestedProjectId = searchParams.get("project") ?? "";
+  const requestedRunId = searchParams.get("run") ?? "";
   const [projects, setProjects] = useState<AnalysisProject[]>([]);
   const [selectedId, setSelectedId] = useState(requestedProjectId);
   const [loading, setLoading] = useState(true);
@@ -94,8 +95,9 @@ export function ProjectAnalysisWorkspace({
   const study = useMemo(() => readStudy(selected?.analysisStudy), [selected?.analysisStudy]);
   const snapshot: IntelligenceSnapshot | undefined = selected?.intelligenceSnapshots?.[0];
   const isProgress = route.endsWith("/progress");
-  const progress = useAnalysisProgress(selected?.id ?? null, Boolean(selected) && (isProgress || study.status === "PENDING" || study.status === "PROCESSING"), pollVersion);
-  const status = progress.status ?? study.status;
+  const progress = useAnalysisProgress(selected?.id ?? null, Boolean(selected) && (isProgress || study.status === "PENDING" || study.status === "PROCESSING" || Boolean(requestedRunId && requestedRunId !== study.runId)), pollVersion);
+  const status = progress.status ?? (requestedRunId && requestedRunId !== study.runId ? "PENDING" : study.status);
+  const reportReady = analysisReportIsCurrent(study, status, progress.runId ?? (requestedRunId || undefined));
   const progressError = progress.error ?? failure;
   const stopped = progress.stopped || Boolean(failure);
   const returnPath = `${route}?${searchParams.toString()}`;
@@ -110,17 +112,15 @@ export function ProjectAnalysisWorkspace({
   }, [progress.runId, route, router, searchParams, selected]);
 
   useEffect(() => {
-    if (!selectedProjectId || (progress.status !== "COMPLETED" && progress.status !== "FAILED")) return;
-    const key = `${selectedProjectId}:${progress.runId ?? ""}:${progress.status}:${progress.updatedAt ?? ""}`;
-    if (reloaded.current === key) return;
-    reloaded.current = key;
-    const controller = new AbortController();
-    void fetchAnalysisProject(selectedProjectId, controller.signal).then((project) => {
-      if (!controller.signal.aborted) setProjects((current) => current.map((item) => item.id === project.id ? project : item));
-    }).catch((error) => {
-      if (!controller.signal.aborted) { setFailure(error); setMessage(analysisFailureMessage(error, ar)); }
+    if (!selectedProjectId) return;
+    return reloadTerminalAnalysisProject(selectedProjectId, {
+      known: true, status: progress.status, runId: progress.runId, updatedAt: progress.updatedAt,
+    }, reloaded, (project) => {
+      setProjects((current) => current.map((item) => item.id === project.id ? project : item));
+    }, (error) => {
+      setFailure(error);
+      setMessage(analysisFailureMessage(error, ar));
     });
-    return () => controller.abort();
   }, [ar, progress.runId, progress.status, progress.updatedAt, selectedProjectId]);
 
   const runAnalysis = useCallback(async () => {
@@ -134,7 +134,7 @@ export function ProjectAnalysisWorkspace({
     try {
       const run = await startAnalysisRun(selected.id, controller.signal);
       if (controller.signal.aborted) return;
-      router.replace(`/projects/analysis/progress?project=${encodeURIComponent(selected.id)}&run=${encodeURIComponent(run.runId)}`, { scroll: false });
+      router.replace(`/projects/analysis/${run.status === "COMPLETED" ? "result" : "progress"}?project=${encodeURIComponent(selected.id)}${run.runId ? `&run=${encodeURIComponent(run.runId)}` : ""}`, { scroll: false });
       setPollVersion((version) => version + 1);
     } catch (error) {
       if (controller.signal.aborted) return;
@@ -175,18 +175,19 @@ export function ProjectAnalysisWorkspace({
       </div>
     );
   } else if (selected && isProgress) {
-    const state = !running && status === "COMPLETED" && !failure ? "done" : stopped || (!running && status === "FAILED") ? "failed" : "running";
+    const missingResult = status === "COMPLETED" && study.status === "COMPLETED" && !study.result;
+    const state = !running && reportReady && !failure ? "done" : stopped || (!running && (status === "FAILED" || missingResult)) ? "failed" : "running";
     const known = progress.known || Boolean(study.stage);
-    const completed = progress.known ? completedStages(progress.stage, progress.status) : completedStages(study.stage, study.status);
+    const completed = completedStages(progress.stage ?? study.stage, status);
     body = (
       <>
-        <AnalysisStage ar={ar} reportHref={status === "COMPLETED" ? `/projects/analysis/result?project=${selected.id}` : undefined} testId="analysis-progress" />
+        <AnalysisStage ar={ar} reportHref={reportReady ? `/projects/analysis/result?project=${selected.id}` : undefined} testId="analysis-progress" />
         {statusClosed ? null : (
           <FlowModal ar={ar} className="af-modal" closable={state !== "running"} onClose={() => setStatusClosed(true)} step={state}>
             <div className="af-step" key={state}>
               {state === "running" ? <><AnalysisProgress ar={ar} completed={completed} known={known} pending={status === "PENDING"} />{progress.error ? <p role="status">{analysisFailureMessage(progress.error, ar)}</p> : null}{status === "PENDING" && progress.known && !progress.runId && !running ? <button className="af-primary" onClick={() => void runAnalysis()} type="button">{t(ar, "بدء التحليل", "Start analysis")}</button> : null}</> : null}
               {state === "done" ? <AnalysisReady ar={ar} onOpen={() => router.push(`/projects/analysis/result?project=${selected.id}`)} /> : null}
-              {state === "failed" ? <AnalysisFailed ar={ar} message={progress.error ? analysisFailureMessage(progress.error, ar) : message || analysisStoppedMessage(ar)} retryAfterMs={progressError instanceof AnalysisRequestError ? progressError.retryAfterMs : undefined} retryDisabled={(progress.retryable ?? study.retryable) === false || (progressError instanceof AnalysisRequestError && progressError.status === 404)} signInHref={signIn ? analysisSignInHref(returnPath) : undefined} onRetry={() => { if (progress.stopped) { setFailure(undefined); setPollVersion((version) => version + 1); } else void runAnalysis(); }} onReview={() => router.push("/projects/analysis")} /> : null}
+              {state === "failed" ? <AnalysisFailed ar={ar} message={progress.error ? analysisFailureMessage(progress.error, ar) : message || analysisStoppedMessage(ar)} retryAfterMs={progressError instanceof AnalysisRequestError ? progressError.retryAfterMs : undefined} retryDisabled={(progress.retryable ?? study.retryable) === false || (progressError instanceof AnalysisRequestError && progressError.status === 404)} signInHref={signIn ? analysisSignInHref(returnPath) : undefined} onRetry={() => { if (progress.stopped && progress.error) { setFailure(undefined); setPollVersion((version) => version + 1); } else void runAnalysis(); }} onReview={() => router.push("/projects/analysis")} /> : null}
             </div>
           </FlowModal>
         )}
@@ -194,14 +195,14 @@ export function ProjectAnalysisWorkspace({
     );
   } else if (selected && model) {
     // The map and market pages work from the saved location data even before an analysis result exists.
-    const partial = Boolean(snapshot) && (route.endsWith("/map") || route.endsWith("/details"));
-    if (!study.result && !partial) {
+    const partial = Boolean(snapshot) && !study.runId && !requestedRunId && status === "PENDING" && (route.endsWith("/map") || route.endsWith("/details"));
+    if (!reportReady && !partial) {
       body = (
         <div className="pa-center is-card" data-testid="analysis-result">
           <Icon name="activity" />
           <h2>{t(ar, "لم يكتمل التحليل بعد", "Analysis is not complete yet")}</h2>
-          <p>{study.status === "FAILED" ? analysisStoppedMessage(ar) : t(ar, "أكمل مرحلة المعالجة قبل فتح النتائج والتقرير.", "Complete the processing stage before opening results and reports.")}</p>
-          <Link className="pa-btn is-primary" href={`/projects/analysis/progress?project=${selected.id}`}>{t(ar, "العودة إلى المعالجة", "Return to processing")}</Link>
+          <p>{status === "FAILED" ? analysisStoppedMessage(ar) : t(ar, "أكمل مرحلة المعالجة قبل فتح النتائج والتقرير.", "Complete the processing stage before opening results and reports.")}</p>
+          <Link className="pa-btn is-primary" href={`/projects/analysis/progress?project=${selected.id}${requestedRunId ? `&run=${encodeURIComponent(requestedRunId)}` : ""}`}>{t(ar, "العودة إلى المعالجة", "Return to processing")}</Link>
         </div>
       );
     } else {

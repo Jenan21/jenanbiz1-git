@@ -53,6 +53,11 @@ export type AnalysisStudy = {
   errorCode?: string;
   retryable?: boolean;
 };
+
+export function analysisReportIsCurrent(study: AnalysisStudy, status: AnalysisStatus, runId?: string) {
+  return status === "COMPLETED" && study.status === "COMPLETED" && Boolean(study.result) && (!runId || study.runId === runId);
+}
+
 export type IntelligenceMetric = {
   value: number | null;
   unit?: string;
@@ -213,7 +218,7 @@ export function readStudy(value: unknown): AnalysisStudy {
         } satisfies AnalysisInput)
       : undefined;
   const result =
-    typeof resultRecord?.evidenceCompleteness === "number"
+    status === "COMPLETED" && typeof resultRecord?.evidenceCompleteness === "number"
       ? ({
           generatedAt:
             typeof resultRecord.generatedAt === "string"

@@ -3,13 +3,14 @@ import {
   fetchAnalysisProject,
   findActiveAnalysisProject,
   pollAnalysisProgress,
+  reloadTerminalAnalysisProject,
   prepareAnalysisProject,
   startAnalysisRun,
   type AnalysisDraftIdentity,
   type AnalysisProgressState,
 } from "@/components/projects/use-analysis-progress";
 import { AnalysisRequestError, analysisFailureMessage, analysisSignInHref, retryAfterMilliseconds } from "@/lib/projects/analysis-errors";
-import { readStudy } from "@/lib/projects/analysis-study";
+import { analysisReportIsCurrent, readStudy } from "@/lib/projects/analysis-study";
 
 function answer(body: unknown, status = 200, headers?: HeadersInit) {
   return new Response(JSON.stringify(body), { status, headers });
@@ -115,9 +116,36 @@ describe("durable analysis polling", () => {
     await vi.advanceTimersByTimeAsync(60_000);
     expect(fetcher).toHaveBeenCalledTimes(1);
   });
+
+  it("stops a legacy processing record with a retryable error for explicit recovery", async () => {
+    vi.useFakeTimers();
+    const fetcher = vi.fn().mockResolvedValue(answer({ success: true, status: "PROCESSING", runId: null, errorCode: "ANALYSIS_INTERRUPTED", retryable: true }));
+    vi.stubGlobal("fetch", fetcher);
+    const states: AnalysisProgressState[] = [];
+    const stop = pollAnalysisProgress("legacy", (state) => states.push(state));
+    await vi.advanceTimersByTimeAsync(60_000);
+    expect(states[0]).toMatchObject({ stopped: true, retryable: true, errorCode: "ANALYSIS_INTERRUPTED" });
+    expect(fetcher).toHaveBeenCalledTimes(1);
+    stop();
+  });
 });
 
 describe("durable run start and reload identity", () => {
+  it("opens a legacy completed analysis without inventing a null run identifier", async () => {
+    const fetcher = vi.fn().mockResolvedValue(answer({ success: true, status: "COMPLETED", runId: null }));
+    vi.stubGlobal("fetch", fetcher);
+    expect(await startAnalysisRun("legacy-complete")).toEqual({ projectId: "legacy-complete", status: "COMPLETED" });
+    expect(fetcher).toHaveBeenCalledTimes(1);
+  });
+
+  it("allows explicit recovery of legacy PROCESSING without a durable run ID", async () => {
+    const fetcher = vi.fn().mockResolvedValueOnce(answer({ success: true, status: "PROCESSING", retryable: true, errorCode: "ANALYSIS_INTERRUPTED" }))
+      .mockResolvedValueOnce(answer({ success: true, result: { projectId: "p", runId: "recovered" } }, 202));
+    vi.stubGlobal("fetch", fetcher);
+    expect(await startAnalysisRun("p")).toEqual({ projectId: "p", runId: "recovered" });
+    expect(JSON.parse(fetcher.mock.calls[1][1].body).action).toBe("runProjectAnalysis");
+  });
+
   it("treats 202 as acceptance, not completion", async () => {
     vi.stubGlobal("fetch", vi.fn().mockResolvedValueOnce(answer({ success: true, status: "PENDING" }))
       .mockResolvedValueOnce(answer({ success: true, result: { projectId: "p", runId: "r" } }, 202)));
@@ -212,5 +240,51 @@ describe("durable run start and reload identity", () => {
     expect(retryAfterMilliseconds("-1")).toBe(1000);
     expect(analysisFailureMessage(new AnalysisRequestError(429, undefined, 12_000), false)).toContain("12");
     expect(analysisFailureMessage(new AnalysisRequestError(401), true)).toContain("سجّل الدخول");
+  });
+
+  it("never presents an old result as complete while a new run is pending or processing", () => {
+    const result = { evidenceCompleteness: 80, competitorCount: 3 };
+    for (const status of ["PENDING", "PROCESSING", "FAILED"] as const) {
+      expect(readStudy({ status, runId: "new", result }).result).toBeUndefined();
+    }
+    const previous = readStudy({ status: "COMPLETED", runId: "old", result });
+    expect(analysisReportIsCurrent(previous, "PENDING", "new")).toBe(false);
+    expect(analysisReportIsCurrent(previous, "COMPLETED", "new")).toBe(false);
+    expect(analysisReportIsCurrent(previous, "COMPLETED", "old")).toBe(true);
+  });
+});
+
+describe("terminal project refresh lifecycle", () => {
+  it("retries an aborted effect and deduplicates only successfully applied project reloads", async () => {
+    let resolveFirst!: (response: Response) => void;
+    const project = { id: "p", analysisStudy: { status: "COMPLETED", runId: "r" } };
+    const fetcher = vi.fn().mockImplementationOnce(() => new Promise<Response>((done) => { resolveFirst = done; }))
+      .mockResolvedValueOnce(answer({ success: true, project }));
+    vi.stubGlobal("fetch", fetcher);
+    const progress = { known: true, status: "COMPLETED", runId: "r" } as const;
+    const completed = { current: "" };
+    const update = vi.fn();
+    const failure = vi.fn();
+    const cancel = reloadTerminalAnalysisProject("p", progress, completed, update, failure);
+    cancel?.();
+    expect(completed.current).toBe("");
+    reloadTerminalAnalysisProject("p", progress, completed, update, failure);
+    await vi.waitFor(() => expect(update).toHaveBeenCalledTimes(1));
+    resolveFirst(answer({ success: true, project }));
+    await Promise.resolve();
+    reloadTerminalAnalysisProject("p", progress, completed, update, failure);
+    expect(fetcher).toHaveBeenCalledTimes(2);
+    expect(failure).not.toHaveBeenCalled();
+  });
+
+  it("does not apply a stale project returned after completion of a newer run", async () => {
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue(answer({ success: true, project: { id: "p", analysisStudy: { status: "COMPLETED", runId: "old" } } })));
+    const completed = { current: "" };
+    const update = vi.fn();
+    const failure = vi.fn();
+    reloadTerminalAnalysisProject("p", { known: true, status: "COMPLETED", runId: "new" }, completed, update, failure);
+    await vi.waitFor(() => expect(failure).toHaveBeenCalledWith(expect.objectContaining({ status: 409 })));
+    expect(update).not.toHaveBeenCalled();
+    expect(completed.current).toBe("");
   });
 });

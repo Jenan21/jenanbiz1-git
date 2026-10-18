@@ -1,9 +1,10 @@
 import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 import { db } from "@/lib/db";
-import { createProject, getUserProject } from "@/services/projects/project-service";
+import { createProject, getUserProject, listUserProjectsPage } from "@/services/projects/project-service";
 import {
   claimProjectAnalysisJob,
   executeProjectAnalysisJob,
+  findActiveAnalysisProjectId,
   getProjectAnalysisStatus,
   recoverProjectAnalysisJobs,
   runProjectAnalysis,
@@ -63,7 +64,13 @@ describe("durable project analysis jobs", () => {
     expect(await getProjectAnalysisStatus(id, userId)).toMatchObject({ status: "PENDING", runId: runs[0].runId, retryable: false });
     const claims = await Promise.all([claimProjectAnalysisJob(), claimProjectAnalysisJob()]);
     expect(claims.filter(Boolean)).toHaveLength(1);
+    const executionStartedAt = Date.now();
     await executeProjectAnalysisJob(claims.find((claim) => claim !== null)!);
+    const providerOptions = provider.mock.calls[0][2]!;
+    expect(providerOptions.deadlineAt).toBeLessThan(executionStartedAt + 50_000);
+    expect(providerOptions.deadlineAt).toBeGreaterThan(executionStartedAt);
+    expect(providerOptions.signal).toBeInstanceOf(AbortSignal);
+    expect(providerOptions.signal?.aborted).toBe(true);
     expect(await getProjectAnalysisStatus(id, userId)).toMatchObject({ status: "COMPLETED" });
     const saved = await saveProjectAnalysisInput(id, { ...input }, userId);
     expect(saved.analysisStudy).toMatchObject({ status: "COMPLETED", runId: runs[0].runId });
@@ -184,6 +191,7 @@ describe("durable project analysis jobs", () => {
 
   it("reads a durable project directly even when it is outside the first hundred list entries", async () => {
     const id = await project();
+    const run = await runProjectAnalysis(id, userId);
     const prefix = crypto.randomUUID();
     const rows = Array.from({ length: 101 }, (_, index) => ({
       id: crypto.randomUUID(), createdById: userId, name: `Newer ${index}`, slug: `${prefix}-${index}`,
@@ -193,5 +201,16 @@ describe("durable project analysis jobs", () => {
     const firstHundred = await db.project.findMany({ where: { createdById: userId }, orderBy: { updatedAt: "desc" }, take: 100, select: { id: true } });
     expect(firstHundred.some((item) => item.id === id)).toBe(false);
     expect((await getUserProject(id, userId))?.id).toBe(id);
+    const active = await listUserProjectsPage(userId, { limit: 1, offset: 0, analysisStatus: ["PENDING", "PROCESSING"] });
+    expect(active.projects.map((item) => item.id)).toEqual([id]);
+    expect(active.page.total).toBe(1);
+    expect(active.projects[0].analysisStudy).toMatchObject({ runId: run.runId });
+    expect(await findActiveAnalysisProjectId(userId)).toBe(id);
+    expect(await findActiveAnalysisProjectId(outsiderId)).toBeNull();
+    const unscheduled = await project();
+    expect((await listUserProjectsPage(userId, { limit: 10, offset: 0, analysisStatus: ["PENDING", "PROCESSING"] })).projects.map((item) => item.id)).not.toContain(unscheduled);
+    expect(await findActiveAnalysisProjectId(userId)).toBe(id);
+    await executeProjectAnalysisJob((await claimProjectAnalysisJob())!);
+    expect(await findActiveAnalysisProjectId(userId)).toBeNull();
   });
 });

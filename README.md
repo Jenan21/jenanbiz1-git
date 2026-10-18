@@ -4,7 +4,7 @@ Production-oriented foundation and visual application shell for Jenan Pro. Core 
 
 ## Requirements and startup
 
-- Node.js 20.9 or newer
+- Node.js 24 (matching `package.json` and the production container)
 - npm 10 or newer
 - Docker Desktop with PostgreSQL 17 through `compose.yaml`
 

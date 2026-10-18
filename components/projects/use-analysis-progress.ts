@@ -55,6 +55,28 @@ export async function fetchAnalysisProject(projectId: string, signal?: AbortSign
   return payload.project;
 }
 
+export function reloadTerminalAnalysisProject(
+  projectId: string,
+  progress: AnalysisProgressState,
+  completed: { current: string },
+  onProject: (project: AnalysisProject) => void,
+  onError: (error: unknown) => void,
+) {
+  if (progress.status !== "COMPLETED" && progress.status !== "FAILED") return;
+  const key = `${projectId}:${progress.runId ?? ""}:${progress.status}:${progress.updatedAt ?? ""}`;
+  if (completed.current === key) return;
+  const controller = new AbortController();
+  void fetchAnalysisProject(projectId, controller.signal).then((project) => {
+    if (controller.signal.aborted) return;
+    const study = readStudy(project.analysisStudy);
+    if (study.status !== progress.status || (progress.runId && study.runId !== progress.runId)) throw new AnalysisRequestError(409);
+    // An aborted effect must not consume the successful-read deduplication key.
+    completed.current = key;
+    onProject(project);
+  }).catch((error) => { if (!controller.signal.aborted) onError(error); });
+  return () => controller.abort();
+}
+
 export async function findActiveAnalysisProject(signal?: AbortSignal): Promise<string | null> {
   for (let offset = 0; ; offset += 100) {
     signal?.throwIfAborted();
@@ -91,15 +113,20 @@ export async function fetchAnalysisStatus(projectId: string, signal?: AbortSigna
 }
 
 /** A lost acknowledgement is not a failed job. Never resend until its persisted state is read. */
-export async function startAnalysisRun(projectId: string, signal?: AbortSignal) {
+export async function startAnalysisRun(projectId: string, signal?: AbortSignal): Promise<{ projectId: string; runId?: string; status?: AnalysisStatus }> {
   const existing = await fetchAnalysisStatus(projectId, signal);
   if (existing.runId && existing.status !== "FAILED") return { runId: existing.runId, projectId };
+  if (existing.status === "COMPLETED") return { projectId, status: "COMPLETED" };
   try {
-    return await analysisCommand<{ runId: string; projectId: string }>({ action: "runProjectAnalysis", projectId }, signal);
+    const run = await analysisCommand<{ runId: string | null; projectId: string; status?: AnalysisStatus }>({ action: "runProjectAnalysis", projectId }, signal);
+    if (run?.status === "COMPLETED" && !run.runId) return { projectId, status: "COMPLETED" };
+    if (!run || typeof run.runId !== "string" || !run.runId) throw new AnalysisRequestError(502);
+    return { ...run, runId: run.runId };
   } catch (error) {
     if (signal?.aborted || (error instanceof AnalysisRequestError && error.status < 500)) throw error;
     const state = await fetchAnalysisStatus(projectId, signal);
     if (state.runId && state.status !== "FAILED") return { runId: state.runId, projectId };
+    if (state.status === "COMPLETED") return { projectId, status: "COMPLETED" };
     throw error;
   }
 }
@@ -115,7 +142,9 @@ export function pollAnalysisProgress(projectId: string, onState: (state: Analysi
       const state = await fetchAnalysisStatus(projectId, controller.signal);
       if (controller.signal.aborted) return;
       previous = state;
-      onState(state);
+      const recoverableLegacyRun = !state.runId && state.retryable === true && Boolean(state.errorCode);
+      onState(recoverableLegacyRun ? { ...state, stopped: true } : state);
+      if (recoverableLegacyRun) return;
       if (state.status === "COMPLETED" || state.status === "FAILED") return;
     } catch (error) {
       if (controller.signal.aborted) return;

@@ -9,11 +9,12 @@ import { ProjectAnalysisDashboard } from "@/components/projects/project-analysis
 import { ProjectStartWorkspace } from "@/components/projects/project-start-workspace";
 import { ProjectEvaluationWorkspace } from "@/components/projects/project-evaluation-dashboard";
 import type { ProjectFlowGroup, ProjectFocus } from "@/lib/projects/project-flow-routes";
+import { analysisReturnPath } from "@/lib/projects/analysis-errors";
 
 type BilingualCopy = readonly [string, string];
 
-export async function ProjectsLiveServicePage({ title, description, focus = "workflow", flowGroup, kind = "workspace", route = "/projects" }: { title: BilingualCopy; description: BilingualCopy; focus?: ProjectFocus; flowGroup?: ProjectFlowGroup; kind?: string; route?: string }) {
-  const [{ locale }, user] = await Promise.all([getRequestDictionary(), requireUser("/projects")]);
+export async function ProjectsLiveServicePage({ title, description, focus = "workflow", flowGroup, kind = "workspace", route = "/projects", searchParams }: { title: BilingualCopy; description: BilingualCopy; focus?: ProjectFocus; flowGroup?: ProjectFlowGroup; kind?: string; route?: string; searchParams?: Record<string, string | string[] | undefined> }) {
+  const [{ locale }, user] = await Promise.all([getRequestDictionary(), requireUser(analysisReturnPath(route, searchParams))]);
   const ar = locale === "ar";
   const userLabel = user.profile?.displayName ?? user.email;
 

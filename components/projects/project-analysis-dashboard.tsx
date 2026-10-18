@@ -258,7 +258,7 @@ export function ProjectAnalysisDashboard({
       if (request.signal.aborted) return;
       setRunId(id);
       try { localStorage.setItem(resumeStorageKey, JSON.stringify({ projectId: id, runId: run.runId })); } catch { /* URL also preserves the run. */ }
-      router.replace(`/projects/analysis/progress?project=${encodeURIComponent(id)}&run=${encodeURIComponent(run.runId)}`);
+      router.replace(`/projects/analysis/${run.status === "COMPLETED" ? "result" : "progress"}?project=${encodeURIComponent(id)}${run.runId ? `&run=${encodeURIComponent(run.runId)}` : ""}`);
     } catch (error) {
       if (request.signal.aborted) return;
       setFailure(error);

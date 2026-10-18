@@ -24,6 +24,16 @@ export function analysisSignInHref(returnPath: string) {
   return `/auth?next=${encodeURIComponent(returnPath.startsWith("/") && !returnPath.startsWith("//") ? returnPath : "/projects/analysis")}`;
 }
 
+export function analysisReturnPath(route: string, query: Record<string, string | string[] | undefined> = {}) {
+  const path = /^\/projects(?:\/[a-z0-9-]+)*$/.test(route) ? route : "/projects/analysis";
+  const params = new URLSearchParams();
+  for (const key of ["project", "run"]) {
+    const value = query[key];
+    if (typeof value === "string" && value.length <= 200) params.set(key, value);
+  }
+  return `${path}${params.size ? `?${params}` : ""}`;
+}
+
 export async function analysisCommand<T>(body: Record<string, unknown>, signal?: AbortSignal): Promise<T> {
   const response = await fetch("/api/projects", {
     method: "POST",

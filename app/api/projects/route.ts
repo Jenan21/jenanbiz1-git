@@ -38,6 +38,7 @@ import {
 } from "@/services/projects/project-analysis";
 import { saveAnalysisReportCopy } from "@/services/projects/analysis-report-service";
 import { saveProjectLaunchPlanSection } from "@/services/projects/project-launch";
+import type { AnalysisStatus } from "@/lib/projects/analysis-study";
 
 const projectStatuses = ["DRAFT", "ANALYSIS", "FEASIBILITY", "EVALUATION", "APPROVED", "IN_PROGRESS", "ON_HOLD", "COMPLETED", "REJECTED", "ARCHIVED"] as const;
 const phaseTypes = ["ANALYSIS", "FEASIBILITY", "EVALUATION", "PLANNING", "EXECUTION", "REVIEW", "COMPLETION"] as const;
@@ -381,14 +382,19 @@ export async function GET(request: NextRequest) {
   const offset = Number.isInteger(requestedOffset) ? Math.min(Math.max(requestedOffset, 0), 100_000) : 0;
   const status = query.get("status");
   const phase = query.get("phase");
+  const analysisStatuses = query.has("analysisStatus") ? query.get("analysisStatus")!.split(",") : undefined;
   if (status && !projectStatuses.includes(status as typeof projectStatuses[number])) return NextResponse.json({ success: false, message: "Invalid project status filter" }, { status: 400 });
   if (phase && !phaseTypes.includes(phase as typeof phaseTypes[number])) return NextResponse.json({ success: false, message: "Invalid project phase filter" }, { status: 400 });
+  if (analysisStatuses && (analysisStatuses.length > 4 || analysisStatuses.some((status) => !["PENDING", "PROCESSING", "COMPLETED", "FAILED"].includes(status)))) {
+    return NextResponse.json({ success: false, message: "Invalid analysis status filter" }, { status: 400 });
+  }
   const result = await listUserProjectsPage(user.id, {
     limit,
     offset,
     status: status as typeof projectStatuses[number] | undefined,
     phase: phase as typeof phaseTypes[number] | undefined,
     search: query.get("search")?.slice(0, 160) || undefined,
+    analysisStatus: analysisStatuses as AnalysisStatus[] | undefined,
   });
   return NextResponse.json({ success: true, ...result }, { headers: { "cache-control": "private, no-store" } });
 }

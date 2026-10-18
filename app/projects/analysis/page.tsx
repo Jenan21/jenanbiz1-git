@@ -3,14 +3,12 @@ import { requireUser } from "@/lib/auth/session";
 import { getRequestDictionary } from "@/lib/i18n/server";
 import { findLatestAnalysisReportId } from "@/services/projects/project-analysis";
 import { redirect } from "next/navigation";
+import { analysisReturnPath } from "@/lib/projects/analysis-errors";
 
 export default async function ProjectAnalysisPage({ searchParams }: { searchParams: Promise<Record<string, string | string[] | undefined>> }) {
   const query = await searchParams;
-  const params = new URLSearchParams();
-  for (const key of ["project", "run"]) {
-    if (typeof query[key] === "string") params.set(key, query[key]);
-  }
-  const returnPath = `/projects/analysis${params.size ? `?${params}` : ""}`;
+  const returnPath = analysisReturnPath("/projects/analysis", query);
+  const params = new URLSearchParams(returnPath.split("?")[1]);
   const [{ locale }, user] = await Promise.all([
     getRequestDictionary(),
     requireUser(returnPath),

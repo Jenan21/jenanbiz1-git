@@ -16,6 +16,7 @@ import { memberUserView } from "@/lib/auth/authorization";
 import { db } from "@/lib/db";
 import { getProjectLaunchPlanReadiness } from "@/services/projects/project-launch";
 import { assessProjectQuality } from "@/services/projects/project-quality";
+import type { AnalysisStatus } from "@/lib/projects/analysis-study";
 
 const phasePlan: Array<{ type: ProjectPhaseType; title: string; sequence: number }> = [
   { type: "ANALYSIS", title: "Project analysis", sequence: 1 },
@@ -116,6 +117,7 @@ export async function listUserProjectsPage(
     status?: ProjectStatus;
     phase?: ProjectPhaseType;
     search?: string;
+    analysisStatus?: AnalysisStatus[];
   },
 ) {
   const search = input.search?.trim();
@@ -124,6 +126,16 @@ export async function listUserProjectsPage(
       projectAccessWhere(userId),
       ...(input.status ? [{ status: input.status }] : []),
       ...(input.phase ? [{ currentPhase: input.phase }] : []),
+      ...(input.analysisStatus?.length ? [{
+        OR: input.analysisStatus.map((status) => ({
+          AND: [
+            { analysisStudy: { path: ["status"], equals: status } },
+            ...(status === "PENDING" ? [{
+              analysisStudy: { path: ["runId"], string_starts_with: "", not: "" },
+            }] : []),
+          ],
+        })),
+      }] : []),
       ...(search
         ? [{
             OR: [
