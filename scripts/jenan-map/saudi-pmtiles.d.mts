@@ -6,7 +6,7 @@ export function buildUrl(build: string): string;
 export function parseArgs(argv: string[]): { maxzoom: number; build: string | null; out: string; dryRun: boolean };
 export function toolKey(platform?: string, arch?: string): string;
 export function buildManifest(input: {
-  build: string; maxzoom: number; sha256: string; byteSize: number; metadata: Record<string, any>;
+  build: string; maxzoom: number; sha256: string; byteSize: number; metadata: Record<string, unknown>;
   tool: Record<string, unknown>; downloadedAt: string;
-}): Record<string, any>;
+}): Record<string, unknown>;
 export function main(argv: string[]): Promise<void>;
