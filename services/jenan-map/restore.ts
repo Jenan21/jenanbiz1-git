@@ -1,6 +1,6 @@
 import { createHash, randomUUID } from "node:crypto";
 import { constants, createReadStream } from "node:fs";
-import { chmod, mkdir, readFile, realpath, stat } from "node:fs/promises";
+import { chmod, mkdir, realpath } from "node:fs/promises";
 import path from "node:path";
 import { Readable } from "node:stream";
 import { z } from "zod";
@@ -47,9 +47,13 @@ function parseJson(bytes: Buffer, code: string) {
   try { return JSON.parse(bytes.toString("utf8")); } catch { throw new MapError(code, 422); }
 }
 
+/** One open descriptor for both the size check and the read, so the file cannot change between them; a symbolic link is refused. */
 async function readStaged(file: string) {
-  if ((await stat(file)).size > MAX_STAGED_BYTES) throw new MapError("BACKUP_FILE_TOO_LARGE", 422);
-  return readFile(file);
+  const handle = await openNoFollow(file, constants.O_RDONLY);
+  try {
+    if ((await handle.stat()).size > MAX_STAGED_BYTES) throw new MapError("BACKUP_FILE_TOO_LARGE", 422);
+    return await handle.readFile();
+  } finally { await handle.close(); }
 }
 
 /** Writes bytes the build job produced (features, boundary and original sources) into the release's immutable storage, then records them. */
