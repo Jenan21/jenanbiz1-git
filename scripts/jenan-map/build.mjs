@@ -79,7 +79,7 @@ export function normalizeFeatures(value) {
   }) };
 }
 
-async function persistArtifact(client, root, store, releaseId, bytes, kind, publicSafe, filename) {
+async function persistArtifact(client, root, store, releaseId, bytes, kind, publicSafe, filename, exportLicense = null) {
   const sha256 = createHash("sha256").update(bytes).digest("hex");
   const extension = kind === "geojson" ? "geojson" : "bin";
   const storageKey = `${releaseId}/${sha256}.${extension}`;
@@ -97,9 +97,11 @@ async function persistArtifact(client, root, store, releaseId, bytes, kind, publ
     } finally { await handle.close(); }
     await chmod(target, 0o400);
   }
-  await client.query(`INSERT INTO jenan_map.artifact (id,"releaseId",kind,"storageKey",filename,mime,sha256,"byteSize","publicSafe")
-    VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9)`,
-  [randomUUID(), releaseId, kind, storageKey, filename, kind === "geojson" ? "application/geo+json" : "application/octet-stream", sha256, bytes.length, publicSafe]);
+  // Redistribution is an explicit, reviewed decision carried with the artifact (a null licence means the file cannot leave the platform).
+  await client.query(`INSERT INTO jenan_map.artifact (id,"releaseId",kind,"storageKey",filename,mime,sha256,"byteSize","publicSafe","exportAllowed","exportLicense")
+    VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11)`,
+  [randomUUID(), releaseId, kind, storageKey, filename, kind === "geojson" ? "application/geo+json" : "application/octet-stream", sha256, bytes.length, publicSafe,
+    exportLicense !== null, exportLicense]);
 }
 
 async function log(client, actor, releaseId, action, metadata) {
@@ -188,6 +190,12 @@ export async function build(args) {
     input.boundaryAuthority.trim().length < 3 || input.boundaryAuthority.length > 1000 ||
     typeof input.boundarySource !== "string" || input.boundarySource.trim().length < 3 || input.boundarySource.length > 2000 ||
     input.confirmation !== "BUILD OWNED SA DATA") throw new Error("Explicit reviewed Saudi boundary provenance and build confirmation required");
+  // Optional, explicit and operator-reviewed: the licence under which the searchable features (places.geojson) may be redistributed.
+  // Without it the artifact is retained but cannot be exported.
+  const exportLicense = input.exportLicense === undefined ? null : input.exportLicense;
+  if (exportLicense !== null && (typeof exportLicense !== "string" || exportLicense.trim().length < 3 || exportLicense.length > 2000)) {
+    throw new Error("Export licence must be an explicit reviewed licence statement");
+  }
   const featureBytes = await readStaged(stagingRoot, input.featuresFile);
   const boundaryBytes = await readStaged(stagingRoot, input.boundaryFile);
   const sourceFiles = [];
@@ -251,10 +259,11 @@ export async function build(args) {
     for (const source of sourceFiles) {
       await persistArtifact(client, storageRoot, store, releaseId, source.bytes, "source", false, `original-${source.level}.bin`);
     }
-    await persistArtifact(client, storageRoot, store, releaseId, Buffer.from(JSON.stringify(features)), "geojson", true, "places.geojson");
+    await persistArtifact(client, storageRoot, store, releaseId, Buffer.from(JSON.stringify(features)), "geojson", true, "places.geojson", exportLicense?.trim() ?? null);
     await client.query(`UPDATE jenan_map.release SET status='Ready' WHERE id=$1 AND status='Processing'`, [releaseId]);
     await log(client, actor, releaseId, "build.ready", {
       featureCount: features.features.length, boundaryAuthority: input.boundaryAuthority,
+      exportLicense: exportLicense?.trim() ?? null,
       administrativeClipping: input.clipAdministrativeToBoundary === true ? "PostGIS ST_Intersection with reviewed ADM0; original sources retained privately" : null,
       originalSources: sourceFiles.map(({ level, sha256 }) => ({ level, sha256 })),
     });

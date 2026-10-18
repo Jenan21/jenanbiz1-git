@@ -144,6 +144,38 @@ describe.skipIf(!enabled)("Jenan Map disposable PostGIS mechanics (synthetic onl
     await expect(services.command({ action: "approve", releaseId: importedId, confirmation: "APPROVE", reason: "Must remain blocked without owned basemap artifacts" }, adminId)).rejects.toMatchObject({ code: "RELEASE_NOT_READY" });
   });
 
+  it("carries an explicit export licence from the import manifest into the immutable geometry artifact, never into private sources", async () => {
+    const script = "../../scripts/jenan-map/build.mjs";
+    const builder = await import(script);
+    const manifest = (exportLicense?: unknown) => ({
+      countryCode: "SA", authoritative: true, boundaryAuthority: authority, boundarySource, confirmation: "BUILD OWNED SA DATA",
+      featuresFile: "features.geojson", boundaryFile: "boundary.geojson", ...(exportLicense === undefined ? {} : { exportLicense }),
+    });
+    const create = async (name: string) => (await services.command({
+      action: "create", version: `export-${name}-${run}`, source: "Synthetic local geometry only", sourceDate: "2026-10-01T00:00:00Z", license: "Test only",
+    }, adminId) as { id: string }).id;
+
+    // A blank or non-text licence is refused before the release is touched.
+    for (const [name, bad] of [["blank", "  "], ["number", 7]] as const) {
+      const id = await create(name);
+      await writeFile(path.join(staging, `import-${name}.json`), JSON.stringify(manifest(bad)));
+      await expect(builder.build(["--release", id, "--manifest", `import-${name}.json`])).rejects.toThrow("Export licence must be an explicit reviewed licence statement");
+      expect((await pool!.query(`SELECT status FROM jenan_map.release WHERE id=$1`, [id])).rows[0].status).toBe("Draft");
+    }
+
+    const id = await create("licensed");
+    await writeFile(path.join(staging, "import-licensed.json"), JSON.stringify(manifest("Synthetic fixture: redistribution reviewed")));
+    await builder.build(["--release", id, "--manifest", "import-licensed.json"]);
+    const rows = (await pool!.query(`SELECT kind, "exportAllowed", "exportLicense" FROM jenan_map.artifact WHERE "releaseId"=$1`, [id])).rows;
+    expect(rows.filter((row) => row.kind === "geojson")).toEqual([{ kind: "geojson", exportAllowed: true, exportLicense: "Synthetic fixture: redistribution reviewed" }]);
+    const sources = rows.filter((row) => row.kind === "source");
+    expect(sources.length).toBeGreaterThan(0);
+    expect(sources.every((row) => row.exportAllowed === false && row.exportLicense === null)).toBe(true);
+    const exported = await services.exportManifest(id) as { portableGeojsonAvailable: boolean; artifacts: Array<{ kind: string; exportLicense: string }> };
+    expect(exported.portableGeojsonAvailable).toBe(true);
+    expect(exported.artifacts).toEqual([expect.objectContaining({ kind: "geojson", exportLicense: "Synthetic fixture: redistribution reviewed" })]);
+  });
+
   it("serializes two actual competing publications, retaining exactly one production pointer", async () => {
     const a = await fullSyntheticRelease();
     const b = await fullSyntheticRelease();

@@ -86,6 +86,8 @@ An operator manifest references existing private local files, not embedded examp
 
 The source release metadata is staged separately through the authenticated administrative create action. The authority assertion must be reviewed against the actual licensed boundary; a string in a manifest is not independent proof of geographical authority.
 
+The manifest may also carry an optional `"exportLicense": "<reviewed licence statement>"`. It is an explicit, operator-reviewed decision that the searchable-features artifact (`places.geojson`) may be redistributed under that licence: the builder stores it with the immutable artifact, so the release's portable export manifest can list it. Without it the artifact is retained but cannot be exported, and the private source artifacts (features, boundary and original sources) are never exportable either way. A blank or non-text value is refused before the release is touched.
+
 ### Artifact delivery acceptance
 
 Every retained release must carry its version, source data date/license/attribution, schema version, filenames, byte sizes and SHA-256 values. PMTiles files are immutable: replace the release, never overwrite an active archive. Use same-origin artifact URLs to preserve the existing CSP. If a CDN is added, explicitly verify:
