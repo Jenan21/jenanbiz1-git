@@ -3,6 +3,13 @@ import { db, type DbExecutor } from "@/lib/db";
 import type { SystemRole, DataCenterSource } from "@/generated/prisma/client";
 import { DataCenterError, type DataCenterActor } from "./contracts";
 
+export const dataCenterPermissions = {
+  view: "data-center.view", import: "data-center.import", edit: "data-center.edit",
+  review: "data-center.review", approve: "data-center.approve", publish: "data-center.publish",
+  archive: "data-center.archive", export: "data-center.export", manageSources: "data-center.manage-sources",
+  manageRobotAccess: "data-center.manage-robot-access",
+} as const;
+export type DataCenterOperation = keyof typeof dataCenterPermissions;
 export function isDataCenterAdmin(actor: DataCenterActor) {
   return actor.kind === "HUMAN" && hasPlatformAdminAccess(actor.systemRole as SystemRole);
 }
@@ -21,7 +28,8 @@ export async function authorizedOrganizationIds(actor: DataCenterActor, permissi
 export async function sourceScopeWhere(actor: DataCenterActor, tx: DbExecutor = db) {
   requireDataCenterPrincipal(actor);
   if (isDataCenterAdmin(actor)) return {};
-  const orgs = await authorizedOrganizationIds(actor, "data-center.read", tx);
+  if (actor.kind === "AI") return { id: { in: await robotSourceIds(actor, tx) } };
+  const orgs = [...await authorizedOrganizationIds(actor, dataCenterPermissions.view, tx), ...await authorizedOrganizationIds(actor, "data-center.read", tx)];
   return { OR: [
     { scope: "PLATFORM" as const },
     { scope: "PRIVATE" as const, ownerId: actor.id },
@@ -32,10 +40,46 @@ export async function assertSourceAccess(source: DataCenterSource | null, actor:
   requireDataCenterPrincipal(actor);
   if (!source) throw new DataCenterError("SOURCE_NOT_FOUND", 404);
   if (isDataCenterAdmin(actor)) return source;
+  if (actor.kind === "AI") {
+    if (!(await robotSourceIds(actor, tx)).includes(source.id)) throw new DataCenterError("SOURCE_NOT_FOUND", 404);
+    return source;
+  }
   const own = source.scope === "PRIVATE" && source.ownerId === actor.id;
-  const org = source.scope === "ORGANIZATION" && (await authorizedOrganizationIds(actor, write ? "data-center.write" : "data-center.read", tx)).includes(source.organizationId!);
+  const org = source.scope === "ORGANIZATION" && (await authorizedOrganizationIds(actor, write ? dataCenterPermissions.edit : dataCenterPermissions.view, tx)).includes(source.organizationId!);
   if (!own && !org && !(source.scope === "PLATFORM" && !write)) throw new DataCenterError("SOURCE_NOT_FOUND", 404);
   return source;
+}
+export async function robotSourceIds(actor: DataCenterActor, tx: DbExecutor = db) {
+  if (!actor.robotId || !actor.roleKey || !actor.specialty || !actor.missionId)
+    throw new DataCenterError("EXPLICIT_ROBOT_GRANT_REQUIRED", 403);
+  const mission = await tx.mission.findFirst({ where: { id: actor.missionId, assignedRobots: { some: { id: actor.robotId } } }, select: { id: true } });
+  if (!mission) throw new DataCenterError("ROBOT_MISSION_ASSIGNMENT_REQUIRED", 403);
+  const grants = await tx.dataCenterRobotGrant.findMany({ where: {
+    principalId: actor.id, robotId: actor.robotId, roleKey: actor.roleKey, specialty: actor.specialty,
+    missionId: actor.missionId, revokedAt: null, expiresAt: { gt: new Date() },
+  }, select: { sourceId: true } });
+  if (!grants.length) throw new DataCenterError("EXPLICIT_ROBOT_GRANT_REQUIRED", 403);
+  return grants.map((g) => g.sourceId);
+}
+export async function requireDataCenterOperation(actor: DataCenterActor, operation: DataCenterOperation, source?: DataCenterSource, tx: DbExecutor = db) {
+  requireDataCenterPrincipal(actor);
+  if (isDataCenterAdmin(actor)) return;
+  if (actor.kind === "AI") {
+    if (!["view", "edit"].includes(operation)) throw new DataCenterError("HUMAN_OPERATION_REQUIRED", 403);
+    const ids = await robotSourceIds(actor, tx);
+    if (source && !ids.includes(source.id)) throw new DataCenterError("SOURCE_NOT_FOUND", 404);
+    return;
+  }
+  if (source?.scope === "PRIVATE" && source.ownerId === actor.id && ["view", "edit", "import", "export", "archive", "manageSources"].includes(operation)) return;
+  const orgs = await authorizedOrganizationIds(actor, dataCenterPermissions[operation], tx);
+  if (source ? source.scope === "ORGANIZATION" && orgs.includes(source.organizationId!) : orgs.length > 0) return;
+  throw new DataCenterError(`PERMISSION_REQUIRED:${dataCenterPermissions[operation]}`, 403);
+}
+export function dataCenterFreshness(input: { sourceDate?: Date | null; sourcePublishedAt?: Date | null; freshnessDays: number; expiresAt?: Date | null; effectiveTo?: Date | null }, now = new Date()) {
+  const date = input.sourceDate ?? input.sourcePublishedAt;
+  if ((input.expiresAt && input.expiresAt <= now) || (input.effectiveTo && input.effectiveTo <= now)) return "EXPIRED" as const;
+  if (!date) return "UNKNOWN" as const;
+  return now.getTime() - date.getTime() > input.freshnessDays * 86_400_000 ? "STALE" as const : "FRESH" as const;
 }
 export function deterministicConfidence(input: {
   evidenceStatus: string; provenanceCount: number; sourcePublishedAt?: Date | null;

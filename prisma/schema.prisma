@@ -4281,6 +4281,8 @@ enum DataCenterScope {
 enum DataCenterLayer {
   DATA
   KNOWLEDGE
+  ASSET
+  EVIDENCE
   INTELLIGENCE
   CONTEXT
 }
@@ -4292,6 +4294,14 @@ enum DataCenterLifecycle {
   PUBLISHED
   REJECTED
   ARCHIVED
+  DEPRECATED
+}
+
+enum DataCenterOwnership {
+  PLATFORM_OWNED
+  USER_OWNED
+  THIRD_PARTY
+  AI_GENERATED
 }
 
 enum DataCenterEvidence {
@@ -4330,9 +4340,13 @@ model DataCenterSource {
   allowRetrieval    Boolean         @default(true)
   freshnessDays     Int              @default(90)
   sourceOrganization String?
+  sourceUrl         String?
+  ownership         DataCenterOwnership @default(THIRD_PARTY)
+  usagePolicy       String            @default("Internal use; redistribution requires explicit permission")
   createdAt         DateTime        @default(now())
   items             DataCenterItem[]
   imports           DataCenterImport[]
+  robotGrants       DataCenterRobotGrant[]
 
   @@index([scope, organizationId, ownerId])
 }
@@ -4373,6 +4387,22 @@ model DataCenterVersion {
   origin            String             @default("HUMAN")
   provenance        Json
   confidence        Json
+  ownership         DataCenterOwnership @default(THIRD_PARTY)
+  license           String             @default("Unspecified; export prohibited")
+  usagePolicy       String             @default("Internal use; redistribution requires explicit permission")
+  tags              String[]
+  preview           String?
+  geography         String?
+  sourceOrganization String?
+  sourceUrl         String?
+  sourceDate        DateTime?
+  importedAt        DateTime           @default(now())
+  approvedById      String?
+  publishedAt       DateTime?
+  isPublished       Boolean            @default(false)
+  upstreamVersionIds String[]
+  robotId           String?
+  committeeRequired Boolean            @default(false)
   specialties       String[]
   missionContexts   String[]
   requiredPermission String?
@@ -4388,9 +4418,11 @@ model DataCenterVersion {
   imports           DataCenterImport[]
   academyReleases   DataCenterAcademyRelease[]
   evidenceLinks     DataCenterEvidenceLink[]
+  proposalReviews   DataCenterProposalReview[]
 
   @@unique([itemId, number])
   @@index([createdAt])
+  @@index([isPublished, sourceDate])
 }
 
 model DataCenterReview {
@@ -4484,8 +4516,44 @@ model DataCenterAcademyRelease {
   notes             String
   createdAt         DateTime           @default(now())
   approvedAt        DateTime?
+  classification    String             @default("SOURCE_KNOWLEDGE")
+  validFrom         DateTime?
+  validTo           DateTime?
+  level             String             @default("REFERENCE")
+  mandatory         Boolean            @default(false)
 
   @@index([status, targetKind, targetId])
+}
+
+model DataCenterRobotGrant {
+  id                String           @id @default(cuid())
+  sourceId          String
+  source            DataCenterSource @relation(fields: [sourceId], references: [id], onDelete: Restrict)
+  robotId           String
+  principalId       String
+  roleKey           String
+  specialty         String
+  missionId         String
+  grantedById       String
+  expiresAt         DateTime
+  revokedAt         DateTime?
+  createdAt         DateTime         @default(now())
+
+  @@index([principalId, robotId, missionId, revokedAt])
+  @@index([sourceId])
+}
+
+model DataCenterProposalReview {
+  id                String            @id @default(cuid())
+  versionId         String
+  version           DataCenterVersion @relation(fields: [versionId], references: [id], onDelete: Restrict)
+  stage             String
+  decision          String
+  reviewerId        String
+  notes             String
+  createdAt         DateTime          @default(now())
+
+  @@unique([versionId, stage])
 }
 
 model DataCenterCategory {

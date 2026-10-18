@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, type FormEvent } from "react";
+import { displayDataCenterValue } from "@/lib/admin/data-center-routes";
 import type { DataCenterRecord } from "./record-details";
 import styles from "./data-center.module.css";
 
@@ -9,7 +10,7 @@ type Field = {
   options?: readonly string[]; optional?: boolean; defaultValue?: string; placeholder?: string;
 };
 export type CommandDefinition = { action: string; title: string; fields: Field[] };
-const layers = ["DATA", "KNOWLEDGE", "INTELLIGENCE", "CONTEXT"];
+const layers = ["DATA", "KNOWLEDGE", "ASSET", "EVIDENCE", "INTELLIGENCE", "CONTEXT"];
 const input = (name: string, label: string, extra: Partial<Field> = {}): Field => ({ name, label, ...extra });
 const reason = input("reason", "سبب الإجراء", { kind: "textarea" });
 
@@ -19,6 +20,9 @@ export const DATA_CENTER_COMMANDS: Record<string, CommandDefinition> = {
     input("scope", "نطاق الإتاحة", { options: ["PRIVATE", "ORGANIZATION", "PLATFORM"] }),
     input("organizationId", "معرّف المؤسسة — مطلوب لنطاق المؤسسة فقط", { optional: true }),
     input("owner", "مالك المحتوى"), input("license", "الترخيص وحقوق الاستخدام"),
+    input("ownership", "تصنيف الملكية", { options: ["RESTRICTED", "JENAN_OWNED", "OPEN_LICENSE", "LICENSED", "PRIVATE"], optional: true }),
+    input("usagePolicy", "سياسة الاستخدام وإعادة التوزيع", { kind: "textarea", optional: true }),
+    input("sourceUrl", "رابط المصدر الأصلي", { kind: "url", optional: true }),
     input("sourceOrganization", "الجهة الناشرة للمصدر", { optional: true }),
     input("freshnessDays", "مدة صلاحية المصدر (أيام)", { kind: "number", defaultValue: "90" }),
     input("allowExport", "السماح بالتصدير", { options: ["false", "true"] }),
@@ -28,6 +32,12 @@ export const DATA_CENTER_COMMANDS: Record<string, CommandDefinition> = {
     input("title", "عنوان السجل"), input("sourceId", "المصدر"),
     input("typeKey", "مفتاح النوع"), input("layer", "الطبقة", { options: layers }),
     input("content", "المحتوى", { kind: "textarea" }),
+    input("tags", "الوسوم (مفصولة بفواصل)", { optional: true }),
+    input("preview", "معاينة نصية للأصل", { kind: "textarea", optional: true }),
+    input("sourceOrganization", "الجهة الناشرة", { optional: true }),
+    input("sourceUrl", "رابط المصدر الأصلي", { kind: "url", optional: true }),
+    input("sourceDate", "تاريخ المصدر الموثّق", { kind: "datetime-local", optional: true }),
+    input("geography", "النطاق الجغرافي", { optional: true }),
     input("sourcePublishedAt", "تاريخ نشر المصدر", { kind: "datetime-local", optional: true }),
     input("expiresAt", "انتهاء الصلاحية", { kind: "datetime-local", optional: true }),
     input("effectiveFrom", "بداية السريان", { kind: "datetime-local", optional: true }),
@@ -47,6 +57,12 @@ export const DATA_CENTER_COMMANDS: Record<string, CommandDefinition> = {
   ] },
   version: { action: "create-version", title: "إنشاء إصدار جديد", fields: [
     input("title", "العنوان"), input("content", "المحتوى الجديد", { kind: "textarea" }), reason,
+    input("tags", "الوسوم (مفصولة بفواصل)", { optional: true }),
+    input("preview", "معاينة نصية للأصل", { kind: "textarea", optional: true }),
+    input("sourceOrganization", "الجهة الناشرة", { optional: true }),
+    input("sourceUrl", "رابط المصدر الأصلي", { kind: "url", optional: true }),
+    input("sourceDate", "تاريخ المصدر الموثّق", { kind: "datetime-local", optional: true }),
+    input("geography", "النطاق الجغرافي", { optional: true }),
     input("evidenceStatus", "حالة الدليل", { options: ["UNVERIFIED", "ESTIMATED", "DERIVED", "VERIFIED", "CONFLICTED"] }),
     input("sourcePublishedAt", "تاريخ المصدر", { kind: "datetime-local", optional: true }),
     input("expiresAt", "انتهاء الصلاحية", { kind: "datetime-local", optional: true }),
@@ -58,10 +74,24 @@ export const DATA_CENTER_COMMANDS: Record<string, CommandDefinition> = {
     input("provenance", "المراجع: JSON [{label, reference, kind}]", { kind: "textarea", optional: true }),
   ] },
   transition: { action: "transition-item", title: "تغيير حالة السجل", fields: [
-    input("status", "الحالة الجديدة", { options: ["IN_REVIEW", "APPROVED", "PUBLISHED", "ARCHIVED", "DRAFT"] }), reason,
+    input("status", "الحالة الجديدة", { options: ["IN_REVIEW", "APPROVED", "PUBLISHED", "DEPRECATED", "ARCHIVED", "DRAFT"] }), reason,
   ] },
   review: { action: "review-item", title: "قرار المراجعة البشرية", fields: [
     input("decision", "القرار", { options: ["APPROVED", "REJECTED"] }), input("notes", "أسباب القرار", { kind: "textarea" }),
+  ] },
+  robotReview: { action: "review-robot-proposal", title: "مراجعة مقترح روبوت", fields: [
+    input("stage", "مرحلة المراجعة", { options: ["SUPERVISOR", "COMMITTEE"] }),
+    input("decision", "القرار", { options: ["APPROVED", "REJECTED"] }),
+    input("notes", "أسباب القرار", { kind: "textarea" }),
+  ] },
+  robotGrant: { action: "grant-robot-access", title: "منح وصول لمهمة روبوت", fields: [
+    input("sourceId", "المصدر"), input("robotId", "معرّف الروبوت"),
+    input("principalId", "معرّف هوية الخدمة الموثّقة"), input("roleKey", "مفتاح الدور"),
+    input("specialty", "التخصص"), input("missionId", "معرّف المهمة"),
+    input("expiresAt", "انتهاء المنحة", { kind: "datetime-local" }),
+  ] },
+  revokeRobotGrant: { action: "revoke-robot-access", title: "إلغاء منحة وصول روبوت", fields: [
+    input("grantId", "معرّف المنحة"),
   ] },
   conflict: { action: "create-conflict", title: "تسجيل تعارض", fields: [
     input("itemId", "معرّف السجل الأول"), input("otherItemId", "معرّف السجل المقابل"), reason,
@@ -73,6 +103,11 @@ export const DATA_CENTER_COMMANDS: Record<string, CommandDefinition> = {
   release: { action: "request-academy-release", title: "اقتراح إصدار للأكاديمية", fields: [
     input("versionId", "معرّف الإصدار المنشور"), input("targetKind", "جهة الاستخدام", { options: ["COURSE", "ROBOT", "SPECIALTY"] }),
     input("targetId", "معرّف الجهة المستهدفة"), input("notes", "سبب الاقتراح", { kind: "textarea" }),
+    input("classification", "تصنيف الإصدار", { options: ["SOURCE_KNOWLEDGE", "APPROVED_ASSET"], optional: true }),
+    input("level", "مستوى الاستخدام", { options: ["REFERENCE", "FOUNDATION", "ADVANCED"], optional: true }),
+    input("mandatory", "إلزامي للجهة المستهدفة", { options: ["false", "true"], optional: true }),
+    input("validFrom", "بداية الصلاحية", { kind: "datetime-local", optional: true }),
+    input("validTo", "نهاية الصلاحية", { kind: "datetime-local", optional: true }),
   ] },
   approveRelease: { action: "approve-academy-release", title: "اعتماد إصدار الأكاديمية", fields: [
     input("notes", "مبررات الاعتماد", { kind: "textarea" }),
@@ -104,10 +139,10 @@ export function commandPayload(form: FormData, definition: CommandDefinition, fi
   for (const field of definition.fields) {
     const value = String(form.get(field.name) ?? "").trim();
     if (!value && field.optional) continue;
-    if (["allowExport", "allowRetrieval", "requiresIndependentReview"].includes(field.name)) payload[field.name] = value === "true";
+    if (["allowExport", "allowRetrieval", "requiresIndependentReview", "mandatory", "committeeRequired"].includes(field.name)) payload[field.name] = value === "true";
     else if (field.kind === "number") payload[field.name] = Number(value);
     else if (field.kind === "datetime-local") payload[field.name] = new Date(value).toISOString();
-    else if (["specialties", "missionContexts"].includes(field.name)) payload[field.name] = value.split(/[,،]/).map((part) => part.trim()).filter(Boolean);
+    else if (["specialties", "missionContexts", "tags", "upstreamVersionIds"].includes(field.name)) payload[field.name] = value.split(/[,،]/).map((part) => part.trim()).filter(Boolean);
     else if (field.name === "provenance") payload[field.name] = JSON.parse(value);
     else payload[field.name] = value;
   }
@@ -136,7 +171,7 @@ export function CommandForm({ definition, fixed, busy, onSubmit, sources = [], t
         const choices = field.name === "sourceId" ? sources : field.name === "typeKey" ? types : [];
         return <label className={field.kind === "textarea" ? styles.wide : undefined} key={field.name}>
           {field.label}{field.optional ? " (اختياري)" : ""}
-          {field.options ? <select name={field.name} required={!field.optional} defaultValue={field.defaultValue}>{field.options.map((value) => <option key={value} value={value}>{value === "true" ? "نعم" : value === "false" ? "لا" : value}</option>)}</select>
+          {field.options ? <select name={field.name} required={!field.optional} defaultValue={field.defaultValue}>{field.options.map((value) => <option key={value} value={value}>{value === "true" ? "نعم" : value === "false" ? "لا" : displayDataCenterValue(value)}</option>)}</select>
             : choices.length ? <><input name={field.name} required list={`dc-${field.name}-options`} placeholder="اختر اقتراحاً أو أدخل المعرّف المسجل" maxLength={128} onChange={(event) => {
               if (field.name !== "typeKey") return;
               const selectedType = types.find((record) => String(record.key) === event.target.value);

@@ -28,6 +28,14 @@ const fieldLabels: Record<string, string> = {
   effectiveFrom: "بداية السريان", effectiveTo: "نهاية السريان", publishedVersion: "الإصدار المنشور",
   classificationRegistry: "سجل التصنيف", types: "الأنواع", categories: "الفئات", departments: "الأقسام",
   total: "العدد الكلي", rows: "السجلات", limit: "حد العرض",
+  ownership: "تصنيف الملكية", usagePolicy: "سياسة الاستخدام", tags: "الوسوم", preview: "معاينة نصية",
+  geography: "النطاق الجغرافي", importedAt: "تاريخ الاستيراد", sourceDate: "تاريخ المصدر",
+  verificationStatus: "حالة التحقق", approvedBy: "اعتمد بواسطة", approvedById: "معرّف المعتمِد",
+  freshness: "حداثة البيانات", confidenceSnapshot: "الثقة وقت إنشاء الإصدار",
+  factors: "عوامل الثقة", score: "درجة الثقة", explanation: "تفسير الدرجة", policyVersion: "إصدار سياسة الثقة",
+  evaluatedAt: "وقت احتساب الدرجة", ageDays: "العمر بالأيام", expired: "منتهي الصلاحية",
+  evidence: "قوة الدليل", sourceReliability: "فئة المصدر المعلنة",
+  completeness: "اكتمال البيانات الوصفية", consistency: "الاتساق المراجع",
 };
 
 export function RecordDetails({ record }: { record: DataCenterRecord }) {

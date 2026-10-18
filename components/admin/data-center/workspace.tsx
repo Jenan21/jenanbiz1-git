@@ -26,9 +26,8 @@ export function sectionQuery(section: DataCenterSection, page: number, query = "
   const params = new URLSearchParams({ area: areas[section], page: String(page), limit: "20" });
   if (query) params.set("query", query);
   if (status) params.set("status", status);
-  const sectionLayer = section === "data" ? "DATA" : section === "knowledge" ? "KNOWLEDGE" : layer;
+  const sectionLayer = section === "data" ? "DATA" : section === "knowledge" ? "KNOWLEDGE" : section === "assets" ? "ASSET" : layer;
   if (sectionLayer) params.set("layer", sectionLayer);
-  if (section === "assets") params.set("categoryKey", "assets");
   return params;
 }
 
@@ -116,7 +115,7 @@ export function DataCenterWorkspace({ section }: { section: DataCenterSection })
     let command = DATA_CENTER_COMMANDS[key];
     if (key === "item") {
       command = { ...command, fields: command.fields.map((field) => field.name === "layer" && ["knowledge", "assets", "evidence"].includes(section)
-          ? { ...field, defaultValue: "KNOWLEDGE" } : field) };
+          ? { ...field, defaultValue: section === "assets" ? "ASSET" : section === "evidence" ? "EVIDENCE" : "KNOWLEDGE" } : field) };
     }
     if (key === "version" && selected) {
       const current = asRecords(selected.versions)[0] ?? selected;
@@ -124,7 +123,7 @@ export function DataCenterWorkspace({ section }: { section: DataCenterSection })
         if (field.name === "reason") return field;
         const value = current[field.name] ?? selected[field.name];
         if (value === null || value === undefined) return field;
-        const defaultValue = ["specialties", "missionContexts"].includes(field.name) && Array.isArray(value) ? value.join(", ")
+        const defaultValue = ["specialties", "missionContexts", "tags"].includes(field.name) && Array.isArray(value) ? value.join(", ")
           : field.name === "provenance" ? JSON.stringify(value)
           : field.kind === "datetime-local" ? new Date(new Date(String(value)).getTime() - new Date(String(value)).getTimezoneOffset() * 60000).toISOString().slice(0, 16)
           : String(value);
@@ -252,14 +251,14 @@ export function DataCenterWorkspace({ section }: { section: DataCenterSection })
             </> : null}
             {isItemSection ? <Card className={styles.panel}>
               <h2>{section === "publishing" ? "مراجعة واعتماد ونشر" : "تصفية السجلات"}</h2>
-              {section === "assets" ? <p className={styles.muted}>الأصول تصنيف للمحتوى القابل لإعادة الاستخدام، وليست طبقة صلاحيات إضافية. استخدم نوعاً مسجلاً ضمن الفئة assets؛ تُدار الفئات والأقسام في الإعدادات.</p> : null}
+              {section === "assets" ? <p className={styles.muted}>مكتبة الأصول طبقة مستقلة للقوالب والتصاميم والأدوات. يوثق كل إصدار مصدره وترخيصه وسياسة استخدامه ووسومه ومعاينته النصية؛ الربط بمصدر مناسب شرط للاستشهاد.</p> : null}
               {section === "evidence" ? <p className={styles.muted}>عرض حالة الأدلة ومراجع المصدر للإصدارات. حالة VERIFIED لا تُمنح لمجرد اعتماد إداري.</p> : null}
               {section === "versions" ? <p className={styles.muted}>اختر سجلاً ثم افتح التفاصيل لعرض إصداراته ومراجعاته وبصمة محتواه. يُعرض حتى 100 إصدار لكل سجل وفق حد الخادم.</p> : null}
               {section === "publishing" ? <p className={styles.muted}>مسودة الإصدار الجديد لا تستبدل الإصدار المنشور السابق. يبقى الإصدار المنشور متاحاً حتى نشر بديل أو أرشفة السجل؛ كل إصدار جديد يحتاج مراجعته الخاصة.</p> : null}
               <form className={styles.form} onSubmit={filter}>
                 <label>بحث بالعنوان<input name="query" type="search" maxLength={200} /></label>
-                <label>الحالة<select name="status"><option value="">كل الحالات</option>{["DRAFT", "IN_REVIEW", "APPROVED", "PUBLISHED", "REJECTED", "ARCHIVED"].map((status) => <option key={status}>{status}</option>)}</select></label>
-                <label>الطبقة<select name="layer" disabled={section === "data" || section === "knowledge"} defaultValue=""><option value="">كل الطبقات</option>{["DATA", "KNOWLEDGE", "INTELLIGENCE", "CONTEXT"].map((layer) => <option key={layer}>{layer}</option>)}</select></label>
+                <label>الحالة<select name="status"><option value="">كل الحالات</option>{["DRAFT", "IN_REVIEW", "APPROVED", "PUBLISHED", "REJECTED", "DEPRECATED", "ARCHIVED"].map((status) => <option key={status} value={status}>{displayDataCenterValue(status)}</option>)}</select></label>
+                <label>الطبقة<select name="layer" disabled={["data", "knowledge", "assets"].includes(section)} defaultValue=""><option value="">كل الطبقات</option>{["DATA", "KNOWLEDGE", "ASSET", "EVIDENCE", "INTELLIGENCE", "CONTEXT"].map((layer) => <option key={layer} value={layer}>{displayDataCenterValue(layer)}</option>)}</select></label>
                 <div className={styles.actions}><button className={styles.button} disabled={loading} type="submit">تطبيق</button></div>
               </form>
               <p className={styles.muted}>الفئة والقسم مرتبطان بالنوع المسجل. أصل المحتوى يُحدد في الخادم؛ مصادر GENERATED تبقى اقتراحات ذكاء اصطناعي ولا تصبح مصادر موثقة تلقائياً.</p>
