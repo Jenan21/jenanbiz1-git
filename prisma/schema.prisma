@@ -2384,6 +2384,7 @@ model OperationsJob {
   availableAt    DateTime            @default(now())
   leasedAt       DateTime?
   leaseExpiresAt DateTime?
+  leaseToken     String?
   completedAt    DateTime?
   lastError      String?
   queue          OperationsQueue     @relation(fields: [queueId], references: [id], onDelete: Cascade)
@@ -3169,6 +3170,7 @@ model Project {
   intelligenceSnapshots ProjectIntelligenceSnapshot[]
   analysisStudy             Json?
   analysisStudyUpdatedAt    DateTime?
+  creationIdempotencyKey    String?
   feasibilityStudy          Json?
   feasibilityStudyUpdatedAt DateTime?
   launchPlan                Json?
@@ -3179,6 +3181,7 @@ model Project {
   updatedAt             DateTime                      @updatedAt
 
   @@index([createdById, status])
+  @@unique([createdById, creationIdempotencyKey])
   @@index([organizationId, status])
   @@index([countryCode, sector])
 }

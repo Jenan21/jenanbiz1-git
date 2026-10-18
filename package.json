@@ -7,6 +7,8 @@
     "build": "node scripts/next-build.mjs",
     "vercel-build": "prisma generate && node scripts/next-build.mjs",
     "start": "next start",
+    "build:project-worker": "node scripts/build-project-worker.mjs",
+    "worker:projects": "node .worker/workers/project-analysis.mjs",
     "lint": "eslint .",
     "lint:fix": "eslint . --fix",
     "typecheck": "node --max-old-space-size=4096 ./node_modules/typescript/bin/tsc --noEmit",

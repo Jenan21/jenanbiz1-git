@@ -24,3 +24,5 @@ lint.json
 lint-output.json
 audit-omit-dev.json
 e2e-summary.txt
+# Compiled background consumer
+.worker/

@@ -1,6 +1,7 @@
 "use client";
 
 import dynamic from "next/dynamic";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useRef, useState, type FormEvent } from "react";
 import {
@@ -12,10 +13,10 @@ import {
 import { AnalysisStage, ANALYSIS_CENTER } from "@/components/projects/project-analysis-stage";
 import { FlowModal, FlowStepper, flowText } from "@/components/projects/project-flow-kit";
 import type { PickedPoint } from "@/components/projects/project-location-picker";
-import { useAnalysisProgress } from "@/components/projects/use-analysis-progress";
+import { findActiveAnalysisProject, prepareAnalysisProject, startAnalysisRun, useAnalysisProgress } from "@/components/projects/use-analysis-progress";
 import { JenanHeader } from "@/components/shell/jenan-header";
 import { Icon } from "@/components/ui/icons";
-import { AnalysisRequestError, analysisFailureMessage } from "@/lib/projects/analysis-errors";
+import { AnalysisRequestError, analysisFailureMessage, analysisSignInHref } from "@/lib/projects/analysis-errors";
 import { completedStages } from "@/lib/projects/analysis-study";
 import { FLOW_AUDIENCES, FLOW_SECTORS, SAUDI_CITIES, sectorNeedsArea } from "@/lib/projects/flow-options";
 import { budgetRangeFor } from "@/lib/projects/feasibility-simple";
@@ -31,19 +32,6 @@ type Step = "idle" | "data" | "location" | "running" | "done" | "failed";
 type Place = { label: string; city: string; district?: string; latitude: number; longitude: number };
 
 const RIYADH = ANALYSIS_CENTER;
-
-type ApiPayload<T> = { code?: string; result?: T; success?: boolean } | null;
-
-async function command<T>(body: Record<string, unknown>) {
-  const response = await fetch("/api/projects", {
-    method: "POST",
-    headers: { "content-type": "application/json" },
-    body: JSON.stringify(body),
-  });
-  const payload = (await response.json().catch(() => null)) as ApiPayload<T>;
-  if (!response.ok || !payload?.success) throw new AnalysisRequestError(response.status, payload?.code);
-  return payload.result as T;
-}
 
 async function lookup(query: string) {
   const response = await fetch(`/api/projects/geocode?${query}`, { cache: "no-store" });
@@ -61,12 +49,14 @@ function nearestCity(point: PickedPoint) {
 export function ProjectAnalysisDashboard({
   initialStep = "idle",
   latestReportId = null,
+  activeAnalysisId = null,
   locale,
   userLabel,
 }: {
   initialStep?: "idle" | "data";
   /** The user's latest finished analysis; the landing offers «عرض التقرير» only when there is one. */
   latestReportId?: string | null;
+  activeAnalysisId?: string | null;
   locale: Locale;
   userLabel: string;
 }) {
@@ -86,20 +76,80 @@ export function ProjectAnalysisDashboard({
   const [message, setMessage] = useState("");
   const [locating, setLocating] = useState(false);
   const [runId, setRunId] = useState<string | null>(null);
-  const [finished, setFinished] = useState(false);
+  const [failure, setFailure] = useState<unknown>();
+  const [resumeId, setResumeId] = useState(activeAnalysisId);
+  const [restored, setRestored] = useState(false);
   const projectId = useRef<string | null>(null);
   const savedKey = useRef("");
+  const createdKey = useRef("");
+  const idempotencyKey = useRef("");
+  const submitting = useRef(false);
+  const controller = useRef<AbortController | null>(null);
   const lookupSeq = useRef(0);
+  const draftStorageKey = `jenan-analysis-draft:${encodeURIComponent(userLabel)}`;
+  const resumeStorageKey = `jenan-analysis-resume:${encodeURIComponent(userLabel)}`;
 
   const busy = step === "running";
   const showArea = sectorNeedsArea(sector);
   const progress = useAnalysisProgress(runId, step === "running");
-  const completed = finished ? 5 : completedStages(progress.stage, progress.status);
+  const completed = completedStages(progress.stage, progress.status);
   const close = useCallback(() => {
     if (busy) return;
     setMessage("");
     setStep("idle");
   }, [busy]);
+
+  useEffect(() => {
+    const timer = window.setTimeout(() => {
+      try {
+        const draft = JSON.parse(sessionStorage.getItem(draftStorageKey) ?? "null");
+        if (draft && typeof draft === "object") {
+          for (const [value, setter] of [[draft.idea, setIdea], [draft.capital, setCapital], [draft.sector, setSector], [draft.audience, setAudience], [draft.area, setArea]] as const) {
+            if (typeof value === "string") setter(value);
+          }
+          if (Number.isFinite(draft.point?.latitude) && Number.isFinite(draft.point?.longitude)) {
+            setPoint(draft.point);
+            setView({ center: draft.point, zoom: 15 });
+          }
+          if (typeof draft.place?.city === "string" && typeof draft.place?.label === "string") setPlace(draft.place);
+          projectId.current = typeof draft.projectId === "string" ? draft.projectId : null;
+          savedKey.current = typeof draft.savedKey === "string" ? draft.savedKey : "";
+          createdKey.current = typeof draft.createdKey === "string" ? draft.createdKey : "";
+          idempotencyKey.current = typeof draft.idempotencyKey === "string" ? draft.idempotencyKey : "";
+        }
+      } catch { /* Storage is optional in private browsing. */ }
+      try {
+        const resume = JSON.parse(localStorage.getItem(resumeStorageKey) ?? "null");
+        if (typeof resume?.projectId === "string") setResumeId(activeAnalysisId ?? resume.projectId);
+      } catch { /* The server's active record remains available. */ }
+      setRestored(true);
+    }, 0);
+    return () => { window.clearTimeout(timer); controller.current?.abort(); };
+  }, [activeAnalysisId, draftStorageKey, resumeStorageKey]);
+
+  const persistDraft = useCallback(() => {
+    try {
+      sessionStorage.setItem(draftStorageKey, JSON.stringify({ idea, capital, sector, audience, area, point, place, projectId: projectId.current, savedKey: savedKey.current, createdKey: createdKey.current, idempotencyKey: idempotencyKey.current }));
+    } catch { /* A storage restriction must not prevent analysis. */ }
+  }, [area, audience, capital, draftStorageKey, idea, place, point, sector]);
+
+  useEffect(() => {
+    if (restored) persistDraft();
+  }, [persistDraft, restored]);
+
+  useEffect(() => {
+    if (activeAnalysisId) return;
+    const request = new AbortController();
+    void findActiveAnalysisProject(request.signal).then((id) => {
+      if (!request.signal.aborted && id) setResumeId(id);
+    }).catch((error) => {
+      if (!request.signal.aborted && error instanceof AnalysisRequestError && error.status === 401) {
+        setFailure(error);
+        setMessage(analysisFailureMessage(error, ar));
+      }
+    });
+    return () => request.abort();
+  }, [activeAnalysisId, ar]);
 
   useEffect(() => {
     const text = search.trim();
@@ -160,10 +210,14 @@ export function ProjectAnalysisDashboard({
   }
 
   async function analyse() {
+    if (submitting.current) return;
     if (!point) return setMessage(ar ? "اضغط على الخريطة أو ابحث عن مكان لتحديد الموقع." : "Click the map or search for a place to set the location.");
+    submitting.current = true;
+    const request = new AbortController();
+    controller.current = request;
     const city = place?.city || flowText(nearestCity(point).label, true);
     setMessage("");
-    setFinished(false);
+    setFailure(undefined);
     setStep("running");
     const input = {
       idea: idea.trim(),
@@ -179,27 +233,39 @@ export function ProjectAnalysisDashboard({
     try {
       // A retry after a failed run must not create a second project for the same answers.
       const key = JSON.stringify({ input, sector });
-      if (!projectId.current || savedKey.current !== key) {
-        const created = await command<{ id: string }>({
-          action: "create",
+      const id = await prepareAnalysisProject(
+        { projectId: projectId.current, createdKey: createdKey.current, savedKey: savedKey.current, idempotencyKey: idempotencyKey.current },
+        key,
+        {
           name: input.idea.slice(0, 160),
           description: [input.idea, place?.label ? `${ar ? "الموقع" : "Location"}: ${place.label}` : ""].filter(Boolean).join("\n"),
           sector,
           countryCode: "SA",
-        });
-        projectId.current = created.id;
-        await command({ action: "saveProjectAnalysis", projectId: created.id, input });
-        savedKey.current = key;
-      }
-      setRunId(projectId.current);
-      await command({ action: "runProjectAnalysis", projectId: projectId.current });
-      // A real finish: let the ring show it for a moment before the next popup replaces it.
-      setFinished(true);
-      await new Promise((resolve) => window.setTimeout(resolve, 600));
-      setStep("done");
+        },
+        input,
+        (draft) => {
+          projectId.current = draft.projectId;
+          createdKey.current = draft.createdKey;
+          savedKey.current = draft.savedKey;
+          idempotencyKey.current = draft.idempotencyKey;
+          persistDraft();
+        },
+        request.signal,
+      );
+      if (request.signal.aborted) return;
+      window.history.replaceState(null, "", `/projects/analysis?project=${encodeURIComponent(id)}`);
+      const run = await startAnalysisRun(id, request.signal);
+      if (request.signal.aborted) return;
+      setRunId(id);
+      try { localStorage.setItem(resumeStorageKey, JSON.stringify({ projectId: id, runId: run.runId })); } catch { /* URL also preserves the run. */ }
+      router.replace(`/projects/analysis/progress?project=${encodeURIComponent(id)}&run=${encodeURIComponent(run.runId)}`);
     } catch (error) {
+      if (request.signal.aborted) return;
+      setFailure(error);
       setMessage(analysisFailureMessage(error, ar));
       setStep("failed");
+    } finally {
+      submitting.current = false;
     }
   }
 
@@ -217,6 +283,8 @@ export function ProjectAnalysisDashboard({
       <JenanHeader locale={locale} userLabel={userLabel} />
 
       <AnalysisStage ar={ar} onStart={() => setStep("data")} reportHref={latestReportId ? `/projects/analysis/result?project=${latestReportId}` : undefined} />
+      {resumeId && step === "idle" ? <Link className="pa-btn is-primary" href={`/projects/analysis/progress?project=${encodeURIComponent(resumeId)}`}>{ar ? "متابعة التحليل المحفوظ" : "Resume saved analysis"}</Link> : null}
+      {step === "idle" && failure instanceof AnalysisRequestError && failure.status === 401 ? <div role="alert"><p>{message}</p><Link className="pa-btn is-primary" href={analysisSignInHref("/projects/analysis")}>{ar ? "تسجيل الدخول" : "Sign in"}</Link></div> : null}
 
       {step !== "idle" ? (
         <FlowModal ar={ar} className="af-modal" closable={!busy} onClose={close} step={step}>
@@ -280,9 +348,9 @@ export function ProjectAnalysisDashboard({
               </div>
             ) : null}
 
-            {step === "running" ? <AnalysisProgress ar={ar} completed={completed} known={finished || progress.known} /> : null}
+            {step === "running" ? <AnalysisProgress ar={ar} completed={completed} known={progress.known} pending={progress.status !== "PROCESSING"} /> : null}
             {step === "done" ? <AnalysisReady ar={ar} onOpen={openReport} /> : null}
-            {step === "failed" ? <AnalysisFailed ar={ar} message={message} onRetry={() => void analyse()} onReview={backToData} /> : null}
+            {step === "failed" ? <AnalysisFailed ar={ar} message={message} retryAfterMs={failure instanceof AnalysisRequestError ? failure.retryAfterMs : undefined} signInHref={failure instanceof AnalysisRequestError && failure.status === 401 ? analysisSignInHref(`${window.location.pathname}${window.location.search}`) : undefined} onRetry={() => void analyse()} onReview={backToData} /> : null}
           </div>
         </FlowModal>
       ) : null}

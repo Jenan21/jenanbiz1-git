@@ -45,6 +45,7 @@ const LIMITATIONS: ReadonlyArray<readonly [RegExp, Copy, string?]> = [
   [/location provider returned no matching result/i, ["لم يُعثر على نتيجة مطابقة للموقع المحدد.", "No matching result was found for the chosen location."]],
   [/geocoding could not be loaded/i, ["تعذر تحديد اسم الموقع في الوقت الحالي.", "The place name could not be resolved right now."]],
   [/population, purchasing-power, and inflation data could not be loaded/i, ["لا تتوفر بيانات موثوقة كافية للسكان والقوة الشرائية والتضخم حاليًا.", "Reliable population, purchasing-power and inflation data is not available."], "market"],
+  [/some World Bank indicators could not be loaded/i, ["تعذر تحميل بعض مؤشرات السوق؛ احتُفظ بالمؤشرات المتاحة مع تواريخها.", "Some market indicators are unavailable; available indicators and their dates are retained."]],
   [/two-letter country code is required/i, ["لا تتوفر بيانات السكان والقوة الشرائية لأن الدولة غير محددة.", "Population and purchasing-power data is unavailable because no country is set."], "market"],
   [/resolvable location is required for competitor discovery/i, ["يلزم موقع محدد بدقة لرصد المنافسين.", "A precisely resolved location is needed to find competitors."]],
   [/sector with a known map category/i, ["لا يوجد تصنيف خرائطي لهذا القطاع، لذلك لا يُعرض عدد للمنافسين.", "This sector has no map category, so no competitor count is shown."]],
@@ -284,7 +285,12 @@ export function buildReport(data: ReportData, locale: Locale): ReportModel {
   const rawLimitations = readLimitations(snapshot?.limitations);
   const limitations = localizeLimitations(rawLimitations, ar);
 
-  const worldBank = sources.find((item) => item.source === "World Bank Open Data");
+  const worldBankSources = sources.filter((item) => item.source === "World Bank Open Data");
+  const worldBankFor = (indicator: string) => worldBankSources.find((item) => item.url?.includes(`/indicator/${indicator}`))
+    ?? (worldBankSources.length === 1 ? worldBankSources[0] : worldBankSources.find((item) => !item.url?.includes("/indicator/")));
+  const populationSource = worldBankFor("SP.POP.TOTL");
+  const purchasingSource = worldBankFor("NY.GNP.PCAP.PP.CD");
+  const inflationSource = worldBankFor("FP.CPI.TOTL.ZG");
   const venues = sources.find((item) => item.source === "OpenStreetMap Overpass");
   const sourceName = (name: string) => (SOURCES[name] ? pick(SOURCES[name].name, ar) : name);
   const sourceShort = (name: string) => (SOURCES[name] ? pick(SOURCES[name].short, ar) : name);
@@ -308,7 +314,7 @@ export function buildReport(data: ReportData, locale: Locale): ReportModel {
       ? indicator({
           id: "population", label: pick(["عدد السكان", "Population"], ar), value: reportNumber(population.value, locale),
           note: pick(["على مستوى الدولة", "Country level"], ar), state: "VERIFIED", source: sourceShort("World Bank Open Data"),
-          date: yearOf(population, worldBank?.retrievedAt), confidence: worldBank?.confidence,
+          date: yearOf(population, populationSource?.retrievedAt), confidence: populationSource?.confidence,
         })
       : indicator({ id: "population", label: pick(["عدد السكان", "Population"], ar), value: pick(["غير متاح", "Unavailable"], ar), note: noData, state: "UNAVAILABLE", source: "—", date: "—" }),
     competitorCount !== null
@@ -326,14 +332,14 @@ export function buildReport(data: ReportData, locale: Locale): ReportModel {
           note: pick([`دخل الفرد ${reportNumber(purchasing.value, locale)} دولارًا دوليًا · على مستوى الدولة`, `Income per person ${reportNumber(purchasing.value, locale)} international $ · country level`], ar),
           short: pick([`دخل الفرد ${reportNumber(purchasing.value, locale)} دولارًا دوليًا`, `Income per person ${reportNumber(purchasing.value, locale)} int'l $`], ar),
           state: "ESTIMATED", tone: result?.purchasingPowerLevel, source: sourceShort("World Bank Open Data"),
-          date: yearOf(purchasing, worldBank?.retrievedAt), confidence: worldBank?.confidence,
+          date: yearOf(purchasing, purchasingSource?.retrievedAt), confidence: purchasingSource?.confidence,
         })
       : indicator({ id: "purchasing", label: pick(["القوة الشرائية", "Purchasing power"], ar), value: pick(["غير متاح", "Unavailable"], ar), note: noData, state: "UNAVAILABLE", source: "—", date: "—" }),
     inflation.value !== null
       ? indicator({
           id: "inflation", label: pick(["تضخم التكاليف", "Cost inflation"], ar), value: `${reportNumber(inflation.value, locale, 1)}%`,
           note: pick(["تضخم أسعار المستهلك السنوي · الدولة", "Annual consumer-price inflation · country"], ar), state: "VERIFIED",
-          source: sourceShort("World Bank Open Data"), date: yearOf(inflation, worldBank?.retrievedAt), confidence: worldBank?.confidence,
+          source: sourceShort("World Bank Open Data"), date: yearOf(inflation, inflationSource?.retrievedAt), confidence: inflationSource?.confidence,
         })
       : indicator({ id: "inflation", label: pick(["تضخم التكاليف", "Cost inflation"], ar), value: pick(["غير متاح", "Unavailable"], ar), note: noData, state: "UNAVAILABLE", source: "—", date: "—" }),
     result
@@ -443,8 +449,8 @@ export function buildReport(data: ReportData, locale: Locale): ReportModel {
   const inflationLine = inflation.value !== null
     ? pick(
         [
-          `تضخم التكاليف السنوي ${reportNumber(inflation.value, locale, 1)}% (${yearOf(inflation, worldBank?.retrievedAt)}، على مستوى الدولة)`,
-          `Annual cost inflation ${reportNumber(inflation.value, locale, 1)}% (${yearOf(inflation, worldBank?.retrievedAt)}, country level)`,
+          `تضخم التكاليف السنوي ${reportNumber(inflation.value, locale, 1)}% (${yearOf(inflation, inflationSource?.retrievedAt)}، على مستوى الدولة)`,
+          `Annual cost inflation ${reportNumber(inflation.value, locale, 1)}% (${yearOf(inflation, inflationSource?.retrievedAt)}, country level)`,
         ],
         ar,
       )

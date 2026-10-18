@@ -1,6 +1,8 @@
 "use client";
 
 import { Icon, type IconName } from "@/components/ui/icons";
+import Link from "next/link";
+import { useEffect, useState } from "react";
 import { flowText, type FlowCopy } from "@/components/projects/project-flow-kit";
 import { ANALYSIS_STAGES, type AnalysisStage } from "@/lib/projects/analysis-study";
 
@@ -28,16 +30,16 @@ const RING_LENGTH = 2 * Math.PI * RING_RADIUS;
  * The progress popup. `completed` is how many real stages the server has finished; the ring and the percent come only from
  * that, so they stand still while a long step runs instead of creeping toward a made-up number.
  */
-export function AnalysisProgress({ ar, completed, known }: { ar: boolean; completed: number; known: boolean }) {
+export function AnalysisProgress({ ar, completed, known, pending = false }: { ar: boolean; completed: number; known: boolean; pending?: boolean }) {
   const total = ANALYSIS_STAGES.length;
   const fraction = known ? Math.min(1, completed / total) : 0;
   const current = completed < total ? ANALYSIS_STAGES[completed] : undefined;
   return (
     <div className="af-progress" data-testid="analysis-running">
       <span className="af-pill"><Icon name="check" />{ar ? "تم تحديد الموقع بنجاح" : "Location confirmed"}</span>
-      <h2 id="pa-modal-title">{ar ? "جاري التحليل وإعداد التقرير" : "Analyzing and preparing the report"}</h2>
+      <h2 id="pa-modal-title">{pending ? (ar ? "بانتظار بدء التحليل" : "Waiting for analysis to start") : ar ? "جاري التحليل وإعداد التقرير" : "Analyzing and preparing the report"}</h2>
       <p className="af-lead">
-        {ar ? (
+        {pending ? (ar ? "تُحفظ مدخلاتك ويُعرض التقدم عند بدء المعالجة الفعلية." : "Your input is saved; progress appears when processing actually starts.") : ar ? (
           <>
             <span>تقرأ المنصة الآن بيانات الموقع والسوق والمنافسين</span> <span>من مصادرها المعلنة.</span>
           </>
@@ -95,17 +97,22 @@ export function AnalysisReady({ ar, onOpen }: { ar: boolean; onOpen: () => void 
 }
 
 /** The failure popup: a calm sentence chosen by the caller (never the server's own text) and the way forward. */
-export function AnalysisFailed({ ar, message, onRetry, onReview }: { ar: boolean; message: string; onRetry: () => void; onReview: () => void }) {
+export function AnalysisFailed({ ar, message, onRetry, onReview, retryDisabled = false, signInHref, retryAfterMs = 0 }: { ar: boolean; message: string; onRetry: () => void; onReview: () => void; retryDisabled?: boolean; signInHref?: string; retryAfterMs?: number }) {
+  const [cooldown, setCooldown] = useState(retryAfterMs > 0);
+  useEffect(() => {
+    if (!retryAfterMs) return;
+    const timer = setTimeout(() => setCooldown(false), retryAfterMs);
+    return () => clearTimeout(timer);
+  }, [retryAfterMs]);
   return (
     <div className="af-notice is-failed" data-testid="analysis-failed" role="alert">
       <div className="af-seal"><i /><Icon name="x" /></div>
       <h2 id="pa-modal-title">{ar ? <>تعذر إكمال <b>التحليل</b></> : <>The analysis <b>stopped</b></>}</h2>
       <p>{message}</p>
       <div className="af-notice__actions">
-        <button className="af-primary" onClick={onRetry} type="button"><Icon name="refresh" />{ar ? "إعادة المحاولة" : "Try again"}</button>
+        {signInHref ? <Link className="af-primary" href={signInHref}>{ar ? "تسجيل الدخول" : "Sign in"}</Link> : <button className="af-primary" disabled={retryDisabled || cooldown} onClick={onRetry} type="button"><Icon name="refresh" />{ar ? "إعادة المحاولة" : "Try again"}</button>}
         <button className="af-secondary" onClick={onReview} type="button">{ar ? "مراجعة البيانات" : "Review data"}</button>
       </div>
     </div>
   );
 }
-

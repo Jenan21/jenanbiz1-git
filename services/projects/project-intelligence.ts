@@ -9,7 +9,7 @@ type LocationInput = {
 type SourceRecord = { source: string; url: string; fetchedAt: string; confidence: "HIGH" | "MEDIUM" | "LOW" };
 import { competitorSelectorsFor } from "@/lib/projects/competitor-sectors";
 import type { AnalysisStage } from "@/lib/projects/analysis-study";
-import { getProjectIntelligenceProvider } from "@/services/projects/project-intelligence-provider";
+import { getProjectIntelligenceProvider, type IntelligenceRequestOptions } from "@/services/projects/project-intelligence-provider";
 export type ProjectIntelligenceResult = {
   location: { latitude: number; longitude: number; label: string } | null;
   population: { value: number | null; year: number | null };
@@ -24,9 +24,12 @@ export type ProjectIntelligenceResult = {
 export async function searchProjectIntelligence(
   input: LocationInput,
   onStage?: (stage: AnalysisStage) => Promise<void> | void,
+  options: IntelligenceRequestOptions = {},
 ): Promise<ProjectIntelligenceResult> {
   const fetchedAt = new Date().toISOString();
   const provider = getProjectIntelligenceProvider();
+  const requestOptions = { ...options, deadlineAt: Math.min(options.deadlineAt ?? Infinity, Date.now() + 40_000) };
+  options.signal?.throwIfAborted();
   const query = input.query.trim();
   if (!query) throw new Error("Location query is required");
   if ((input.latitude === undefined) !== (input.longitude === undefined)) throw new Error("latitude and longitude must be provided together");
@@ -42,14 +45,15 @@ export async function searchProjectIntelligence(
 
   if (!location) {
     try {
-      const geocoded = await provider.getJson<Array<{ lat: string; lon: string; display_name: string }>>(geocodeUrl);
+      const geocoded = await provider.getJson<Array<{ lat: string; lon: string; display_name: string }>>(geocodeUrl, requestOptions);
       const firstResult = geocoded[0];
-      if (firstResult) {
+      if (firstResult && Number.isFinite(Number(firstResult.lat)) && Number.isFinite(Number(firstResult.lon))) {
         location = { latitude: Number(firstResult.lat), longitude: Number(firstResult.lon), label: firstResult.display_name };
       } else {
         limitations.push("The location provider returned no matching result.");
       }
     } catch {
+      options.signal?.throwIfAborted();
       limitations.push("Location geocoding could not be loaded from the map provider.");
     }
   }
@@ -68,24 +72,33 @@ export async function searchProjectIntelligence(
   const countryCode = input.countryCode?.trim().toUpperCase();
   await onStage?.("MARKET_DATA");
   if (countryCode) {
-    const indicatorUrl = `https://api.worldbank.org/v2/country/${encodeURIComponent(countryCode)}/indicator/SP.POP.TOTL?format=json&per_page=1`;
-    const purchasingUrl = `https://api.worldbank.org/v2/country/${encodeURIComponent(countryCode)}/indicator/NY.GNP.PCAP.PP.CD?format=json&per_page=1`;
-    const inflationUrl = `https://api.worldbank.org/v2/country/${encodeURIComponent(countryCode)}/indicator/FP.CPI.TOTL.ZG?format=json&per_page=1`;
-    try {
-      const [populationPayload, purchasingPayload, inflationPayload] = await Promise.all([
-        provider.getJson<[unknown, Array<{ value: number | null; date: string }> | undefined]>(indicatorUrl),
-        provider.getJson<[unknown, Array<{ value: number | null; date: string }> | undefined]>(purchasingUrl),
-        provider.getJson<[unknown, Array<{ value: number | null; date: string }> | undefined]>(inflationUrl),
-      ]);
-      const population = populationPayload[1]?.find((item) => item.value !== null);
-      const purchasing = purchasingPayload[1]?.find((item) => item.value !== null);
-      const inflation = inflationPayload[1]?.find((item) => item.value !== null);
+    const indicatorUrl = `https://api.worldbank.org/v2/country/${encodeURIComponent(countryCode)}/indicator/SP.POP.TOTL?format=json&per_page=10`;
+    const purchasingUrl = `https://api.worldbank.org/v2/country/${encodeURIComponent(countryCode)}/indicator/NY.GNP.PCAP.PP.CD?format=json&per_page=10`;
+    const inflationUrl = `https://api.worldbank.org/v2/country/${encodeURIComponent(countryCode)}/indicator/FP.CPI.TOTL.ZG?format=json&per_page=10`;
+    type IndicatorPayload = [unknown, Array<{ value: number | null; date: string }> | undefined];
+    const urls = [indicatorUrl, purchasingUrl, inflationUrl];
+    const indicators = await Promise.allSettled(urls.map((url) => provider.getJson<IndicatorPayload>(url, requestOptions)));
+    options.signal?.throwIfAborted();
+    const currentYear = new Date().getUTCFullYear();
+    const latest = indicators.map((item) => {
+      if (item.status !== "fulfilled" || !Array.isArray(item.value?.[1])) return undefined;
+      return item.value[1]
+        .filter((row) => typeof row.value === "number" && Number.isFinite(row.value) && /^\d{4}$/.test(row.date) && Number(row.date) <= currentYear)
+        .sort((a, b) => Number(b.date) - Number(a.date))[0];
+    });
+    const [population, purchasing, inflation] = latest;
+    {
       result.population = { value: population?.value ?? null, year: population ? Number(population.date) : null };
       result.purchasingPower = { ...result.purchasingPower, value: purchasing?.value ?? null, year: purchasing ? Number(purchasing.date) : null };
       result.costInflation = { ...result.costInflation, value: inflation?.value ?? null, year: inflation ? Number(inflation.date) : null };
-      sources.push({ source: "World Bank Open Data", url: indicatorUrl, fetchedAt, confidence: population && purchasing && inflation ? "HIGH" : "MEDIUM" });
-    } catch {
-      result.limitations.push("World Bank population, purchasing-power, and inflation data could not be loaded.");
+      latest.forEach((row, index) => {
+        if (!row) return;
+        const age = currentYear - Number(row.date);
+        sources.push({ source: "World Bank Open Data", url: urls[index]!, fetchedAt, confidence: age <= 2 ? "HIGH" : age <= 5 ? "MEDIUM" : "LOW" });
+      });
+      if (indicators.some((item) => item.status === "rejected")) {
+        result.limitations.push("Some World Bank indicators could not be loaded; successful indicators are retained.");
+      }
     }
   } else {
     result.limitations.push("A two-letter country code is required for population and purchasing-power data.");
@@ -103,7 +116,7 @@ export async function searchProjectIntelligence(
     const overpassQuery = `[out:json][timeout:8];(${selectors.map((selector) => `${selector}${around};`).join("")});out center tags;`;
     const overpassUrl = `https://overpass-api.de/api/interpreter?data=${encodeURIComponent(overpassQuery)}`;
     try {
-      const payload = await provider.getJson<{ elements?: Array<{ tags?: { name?: string; amenity?: string; shop?: string; office?: string; leisure?: string; tourism?: string }; lat?: number; lon?: number; center?: { lat: number; lon: number } }> }>(overpassUrl);
+      const payload = await provider.getJson<{ elements?: Array<{ tags?: { name?: string; amenity?: string; shop?: string; office?: string; leisure?: string; tourism?: string }; lat?: number; lon?: number; center?: { lat: number; lon: number } }> }>(overpassUrl, { ...requestOptions, timeoutMs: 10_000 });
       result.competitors = (payload.elements ?? [])
         .filter((item) => item.tags?.name && (item.lat ?? item.center?.lat) !== undefined && (item.lon ?? item.center?.lon) !== undefined)
         .slice(0, 50)
@@ -111,6 +124,7 @@ export async function searchProjectIntelligence(
       sources.push({ source: "OpenStreetMap Overpass", url: overpassUrl, fetchedAt, confidence: "MEDIUM" });
       if (!result.competitors.length) result.limitations.push("No venues of this sector are mapped within 5 km; this is not evidence that there is no competition.");
     } catch {
+      options.signal?.throwIfAborted();
       result.limitations.push("Competitor discovery could not be loaded from the map provider.");
     }
   }

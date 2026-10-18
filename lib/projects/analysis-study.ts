@@ -49,6 +49,9 @@ export type AnalysisStudy = {
   stage?: AnalysisStage;
   error?: string;
   updatedAt?: string;
+  runId?: string;
+  errorCode?: string;
+  retryable?: boolean;
 };
 export type IntelligenceMetric = {
   value: number | null;
@@ -256,6 +259,9 @@ export function readStudy(value: unknown): AnalysisStudy {
     error: typeof record?.error === "string" ? record.error : undefined,
     updatedAt:
       typeof record?.updatedAt === "string" ? record.updatedAt : undefined,
+    runId: typeof record?.runId === "string" ? record.runId : undefined,
+    errorCode: typeof record?.errorCode === "string" ? record.errorCode : undefined,
+    retryable: typeof record?.retryable === "boolean" ? record.retryable : undefined,
   };
 }
 

@@ -59,6 +59,32 @@ describe("report model", () => {
     expect(model.pending.map((item) => item.id)).toEqual(["traffic", "demand", "opportunity"]);
   });
 
+  it("keeps confidence attached to each independent market indicator", () => {
+    const model = buildReport({
+      ...full(),
+      snapshot: { ...snapshot, sources: [
+        { source: "World Bank Open Data", url: "https://api.worldbank.org/v2/country/SA/indicator/SP.POP.TOTL", confidence: "HIGH", fetchedAt: now },
+        { source: "World Bank Open Data", url: "https://api.worldbank.org/v2/country/SA/indicator/NY.GNP.PCAP.PP.CD", confidence: "LOW", fetchedAt: now },
+        { source: "World Bank Open Data", url: "https://api.worldbank.org/v2/country/SA/indicator/FP.CPI.TOTL.ZG", confidence: "MEDIUM", fetchedAt: now },
+      ] },
+    }, "en");
+    expect(model.indicators.find((item) => item.id === "population")?.confidence).toBe("HIGH");
+    expect(model.indicators.find((item) => item.id === "purchasing")?.confidence).toBe("LOW");
+    expect(model.indicators.find((item) => item.id === "inflation")?.confidence).toBe("MEDIUM");
+  });
+
+  it("preserves confidence for historical snapshots with one combined World Bank source", () => {
+    const model = buildReport({
+      ...full(),
+      snapshot: { ...snapshot, sources: [
+        { source: "World Bank Open Data", url: "https://api.worldbank.org/v2/country/SA/indicator/SP.POP.TOTL?format=json&per_page=1", confidence: "HIGH", fetchedAt: now },
+      ] },
+    }, "en");
+    for (const id of ["population", "purchasing", "inflation"]) {
+      expect(model.indicators.find((item) => item.id === id)?.confidence).toBe("HIGH");
+    }
+  });
+
   it("gives each available indicator a compact note for the one-screen cards and keeps the count the map callout needs", () => {
     const ar = buildReport(full(), "ar");
     const by = Object.fromEntries(ar.indicators.map((item) => [item.id, item]));

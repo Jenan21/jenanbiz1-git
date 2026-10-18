@@ -12,6 +12,7 @@ RUN npm ci
 COPY . ./
 RUN npx prisma generate
 RUN npm run build
+RUN npm run build:project-worker
 
 FROM base AS runtime
 WORKDIR /app

@@ -171,6 +171,7 @@ export async function createProject(
     sector?: string;
     countryCode?: string;
     currency?: string;
+    idempotencyKey?: string;
   },
   userId: string,
 ) {
@@ -178,6 +179,14 @@ export async function createProject(
   const baseSlug = slugify(name);
   const slug = `${baseSlug}-${crypto.randomUUID().slice(0, 8)}`;
   return db.$transaction(async (transaction) => {
+    if (input.idempotencyKey) {
+      await transaction.$executeRaw`SELECT pg_advisory_xact_lock(hashtextextended(${`project-create:${userId}:${input.idempotencyKey}`}, 0))`;
+      const existing = await transaction.project.findFirst({
+        where: { createdById: userId, creationIdempotencyKey: input.idempotencyKey },
+        include: projectInclude(),
+      });
+      if (existing) return presentProject(existing, userId);
+    }
     const project = await transaction.project.create({
       data: {
         name,
@@ -189,6 +198,7 @@ export async function createProject(
         status: ProjectStatus.DRAFT,
         currentPhase: ProjectPhaseType.ANALYSIS,
         createdById: userId,
+        creationIdempotencyKey: input.idempotencyKey,
         members: { create: { userId, addedById: userId, role: ProjectMemberRole.OWNER } },
         phases: {
           create: phasePlan.map((phase, index) => ({

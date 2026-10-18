@@ -106,6 +106,21 @@ services:
     security_opt:
       - no-new-privileges:true
 
+  project-analysis-worker:
+    build: .
+    restart: unless-stopped
+    command: ["node", ".worker/workers/project-analysis.mjs"]
+    stop_grace_period: 210s
+    environment:
+      DATABASE_URL: postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}?schema=public
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+
   postgres-backup:
     image: postgres:17-bookworm
     container_name: jenanbiz-postgres-backup

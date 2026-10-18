@@ -287,6 +287,7 @@ const commandSchema = z.discriminatedUnion("action", [
     sector: z.string().trim().max(120).optional(),
     countryCode: z.string().trim().length(2).optional(),
     currency: z.string().trim().length(3).optional(),
+    idempotencyKey: z.string().uuid().optional(),
   }),
   z.object({
     action: z.literal("searchIntelligence"),
@@ -498,7 +499,7 @@ export async function POST(request: NextRequest) {
                       return result;
                     })()
               : await startProject(input.projectId, user.id);
-    return NextResponse.json({ success: true, result }, { status: input.action === "create" || input.action === "createCompliance" || input.action === "createVendor" ? 201 : 200 });
+    return NextResponse.json({ success: true, result }, { status: input.action === "runProjectAnalysis" ? 202 : input.action === "create" || input.action === "createCompliance" || input.action === "createVendor" ? 201 : 200 });
   } catch (error) {
     if (error instanceof EmailNotVerifiedError) {
       return NextResponse.json({ success: false, code: error.code, message: error.message }, { status: 403 });
