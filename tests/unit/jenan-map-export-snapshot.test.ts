@@ -3,6 +3,7 @@ const mocks = vi.hoisted(() => ({ query: vi.fn() }));
 vi.mock("@/lib/db", () => ({ db: { $queryRaw: mocks.query } }));
 vi.mock("@/services/jenan-map/storage", () => ({
   downloadMetadata: () => ({ filename: "tiles.pmtiles", mime: "application/vnd.pmtiles" }),
+  logicalFilename: () => "tiles.pmtiles",
   storageState: async () => ({ status: "available", configured: true }),
 }));
 import { snapshot } from "@/services/jenan-map/service";

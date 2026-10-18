@@ -44,11 +44,13 @@ it("imports actual multipart binary bytes, immutable storage and both audit reco
   expect(await readdir(path.join(root, releaseId))).toEqual([path.basename(fixture.artifact.storageKey)]);
   expect(mocks.execute.mock.calls.map(([q]) => q.text).join(" ")).toContain('INSERT INTO "AuditLog"');
 });
-it("streams an operator staged binary and refuses traversal and symlinks", async () => {
+it("streams an operator staged binary and refuses traversal and symlinks", async (context) => {
   await writeFile(path.join(staging, "owned.pmtiles"), fixture.bytes);
   await ingestArtifact(releaseId, metadata, await localImportStream("owned.pmtiles"), "admin");
   await expect(localImportStream("../owned.pmtiles")).rejects.toThrow("INVALID_STAGED_FILENAME");
-  await symlink(path.join(staging, "owned.pmtiles"), path.join(staging, "link.pmtiles"));
+  // Windows lets only elevated accounts create symlinks; without that there is nothing to refuse.
+  try { await symlink(path.join(staging, "owned.pmtiles"), path.join(staging, "link.pmtiles")); }
+  catch (error) { if ((error as NodeJS.ErrnoException).code === "EPERM") return context.skip(); throw error; }
   await expect(localImportStream("link.pmtiles")).rejects.toThrow();
 });
 it("cleans pending files but retains immutable bytes after transaction failure, permitting a checksum-verified retry", async () => {
@@ -129,6 +131,23 @@ it.each([false, true])("serves exact release-pinned glyph bytes with private cac
   expect(response.headers.get("cache-control")).toBe("private, no-store");
   expect(response.headers.get("content-type")).toBe("application/x-protobuf");
   expect(Buffer.from(await response.arrayBuffer())).toEqual(glyph.bytes);
+});
+it.each([[false, 403], [true, 200]])("a release asset download needs the artifact's export permission (exportAllowed=%s -> %s)", async (exportAllowed, status) => {
+  const glyph = readyFixtureFiles()[3];
+  await mkdir(path.join(root, releaseId)); await writeFile(path.join(root, glyph.artifact.storageKey), glyph.bytes);
+  mocks.query.mockResolvedValueOnce([{ status: "Ready" }]).mockResolvedValueOnce([{ ...glyph.artifact, exportAllowed }]);
+  const response = await releaseAssetResponse(new NextRequest("http://localhost/?download=1"), releaseId, ["glyphs", "Noto", "0-255.pbf"], true);
+  expect(response.status).toBe(status);
+  if (status === 403) expect(await response.json()).toMatchObject({ error: "EXPORT_LICENSE_PERMISSION_REQUIRED" });
+  else expect(response.headers.get("content-disposition")).toContain("attachment");
+});
+it("an inline (non-download) asset request does not need export permission", async () => {
+  const glyph = readyFixtureFiles()[3];
+  await mkdir(path.join(root, releaseId)); await writeFile(path.join(root, glyph.artifact.storageKey), glyph.bytes);
+  mocks.query.mockResolvedValueOnce([{ status: "Ready" }]).mockResolvedValueOnce([{ ...glyph.artifact, exportAllowed: false }]);
+  const response = await releaseAssetResponse(new NextRequest("http://localhost/"), releaseId, ["glyphs", "Noto", "0-255.pbf"], true);
+  expect(response.status).toBe(200);
+  expect(response.headers.get("content-disposition")).toContain("inline");
 });
 it("derives layer binding style IDs from retained bytes under the candidate lock and audits", async () => {
   const style = readyFixtureFiles()[1];

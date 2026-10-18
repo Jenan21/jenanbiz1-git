@@ -1,13 +1,13 @@
 import { createHash, randomUUID } from "node:crypto";
 import { constants } from "node:fs";
-import { chmod, link, mkdir, open, realpath, stat, unlink } from "node:fs/promises";
+import { link, mkdir, realpath, unlink, chmod } from "node:fs/promises";
 import path from "node:path";
 import { Readable } from "node:stream";
 import { z } from "zod";
 import { Prisma } from "@/generated/prisma/client";
 import { db } from "@/lib/db";
 import { idSchema, MapError, type Artifact } from "./contracts";
-import { openArtifact, storageRoot } from "./storage";
+import { assertPrivateDirectory, openArtifact, openNoFollow, storageRoot, syncDirectory } from "./storage";
 import { validateArtifactFormat } from "./validation";
 
 export const importSchema = z.object({
@@ -43,9 +43,9 @@ export async function localImportStream(filename: string) {
   const root = await realpath(configured), storage = await realpath(storageRoot());
   const publicRoot = await realpath(path.resolve("public")).catch(() => path.resolve("public"));
   if (root === publicRoot || root.startsWith(publicRoot + path.sep) || root === storage ||
-      root.startsWith(storage + path.sep) || storage.startsWith(root + path.sep) ||
-      ((await stat(root)).mode & 0o077) !== 0) throw new MapError("PRIVATE_STAGING_REQUIRED", 503);
-  const handle = await open(path.join(root, filename), constants.O_RDONLY | constants.O_NOFOLLOW);
+      root.startsWith(storage + path.sep) || storage.startsWith(root + path.sep)) throw new MapError("PRIVATE_STAGING_REQUIRED", 503);
+  await assertPrivateDirectory(root, "PRIVATE_STAGING_REQUIRED");
+  const handle = await openNoFollow(path.join(root, filename), constants.O_RDONLY);
   if (!(await handle.stat()).isFile()) { await handle.close(); throw new MapError("INVALID_STAGED_FILE", 400); }
   return handle.createReadStream({ autoClose: true });
 }
@@ -57,14 +57,13 @@ export async function ingestArtifact(releaseId: string, input: ImportInput, stre
   catch (error) { if (stream instanceof Readable) stream.destroy(); throw error; }
   const root = await realpath(storageRoot());
   const publicRoot = await realpath(path.resolve("public")).catch(() => path.resolve("public"));
-  if (root === publicRoot || root.startsWith(publicRoot + path.sep) || ((await stat(root)).mode & 0o077) !== 0) {
-    throw new MapError("PRIVATE_STORAGE_REQUIRED", 503);
-  }
+  if (root === publicRoot || root.startsWith(publicRoot + path.sep)) throw new MapError("PRIVATE_STORAGE_REQUIRED", 503);
+  await assertPrivateDirectory(root, "PRIVATE_STORAGE_REQUIRED");
   const folder = path.join(root, releaseId);
   await mkdir(folder, { mode: 0o700, recursive: true });
   if (await realpath(folder) !== folder) throw new MapError("INVALID_STORAGE_KEY", 503);
   const pending = path.join(folder, `.upload-${randomUUID()}`);
-  const handle = await open(pending, constants.O_CREAT | constants.O_EXCL | constants.O_RDWR | constants.O_NOFOLLOW, 0o600);
+  const handle = await openNoFollow(pending, constants.O_CREAT | constants.O_EXCL | constants.O_RDWR, 0o600);
   try {
     let count = 0;
     const hash = createHash("sha256");
@@ -83,7 +82,7 @@ export async function ingestArtifact(releaseId: string, input: ImportInput, stre
     };
     await handle.sync();
     // Validation uses explicit positions; reset only the descriptor used by JSON readers.
-    const validator = await open(pending, constants.O_RDONLY | constants.O_NOFOLLOW);
+    const validator = await openNoFollow(pending, constants.O_RDONLY);
     try { await validateArtifactFormat(file, validator); } finally { await validator.close(); }
     await chmod(pending, 0o400);
     await db.$transaction(async (tx) => {
@@ -97,8 +96,7 @@ export async function ingestArtifact(releaseId: string, input: ImportInput, stre
         // Never overwrite them or remove a file that a committed record may reference.
         await (await openArtifact(file, true)).close();
       }
-      const directory = await open(folder, constants.O_RDONLY | constants.O_DIRECTORY);
-      try { await directory.sync(); } finally { await directory.close(); }
+      await syncDirectory(folder);
       await tx.$executeRaw(Prisma.sql`INSERT INTO jenan_map.artifact
         (id,"releaseId",kind,"storageKey",filename,mime,sha256,"byteSize","publicSafe","exportAllowed","exportLicense")
         VALUES (${file.id}::uuid,${releaseId}::uuid,${file.kind},${file.storageKey},${file.filename},${file.mime},

@@ -114,11 +114,13 @@ describe("private immutable storage", () => {
     await writeFile(path.join(root, artifact.storageKey), Buffer.alloc(bytes.length, "x"));
     await expect(openArtifact(artifact)).rejects.toThrow("ARTIFACT_INTEGRITY_FAILED");
   });
-  it("refuses final symlinks", async () => {
+  it("refuses final symlinks", async (context) => {
     await mkdir(path.join(root, releaseId), { recursive: true });
     const original = path.join(root, "original");
     await writeFile(original, bytes);
-    await symlink(original, path.join(root, artifact.storageKey));
+    // Windows lets only elevated accounts create symlinks; without that there is nothing to refuse.
+    try { await symlink(original, path.join(root, artifact.storageKey)); }
+    catch (error) { if ((error as NodeJS.ErrnoException).code === "EPERM") return context.skip(); throw error; }
     await expect(openArtifact(artifact)).rejects.toThrow();
   });
   it("keeps hot range reads bounded while permitting forced publication/export checks", async () => {

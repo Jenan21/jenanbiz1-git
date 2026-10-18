@@ -47,14 +47,19 @@ export async function access(request: NextRequest, admin = false, mutation = fal
   return response ? { response } : { user };
 }
 
+/** A download is an export: it needs the artifact's own export permission, on every route that can stream it. */
+function assertDownloadAllowed(request: NextRequest, artifact: Artifact) {
+  if (request.nextUrl.searchParams.get("download") === "1" &&
+      (artifact as Artifact & { exportAllowed?: boolean }).exportAllowed !== true) throw new MapError("EXPORT_LICENSE_PERMISSION_REQUIRED", 403);
+}
+
 export async function artifactResponse(request: NextRequest, artifactId: string, admin: boolean) {
   try {
     const auth = await access(request, admin);
     if (auth.response) return auth.response;
     if (!idSchema.safeParse(artifactId).success) return json({ error: "INVALID_ARTIFACT_ID" }, 400);
     const artifact = await authorizedArtifact(artifactId, admin);
-    if (request.nextUrl.searchParams.get("download") === "1" &&
-        (artifact as Artifact & { exportAllowed?: boolean }).exportAllowed !== true) throw new MapError("EXPORT_LICENSE_PERMISSION_REQUIRED", 403);
+    assertDownloadAllowed(request, artifact);
     if (artifact.kind === "style" && request.nextUrl.searchParams.get("download") !== "1") return json(await servedStyle(artifact, admin));
     return await streamArtifact(request, artifact, admin);
   } catch (error) {
@@ -99,6 +104,7 @@ export async function releaseAssetResponse(request: NextRequest, releaseId: stri
     const kind = requestedKind === "sprites" ? "sprite" : requestedKind;
     if (name.some((part) => !part || part === "." || part === ".." || /[\\/\u0000-\u001f]/.test(part))) throw new MapError("INVALID_ASSET_PATH", 400);
     const artifact = await authorizedReleaseAsset(releaseId, kind, name.join("/"), admin);
+    assertDownloadAllowed(request, artifact);
     if (kind === "style") return json(await servedStyle(artifact, admin));
     return await streamArtifact(request, artifact, admin);
   } catch (error) { return failure(error); }

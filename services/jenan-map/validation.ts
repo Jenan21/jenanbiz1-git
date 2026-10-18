@@ -7,13 +7,15 @@ import { openArtifact } from "./storage";
 import { validateCoverage, validateProvenance } from "../../scripts/jenan-map/open-data.mjs";
 
 const JSON_LIMIT = 16 * 1024 * 1024;
+// The offline builder accepts up to 128 MiB of source GeoJSON and 100,000 searchable features, so approval must read what it builds.
+const GEOJSON_LIMIT = 128 * 1024 * 1024;
 function invalid(): never { throw new MapError("ARTIFACT_FORMAT_INVALID", 422); }
 function internal(value: { visibility?: unknown; internal?: unknown; publicSafe?: unknown } | undefined) {
   return value?.visibility === "internal" || value?.internal === true || value?.publicSafe === false;
 }
-export async function readJson(handle: FileHandle) {
+export async function readJson(handle: FileHandle, limit = JSON_LIMIT) {
   const info = await handle.stat();
-  if (info.size > JSON_LIMIT) invalid();
+  if (info.size > limit) invalid();
   try { return JSON.parse((await handle.readFile()).toString("utf8")); }
   catch { return invalid(); }
 }
@@ -48,6 +50,42 @@ function protobuf(bytes: Buffer): Map<number, Buffer[]> {
     cursor = end;
   }
   return fields;
+}
+
+/**
+ * Decodes a vector-tile feature's command stream (MVT spec 4.3): every varint must terminate, every command must carry exactly
+ * its parameters, and the sequence must draw what the feature type promises (points, lines, closed rings).
+ */
+export function validGeometry(type: number, data: Buffer | undefined) {
+  if (![1, 2, 3].includes(type) || !data?.length) invalid();
+  const bytes = data as Buffer;
+  let cursor = 0;
+  const read = () => {
+    let value = 0;
+    for (let shift = 0; shift < 35 && cursor < bytes.length; shift += 7) {
+      const byte = bytes[cursor++]; value += (byte & 127) * 2 ** shift;
+      if (!(byte & 128)) return value;
+    }
+    return invalid();
+  };
+  let state: "none" | "moved" | "drawn" | "closed" = "none";
+  while (cursor < bytes.length) {
+    const header = read(), command = header % 8, count = Math.floor(header / 8);
+    if (!count) invalid();
+    if (command === 1) {
+      if (type !== 1 && (count !== 1 || state === "moved" || state === "drawn" && type === 3)) invalid();
+      for (let i = 0; i < count * 2; i++) read();
+      state = "moved";
+    } else if (command === 2) {
+      if (type === 1 || state !== "moved" && state !== "drawn" || type === 3 && state === "moved" && count < 2) invalid();
+      for (let i = 0; i < count * 2; i++) read();
+      state = "drawn";
+    } else if (command === 7) {
+      if (type !== 3 || count !== 1 || state !== "drawn") invalid();
+      state = "closed";
+    } else invalid();
+  }
+  if (type === 1 ? state !== "moved" : type === 2 ? state !== "drawn" : state !== "closed") invalid();
 }
 
 export async function validateArtifactFormat(file: Artifact, handle: FileHandle) {
@@ -116,7 +154,8 @@ export async function validateArtifactFormat(file: Artifact, handle: FileHandle)
       const fields = protobuf(layer), name = fields.get(1)?.[0]?.toString();
       if (fields.get(15)?.[0]?.toString() !== "2" || !metadata.vector_layers.some((v: { id: string }) => v.id === name)) invalid();
       for (const feature of fields.get(2) ?? []) {
-        if (!protobuf(feature).get(4)?.[0]?.length) invalid();
+        const parts = protobuf(feature);
+        validGeometry(Number(parts.get(3)?.[0]?.toString()), parts.get(4)?.[0]);
       }
     }
     return { type: "pmtiles", layers: metadata.vector_layers.map((v: { id: string }) => v.id), minzoom: h[100], maxzoom: h[101] };
@@ -137,8 +176,9 @@ export async function validateArtifactFormat(file: Artifact, handle: FileHandle)
         if (![1, 3, 4, 5, 6, 7].every((field) => values.has(field))) invalid();
         const id = Number(values.get(1)![0].toString());
         const width = Number(values.get(3)![0].toString()), height = Number(values.get(4)![0].toString());
-        if (id < start || id > end || width > 512 || height > 512 ||
-            width * height > 0 && values.get(2)?.[0]?.length !== width * height) invalid();
+        // A MapLibre SDF bitmap carries a three-pixel border on every side of the glyph's metric box.
+        const expected = width * height > 0 ? (width + 6) * (height + 6) : 0;
+        if (id < start || id > end || width > 512 || height > 512 || (values.get(2)?.[0]?.length ?? 0) !== expected) invalid();
       }
     }
     return { type: "glyphs" };
@@ -152,7 +192,7 @@ export async function validateArtifactFormat(file: Artifact, handle: FileHandle)
     try { await loadImage(await readAt(handle, 0, Number(file.byteSize))); } catch { return invalid(); }
     return { type: "sprite", width: png.readUInt32BE(16), height: png.readUInt32BE(20) };
   }
-  const value = await readJson(handle);
+  const value = await readJson(handle, file.kind === "geojson" ? GEOJSON_LIMIT : JSON_LIMIT);
   if (file.kind === "style") {
     if (validateStyleMin(value).length || value.version !== 8 || !Object.keys(value.sources ?? {}).length) invalid();
     if (file.publicSafe && (internal(value.metadata) || value.layers.some((layer: { metadata?: object }) => internal(layer.metadata)))) invalid();

@@ -2,7 +2,7 @@ import { randomUUID } from "node:crypto";
 import { Prisma } from "@/generated/prisma/client";
 import { db, type DbExecutor } from "@/lib/db";
 import { type Artifact, type MapCommand, type MapRuntime, type Release, type SavedLocation, MapError } from "./contracts";
-import { downloadMetadata, openArtifact, storageRoot, storageState } from "./storage";
+import { downloadMetadata, logicalFilename, openArtifact, storageRoot, storageState } from "./storage";
 import { releaseAssetBase, validateReleaseArtifacts } from "./validation";
 import { readyLayerSearchFilter, releaseManifestLayers } from "./layers";
 import { OPEN_BOUNDARY_NOTICE, OSM_ATTRIBUTION, validateProvenance } from "../../scripts/jenan-map/open-data.mjs";
@@ -67,7 +67,7 @@ function publicArtifact(artifact: Artifact, admin = false) {
   const download = downloadMetadata(artifact);
   return {
     id: artifact.id, kind: artifact.kind, filename: download.filename, mime: download.mime,
-    logicalFilename: artifact.kind === "glyphs" && /^[^/\\]{1,150}\/\d+-\d+\.pbf$/.test(artifact.filename) ? artifact.filename : download.filename,
+    logicalFilename: logicalFilename(artifact),
     sha256: artifact.sha256, byteSize: artifact.byteSize.toString(),
     url: `/api/${admin ? "admin/" : ""}jenan-map/artifacts/${artifact.id}`,
   };
