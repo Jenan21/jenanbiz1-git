@@ -9,6 +9,7 @@ import { pipeline } from "node:stream/promises";
 import { createInterface } from "node:readline";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+import { isPrivateDirectory } from "./fs-safety.mjs";
 import { importedFeature, OPEN_BOUNDARY_NOTICE, OSM_ATTRIBUTION, validateProvenance } from "./open-data.mjs";
 
 const API = "https://www.geoboundaries.org/api/current/gbOpen/SAU";
@@ -289,7 +290,7 @@ async function main(args) {
   if (rootArg === publicRoot || rootArg.startsWith(publicRoot + path.sep)) throw new Error("Private operator directory required");
   await mkdir(rootArg, { mode: 0o700 }); // Existing directories refused; no overwrite/resume of immutable evidence.
   const root = await realpath(rootArg);
-  if (root !== path.resolve(rootArg) || ((await stat(root)).mode & 0o077) !== 0) throw new Error("Private nonsymlink 0700 operator directory required");
+  if (root !== path.resolve(rootArg) || !(await isPrivateDirectory(root))) throw new Error("Private nonsymlink 0700 operator directory required");
   if (mode !== "prepare") await acquire(root, mode === "acquire-pinned-boundaries");
   else await prepare(await json(sourceArg), root, releaseId);
   console.log(JSON.stringify({ status: "prepared-not-published", directory: root }));

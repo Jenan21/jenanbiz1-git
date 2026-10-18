@@ -2,9 +2,10 @@
 // Run in an operator-controlled background job:
 // node --env-file=.env scripts/jenan-map/build.mjs --release UUID --manifest import.json
 // No migrations, remote fetches, shell execution, or third-party fallbacks.
+import { isPrivateDirectory, openNoFollow } from "./fs-safety.mjs";
 import { createHash, randomUUID } from "node:crypto";
 import { constants } from "node:fs";
-import { chmod, mkdir, open, realpath, stat } from "node:fs/promises";
+import { chmod, mkdir, realpath } from "node:fs/promises";
 import path from "node:path";
 import pg from "pg";
 import { validateCoverage } from "./open-data.mjs";
@@ -22,7 +23,7 @@ export function parseArguments(args) {
 
 async function readStaged(root, filename) {
   if (!/^[a-zA-Z0-9][a-zA-Z0-9._-]{0,120}\.(json|geojson)$/.test(filename)) throw new Error("Invalid staged filename");
-  const handle = await open(path.join(root, filename), constants.O_RDONLY | constants.O_NOFOLLOW);
+  const handle = await openNoFollow(path.join(root, filename), constants.O_RDONLY);
   try {
     const info = await handle.stat();
     if (!info.isFile() || info.size < 1 || info.size > MAX_BYTES) throw new Error("Staged file size outside limits");
@@ -59,7 +60,7 @@ export function normalizeFeatures(value) {
       properties.aliases = [...new Set(aliases.map((alias) => alias.trim()))];
     }
     if (feature.properties.layerId !== undefined) {
-      if (!["roads", "places", "regions", "governorates"].includes(feature.properties.layerId) ||
+      if (!["roads", "places", "pois", "regions", "governorates"].includes(feature.properties.layerId) ||
           category !== feature.properties.layerId || typeof feature.properties.sourceId !== "string" ||
           !feature.properties.sourceId || feature.properties.sourceId.length > 240 ||
           !["geoBoundaries", "OpenStreetMap"].includes(feature.properties.source)) throw new Error("Invalid imported layer/source identity");
@@ -86,7 +87,7 @@ async function persistArtifact(client, root, releaseId, bytes, kind, publicSafe,
   const actual = await realpath(folder);
   if (actual !== folder) throw new Error("Storage directory symlink refused");
   const target = path.join(folder, `${sha256}.${extension}`);
-  const handle = await open(target, constants.O_WRONLY | constants.O_CREAT | constants.O_EXCL | constants.O_NOFOLLOW, 0o400);
+  const handle = await openNoFollow(target, constants.O_WRONLY | constants.O_CREAT | constants.O_EXCL, 0o400);
   try {
     await handle.writeFile(bytes);
     await handle.sync();
@@ -117,8 +118,7 @@ export async function build(args) {
   const publicRoot = await realpath(path.resolve("public")).catch(() => path.resolve("public"));
   for (const root of [stagingRoot, storageRoot]) {
     if (root === publicRoot || root.startsWith(publicRoot + path.sep)) throw new Error("Public directory cannot hold private data");
-    const info = await stat(root);
-    if (!info.isDirectory() || (info.mode & 0o077) !== 0) throw new Error("Private roots must have permissions 0700");
+    if (!(await isPrivateDirectory(root))) throw new Error("Private roots must have permissions 0700");
   }
   if (stagingRoot === storageRoot || stagingRoot.startsWith(storageRoot + path.sep) || storageRoot.startsWith(stagingRoot + path.sep)) throw new Error("Separate staging and immutable storage roots required");
   const input = JSON.parse((await readStaged(stagingRoot, manifest)).toString("utf8"));
