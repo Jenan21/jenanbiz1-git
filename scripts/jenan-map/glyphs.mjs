@@ -3,7 +3,10 @@
 // (Noto Sans, SIL Open Font License 1.1), pins every file by SHA-256 and writes a manifest. Output: .jenan-map-data/glyphs (never committed).
 //   npm run jenan-map:glyphs
 import { createHash } from "node:crypto";
-import { mkdir, writeFile } from "node:fs/promises";
+import { createReadStream, createWriteStream } from "node:fs";
+import { mkdir, stat, writeFile } from "node:fs/promises";
+import { Readable } from "node:stream";
+import { pipeline } from "node:stream/promises";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -36,13 +39,17 @@ export async function main() {
     for (const range of GLYPH_RANGES) {
       const response = await fetch(glyphUrl(stack, range), { signal: AbortSignal.timeout(60_000) });
       if (!response.ok) throw new Error(`Glyph download failed (${response.status}): ${stack} ${range}`);
-      const bytes = Buffer.from(await response.arrayBuffer());
-      await writeFile(path.join(out, stack, `${range}.pbf`), bytes);
-      files.push({ filename: glyphName(stack, range), sha256: createHash("sha256").update(bytes).digest("hex"), byteSize: bytes.length });
+      // Streamed to disk and verified afterwards from the file itself, never held in memory or rewritten from the response.
+      const target = path.join(out, stack, `${range}.pbf`);
+      await pipeline(Readable.fromWeb(response.body), createWriteStream(target, { flags: "w", mode: 0o600 }));
+      const hash = createHash("sha256");
+      for await (const chunk of createReadStream(target)) hash.update(chunk);
+      files.push({ filename: glyphName(stack, range), sha256: hash.digest("hex"), byteSize: (await stat(target)).size });
     }
   }
-  const license = await (await fetch(GLYPH_SOURCE.licenseUrl)).text();
-  await writeFile(path.join(out, "OFL.txt"), license);
+  const license = await fetch(GLYPH_SOURCE.licenseUrl, { signal: AbortSignal.timeout(60_000) });
+  if (!license.ok || !license.body) throw new Error(`License download failed (${license.status})`);
+  await pipeline(Readable.fromWeb(license.body), createWriteStream(path.join(out, "OFL.txt"), { flags: "w", mode: 0o600 }));
   const manifest = { source: GLYPH_SOURCE, fonts: FONT_STACKS, ranges: GLYPH_RANGES, downloadedAt: new Date().toISOString(), files };
   await writeFile(path.join(out, "manifest.json"), JSON.stringify(manifest, null, 2) + "\n");
   console.log(`glyphs: ${files.length} files, ${(files.reduce((sum, f) => sum + f.byteSize, 0) / 1024 ** 2).toFixed(1)} MB -> ${out}`);
