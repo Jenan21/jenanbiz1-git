@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 // Operator-only: never invoked by an HTTP request, never publishes a release.
 import { createHash } from "node:crypto";
-import { constants, createReadStream, createWriteStream } from "node:fs";
+import { constants, createReadStream, createWriteStream, existsSync } from "node:fs";
 import { copyFile, mkdir, open, readFile, realpath, stat, writeFile } from "node:fs/promises";
 import { spawnSync } from "node:child_process";
 import { Readable } from "node:stream";
@@ -27,14 +27,33 @@ const json = async (filename) => {
   return JSON.parse(await readFile(filename, "utf8"));
 };
 const save = (filename, value) => writeFile(filename, JSON.stringify(value, null, 2) + "\n", { flag: "wx", mode: 0o600 });
+// GeoJSON text sequences (RFC 8142) prefix each record with the ASCII record separator.
+const RECORD_SEPARATOR = String.fromCharCode(0x1e);
+export const stripRecordSeparator = (line) => (line.startsWith(RECORD_SEPARATOR) ? line.slice(RECORD_SEPARATOR.length) : line);
+
+// Operator tools run from an explicit, fixed directory, never from a PATH search that a writable directory could shadow.
+const FIXED_TOOL_DIRECTORIES = ["/usr/bin", "/usr/local/bin", "/opt/homebrew/bin", "/opt/local/bin"];
+export function resolveTool(name, env = process.env, exists = existsSync) {
+  if (!/^[a-z0-9_-]+$/.test(name)) throw new Error("Invalid operator tool name");
+  const configured = env.JENAN_MAP_TOOLS_DIR;
+  if (configured && !path.isAbsolute(configured)) throw new Error("JENAN_MAP_TOOLS_DIR must be an absolute directory");
+  const suffixes = process.platform === "win32" ? [".exe", ".cmd", ""] : [""];
+  for (const directory of configured ? [configured] : FIXED_TOOL_DIRECTORIES) {
+    for (const suffix of suffixes) {
+      const candidate = path.join(directory, name + suffix);
+      if (exists(candidate)) return candidate;
+    }
+  }
+  throw new Error(`Operator tool ${name} not found in ${configured ?? FIXED_TOOL_DIRECTORIES.join(", ")}; install a reviewed version or set JENAN_MAP_TOOLS_DIR`);
+}
 
 function tool(name, args) {
-  const result = spawnSync(name, args, { stdio: "inherit", shell: false });
+  const result = spawnSync(resolveTool(name), args, { stdio: "inherit", shell: false });
   if (result.error || result.status !== 0) throw new Error(`Operator tool ${name} failed; install a reviewed version and retry in a NEW work directory`);
 }
 
 function toolVersion(name) {
-  const result = spawnSync(name, ["--version"], { encoding: "utf8", shell: false });
+  const result = spawnSync(resolveTool(name), ["--version"], { encoding: "utf8", shell: false });
   if (result.error || result.status !== 0) throw new Error(`Installed reviewed operator tool required: ${name}`);
   return `${result.stdout ?? ""}${result.stderr ?? ""}`.trim();
 }
@@ -108,7 +127,7 @@ export async function acquire(root, pinnedBoundariesOnly = false) {
   if (!timestamp || !Number.isFinite(Date.parse(timestamp))) throw new Error("Geofabrik replication timestamp unavailable");
   const osmFile = path.join(root, "gcc-states.osm.pbf");
   await download(GCC, osmFile);
-  const info = spawnSync("osmium", ["fileinfo", "-g", "header.option.osmosis_replication_timestamp", osmFile], { encoding: "utf8", shell: false });
+  const info = spawnSync(resolveTool("osmium"), ["fileinfo", "-g", "header.option.osmosis_replication_timestamp", osmFile], { encoding: "utf8", shell: false });
   const sourceTimestamp = info.stdout?.trim();
   if (info.error || info.status !== 0 || !sourceTimestamp || !Number.isFinite(Date.parse(sourceTimestamp))) throw new Error("Installed osmium and actual PBF replication timestamp required");
   const config = { boundaries: sources, osm: { file: osmFile, sha256: await checksum(osmFile), provenance: {
@@ -161,7 +180,7 @@ export async function prepare(config, root, releaseId) {
   try {
     for await (const line of createInterface({ input: createReadStream(path.join(root, "osm.geojsonseq")), crlfDelay: Infinity })) {
       if (!line.trim()) continue;
-      const feature = JSON.parse(line.replace(/^\x1e/, ""));
+      const feature = JSON.parse(stripRecordSeparator(line));
       const layer = feature.properties?.highway ? "roads" : feature.properties?.place ? "places" : null;
       if (!layer) continue;
       // Retain unnamed roads for rendering, but not as fabricated searchable names.
@@ -189,7 +208,7 @@ export async function prepare(config, root, releaseId) {
     for await (const line of createInterface({ input: createReadStream(path.join(root, `${id}.geojsonseq`)), crlfDelay: Infinity })) {
       if (!line.trim()) continue;
       count++;
-      const feature = JSON.parse(line.replace(/^\x1e/, ""));
+      const feature = JSON.parse(stripRecordSeparator(line));
       // Only actual source names enter search; unnamed roads still render in the tile archive.
       if (id !== "base" && typeof feature.properties?.label === "string") {
         if (searchFeatures.length >= MAX_SEARCH) throw new Error("Real search exceeds 100,000-feature v1 limit; do not truncate or publish");
