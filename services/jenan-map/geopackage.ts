@@ -12,7 +12,7 @@ const APPLICATION_ID = 0x47504b47; // "GPKG"
 const USER_VERSION = 10300; // GeoPackage 1.3.0
 export const WGS84_SRS_ID = 4326;
 const WGS84_DEFINITION = 'GEOGCS["WGS 84",DATUM["WGS_1984",SPHEROID["WGS 84",6378137,298.257223563,AUTHORITY["EPSG","7030"]],AUTHORITY["EPSG","6326"]],PRIMEM["Greenwich",0,AUTHORITY["EPSG","8901"]],UNIT["degree",0.01745329251994328,AUTHORITY["EPSG","9122"]],AUTHORITY["EPSG","4326"]]';
-const METADATA_EXTENSION_URI = "http://www.geopackage.org/spec121/#extension_metadata";
+const METADATA_EXTENSION_URI = "https://www.geopackage.org/spec121/#extension_metadata";
 
 export type GeoPackageFeature = {
   id: string; label: string; category: string; layerId: string | null; sourceId: string | null; aliases: string[];

@@ -24,6 +24,16 @@ const sha256Hex = (data) => createHash("sha256").update(data).digest("hex");
 const hmac = (key, data) => createHmac("sha256", key).update(data).digest();
 const encodeRfc3986 = (value) => encodeURIComponent(value).replace(/[!'()*]/g, (char) => `%${char.codePointAt(0).toString(16).toUpperCase()}`);
 const encodeKey = (key) => key.split("/").map(encodeRfc3986).join("/");
+// Signature V4 sorts by UTF-16 code unit, never by locale.
+const byCodeUnit = (a, b) => (a < b ? -1 : a > b ? 1 : 0);
+// A loop rather than /\/+$/, which backtracks quadratically on a long run of slashes.
+function trimTrailingSlashes(value) {
+  let end = value.length;
+  while (end > 0 && value[end - 1] === "/") end -= 1;
+  return value.slice(0, end);
+}
+// Every segment non-empty, made of safe characters, and the whole ending in "/", for example `maps/` or `a/b/`.
+const validPrefix = (prefix) => prefix.endsWith("/") && prefix.slice(0, -1).split("/").every((part) => /^[A-Za-z0-9._-]+$/.test(part) && part !== "." && part !== "..");
 
 /**
  * AWS Signature Version 4, Authorization-header form. Signs `host`, `x-amz-date` and every `x-amz-*` header given, plus
@@ -38,11 +48,11 @@ export function signRequest({ method, url, headers = {}, payloadHash = EMPTY_SHA
   if (service === "s3") send["x-amz-content-sha256"] = payloadHash;
   const signedSource = { host: target.host };
   for (const [name, value] of Object.entries(send)) if (name.toLowerCase().startsWith("x-amz-")) signedSource[name.toLowerCase()] = String(value).trim().replaceAll(/\s+/g, " ");
-  const names = Object.keys(signedSource).sort();
+  const names = Object.keys(signedSource).sort(byCodeUnit);
   const canonicalHeaders = names.map((name) => `${name}:${signedSource[name]}\n`).join("");
   const signedHeaders = names.join(";");
   const query = [...target.searchParams.entries()].map(([key, value]) => [encodeRfc3986(key), encodeRfc3986(value)])
-    .sort((a, b) => (a[0] < b[0] ? -1 : a[0] > b[0] ? 1 : a[1] < b[1] ? -1 : a[1] > b[1] ? 1 : 0)).map(([key, value]) => `${key}=${value}`).join("&");
+    .sort((a, b) => byCodeUnit(a[0], b[0]) || byCodeUnit(a[1], b[1])).map(([key, value]) => `${key}=${value}`).join("&");
   const canonicalRequest = `${method}\n${target.pathname}\n${query}\n${canonicalHeaders}\n${signedHeaders}\n${payloadHash}`;
   const scope = `${dateStamp}/${region}/${service}/aws4_request`;
   const stringToSign = `AWS4-HMAC-SHA256\n${amzDate}\n${scope}\n${sha256Hex(canonicalRequest)}`;
@@ -70,16 +80,15 @@ export function s3ConfigFromEnv(env = process.env) {
   const secretAccessKey = env.JENAN_MAP_S3_SECRET_ACCESS_KEY?.trim() ?? "";
   if (!/^\S{16,200}$/.test(secretAccessKey)) throw bad("secretAccessKey");
   const prefix = env.JENAN_MAP_S3_PREFIX?.trim() ?? "";
-  if (prefix && !/^(?:[A-Za-z0-9._-]+\/)+$/.test(prefix)) throw bad("prefix");
-  if (prefix.split("/").some((part) => part === "." || part === "..")) throw bad("prefix");
-  return { endpoint: endpoint.origin + endpoint.pathname.replace(/\/+$/, ""), bucket, region, accessKeyId, secretAccessKey, prefix, pathStyle: env.JENAN_MAP_S3_PATH_STYLE?.trim() !== "0" };
+  if (prefix && !validPrefix(prefix)) throw bad("prefix");
+  return { endpoint: endpoint.origin + trimTrailingSlashes(endpoint.pathname), bucket, region, accessKeyId, secretAccessKey, prefix, pathStyle: env.JENAN_MAP_S3_PATH_STYLE?.trim() !== "0" };
 }
 
 export function createS3Store({ endpoint, bucket, region = "auto", accessKeyId, secretAccessKey, prefix = "", pathStyle = true, fetchImpl = fetch, clock = () => new Date() }) {
   const base = new URL(endpoint);
   const urlFor = (key, query) => {
     const host = pathStyle ? base.host : `${bucket}.${base.host}`;
-    const root = pathStyle ? `${base.pathname.replace(/\/+$/, "")}/${bucket}` : base.pathname.replace(/\/+$/, "");
+    const root = pathStyle ? `${trimTrailingSlashes(base.pathname)}/${bucket}` : trimTrailingSlashes(base.pathname);
     const url = new URL(`${base.protocol}//${host}${root}${key ? `/${encodeKey(`${prefix}${key}`)}` : ""}`);
     for (const [name, value] of Object.entries(query ?? {})) url.searchParams.set(name, value);
     return url.toString();

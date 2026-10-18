@@ -72,6 +72,8 @@ const collect = (stream) => new Promise((resolve, reject) => {
   stream.once("error", reject);
 });
 
+const byCodeUnit = (a, b) => (a < b ? -1 : a > b ? 1 : 0);
+
 export function dumpName(now) {
   return `jenan-map-postgis-${now.toISOString().replaceAll(/[-:]/g, "").replace(/\.\d{3}Z$/, "Z")}.dump`;
 }
@@ -104,7 +106,7 @@ export async function dumpPostgis({ env = process.env, spawn = nodeSpawn, now = 
       feed: (child) => { child.stdin.on("error", () => undefined); createReadStream(target).pipe(child.stdin); },
       capture: (child) => collect(child.stdout),
     });
-    const tables = [...listing.matchAll(/^\d+; \d+ \d+ TABLE DATA (\S+) (\S+)(?: |$)/gm)].filter((match) => match[1] === DUMP_SCHEMA).map((match) => match[2]).sort();
+    const tables = [...listing.matchAll(/^\d+; \d+ \d+ TABLE DATA (\S+) (\S+)(?: |$)/gm)].filter((match) => match[1] === DUMP_SCHEMA).map((match) => match[2]).sort(byCodeUnit);
     if (!new RegExp(`^\\d+; \\d+ \\d+ SCHEMA - ${DUMP_SCHEMA}(?: |$)`, "m").test(listing) || !tables.length) throw new DumpError("DUMP_UNREADABLE");
 
     const version = await run(spawn, pgDump, ["--version"], environment, { capture: (child) => collect(child.stdout) });
