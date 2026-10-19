@@ -1,7 +1,8 @@
 import { expect, test, type Locator, type Page } from "@playwright/test";
 import {
-  attachJson, attachShot, changedShare, currentZoom, enabled, evidence, expectDraftAt, expectNoFailedRequests, loadState, measureRing, metersPerPixel,
-  openPicker, expectPaintedMap, removeMember, RIYADH, searchAndPick, seedMember, settle, summarize, warm, watchMapTraffic, type Member, type Provisioned,
+  attachJson, attachShot, changedShare, currentZoom, enabled, evidence, expectDraftAt, expectNoFailedRequests, expectNoPolicyViolations, expectPolicyEnforced, loadState,
+  measureRing, metersPerPixel, openPicker, expectPaintedMap, recordPolicyViolations, removeMember, RIYADH, searchAndPick, seedMember, settle, summarize, warm,
+  watchMapTraffic, type Member, type Provisioned,
 } from "./jenan-map-real-support";
 
 // BROWSER ACCEPTANCE of Jenan PRO Map on REAL Saudi data, for a signed-in member: the real PMTiles, glyphs, style and PostGIS features, through the real
@@ -17,6 +18,7 @@ const RIYADH_CENTER = { latitude: 24.7136, longitude: 46.6753 };
 const CAIRO = { latitude: 30.0444, longitude: 31.2357 };
 
 test.beforeAll(async ({ playwright }) => {
+  await expectPolicyEnforced(playwright);
   state = await loadState();
   member = await seedMember("user");
   await warm(playwright, member, ["/jenan-map", "/api/jenan-map", "/api/jenan-map/location", `/api/jenan-map/preferences?releaseId=${state.a.id}`,
@@ -31,7 +33,10 @@ test.beforeEach(async ({ context, baseURL }) => {
   await queryE2E('DELETE FROM jenan_map.preference WHERE "userId" = $1', [member.id]);
   await context.addCookies([{ name: "jenan_session", value: member.token, url: baseURL! }]);
   await context.grantPermissions(["geolocation"]);
+  await recordPolicyViolations(context);
 });
+
+test.afterEach(async ({ context }) => expectNoPolicyViolations(context));
 
 const mapCanvas = (dialog: Locator) => dialog.locator('canvas[aria-label^="خريطة جنان برو"]');
 const marker = (dialog: Locator) => dialog.locator(".maplibregl-marker");

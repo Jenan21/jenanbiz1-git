@@ -12,7 +12,7 @@ import {
 } from "react";
 import { createPortal } from "react-dom";
 import { assertPinnedRelease, mapManifestUrl, mapRequest, mapSearchUrl, MANIFEST_TIMEOUT_MS, SLOW_MANIFEST_NOTICE_MS } from "./api";
-import { MAP_STOPPED_MESSAGE } from "@/services/jenan-map/contracts";
+import { MAP_STOPPED_MESSAGE } from "@/services/jenan-map/messages";
 import { focusLoopTarget } from "./accessibility";
 import { saveOwnedMapLocation } from "./location-api";
 import { availableLayerIds, loadMapPreferences, persistMapPreferences } from "./preferences-api";

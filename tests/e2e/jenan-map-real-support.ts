@@ -1,4 +1,4 @@
-import { expect, type APIRequestContext, type Locator, type Page, type PlaywrightWorkerArgs, type Request, type TestInfo } from "@playwright/test";
+import { expect, type APIRequestContext, type BrowserContext, type Locator, type Page, type PlaywrightWorkerArgs, type Request, type TestInfo } from "@playwright/test";
 import { mkdir, readFile, writeFile } from "node:fs/promises";
 import path from "node:path";
 
@@ -7,6 +7,42 @@ import path from "node:path";
 export const enabled = process.env.RUN_JENAN_MAP_REAL_E2E === "1";
 export const home = process.env.JENAN_MAP_LOCAL_RUN ?? "";
 export const baseUrl = process.env.PLAYWRIGHT_BASE_URL ?? "http://127.0.0.1:3101";
+
+/**
+ * JENAN_MAP_EXPECT_CSP=1 audits the real map under the production content security policy. Only a production server (`next start`) sends it,
+ * so the audit refuses to pass against a server that does not, and every test then also fails on any violation its page reports.
+ */
+export const expectPolicy = process.env.JENAN_MAP_EXPECT_CSP === "1";
+
+const POLICY_RECORDER = `
+  window.__cspViolations = [];
+  document.addEventListener("securitypolicyviolation", (event) => {
+    window.__cspViolations.push({ blocked: event.blockedURI || "inline", directive: event.effectiveDirective, sample: (event.sample || "").slice(0, 80) });
+  });
+`;
+
+export async function expectPolicyEnforced(playwright: PlaywrightWorkerArgs["playwright"]) {
+  if (!expectPolicy) return;
+  const context = await playwright.request.newContext({ baseURL: baseUrl });
+  const policy = (await context.get("/login")).headers()["content-security-policy"] ?? "";
+  await context.dispose();
+  expect(policy, "the server must enforce the content security policy").toContain("script-src");
+  expect(policy, "the production policy forbids script evaluation").not.toContain("'unsafe-eval'");
+}
+
+export async function recordPolicyViolations(context: BrowserContext) {
+  if (expectPolicy) await context.addInitScript(POLICY_RECORDER);
+}
+
+/** Violations raised inside a worker are not seen by the page; they reach the server's `[csp-violation]` log through the policy's report-uri. */
+export async function expectNoPolicyViolations(context: BrowserContext) {
+  if (!expectPolicy) return;
+  const found: unknown[] = [];
+  for (const page of context.pages()) {
+    if (!page.isClosed()) found.push(...((await page.evaluate("window.__cspViolations || []").catch(() => [])) as unknown[]));
+  }
+  expect(found, "content security policy violations reported by the page").toEqual([]);
+}
 
 export type Provisioned = { a: { id: string; version: string }; b: { id: string; version: string } };
 export type Found = { id: string; label: string; category: string; latitude: number; longitude: number };

@@ -1,5 +1,5 @@
 import type { MapRelease } from "./types";
-import { MAP_STOPPED_MESSAGE } from "@/services/jenan-map/contracts";
+import { MAP_STOPPED_MESSAGE } from "@/services/jenan-map/messages";
 
 /**
  * The first request for a map after the server started, or after a release was imported, makes the server check every file of the release,

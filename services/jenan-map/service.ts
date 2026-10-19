@@ -1,7 +1,8 @@
 import { createHash, randomUUID } from "node:crypto";
 import { Prisma } from "@/generated/prisma/client";
 import { db, type DbExecutor } from "@/lib/db";
-import { type Artifact, type MapCommand, type MapRuntime, type Release, type SavedLocation, MAP_STOPPED_MESSAGE, MapError } from "./contracts";
+import { type Artifact, type MapCommand, type MapRuntime, type Release, type SavedLocation, MapError } from "./contracts";
+import { MAP_STOPPED_MESSAGE } from "./messages";
 import { assertStorageConfigured, downloadMetadata, logicalFilename, openArtifact, storageState } from "./storage";
 import { releaseAssetBase, validateReleaseArtifacts } from "./validation";
 import { layerProvenanceProblems, readyLayerSearchFilter, releaseManifestLayers } from "./layers";

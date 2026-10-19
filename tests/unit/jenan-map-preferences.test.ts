@@ -18,6 +18,8 @@ vi.mock("@/services/jenan-map/http", () => ({
 }));
 
 import { mapPreferencesSchema, savedLocationSchema, searchSchema } from "@/services/jenan-map/contracts";
+import { MAP_PREFERENCE_RADII, parseMapPreferences } from "@/services/jenan-map/preferences-shape";
+import { MAP_RADII } from "@/features/jenan-map/geometry";
 import { mapPreferences, saveMapPreferences } from "@/services/jenan-map/preferences";
 import { GET, PUT } from "@/app/api/jenan-map/preferences/route";
 import { loadMapPreferences, persistMapPreferences, restoreMapPreferences } from "@/features/jenan-map/preferences-api";
@@ -77,6 +79,69 @@ describe("map preference contracts and client isolation", () => {
     expect(fetch).toHaveBeenCalledWith("/api/jenan-map/preferences", expect.objectContaining({
       method: "PUT", credentials: "same-origin", body: JSON.stringify(input),
     }));
+  });
+});
+
+describe("client preference validation without the schema library", () => {
+  const viewport = { latitude: 24.7, longitude: 46.7, zoom: 12 };
+  const layerIds = (count: number) => Array.from({ length: count }, (_, index) => `layer-${String.fromCharCode(97 + (index % 26))}${String.fromCharCode(97 + Math.floor(index / 26))}`);
+  const cases: Array<[string, unknown, boolean]> = [
+    ["a saved selection", input, true],
+    ["a saved selection with a viewport", { ...input, viewport }, true],
+    ["every offered radius", { ...input, radius: 5000 }, true],
+    ["the smallest viewport", { ...input, viewport: { latitude: 16, longitude: 34, zoom: 3 } }, true],
+    ["the largest viewport", { ...input, viewport: { latitude: 33, longitude: 56.5, zoom: 18 } }, true],
+    ["no visible layers", { ...input, visibleLayers: [] }, true],
+    ["the largest layer selection", { ...input, visibleLayers: layerIds(64) }, true],
+    ["revision zero", { ...input, expectedRevision: 0 }, true],
+    ["the largest safe revision", { ...input, expectedRevision: Number.MAX_SAFE_INTEGER }, true],
+    ["the nil identifier", { ...input, releaseId: "00000000-0000-0000-0000-000000000000" }, true],
+    ["a radius that is not offered", { ...input, radius: 2000 }, false],
+    ["a radius written as text", { ...input, radius: "1000" }, false],
+    ["a missing radius", { ...input, radius: undefined }, false],
+    ["an identity key", { ...input, userId: "someone-else" }, false],
+    ["an unknown viewport key", { ...input, viewport: { ...viewport, bearing: 10 } }, false],
+    ["duplicate layers", { ...input, visibleLayers: ["roads", "roads"] }, false],
+    ["too many layers", { ...input, visibleLayers: layerIds(65) }, false],
+    ["an upper-case layer", { ...input, visibleLayers: ["Roads"] }, false],
+    ["a layer starting with a digit", { ...input, visibleLayers: ["1roads"] }, false],
+    ["a path as a layer", { ...input, visibleLayers: ["../private"] }, false],
+    ["an over-long layer", { ...input, visibleLayers: [`a${"b".repeat(64)}`] }, false],
+    ["a layer that is not text", { ...input, visibleLayers: [7] }, false],
+    ["layers that are not a list", { ...input, visibleLayers: "roads" }, false],
+    ["a latitude below the kingdom", { ...input, viewport: { ...viewport, latitude: 15.99 } }, false],
+    ["a latitude above the kingdom", { ...input, viewport: { ...viewport, latitude: 33.01 } }, false],
+    ["a longitude west of the kingdom", { ...input, viewport: { ...viewport, longitude: 33.99 } }, false],
+    ["a longitude east of the kingdom", { ...input, viewport: { ...viewport, longitude: 56.51 } }, false],
+    ["a zoom that is too far out", { ...input, viewport: { ...viewport, zoom: 2.99 } }, false],
+    ["a zoom that is too close", { ...input, viewport: { ...viewport, zoom: 18.01 } }, false],
+    ["an infinite zoom", { ...input, viewport: { ...viewport, zoom: Infinity } }, false],
+    ["a zoom that is not a number", { ...input, viewport: { ...viewport, zoom: Number.NaN } }, false],
+    ["a coordinate written as text", { ...input, viewport: { ...viewport, latitude: "24.7" } }, false],
+    ["a missing viewport", { ...input, viewport: undefined }, false],
+    ["a viewport list", { ...input, viewport: [24.7, 46.7, 12] }, false],
+    ["a negative revision", { ...input, expectedRevision: -1 }, false],
+    ["a fractional revision", { ...input, expectedRevision: 1.5 }, false],
+    ["a revision written as text", { ...input, expectedRevision: "1" }, false],
+    ["a revision beyond the safe range", { ...input, expectedRevision: Number.MAX_SAFE_INTEGER + 1 }, false],
+    ["a missing revision", { ...input, expectedRevision: undefined }, false],
+    ["a release that is not an identifier", { ...input, releaseId: "other" }, false],
+    ["an identifier without a version", { ...input, releaseId: "00000000-0000-0000-0000-000000000001" }, false],
+    ["a release that is not text", { ...input, releaseId: 7 }, false],
+    ["no value", null, false],
+    ["a list", [input], false],
+    ["text", "settings", false],
+  ];
+
+  it.each(cases)("gives the server's answer for %s", (_name, value, valid) => {
+    expect(mapPreferencesSchema.safeParse(value).success).toBe(valid);
+    expect(parseMapPreferences(value) !== null).toBe(valid);
+  });
+  it("returns the settings unchanged when they are valid", () => {
+    expect(parseMapPreferences({ ...input, viewport })).toEqual({ ...input, viewport });
+  });
+  it("offers the same radii as the picker", () => {
+    expect([...MAP_PREFERENCE_RADII]).toEqual([...MAP_RADII]);
   });
 });
 

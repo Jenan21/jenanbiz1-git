@@ -2,6 +2,8 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { createHash } from "node:crypto";
 import { mkdir, open, rm, writeFile } from "node:fs/promises";
 import path from "node:path";
+import { Readable } from "node:stream";
+import { setTimeout as sleep } from "node:timers/promises";
 import { validateArtifactFormat, validateReleaseArtifacts } from "@/services/jenan-map/validation";
 import { openArtifact } from "@/services/jenan-map/storage";
 import { pmtilesFixture, readyFixtureFiles } from "./jenan-map-artifact-fixtures";
@@ -46,10 +48,18 @@ describe("real retained map artifact validation", () => {
   it("coalesces simultaneous cold checksum hashing through separate open handles", async () => {
     const fixtures = await files(), artifact = fixtures[2].artifact;
     const handle = await open(path.join(root, artifact.storageKey), "r");
-    const spy = vi.spyOn(Object.getPrototypeOf(handle), "createReadStream");
+    const prototype = Object.getPrototypeOf(handle);
+    const original = prototype.createReadStream;
+    // A fixture hashes in microseconds, faster than eight callers can all arrive, and a caller that arrives after a forced verification has
+    // finished rightly starts a new one. A real archive takes seconds, so the read is held open until every caller has found it in flight.
+    const spy = vi.spyOn(prototype, "createReadStream").mockImplementation(function (this: unknown, ...args: unknown[]) {
+      const source = original.apply(this, args) as AsyncIterable<Uint8Array>;
+      return Readable.from((async function* () { await sleep(250); yield* source; })());
+    });
     try {
       const handles = await Promise.all(Array.from({ length: 8 }, () => openArtifact(artifact, true)));
       await Promise.all(handles.map((h) => h.close()));
+      expect(handles).toHaveLength(8);
       expect(spy).toHaveBeenCalledTimes(1);
     } finally { spy.mockRestore(); await handle.close(); }
   });

@@ -2,8 +2,8 @@ import { expect, test, type Browser, type Locator, type Page } from "@playwright
 import { readdir, rename } from "node:fs/promises";
 import path from "node:path";
 import {
-  attachJson, attachShot, baseUrl, enabled, evidence, expectNoFailedRequests, expectPaintedMap, home, loadState, openPicker, pixels, removeMember, searchAndPick,
-  seedMember, settle, summarize, warm, watchMapTraffic, RIYADH, type Member, type Provisioned,
+  attachJson, attachShot, baseUrl, enabled, evidence, expectNoFailedRequests, expectNoPolicyViolations, expectPaintedMap, expectPolicyEnforced, home, loadState, openPicker,
+  pixels, recordPolicyViolations, removeMember, searchAndPick, seedMember, settle, summarize, warm, watchMapTraffic, RIYADH, type Member, type Provisioned,
 } from "./jenan-map-real-support";
 
 // BROWSER ACCEPTANCE of the Jenan PRO Map administration on REAL Saudi data: every screen, every release action with its confirmation, the
@@ -20,6 +20,7 @@ let admin: Member;
 let member: Member;
 
 test.beforeAll(async ({ playwright }) => {
+  await expectPolicyEnforced(playwright);
   state = await loadState();
   admin = await seedMember("admin");
   member = await seedMember("user");
@@ -43,7 +44,10 @@ test.afterAll(async () => {
 
 test.beforeEach(async ({ context, baseURL }) => {
   await context.addCookies([{ name: "jenan_session", value: admin.token, url: baseURL! }]);
+  await recordPolicyViolations(context);
 });
+
+test.afterEach(async ({ context }) => expectNoPolicyViolations(context));
 
 const sections: Array<[string, string]> = [
   ["overview", "نظرة عامة"], ["versions", "الإصدارات"], ["updates", "التحديثات"], ["sources", "المصادر والتراخيص"], ["layers", "الطبقات"],
@@ -308,7 +312,7 @@ test("a layer exports as GeoJSON, JSON, CSV and GeoPackage with the same real fe
   await attachShot(page, testInfo, "admin-export-panel", undefined, true);
   const get = async (target: Locator, format: string) => {
     const response = await page.request.get((await target.getByRole("link", { name: format, exact: true }).getAttribute("href"))!);
-    expect(response.status(), format).toBe(200);
+    expect(response.status(), `${format}: ${response.status() === 200 ? "" : (await response.text()).slice(0, 300)}`).toBe(200);
     return response.body();
   };
 

@@ -35,6 +35,8 @@ export function json(body: unknown, status = 200) {
 }
 
 export function failure(error: unknown) {
+  // A MapError is a coded, expected outcome. Anything else is a defect or an outage: it goes to the server log and never to the client.
+  if (!(error instanceof MapError)) console.error("jenan-map request failed", error);
   return json({ error: error instanceof MapError ? error.code : "MAP_UNAVAILABLE" }, error instanceof MapError ? error.status : 503);
 }
 

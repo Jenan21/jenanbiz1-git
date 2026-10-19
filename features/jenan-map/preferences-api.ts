@@ -1,4 +1,4 @@
-import { mapPreferencesSchema } from "@/services/jenan-map/contracts";
+import { parseMapPreferences } from "@/services/jenan-map/preferences-shape";
 import { mapRequest } from "./api";
 import type { MapLayer, MapPreferences } from "./types";
 
@@ -9,11 +9,10 @@ export function availableLayerIds(layers: MapLayer[]) {
 export function restoreMapPreferences(value: unknown, releaseId: string, layers: MapLayer[]): MapPreferences {
   if (!value || typeof value !== "object") throw new Error("إعدادات الخريطة المحفوظة غير صالحة.");
   const { revision, ...settings } = value as MapPreferences;
-  const parsed = mapPreferencesSchema.safeParse({ ...settings, expectedRevision: revision });
-  if (!parsed.success || !Number.isInteger(revision) || revision < 1 || parsed.data.releaseId !== releaseId)
-    throw new Error("إعدادات الخريطة المحفوظة غير مرتبطة بالإصدار.");
+  const parsed = parseMapPreferences({ ...settings, expectedRevision: revision });
+  if (!parsed || revision < 1 || parsed.releaseId !== releaseId) throw new Error("إعدادات الخريطة المحفوظة غير مرتبطة بالإصدار.");
   const allowed = new Set(availableLayerIds(layers));
-  return { ...settings, revision, visibleLayers: parsed.data.visibleLayers.filter((id) => allowed.has(id)) };
+  return { ...settings, revision, visibleLayers: parsed.visibleLayers.filter((id) => allowed.has(id)) };
 }
 
 export async function loadMapPreferences(releaseId: string, layers: MapLayer[], signal?: AbortSignal) {

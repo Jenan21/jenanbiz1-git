@@ -68,6 +68,8 @@ describe("shared object storage behind the same artifact handle", () => {
     await expect(openArtifact(artifact(), true)).rejects.toMatchObject({ code: "ARTIFACT_INTEGRITY_FAILED" });
   });
   it("coalesces concurrent forced verifications into one full read", async () => {
+    // The read is held back so every caller finds it in flight, as with a real archive that takes seconds to hash.
+    fake.latency.rangeMs = 250;
     const before = fake.seen.filter((item) => item.range).length;
     await Promise.all(Array.from({ length: 8 }, () => openArtifact(artifact(), true)));
     expect(fake.seen.filter((item) => item.range === `bytes=0-${bytes.length - 1}`).length - before).toBe(1);

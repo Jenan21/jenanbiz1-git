@@ -9,6 +9,8 @@ export const credentials = { accessKeyId: "AKIDEXAMPLE", secretAccessKey: "wJalr
 export function fakeStore() {
   const objects = new Map<string, { body: Buffer; sha256: string }>();
   const hidden = new Set<string>();
+  // Holds every ranged read back, so a test can keep a long read in flight the way a real archive does.
+  const latency = { rangeMs: 0 };
   const seen: Array<{ method: string; path: string; range?: string; ifNoneMatch?: string }> = [];
   const server = http.createServer((request, response) => {
     const chunks: Buffer[] = [];
@@ -40,9 +42,13 @@ export function fakeStore() {
       const range = /bytes=(\d+)-(\d+)/.exec(String(request.headers.range ?? ""));
       if (!range) return send(200, headers, found.body.toString("latin1"));
       const [start, end] = [Number(range[1]), Number(range[2])];
-      response.writeHead(206, { "content-length": end - start + 1, "content-range": `bytes ${start}-${end}/${found.body.length}` });
-      return response.end(found.body.subarray(start, end + 1));
+      const reply = () => {
+        response.writeHead(206, { "content-length": end - start + 1, "content-range": `bytes ${start}-${end}/${found.body.length}` });
+        response.end(found.body.subarray(start, end + 1));
+      };
+      if (latency.rangeMs > 0) setTimeout(reply, latency.rangeMs);
+      else reply();
     });
   });
-  return { server, objects, hidden, seen };
+  return { server, objects, hidden, seen, latency };
 }

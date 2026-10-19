@@ -13,7 +13,7 @@ import { MapBackupPanel } from "./backup-panel";
 import { MapExportPanel } from "./export-panel";
 import { MapHealthPanel } from "./health-panel";
 import { MapLayerBinding } from "./layer-binding";
-import { MAP_STOPPED_MESSAGE } from "@/services/jenan-map/contracts";
+import { MAP_STOPPED_MESSAGE } from "@/services/jenan-map/messages";
 
 const releaseLabels: Record<string, string> = { Draft: "مسودة", Processing: "قيد المعالجة", Importing: "قيد الاستيراد", Ready: "جاهز للمراجعة", Approved: "معتمد", Published: "منشور", Archived: "مؤرشف", Failed: "فشل" };
 const runtimeLabels: Record<string, string> = { enabled: "مفعّل", maintenance: "صيانة", disabled: "معطّل" };

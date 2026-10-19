@@ -1,8 +1,5 @@
 import { z } from "zod";
 
-/** What a member reads while the map is in maintenance or switched off; the rest of the platform keeps working. */
-export const MAP_STOPPED_MESSAGE = "Jenan PRO Map قيد التحديث حاليًا، ستعود الخدمة قريبًا.";
-
 export const idSchema = z.string().uuid();
 const reason = z.string().trim().min(8).max(2000);
 export const commandSchema = z.discriminatedUnion("action", [
