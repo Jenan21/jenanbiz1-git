@@ -68,15 +68,19 @@ function assertDownloadAllowed(request: NextRequest, artifact: Artifact) {
       (artifact as Artifact & { exportAllowed?: boolean }).exportAllowed !== true) throw new MapError("EXPORT_LICENSE_PERMISSION_REQUIRED", 403);
 }
 
+/** One delivery rule for every route that serves an artifact: a download is always the stored bytes, and only a plain style request is rendered for its mode. */
+async function deliver(request: NextRequest, artifact: Artifact, admin: boolean) {
+  assertDownloadAllowed(request, artifact);
+  if (artifact.kind === "style" && !isDownload(request)) return json(await servedStyle(artifact, admin));
+  return await streamArtifact(request, artifact, admin);
+}
+
 export async function artifactResponse(request: NextRequest, artifactId: string, admin: boolean) {
   try {
     const auth = await access(request, admin, false, !isDownload(request));
     if (auth.response) return auth.response;
     if (!idSchema.safeParse(artifactId).success) return json({ error: "INVALID_ARTIFACT_ID" }, 400);
-    const artifact = await authorizedArtifact(artifactId, admin);
-    assertDownloadAllowed(request, artifact);
-    if (artifact.kind === "style" && request.nextUrl.searchParams.get("download") !== "1") return json(await servedStyle(artifact, admin));
-    return await streamArtifact(request, artifact, admin);
+    return await deliver(request, await authorizedArtifact(artifactId, admin), admin);
   } catch (error) {
     return failure(error);
   }
@@ -88,7 +92,7 @@ async function streamArtifact(request: NextRequest, artifact: Artifact, admin: b
     if (!Number.isSafeInteger(size)) throw new MapError("ARTIFACT_TOO_LARGE", 503);
     const headers = new Headers({
       ...privateHeaders, "accept-ranges": "bytes", "content-type": download.mime,
-      "content-disposition": `${admin && request.nextUrl.searchParams.get("download") === "1" ? "attachment" : "inline"}; filename="${download.filename}"`,
+      "content-disposition": `${admin && isDownload(request) ? "attachment" : "inline"}; filename="${download.filename}"`,
       etag: `"sha256-${artifact.sha256}"`, "x-checksum-sha256": artifact.sha256,
     });
     let range;
@@ -119,8 +123,6 @@ export async function releaseAssetResponse(request: NextRequest, releaseId: stri
     const kind = requestedKind === "sprites" ? "sprite" : requestedKind;
     if (name.some((part) => !part || part === "." || part === ".." || /[\\/\u0000-\u001f]/.test(part))) throw new MapError("INVALID_ASSET_PATH", 400);
     const artifact = await authorizedReleaseAsset(releaseId, kind, name.join("/"), admin);
-    assertDownloadAllowed(request, artifact);
-    if (kind === "style") return json(await servedStyle(artifact, admin));
-    return await streamArtifact(request, artifact, admin);
+    return await deliver(request, artifact, admin);
   } catch (error) { return failure(error); }
 }

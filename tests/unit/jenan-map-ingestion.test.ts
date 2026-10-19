@@ -1,4 +1,5 @@
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
+import { createHash } from "node:crypto";
 import { mkdir, readdir, rm, symlink, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { Readable } from "node:stream";
@@ -14,7 +15,7 @@ vi.mock("@/services/jenan-map/layers", async (original) => ({
 }));
 import { importSchema, ingestArtifact, localImportStream, type ImportInput } from "@/services/jenan-map/ingestion";
 import { servedStyle } from "@/services/jenan-map/service";
-import { access, MAP_ASSET_REQUESTS_PER_MINUTE, releaseAssetResponse } from "@/services/jenan-map/http";
+import { access, artifactResponse, MAP_ASSET_REQUESTS_PER_MINUTE, releaseAssetResponse } from "@/services/jenan-map/http";
 import { POST } from "@/app/api/admin/jenan-map/releases/[releaseId]/artifacts/route";
 import { ingestLayerBindings, bindLayersSchema } from "@/services/jenan-map/layer-ingestion";
 import { POST as bindLayers } from "@/app/api/admin/jenan-map/releases/[releaseId]/layers/route";
@@ -140,6 +141,34 @@ it.each([[false, 403], [true, 200]])("a release asset download needs the artifac
   expect(response.status).toBe(status);
   if (status === 403) expect(await response.json()).toMatchObject({ error: "EXPORT_LICENSE_PERMISSION_REQUIRED" });
   else expect(response.headers.get("content-disposition")).toContain("attachment");
+});
+it.each([
+  ["release URL", (request: NextRequest) => releaseAssetResponse(request, releaseId, ["style", "style.json"], true), (artifact: unknown) => [[{ status: "Ready" }], [artifact]]],
+  ["artifact URL", (request: NextRequest) => artifactResponse(request, readyFixtureFiles()[1].artifact.id, true), (artifact: unknown) => [[artifact]]],
+])("a style download through its %s is the stored artifact itself, while a plain request is still rendered for the mode", async (_route, call, results) => {
+  const style = readyFixtureFiles()[1];
+  await mkdir(path.join(root, releaseId)); await writeFile(path.join(root, style.artifact.storageKey), style.bytes);
+  const exportable = { ...style.artifact, exportAllowed: true };
+  for (const result of [...results(exportable), ...results(exportable)]) mocks.query.mockResolvedValueOnce(result);
+  const download = await call(new NextRequest("http://localhost/?download=1"));
+  expect(download.status).toBe(200);
+  expect(createHash("sha256").update(Buffer.from(await download.arrayBuffer())).digest("hex")).toBe(style.artifact.sha256);
+  expect(download.headers.get("content-disposition")).toContain("attachment");
+  expect(download.headers.get("x-checksum-sha256")).toBe(style.artifact.sha256);
+  const preview = await call(new NextRequest("http://localhost/"));
+  expect(preview.headers.get("x-checksum-sha256")).toBeNull();
+  expect((await preview.json()).glyphs).toContain(`/api/admin/jenan-map/releases/${releaseId}/glyphs/`);
+});
+it.each([
+  ["release URL", (request: NextRequest) => releaseAssetResponse(request, releaseId, ["style", "style.json"], true), (artifact: unknown) => [[{ status: "Ready" }], [artifact]]],
+  ["artifact URL", (request: NextRequest) => artifactResponse(request, readyFixtureFiles()[1].artifact.id, true), (artifact: unknown) => [[artifact]]],
+])("a style download through its %s still needs the export permission", async (_route, call, results) => {
+  const style = readyFixtureFiles()[1];
+  await mkdir(path.join(root, releaseId)); await writeFile(path.join(root, style.artifact.storageKey), style.bytes);
+  for (const result of results({ ...style.artifact, exportAllowed: false })) mocks.query.mockResolvedValueOnce(result);
+  const response = await call(new NextRequest("http://localhost/?download=1"));
+  expect(response.status).toBe(403);
+  expect(await response.json()).toMatchObject({ error: "EXPORT_LICENSE_PERMISSION_REQUIRED" });
 });
 it.each([
   ["a published map", false, "http://localhost/", "jenan-map:assets", MAP_ASSET_REQUESTS_PER_MINUTE],
