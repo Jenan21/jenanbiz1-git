@@ -236,6 +236,11 @@ describe("how the camera follows the analysis point and radius", () => {
     ["only follows a click or a dragged marker", here, { ...here, ...elsewhere, source: "map" as const }, "center"],
     ["frames the ring again for a new radius", here, { ...here, radius: 3000, source: "map" as const }, "fit"],
     ["does nothing when only the layers change", here, { ...here, source: "search" as const }, "stay"],
+    ["frames the ring again when the same search result is chosen again", { ...here, selectedAt: "2026-10-19T10:00:00.000Z" }, { ...here, source: "search" as const, selectedAt: "2026-10-19T10:05:00.000Z" }, "fit"],
+    ["frames the ring again when the same device location is used again", { ...here, selectedAt: "2026-10-19T10:00:00.000Z" }, { ...here, source: "geolocation" as const, selectedAt: "2026-10-19T10:05:00.000Z" }, "fit"],
+    ["frames the ring again when the same coordinates are typed again", { ...here, selectedAt: "2026-10-19T10:00:00.000Z" }, { ...here, source: "coordinates" as const, selectedAt: "2026-10-19T10:05:00.000Z" }, "fit"],
+    ["leaves the camera alone for a click on the same spot", { ...here, selectedAt: "2026-10-19T10:00:00.000Z" }, { ...here, source: "map" as const, selectedAt: "2026-10-19T10:05:00.000Z" }, "stay"],
+    ["leaves the camera alone when only the layers change after a selection", { ...here, selectedAt: "2026-10-19T10:00:00.000Z" }, { ...here, source: "search" as const, selectedAt: "2026-10-19T10:00:00.000Z" }, "stay"],
   ])("%s", (_name, previous, next, move) => {
     expect(cameraMoveFor(previous, next)).toBe(move);
   });

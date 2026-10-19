@@ -117,9 +117,11 @@ export default function MapRenderer({
     const instance = map.current;
     const move = cameraMoveFor(
       framed.current,
-      location ? { latitude: location.latitude, longitude: location.longitude, radius, source: location.source } : null,
+      location
+        ? { latitude: location.latitude, longitude: location.longitude, radius, source: location.source, selectedAt: location.selectedAt }
+        : null,
     );
-    framed.current = location ? { latitude: location.latitude, longitude: location.longitude, radius } : null;
+    framed.current = location ? { latitude: location.latitude, longitude: location.longitude, radius, selectedAt: location.selectedAt } : null;
     if (!location || !instance || move === "stay") return;
     const duration = window.matchMedia("(prefers-reduced-motion: reduce)").matches ? 0 : 450;
     if (move === "fit") {

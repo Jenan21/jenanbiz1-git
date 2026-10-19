@@ -94,12 +94,15 @@ export interface FramedPoint {
   latitude: number;
   longitude: number;
   radius: number;
+  /** Identifies the selection: choosing the same point again makes a new one. */
+  selectedAt?: string | null;
 }
 
 /**
  * How the camera follows a change of the analysis point or radius. `previous` is undefined on the first pass, when the saved
- * viewport rules, and null when nothing had been selected. A point chosen from search, the device or typed coordinates, and every
- * new radius, bring the whole ring into view; a click or a dragged marker only follows the point.
+ * viewport rules, and null when nothing had been selected. A point chosen from search, the device or typed coordinates (also when
+ * it is the same point as before, chosen again after the camera moved away), and every new radius, bring the whole ring into view;
+ * a click or a dragged marker only follows the point.
  */
 export function cameraMoveFor(
   previous: FramedPoint | null | undefined,
@@ -110,6 +113,10 @@ export function cameraMoveFor(
     !previous ||
     previous.latitude !== next.latitude ||
     previous.longitude !== next.longitude;
-  if (!moved) return previous && previous.radius !== next.radius ? "fit" : "stay";
+  if (!moved) {
+    const chosenAgain =
+      next.source !== "map" && next.source !== null && next.selectedAt != null && previous?.selectedAt !== next.selectedAt;
+    return previous && (previous.radius !== next.radius || chosenAgain) ? "fit" : "stay";
+  }
   return next.source === "map" || next.source === null ? "center" : "fit";
 }
