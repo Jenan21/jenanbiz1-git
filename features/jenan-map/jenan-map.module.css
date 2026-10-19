@@ -1,0 +1,444 @@
+.harness,
+.overlay {
+  --map-navy: #07121e;
+  --map-panel: #0c1d2d;
+  --map-border: #1c3a4a;
+  --map-text: #e3f3f5;
+  --map-muted: #9bb6c2;
+  --map-teal: #43e2cd;
+  color: var(--map-text);
+  font-family: inherit;
+  box-sizing: border-box;
+}
+.harness *,
+.overlay * {
+  box-sizing: border-box;
+}
+.harness {
+  min-height: 100dvh;
+  padding: clamp(24px, 7vw, 110px);
+  background:
+    radial-gradient(ellipse at 80% 5%, #0b4148 0, transparent 50%),
+    var(--map-navy);
+}
+.harnessInner {
+  max-width: 1000px;
+  margin: auto;
+}
+.harness h1 {
+  font-size: clamp(30px, 5vw, 58px);
+  margin: 18px 0;
+}
+.eyebrow {
+  color: var(--map-teal);
+  font-size: 11px;
+  letter-spacing: 0.16em;
+  margin: 0 0 10px;
+}
+.lead {
+  color: var(--map-muted);
+  line-height: 2;
+  max-width: 700px;
+}
+.savedCard {
+  margin: 40px 0 25px;
+  padding: clamp(22px, 4vw, 44px);
+  border: 1px solid var(--map-border);
+  border-radius: 24px;
+  background: linear-gradient(140deg, #10313e99, #0a1825);
+  box-shadow: 0 25px 100px #0004;
+}
+.savedCard p {
+  line-height: 1.9;
+  overflow-wrap: anywhere;
+}
+.tag {
+  color: var(--map-teal);
+  border: 1px solid #2a746c;
+  border-radius: 20px;
+  padding: 5px 12px;
+  font-size: 11px;
+}
+.backLink {
+  color: var(--map-teal);
+  text-decoration: none;
+  font-size: 13px;
+}
+.overlay {
+  position: fixed;
+  z-index: 10000;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  padding: clamp(8px, 2vw, 28px);
+  background: #020911e8;
+  backdrop-filter: blur(10px);
+}
+.dialog {
+  width: min(1450px, 100%);
+  max-height: calc(100dvh - 24px);
+  display: flex;
+  flex-direction: column;
+  border: 1px solid #24515d;
+  background: var(--map-navy);
+  border-radius: 22px;
+  box-shadow: 0 30px 140px #0009;
+  overflow: hidden;
+  outline: none;
+}
+.header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 24px 28px 18px;
+  border-bottom: 1px solid var(--map-border);
+}
+.header h2 {
+  margin: 0;
+  font-size: clamp(21px, 3vw, 28px);
+}
+.header p:not(.eyebrow) {
+  color: var(--map-muted);
+  font-size: 12px;
+  line-height: 1.8;
+  margin: 8px 0 0;
+}
+.close {
+  color: var(--map-muted);
+  background: #152c3a;
+  border: 1px solid var(--map-border);
+  border-radius: 10px;
+  min-width: 40px;
+  min-height: 40px;
+  font-size: 26px;
+  cursor: pointer;
+}
+.workspace {
+  display: grid;
+  grid-template-columns: minmax(250px, 300px) minmax(0, 1fr);
+  min-height: 0;
+  overflow: auto;
+}
+.sidebar {
+  background: #0b1a28;
+  padding: 22px;
+  border-inline-end: 1px solid var(--map-border);
+  overflow: auto;
+  max-height: min(65dvh, 750px);
+}
+.sidebar > label,
+.coordinates label {
+  display: block;
+  font-size: 12px;
+  color: #c2dbe1;
+  margin-bottom: 8px;
+}
+.sidebar input:not([type="checkbox"]):not([type="radio"]) {
+  width: 100%;
+  background: #06131f;
+  color: var(--map-text);
+  border: 1px solid #2b4b5c;
+  border-radius: 8px;
+  padding: 11px;
+  font: inherit;
+  font-size: 12px;
+  min-width: 0;
+}
+.sidebar fieldset {
+  border: 0;
+  border-top: 1px solid var(--map-border);
+  margin: 22px 0 0;
+  padding: 16px 0 0;
+  min-width: 0;
+}
+.sidebar legend {
+  font-size: 12px;
+  color: #bbd6df;
+  padding-inline-end: 8px;
+}
+.coordinates label {
+  margin: 8px 0;
+}
+.coordinates input {
+  margin-top: 5px;
+}
+.primary,
+.secondary {
+  border: 1px solid #28515e;
+  border-radius: 9px;
+  min-height: 42px;
+  padding: 10px 18px;
+  font: inherit;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+.primary {
+  color: #042a2b;
+  background: var(--map-teal);
+  border-color: #70f8e5;
+  box-shadow: 0 0 22px #20dcc318;
+}
+.secondary {
+  background: #122938;
+  color: #d0e5eb;
+}
+.sidebar > .secondary,
+.coordinates .secondary {
+  width: 100%;
+}
+.primary:disabled,
+.secondary:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+  box-shadow: none;
+}
+.overlay :focus-visible,
+.harness :focus-visible {
+  outline: 3px solid #f0c66d;
+  outline-offset: 3px;
+}
+.note {
+  font-size: 11px;
+  color: var(--map-muted);
+  line-height: 1.85;
+  margin: 10px 0 0;
+}
+.radius {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+.radius label {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 11px;
+}
+.layers label {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 7px;
+  align-items: center;
+  font-size: 12px;
+  margin: 12px 0;
+}
+.layers small {
+  width: 100%;
+  padding-inline-start: 23px;
+  color: var(--map-muted);
+  font-size: 10px;
+}
+.layers input,
+.radius input {
+  accent-color: var(--map-teal);
+}
+.searchStatus {
+  font-size: 11px;
+  color: var(--map-muted);
+  margin: 8px 0;
+  min-height: 16px;
+}
+.results {
+  list-style: none;
+  margin: 0 0 14px;
+  padding: 0;
+  max-height: 180px;
+  overflow: auto;
+}
+.results button {
+  width: 100%;
+  text-align: start;
+  color: var(--map-text);
+  background: #153344;
+  border: 1px solid #274958;
+  padding: 11px;
+  border-radius: 7px;
+  margin-bottom: 5px;
+  font: inherit;
+  font-size: 12px;
+  cursor: pointer;
+}
+.mapPanel {
+  position: relative;
+  min-height: 440px;
+  background: #091925;
+  overflow: hidden;
+}
+/* The map library's stylesheet reaches the page with the lazy renderer chunk, after this file, and sets `position: relative` on the very same
+   element. A single class would lose that tie and the map would collapse to zero height, so the rule carries the panel as well. */
+.mapPanel > .canvas {
+  position: absolute;
+  inset: 0;
+}
+/* The attribution is a legal notice and has to stay readable over the light and the dark basemap alike. The library paints it on a pale pane
+   while the text inherited the pale colour of this dialog, so it is given a dark pane of its own. */
+.canvas :global(.maplibregl-ctrl.maplibregl-ctrl-attrib) {
+  max-width: calc(100% - 12px);
+  font-size: 10px;
+  background: rgba(7, 18, 30, 0.88);
+  color: var(--map-text);
+}
+.canvas :global(.maplibregl-ctrl.maplibregl-ctrl-attrib a) {
+  color: var(--map-teal);
+}
+.mapMessage {
+  min-height: 440px;
+  height: 100%;
+  padding: 40px 24px 130px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  background: radial-gradient(circle at center, #113c46 0, #071622 65%);
+}
+.mapMessage h3 {
+  font-size: 17px;
+  max-width: 440px;
+  line-height: 1.9;
+  font-weight: 500;
+}
+.mapMessage p {
+  color: var(--map-muted);
+  font-size: 11px;
+  line-height: 1.8;
+}
+.mapSymbol {
+  color: #47cab8;
+  font-size: 65px;
+  line-height: 1;
+}
+.draftBadge {
+  position: absolute;
+  bottom: 38px;
+  inset-inline: 16px;
+  width: fit-content;
+  max-width: calc(100% - 32px);
+  background: #061621ed;
+  border: 1px solid #23505a;
+  border-radius: 12px;
+  padding: 12px 16px;
+  display: grid;
+  gap: 5px;
+  pointer-events: none;
+  box-shadow: 0 8px 30px #0005;
+  overflow-wrap: anywhere;
+}
+.draftBadge strong {
+  font-size: 11px;
+  color: var(--map-teal);
+}
+.draftBadge span {
+  font-size: 12px;
+}
+.draftBadge small {
+  color: var(--map-muted);
+  font-size: 10px;
+}
+.footer {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 16px;
+  padding: 14px 26px;
+  border-top: 1px solid var(--map-border);
+}
+.footer .note {
+  margin: 0;
+}
+.actions {
+  display: flex;
+  gap: 10px;
+  flex-shrink: 0;
+}
+.error {
+  color: #ffb4a6;
+  font-size: 11px;
+  line-height: 1.6;
+  margin: 5px 0 0;
+}
+.preview {
+  margin: 0;
+  padding: 8px 24px;
+  background: #4b3d1f;
+  color: #f9dba2;
+  font-size: 11px;
+}
+.marker {
+  width: 25px;
+  height: 25px;
+  background: #42e4c9;
+  border: 4px solid #effffb;
+  border-radius: 50% 50% 50% 0;
+  box-shadow:
+    0 0 0 8px #32e6bd25,
+    0 5px 20px #0009;
+  cursor: grab;
+}
+@media (max-width: 760px) {
+  .overlay {
+    padding: 6px;
+  }
+  .dialog {
+    border-radius: 14px;
+    max-height: calc(100dvh - 12px);
+  }
+  .header {
+    padding: 17px;
+  }
+  .workspace {
+    display: flex;
+    flex-direction: column;
+  }
+  .sidebar {
+    max-height: none;
+    overflow: visible;
+    padding: 17px;
+    border-inline-end: 0;
+    order: 2;
+  }
+  .mapPanel {
+    min-height: clamp(310px, 42dvh, 480px);
+    flex-shrink: 0;
+  }
+  /* On a narrow screen the attribution takes three lines; the badge clears it and gives up its address line so it hides less of the map. */
+  .draftBadge {
+    bottom: 66px;
+    inset-inline: 10px;
+    padding: 8px 12px;
+  }
+  .draftBadge small {
+    display: none;
+  }
+  .mapMessage {
+    min-height: 310px;
+    padding: 25px 18px 100px;
+  }
+  .mapMessage h3 {
+    font-size: 14px;
+  }
+  .mapSymbol {
+    font-size: 40px;
+  }
+  .footer {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 8px;
+    padding: 12px 16px;
+  }
+  .actions > button {
+    flex: 1;
+  }
+  .actions {
+    display: flex;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .primary,
+  .secondary {
+    transition: none;
+  }
+}

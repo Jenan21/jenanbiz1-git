@@ -1,0 +1,30 @@
+name: jenan-pro-map-v1-dev
+
+services:
+  postgis:
+    image: postgis/postgis:17-3.5
+    restart: "no"
+    environment:
+      POSTGRES_DB: jenan_map_dev
+      POSTGRES_USER: jenan_map_dev
+      POSTGRES_PASSWORD: ${JENAN_MAP_DEV_DB_PASSWORD:?Set a unique local-only JENAN_MAP_DEV_DB_PASSWORD}
+    ports:
+      - "127.0.0.1:55439:5432"
+    volumes:
+      - jenan_map_v1_dev_data:/var/lib/postgresql/data
+    networks:
+      - jenan_map_v1_dev
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U jenan_map_dev -d jenan_map_dev"]
+      interval: 5s
+      timeout: 5s
+      retries: 12
+    security_opt:
+      - no-new-privileges:true
+
+volumes:
+  jenan_map_v1_dev_data:
+
+networks:
+  jenan_map_v1_dev:
+    internal: true

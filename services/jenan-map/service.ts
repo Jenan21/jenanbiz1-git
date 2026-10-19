@@ -1,0 +1,445 @@
+import { createHash, randomUUID } from "node:crypto";
+import { Prisma } from "@/generated/prisma/client";
+import { db, type DbExecutor } from "@/lib/db";
+import { type Artifact, type MapCommand, type MapRuntime, type Release, type SavedLocation, MapError } from "./contracts";
+import { MAP_STOPPED_MESSAGE } from "./messages";
+import { assertStorageConfigured, downloadMetadata, logicalFilename, openArtifact, storageState } from "./storage";
+import { releaseAssetBase, validateReleaseArtifacts } from "./validation";
+import { layerProvenanceProblems, readyLayerSearchFilter, releaseManifestLayers } from "./layers";
+import { OPEN_BOUNDARY_NOTICE, OSM_ATTRIBUTION } from "../../scripts/jenan-map/open-data.mjs";
+
+type SqlExecutor = Pick<DbExecutor, "$queryRaw" | "$executeRaw">;
+const sql = Prisma.sql;
+const productionArtifactKinds = ["geojson", "pmtiles", "style", "glyphs", "schema", "coverage"];
+
+function hasProductionArtifacts(files: Artifact[]) {
+  return productionArtifactKinds.every((kind) => files.some((file) =>
+    file.kind === kind && (["schema", "coverage"].includes(kind) || file.publicSafe)));
+}
+
+function rethrowWriteError(error: unknown): never {
+  if (error instanceof MapError) throw error;
+  if (error instanceof Prisma.PrismaClientKnownRequestError) {
+    const adapter = error.meta?.driverAdapterError as { cause?: { originalCode?: unknown } } | undefined;
+    const sqlCode = String(error.meta?.code ?? adapter?.cause?.originalCode ?? "");
+    if (["P2034", "P2002"].includes(error.code) ||
+      (error.code === "P2010" && ["40001", "40P01", "23505"].includes(sqlCode))) {
+      throw new MapError("CONCURRENT_CHANGE_RETRY");
+    }
+  }
+  throw error;
+}
+
+export async function runtime(executor: SqlExecutor = db, lock = false): Promise<MapRuntime> {
+  const rows = lock
+    ? await executor.$queryRaw<MapRuntime[]>(sql`SELECT * FROM jenan_map.runtime WHERE id = 1 FOR UPDATE`)
+    : await executor.$queryRaw<MapRuntime[]>(sql`SELECT * FROM jenan_map.runtime WHERE id = 1`);
+  if (!rows[0]) throw new MapError("MAP_NOT_CONFIGURED", 503);
+  return rows[0];
+}
+
+export async function artifacts(releaseId: string, executor: SqlExecutor = db) {
+  return executor.$queryRaw<Artifact[]>(sql`SELECT * FROM jenan_map.artifact WHERE "releaseId" = ${releaseId}::uuid ORDER BY "createdAt", id`);
+}
+
+export async function releaseById(id: string, executor: SqlExecutor = db) {
+  const [release] = await executor.$queryRaw<Release[]>(sql`SELECT * FROM jenan_map.release WHERE id = ${id}::uuid`);
+  if (!release) throw new MapError("RELEASE_NOT_FOUND", 404);
+  return release;
+}
+
+export async function publishedRelease(requestedId?: string) {
+  const state = await runtime();
+  if (state.status !== "enabled") throw new MapError(state.status === "maintenance" ? "MAP_MAINTENANCE" : "MAP_DISABLED", 503);
+  if (!state.publishedReleaseId) throw new MapError("NO_PUBLISHED_RELEASE", 503);
+  if (requestedId && requestedId !== state.publishedReleaseId) throw new MapError("RELEASE_NOT_PUBLISHED", 404);
+  const release = await releaseById(state.publishedReleaseId);
+  if (release.status !== "Published") throw new MapError("NO_PUBLISHED_RELEASE", 503);
+  return release;
+}
+
+async function previewRelease(releaseId: string) {
+  const release = await releaseById(releaseId);
+  if (!["Ready", "Approved", "Published", "Archived"].includes(release.status)) throw new MapError("PREVIEW_NOT_READY");
+  return release;
+}
+
+function publicArtifact(artifact: Artifact, admin = false) {
+  const download = downloadMetadata(artifact);
+  return {
+    id: artifact.id, kind: artifact.kind, filename: download.filename, mime: download.mime,
+    logicalFilename: logicalFilename(artifact),
+    sha256: artifact.sha256, byteSize: artifact.byteSize.toString(),
+    url: `/api/${admin ? "admin/" : ""}jenan-map/artifacts/${artifact.id}`,
+  };
+}
+
+export async function manifest() {
+  const state = await runtime();
+  if (state.status !== "enabled") return { status: state.status, release: null, reason: state.status === "disabled" ? "MAP_DISABLED" : "MAP_MAINTENANCE", maintenanceMessage: state.maintenanceMessage ?? null };
+  if (!state.publishedReleaseId) return { status: "unavailable", release: null, reason: "NO_PUBLISHED_RELEASE" };
+  const release = await releaseById(state.publishedReleaseId);
+  if (release.status !== "Published") return { status: "unavailable", release: null, reason: "NO_PUBLISHED_RELEASE" };
+  assertStorageConfigured();
+  const registered = await artifacts(release.id);
+  if (!hasProductionArtifacts(registered)) throw new MapError("OWNED_BASEMAP_STYLE_GLYPHS_SCHEMA_COVERAGE_REQUIRED", 503);
+  const files = registered.filter((item) => item.publicSafe);
+  await validateReleaseArtifacts(registered);
+  return {
+    status: state.status,
+    release: {
+      id: release.id, version: release.version, publishedAt: release.publishedAt,
+      source: release.source, sourceDate: release.sourceDate, license: release.license,
+      attribution: `${OSM_ATTRIBUTION}; geoBoundaries product CC BY 4.0; upstream licenses retained per layer`, boundaryNotice: OPEN_BOUNDARY_NOTICE,
+      styleUrl: files.find((item) => item.kind === "style") ? `/api/jenan-map/artifacts/${files.find((item) => item.kind === "style")!.id}` : null,
+      layers: await releaseManifestLayers(release.id),
+      artifacts: files.map((item) => publicArtifact(item)),
+    },
+  };
+}
+
+export async function snapshot() {
+  const state = await runtime();
+  const releases = await db.$queryRaw<Release[]>(sql`SELECT * FROM jenan_map.release ORDER BY "createdAt" DESC LIMIT 100`);
+  const audit = await db.$queryRaw(sql`SELECT * FROM jenan_map.audit ORDER BY "createdAt" DESC LIMIT 100`);
+  const files = await db.$queryRaw<Artifact[]>(sql`SELECT * FROM jenan_map.artifact ORDER BY "createdAt" DESC LIMIT 500`);
+  const storage = await storageState();
+  return {
+    runtime: state, releases, audit,
+    artifacts: files.map((file) => ({ ...publicArtifact(file, true), releaseId: file.releaseId, publicSafe: file.publicSafe,
+      exportAllowed: file.kind !== "source" && file.exportAllowed === true,
+      exportLicense: file.exportLicense ?? null })),
+    storage,
+    capabilities: ["create", "approve", "publish", "rollback", "archive", "runtime", "preview", "export", "artifact-download",
+      ...(storage.status === "available" ? ["artifact-import", "layer-bind"] : [])],
+    importLimits: { multipartRequestBytes: 32 * 1024 * 1024, localArtifactBytes: 32 * 1024 ** 3, countryTileBuildAvailable: false },
+    previewAvailable: true, exportAvailable: true,
+    blockers: !state.publishedReleaseId ? ["NO_PUBLISHED_RELEASE", "IMPORT_AND_REVIEW_REQUIRED"] : [],
+  };
+}
+
+/**
+ * Measured facts for the admin overview. Every value is read from the database (or is null when it cannot be read); nothing is assumed
+ * healthy. PostGIS is checked by asking it for its version, and the counts describe the published release only.
+ */
+export async function overviewFacts(publishedReleaseId: string | null) {
+  let postgis: { status: "available"; version: string } | { status: "unavailable" };
+  try {
+    const [row] = await db.$queryRaw<{ version: string }[]>(sql`SELECT PostGIS_Lib_Version() AS version`);
+    postgis = row?.version ? { status: "available", version: row.version } : { status: "unavailable" };
+  } catch { postgis = { status: "unavailable" }; }
+  const unknown = { postgis, activeLayers: null, datasets: null, features: null };
+  if (!publishedReleaseId) return unknown;
+  try {
+    const [row] = await db.$queryRaw<{ activeLayers: number; datasets: number; features: number }[]>(sql`SELECT
+      (SELECT count(*)::int FROM jenan_map.release_layer WHERE "releaseId" = ${publishedReleaseId}::uuid AND enabled AND status = 'ready'
+        AND visibility = 'public' AND cardinality("styleLayerIds") > 0) AS "activeLayers",
+      (SELECT count(DISTINCT "layerId")::int FROM jenan_map.feature WHERE "releaseId" = ${publishedReleaseId}::uuid AND "layerId" IS NOT NULL) AS datasets,
+      (SELECT count(*)::int FROM jenan_map.feature WHERE "releaseId" = ${publishedReleaseId}::uuid) AS features`);
+    return row ? { postgis, activeLayers: row.activeLayers, datasets: row.datasets, features: row.features } : unknown;
+  } catch { return unknown; }
+}
+
+export async function audit(executor: SqlExecutor, actor: string, action: string, releaseId: string | null, metadata: Record<string, unknown>) {
+  await executor.$executeRaw(sql`INSERT INTO jenan_map.audit (id,"actorId",action,"releaseId",metadata)
+    VALUES (${randomUUID()}::uuid,${actor},${action},${releaseId}::uuid,${JSON.stringify(metadata)}::jsonb)`);
+  await executor.$executeRaw(sql`INSERT INTO "AuditLog" (id,"actorId",action,"entityType","entityId",metadata)
+    VALUES (${randomUUID()},${actor},${`jenan_map.${action}`} ,'JenanMapRelease',${releaseId},
+      ${JSON.stringify({ ...metadata, result: "success" })}::jsonb)`);
+}
+
+type BoundaryEvidence = { authority: string; source: string; coverage?: Record<string, unknown> | null };
+type ReleaseStyle = Awaited<ReturnType<typeof validateReleaseArtifacts>>;
+
+/** The outcome of hashing and validating a release's stored artifacts ahead of the transaction that needs it (see `preverifyCommand`). */
+export type PreverifiedRelease = { releaseId: string; fingerprint: string; style: ReleaseStyle };
+
+/** Names exactly what was verified: the artifacts with their bytes' checksums, and the boundary evidence they were checked against. */
+function evidenceFingerprint(files: Artifact[], boundary: BoundaryEvidence) {
+  return createHash("sha256").update(JSON.stringify([
+    files.map((file) => [file.id, file.kind, file.filename, file.sha256, String(file.byteSize), file.publicSafe]),
+    boundary.authority, boundary.source, boundary.coverage ?? null,
+  ])).digest("hex");
+}
+
+async function readEvidence(releaseId: string, executor: SqlExecutor) {
+  const [counts] = await executor.$queryRaw<{ boundaries: bigint; features: bigint; authority: string; source: string; coverage?: Record<string, unknown> | null }[]>(sql`
+    SELECT (SELECT count(*) FROM jenan_map.boundary WHERE "releaseId" = ${releaseId}::uuid) AS boundaries,
+      (SELECT count(*) FROM jenan_map.feature WHERE "releaseId" = ${releaseId}::uuid) AS features,
+      (SELECT authority FROM jenan_map.boundary WHERE "releaseId" = ${releaseId}::uuid) AS authority,
+      (SELECT source FROM jenan_map.boundary WHERE "releaseId" = ${releaseId}::uuid) AS source,
+      (SELECT coverage FROM jenan_map.boundary WHERE "releaseId" = ${releaseId}::uuid) AS coverage`);
+  return { counts, files: await artifacts(releaseId, executor) };
+}
+
+async function verifyReady(releaseId: string, executor: SqlExecutor, verified?: PreverifiedRelease) {
+  const { counts, files } = await readEvidence(releaseId, executor);
+  if (!counts || counts.boundaries !== BigInt(1) || counts.features < BigInt(1) ||
+      !hasProductionArtifacts(files)) {
+    throw new MapError("RELEASE_NOT_READY");
+  }
+  const boundary = { authority: counts.authority, source: counts.source, coverage: counts.coverage };
+  // Hashing and parsing multi-gigabyte archives normally happened before this transaction opened; it is repeated here only when what was
+  // verified is no longer exactly what the release holds.
+  const style = verified?.releaseId === releaseId && verified.fingerprint === evidenceFingerprint(files, boundary)
+    ? verified.style : await validateReleaseArtifacts(files, true, boundary);
+  const bindings = await releaseManifestLayers(releaseId, executor);
+  const styleIds = new Set<string>(style.layers.map((layer: { id: string }) => layer.id));
+  const claimed = new Set(bindings.flatMap((layer) => layer.styleLayerIds ?? []));
+  if (!bindings.some((layer) => layer.available) ||
+      [...styleIds].some((id) => !claimed.has(id)) ||
+      bindings.some((layer) => layer.styleLayerIds?.some((id) => !styleIds.has(id)))) throw new MapError("RELEASE_LAYERS_NOT_READY");
+  if (counts.coverage?.authoritative === false) {
+    const [held] = await executor.$queryRaw<{ layers: string[]; categories: string[] }[]>(sql`
+      SELECT COALESCE(array_agg(DISTINCT "layerId") FILTER (WHERE "layerId" IS NOT NULL), ARRAY[]::text[]) AS layers,
+        COALESCE(array_agg(DISTINCT category), ARRAY[]::text[]) AS categories
+      FROM jenan_map.feature WHERE "releaseId" = ${releaseId}::uuid`);
+    if (layerProvenanceProblems(counts.coverage.layers, bindings, new Set(held?.layers ?? []), new Set(held?.categories ?? [])).length) {
+      throw new MapError("RELEASE_LAYER_PROVENANCE_MISMATCH");
+    }
+  }
+}
+
+/**
+ * Approving, publishing, rolling back and enabling the map each verify every stored artifact in full (checksum, format, cross-references).
+ * Reading multi-gigabyte archives from shared storage takes longer than a database transaction should stay open, so that work is done here,
+ * before the transaction; the transaction then only checks that the release still holds exactly what was verified. Returns undefined when the
+ * command does not verify artifacts or the release is not in a state where verification could succeed: the transaction reports exactly why.
+ */
+export async function preverifyCommand(input: MapCommand): Promise<PreverifiedRelease | undefined> {
+  let target: Release | null = null;
+  if (input.action === "approve" || input.action === "publish" || input.action === "rollback") {
+    const wanted = { approve: "Ready", publish: "Approved", rollback: "Archived" }[input.action];
+    target = await releaseById(input.releaseId).catch(() => null);
+    if (target?.status !== wanted) return undefined;
+  } else if (input.action === "runtime" && input.status === "enabled") {
+    const { publishedReleaseId } = await runtime();
+    target = publishedReleaseId ? await releaseById(publishedReleaseId).catch(() => null) : null;
+    if (target?.status !== "Published") return undefined;
+  }
+  if (!target) return undefined;
+  const { counts, files } = await readEvidence(target.id, db);
+  if (!counts || counts.boundaries !== BigInt(1) || counts.features < BigInt(1) || !hasProductionArtifacts(files)) return undefined;
+  const boundary = { authority: counts.authority, source: counts.source, coverage: counts.coverage };
+  return { releaseId: target.id, fingerprint: evidenceFingerprint(files, boundary), style: await validateReleaseArtifacts(files, true, boundary) };
+}
+
+export async function command(input: MapCommand, actor: string, verified?: PreverifiedRelease) {
+  try {
+    return await db.$transaction(async (tx) => {
+      const state = await runtime(tx, true);
+      if (input.action === "create") {
+        if (new Date(input.sourceDate).getTime() > Date.now()) throw new MapError("SOURCE_DATE_IN_FUTURE", 400);
+        const id = randomUUID();
+        await tx.$executeRaw(sql`INSERT INTO jenan_map.release (id,version,source,"sourceDate",license,"createdBy")
+          VALUES (${id}::uuid,${input.version},${input.source},${new Date(input.sourceDate)},${input.license},${actor})`);
+        await audit(tx, actor, "create", id, { version: input.version });
+        return { id, status: "Draft" };
+      }
+      if (input.action === "runtime") {
+        if (state.revision !== input.expectedRevision) throw new MapError("STALE_REVISION");
+        if (input.expectedPublishedReleaseId !== undefined && state.publishedReleaseId !== input.expectedPublishedReleaseId) throw new MapError("STALE_PUBLISHED_POINTER");
+        if (input.status === "enabled") {
+          if (!state.publishedReleaseId) throw new MapError("NO_PUBLISHED_RELEASE");
+          const release = await releaseById(state.publishedReleaseId, tx);
+          if (release.status !== "Published") throw new MapError("NO_PUBLISHED_RELEASE");
+          await verifyReady(release.id, tx, verified);
+        }
+        const maintenanceMessage = input.status === "maintenance" ? input.maintenanceMessage ?? MAP_STOPPED_MESSAGE : null;
+        await tx.$executeRaw(sql`UPDATE jenan_map.runtime SET status = ${input.status}, "maintenanceMessage" = ${maintenanceMessage}, revision = revision + 1, "updatedAt" = now() WHERE id = 1`);
+        await audit(tx, actor, "runtime", state.publishedReleaseId, { reason: input.reason, from: state.status, to: input.status, maintenanceMessage });
+        return { status: input.status, revision: state.revision + 1 };
+      }
+      const release = await releaseById(input.releaseId, tx);
+      if (input.action === "approve") {
+        if (release.status !== "Ready") throw new MapError("RELEASE_NOT_READY");
+        await verifyReady(release.id, tx, verified);
+        await tx.$executeRaw(sql`UPDATE jenan_map.release SET status = 'Approved', "reviewedBy" = ${actor}, "reviewedAt" = now(), "reviewNotes" = ${input.reason} WHERE id = ${release.id}::uuid`);
+      } else if (input.action === "archive") {
+        if (state.publishedReleaseId === release.id) throw new MapError("ACTIVE_RELEASE_CANNOT_BE_ARCHIVED");
+        if (!["Approved", "Published"].includes(release.status)) throw new MapError("INVALID_TRANSITION");
+        await tx.$executeRaw(sql`UPDATE jenan_map.release SET status = 'Archived' WHERE id = ${release.id}::uuid`);
+      } else {
+        if (input.confirmation !== (input.action === "publish" ? "PUBLISH" : "ROLLBACK")) throw new MapError("EXPLICIT_CONFIRMATION_REQUIRED", 400);
+        if (state.revision !== input.expectedRevision) throw new MapError("STALE_REVISION");
+        if (state.publishedReleaseId !== input.expectedPublishedReleaseId) throw new MapError("STALE_PUBLISHED_POINTER");
+        if (input.action === "publish" ? release.status !== "Approved" : release.status !== "Archived" || !release.publishedAt) throw new MapError("INVALID_TRANSITION");
+        if (!release.reviewedBy || !release.reviewedAt) throw new MapError("REVIEW_REQUIRED");
+        await verifyReady(release.id, tx, verified);
+        if (state.publishedReleaseId) {
+          await tx.$executeRaw(sql`UPDATE jenan_map.release SET status = 'Archived' WHERE id = ${state.publishedReleaseId}::uuid AND status = 'Published'`);
+        }
+        await tx.$executeRaw(sql`UPDATE jenan_map.release SET status = 'Published', "publishedAt" = COALESCE("publishedAt",now()) WHERE id = ${release.id}::uuid`);
+        await tx.$executeRaw(sql`UPDATE jenan_map.runtime SET "publishedReleaseId" = ${release.id}::uuid, revision = revision + 1, "updatedAt" = now() WHERE id = 1`);
+      }
+      await audit(tx, actor, input.action, release.id, { reason: input.reason, previousReleaseId: state.publishedReleaseId });
+      return { id: release.id, action: input.action, revision: state.revision + (["publish", "rollback"].includes(input.action) ? 1 : 0) };
+    }, { isolationLevel: "Serializable", timeout: 60_000 });
+  } catch (error) {
+    rethrowWriteError(error);
+  }
+}
+
+export async function validateLocation(latitude: number, longitude: number, releaseId?: string, adminPreview = false) {
+  if (adminPreview && !releaseId) throw new MapError("PREVIEW_RELEASE_REQUIRED", 400);
+  const release = adminPreview ? await previewRelease(releaseId!) : await publishedRelease(releaseId);
+  const [result] = await db.$queryRaw<{ inside: boolean }[]>(sql`
+    SELECT ST_Covers(geometry, ST_SetSRID(ST_MakePoint(${longitude},${latitude}),4326)) AS inside
+    FROM jenan_map.boundary WHERE "releaseId" = ${release.id}::uuid`);
+  if (!result) throw new MapError("AUTHORITATIVE_BOUNDARY_UNAVAILABLE", 503);
+  if (!result.inside) throw new MapError("OUTSIDE_SAUDI_ARABIA", 422);
+  return { valid: true, latitude, longitude, releaseId: release.id };
+}
+
+export async function search(input: { q: string; releaseId?: string; latitude?: number; longitude?: number; radiusMeters: number; layerIds?: string[] }, adminPreview = false) {
+  if (adminPreview && !input.releaseId) throw new MapError("PREVIEW_RELEASE_REQUIRED", 400);
+  const release = adminPreview ? await previewRelease(input.releaseId!) : await publishedRelease(input.releaseId);
+  const [boundary] = await db.$queryRaw<{ id: string }[]>(sql`SELECT id FROM jenan_map.boundary WHERE "releaseId" = ${release.id}::uuid`);
+  if (!boundary) throw new MapError("AUTHORITATIVE_BOUNDARY_UNAVAILABLE", 503);
+  const near = input.latitude !== undefined && input.longitude !== undefined;
+  if (near) await validateLocation(input.latitude!, input.longitude!, release.id, adminPreview);
+  const proximity = near
+    ? sql`AND ST_DWithin(f.geometry::geography, ST_SetSRID(ST_MakePoint(${input.longitude!}, ${input.latitude!}),4326)::geography, ${input.radiusMeters})`
+    : sql``;
+  const rows = await db.$queryRaw(sql`
+    SELECT f.id, f.label, f.category, ST_Y(ST_PointOnSurface(f.geometry)) AS latitude,
+      ST_X(ST_PointOnSurface(f.geometry)) AS longitude
+    FROM jenan_map.feature f JOIN jenan_map.boundary b ON b."releaseId" = f."releaseId"
+    WHERE f."releaseId" = ${release.id}::uuid
+      AND f.search @@ plainto_tsquery('simple', ${input.q})
+      AND ${readyLayerSearchFilter(release.id, input.layerIds)}
+      -- The returned position is the feature's representative point and must be inside the country. Whole-geometry coverage is not asked here:
+      -- clipped administrative polygons may lie a few millimetres outside the clipped boundary and must stay searchable.
+      AND ST_Covers(b.geometry, ST_PointOnSurface(f.geometry)) ${proximity}
+    ORDER BY ts_rank(f.search,plainto_tsquery('simple',${input.q})) DESC, f.id LIMIT 20`);
+  return { results: rows, releaseId: release.id };
+}
+
+export async function authorizedArtifact(id: string, admin: boolean) {
+  const [artifact] = await db.$queryRaw<Artifact[]>(sql`SELECT * FROM jenan_map.artifact WHERE id = ${id}::uuid`);
+  if (!artifact) throw new MapError("ARTIFACT_NOT_FOUND", 404);
+  if (artifact.kind === "source") throw new MapError("RAW_SOURCE_DOWNLOAD_UNSUPPORTED", 403);
+  if (!admin) {
+    await publishedRelease(artifact.releaseId);
+    if (!artifact.publicSafe) throw new MapError("ARTIFACT_NOT_FOUND", 404);
+  }
+  return artifact;
+}
+
+export async function exportManifest(releaseId: string, actor?: string) {
+  const release = await releaseById(releaseId);
+  const files = (await artifacts(releaseId)).filter((file) =>
+    file.kind !== "source" && (file as Artifact & { exportAllowed?: boolean }).exportAllowed === true);
+  if (!files.length) throw new MapError("NO_LICENSED_EXPORT_ARTIFACTS", 409);
+  for (const file of files) await (await openArtifact(file, true)).close();
+  if (actor) await db.$transaction((tx) => audit(tx, actor, "export.manifest", releaseId, { artifactIds: files.map((file) => file.id) }));
+  return {
+    format: "jenan-pro-map-portable-v1",
+    release: { id: release.id, version: release.version, status: release.status, source: release.source, sourceDate: release.sourceDate, license: release.license, publishedAt: release.publishedAt },
+    generatedAt: new Date().toISOString(),
+    authorization: "Session-authenticated downloads have no independent link expiry; every request requires a current admin session. URLs are not bearer tokens.",
+    artifacts: files.map((item) => ({ ...publicArtifact(item, true), url: `${publicArtifact(item, true).url}?download=1`,
+      exportLicense: (item as Artifact & { exportLicense?: string }).exportLicense ?? null })),
+    portableGeojsonAvailable: files.some((item) => item.kind === "geojson"),
+  };
+}
+
+export async function authorizedReleaseAsset(releaseId: string, kind: string, filename: string, admin: boolean) {
+  if (admin) await previewRelease(releaseId);
+  else await publishedRelease(releaseId);
+  const file = (await artifacts(releaseId)).find((f) => f.kind === kind && f.filename === filename && f.publicSafe);
+  if (!file || !["style", "pmtiles", "glyphs", "sprite"].includes(kind)) throw new MapError("ARTIFACT_NOT_FOUND", 404);
+  return file;
+}
+
+export async function servedStyle(artifact: Artifact, admin: boolean) {
+  const handle = await openArtifact(artifact);
+  try {
+    const { readJson } = await import("./validation");
+    const style = await readJson(handle);
+    const bindings = await releaseManifestLayers(artifact.releaseId);
+    const hidden = new Set(bindings.filter((layer) => !layer.available).flatMap((layer) => layer.styleLayerIds ?? []));
+    for (const layer of style.layers ?? []) {
+      if (hidden.has(layer.id)) layer.layout = { ...layer.layout, visibility: "none" };
+    }
+    const from = releaseAssetBase(artifact.releaseId), to = releaseAssetBase(artifact.releaseId, admin);
+    if (typeof style.glyphs === "string" && style.glyphs.startsWith(from + "/")) style.glyphs = to + style.glyphs.slice(from.length);
+    if (typeof style.sprite === "string" && style.sprite.startsWith(from + "/")) style.sprite = to + style.sprite.slice(from.length);
+    for (const source of Object.values(style.sources ?? {}) as { url?: string }[]) {
+      if (source.url?.startsWith(`pmtiles://${from}/`)) source.url = `pmtiles://${to}${source.url.slice(`pmtiles://${from}`.length)}`;
+    }
+    return style;
+  } finally { await handle.close(); }
+}
+
+export async function previewManifest(releaseId: string) {
+  const release = await previewRelease(releaseId);
+  const files = (await artifacts(release.id)).filter((file) => file.publicSafe);
+  if (!files.some((file) => file.kind === "geojson")) throw new MapError("PREVIEW_DATA_UNAVAILABLE", 503);
+  assertStorageConfigured();
+  for (const file of files) await (await openArtifact(file)).close();
+  return {
+    status: "enabled", preview: true,
+    release: {
+      id: release.id, version: release.version, publishedAt: release.publishedAt,
+      source: release.source, sourceDate: release.sourceDate, license: release.license,
+      attribution: `${OSM_ATTRIBUTION}; geoBoundaries product CC BY 4.0; upstream licenses retained per layer`, boundaryNotice: OPEN_BOUNDARY_NOTICE,
+      styleUrl: files.find((file) => file.kind === "style")
+        ? publicArtifact(files.find((file) => file.kind === "style")!, true).url
+        : null,
+      layers: await releaseManifestLayers(release.id),
+      artifacts: files.map((file) => publicArtifact(file, true)),
+    },
+  };
+}
+
+export async function savedLocation(userId: string): Promise<SavedLocation | null> {
+  const [location] = await db.$queryRaw<SavedLocation[]>(sql`
+    SELECT latitude,longitude,country,region,city,district,"formattedAddress",source,"selectedAt","releaseId"
+    FROM jenan_map.saved_location WHERE "userId" = ${userId}`);
+  return location ?? null;
+}
+
+export async function administrativeContext(executor: SqlExecutor, releaseId: string, latitude: number, longitude: number) {
+  const point = sql`ST_SetSRID(ST_MakePoint(${longitude},${latitude}),4326)`;
+  const containing = (layer: string) => sql`(SELECT f.label FROM jenan_map.feature f WHERE f."releaseId"=${releaseId}::uuid AND f."layerId"=${layer}
+    AND ST_Covers(f.geometry,${point}) ORDER BY ST_Area(f.geometry) LIMIT 1)`;
+  const [row] = await executor.$queryRaw<{ region: string | null; city: string | null; district: string | null }[]>(sql`
+    SELECT ${containing("regions")} AS region, ${containing("governorates")} AS city,
+      (SELECT f.label FROM jenan_map.feature f WHERE f."releaseId"=${releaseId}::uuid AND f."layerId"='places' AND f."sourceId" LIKE 'places:neighbourhood:%'
+        AND ST_DWithin(f.geometry::geography, ${point}::geography, 1500)
+        ORDER BY f.geometry::geography <-> ${point}::geography LIMIT 1) AS district`);
+  const region = row?.region ?? null, city = row?.city ?? null, district = row?.district ?? null;
+  return { region, city, district, address: [district, city, region].filter((part, index, all) => part && all.indexOf(part) === index).join("، ") || null };
+}
+
+export async function saveLocation(input: { latitude: number; longitude: number; releaseId: string; source: SavedLocation["source"] }, userId: string) {
+  try {
+    return await db.$transaction(async (tx) => {
+      const state = await runtime(tx, true);
+      if (state.status !== "enabled") throw new MapError(state.status === "maintenance" ? "MAP_MAINTENANCE" : "MAP_DISABLED", 503);
+      if (state.publishedReleaseId !== input.releaseId) throw new MapError("RELEASE_NOT_PUBLISHED", 409);
+      const release = await releaseById(input.releaseId, tx);
+      if (release.status !== "Published") throw new MapError("RELEASE_NOT_PUBLISHED", 409);
+      const [boundary] = await tx.$queryRaw<{ inside: boolean }[]>(sql`
+        SELECT ST_Covers(geometry,ST_SetSRID(ST_MakePoint(${input.longitude},${input.latitude}),4326)) AS inside
+        FROM jenan_map.boundary WHERE "releaseId" = ${input.releaseId}::uuid`);
+      if (!boundary) throw new MapError("AUTHORITATIVE_BOUNDARY_UNAVAILABLE", 503);
+      if (!boundary.inside) throw new MapError("OUTSIDE_SAUDI_ARABIA", 422);
+      // Administrative context comes only from the release's own imported data (never from the client): the region and governorate
+      // polygons that contain the point, and the nearest imported neighbourhood within 1.5 km. Anything the release lacks stays empty.
+      const context = await administrativeContext(tx, input.releaseId, input.latitude, input.longitude);
+      const [location] = await tx.$queryRaw<SavedLocation[]>(sql`
+        INSERT INTO jenan_map.saved_location ("userId","releaseId",latitude,longitude,country,region,city,district,"formattedAddress",source,"selectedAt")
+        VALUES (${userId},${input.releaseId}::uuid,${input.latitude},${input.longitude},'SA',${context.region},${context.city},${context.district},${context.address},${input.source},now())
+        ON CONFLICT ("userId") DO UPDATE SET
+          "releaseId" = EXCLUDED."releaseId",latitude = EXCLUDED.latitude,longitude = EXCLUDED.longitude,
+          country = 'SA',region = EXCLUDED.region,city = EXCLUDED.city,district = EXCLUDED.district,"formattedAddress" = EXCLUDED."formattedAddress",
+          source = EXCLUDED.source,"selectedAt" = now()
+        RETURNING latitude,longitude,country,region,city,district,"formattedAddress",source,"selectedAt","releaseId"`);
+      if (!location) throw new MapError("LOCATION_SAVE_FAILED", 503);
+      await audit(tx, userId, "location.saved", input.releaseId, { source: input.source });
+      return location;
+    }, { isolationLevel: "Serializable" });
+  } catch (error) { rethrowWriteError(error); }
+}

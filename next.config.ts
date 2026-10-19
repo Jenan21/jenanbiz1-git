@@ -45,6 +45,12 @@ const nextConfig: NextConfig = {
           },
         ],
       },
+      {
+        source: "/jenan-map",
+        headers: securityHeaders.filter((header) => header.key === "Permissions-Policy").map((header) => ({
+          ...header, value: header.value.replace("geolocation=()", "geolocation=(self)"),
+        })),
+      },
     ];
   },
 };
