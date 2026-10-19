@@ -1,5 +1,5 @@
 import { NextRequest } from "next/server";
-import { access, failure, json } from "@/services/jenan-map/http";
+import { access, failure, json, logUnexpected } from "@/services/jenan-map/http";
 import { changeMapLayer, layerChangeSchema, mapLayers } from "@/services/jenan-map/layers";
 import { MapError } from "@/services/jenan-map/contracts";
 
@@ -31,7 +31,8 @@ export async function GET(request: NextRequest) {
     if (auth.response) return auth.response;
     try {
       return json({ layers: await mapLayers() });
-    } catch {
+    } catch (error) {
+      logUnexpected(error);
       return json({ layers: null, available: false, error: "MAP_UNAVAILABLE" });
     }
   } catch (error) { return failure(error); }

@@ -1,5 +1,5 @@
 import { NextRequest } from "next/server";
-import { access, failure, json } from "@/services/jenan-map/http";
+import { access, failure, json, logUnexpected } from "@/services/jenan-map/http";
 import { commandSchema } from "@/services/jenan-map/contracts";
 import { command, overviewFacts, preverifyCommand, snapshot } from "@/services/jenan-map/service";
 
@@ -12,7 +12,8 @@ export async function GET(request: NextRequest) {
     if (auth.response) return auth.response;
     const current = await snapshot();
     return json({ ...current, facts: await overviewFacts(current.runtime.publishedReleaseId) });
-  } catch {
+  } catch (error) {
+    logUnexpected(error);
     return json({ runtime: { status: "disabled", maintenanceMessage: null, publishedReleaseId: null, revision: 0 }, releases: [], audit: [], artifacts: [], storage: { status: "unknown", configured: Boolean(process.env.JENAN_MAP_STORAGE_ROOT?.trim()) || process.env.JENAN_MAP_STORAGE_DRIVER?.trim() === "s3" }, capabilities: [], previewAvailable: false, exportAvailable: false, blockers: ["MAP_NOT_PROVISIONED_OR_UNAVAILABLE"], available: false });
   }
 }

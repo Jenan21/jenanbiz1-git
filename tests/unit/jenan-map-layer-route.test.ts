@@ -5,12 +5,14 @@ const mocks = vi.hoisted(() => ({
   access: vi.fn(),
   change: vi.fn(),
   list: vi.fn(),
+  logUnexpected: vi.fn(),
 }));
 
 vi.mock("@/services/jenan-map/http", () => ({
   access: mocks.access,
   json: (body: unknown, status = 200) => NextResponse.json(body, { status }),
   failure: (error: { status?: number }) => NextResponse.json({ error: "FAILED" }, { status: error.status ?? 503 }),
+  logUnexpected: mocks.logUnexpected,
 }));
 vi.mock("@/services/jenan-map/layers", async (original) => {
   const actual = await original<typeof import("@/services/jenan-map/layers")>();
@@ -51,10 +53,13 @@ it("returns the stored layer catalog when provisioned", async () => {
 });
 
 it("reports an unavailable optional catalog without exposing database errors or an empty success", async () => {
-  mocks.list.mockRejectedValue(new Error('relation "jenan_map.runtime" does not exist'));
+  const cause = new Error('relation "jenan_map.runtime" does not exist');
+  mocks.list.mockRejectedValue(cause);
   const response = await GET(new NextRequest("https://jenanpro.sa/api/admin/jenan-map/layers"));
   expect(response.status).toBe(200);
   expect(await response.json()).toEqual({ layers: null, available: false, error: "MAP_UNAVAILABLE" });
+  // The operator is told why in the server log, the screen is not.
+  expect(mocks.logUnexpected).toHaveBeenCalledExactlyOnceWith(cause);
 });
 
 it("does not treat access failures as catalog availability responses", async () => {

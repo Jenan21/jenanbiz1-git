@@ -46,6 +46,42 @@ export function retainedMetadata(metadata) {
   return kept;
 }
 const save = (filename, value) => writeFile(filename, JSON.stringify(value, null, 2) + "\n", { flag: "wx", mode: 0o600 });
+
+// Everything below that comes from the network is untrusted. Downloads and the URLs recorded for them may only name these hosts, over HTTPS.
+const REVIEWED_HOSTS = ["www.geoboundaries.org", "geoboundaries.org", "media.githubusercontent.com", "raw.githubusercontent.com", "github.com", "download.geofabrik.de"];
+export function reviewedUrl(value) {
+  let parsed;
+  try { parsed = new URL(value); } catch { throw new Error("Unreviewed acquisition URL"); }
+  if (parsed.protocol !== "https:" || parsed.username || parsed.password || !REVIEWED_HOSTS.includes(parsed.hostname)) throw new Error("Unreviewed acquisition/redirect host");
+  return parsed;
+}
+
+// Text that is recorded as provenance must be plain, visible and of bounded length: no control, line-separator or text-direction characters that
+// could mislead the operator who reviews it. Anything else is refused, never truncated or repaired.
+const VISIBLE_TEXT = /^[^\p{Cc}\p{Cf}\p{Zl}\p{Zp}]+$/u;
+export function upstreamText(value, label, max = 300) {
+  const text = typeof value === "string" ? value.trim() : "";
+  if (!text || text.length > max || !VISIBLE_TEXT.test(text)) throw new Error(`Unreviewed upstream ${label}`);
+  return text;
+}
+export function upstreamBoundaryId(value, level) {
+  if (typeof value !== "string" || !new RegExp(`^SAU-${level}-[0-9]{1,12}$`).test(value)) throw new Error("Unreviewed upstream boundaryID");
+  return value;
+}
+
+// A metadata answer is a few kilobytes; anything larger is not metadata and is not read.
+const MAX_METADATA_BYTES = 1024 * 1024;
+async function boundedMetadata(response) {
+  if (Number(response.headers.get("content-length") ?? 0) > MAX_METADATA_BYTES) throw new Error("Upstream metadata exceeds the bounded size");
+  const chunks = [];
+  let size = 0;
+  for await (const chunk of response.body ?? []) {
+    size += chunk.byteLength;
+    if (size > MAX_METADATA_BYTES) throw new Error("Upstream metadata exceeds the bounded size");
+    chunks.push(chunk);
+  }
+  return JSON.parse(Buffer.concat(chunks).toString("utf8"));
+}
 // GeoJSON text sequences (RFC 8142) prefix each record with the ASCII record separator.
 const RECORD_SEPARATOR = String.fromCharCode(0x1e);
 export const stripRecordSeparator = (line) => (line.startsWith(RECORD_SEPARATOR) ? line.slice(RECORD_SEPARATOR.length) : line);
@@ -78,11 +114,9 @@ function toolVersion(name) {
 }
 
 async function download(url, filename) {
-  const hosts = ["www.geoboundaries.org", "geoboundaries.org", "media.githubusercontent.com", "raw.githubusercontent.com", "github.com", "download.geofabrik.de"];
   let response;
   for (let redirects = 0; redirects <= 5; redirects++) {
-    const parsed = new URL(url);
-    if (parsed.protocol !== "https:" || parsed.username || parsed.password || !hosts.includes(parsed.hostname)) throw new Error("Unreviewed acquisition/redirect host");
+    reviewedUrl(url);
     response = await fetch(url, { redirect: "manual", signal: AbortSignal.timeout(60 * 60 * 1000) });
     if (![301, 302, 303, 307, 308].includes(response.status)) break;
     if (!response.headers.get("location") || redirects === 5) throw new Error("Invalid acquisition redirect");
@@ -117,22 +151,25 @@ export async function acquire(root, pinnedBoundariesOnly = false) {
     const response = await fetch(metadataUrl, { signal: AbortSignal.timeout(60_000) });
     if (level !== "ADM0" && response.status === 404) continue;
     if (!response.ok) throw new Error(`geoBoundaries ${level} metadata unavailable (${response.status})`);
-    const metadata = await response.json();
+    const metadata = await boundedMetadata(response);
     if (metadata.boundaryISO !== "SAU" || metadata.boundaryType !== level) throw new Error(`Unverified geoBoundaries ${level} country`);
     const license = boundaryLicense(metadata);
-    await save(path.join(root, `${level}-metadata.json`), retainedMetadata(metadata));
-    const filename = path.join(root, `${level}.geojson`);
+    // What is recorded as provenance comes from the network, so it is checked before anything is written.
+    const boundaryId = upstreamBoundaryId(metadata.boundaryID, level);
+    const boundarySource = upstreamText(metadata.boundarySource, "boundarySource");
     const sourceUrl = pinnedBoundariesOnly
       ? `https://media.githubusercontent.com/media/wmgeolab/geoBoundaries/${REVISION}/releaseData/gbOpen/SAU/${level}/geoBoundaries-SAU-${level}_simplified.geojson`
-      : metadata.gjDownloadURL;
+      : reviewedUrl(metadata.gjDownloadURL).href;
+    await save(path.join(root, `${level}-metadata.json`), retainedMetadata(metadata));
+    const filename = path.join(root, `${level}.geojson`);
     await download(sourceUrl, filename);
     const year = String(metadata.boundaryYearRepresented ?? metadata.boundaryYear).match(/\d{4}/)?.[0];
     if (!year) throw new Error("geoBoundaries represented year missing; operator review required");
     sources.push({ level, file: filename, sha256: await checksum(filename), provenance: {
-      source: `geoBoundaries gbOpen SAU ${level} ${metadata.boundaryID}`,
-      organization: `geoBoundaries / William & Mary; upstream: ${metadata.boundarySource ?? "see retained metadata"}`,
+      source: `geoBoundaries gbOpen SAU ${level} ${boundaryId}`,
+      organization: `geoBoundaries / William & Mary; upstream: ${boundarySource}`,
       url: sourceUrl, sourceDate: `${year}-01-01T00:00:00.000Z`, importedAt,
-      license, attribution: boundaryAttribution(metadata),
+      license, attribution: boundaryAttribution({ boundaryLicense: metadata.boundaryLicense, boundarySource }),
     } });
   }
   if (pinnedBoundariesOnly) {
