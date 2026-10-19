@@ -4,7 +4,7 @@ import { mkdir, readFile, rm, writeFile } from "node:fs/promises";
 import path from "node:path";
 import pg from "pg";
 import { build } from "../../scripts/jenan-map/build.mjs";
-import { importedFeature, OPEN_BOUNDARY_NOTICE } from "../../scripts/jenan-map/open-data.mjs";
+import { CLIP_TOLERANCE_DEGREES, importedFeature, OPEN_BOUNDARY_NOTICE } from "../../scripts/jenan-map/open-data.mjs";
 
 // Real source import mechanics only: no OSM archive, glyph, production release or visual acceptance.
 const enabled = process.env.RUN_JENAN_MAP_OPEN_DATA_TESTS === "1";
@@ -40,7 +40,7 @@ describe.skipIf(!enabled)("actual pinned geoBoundaries Saudi import (private dis
     await pool?.end();
     await rm(root, { recursive: true, force: true });
   });
-  it("blocks inconsistent real intersections atomically, while retaining an explicitly bounded covered-source subset", async () => {
+  it("blocks unclipped real intersections atomically, imports the clipped real layers and retains an explicitly bounded covered-source subset", async () => {
     const sourceRoot = process.env.JENAN_MAP_TEST_SOURCE_ROOT!;
     const countryBytes = await readFile(path.join(sourceRoot, "ADM0.geojson"));
     const regionBytes = await readFile(path.join(sourceRoot, "ADM1.geojson"));
@@ -96,15 +96,31 @@ describe.skipIf(!enabled)("actual pinned geoBoundaries Saudi import (private dis
     await writeFile(path.join(staging, "original-ADM0.geojson"), countryBytes);
     await writeFile(path.join(staging, "original-ADM1.geojson"), regionBytes);
     await writeFile(path.join(staging, "original-ADM2.geojson"), governorateBytes);
-    await writeFile(path.join(staging, "import.json"), JSON.stringify({
+    const fullImport = (clip: boolean) => JSON.stringify({
       ...coverage, featuresFile: "features.geojson", boundaryFile: "boundary.geojson",
-      clipAdministrativeToBoundary: true, sourceFiles: config.boundaries
+      ...(clip ? { clipAdministrativeToBoundary: true } : {}), sourceFiles: config.boundaries
         .map((source: { level: string; sha256: string }) => ({ level: source.level, filename: `original-${source.level}.geojson`, sha256: source.sha256 })),
       confirmation: "BUILD OWNED SA DATA",
-    }));
-    await expect(build(["--release", release.id, "--manifest", "import.json"])).rejects.toThrow("Feature invalid or outside reviewed Saudi boundary");
+    });
+    // The real, simplified ADM1 and ADM2 polygons do not nest exactly inside the simplified ADM0 (4 of 13 regions and 101 of 147 governorates are covered),
+    // so taking them as they are is refused, atomically: the release fails, holds no feature and the production pointer does not move.
+    await writeFile(path.join(staging, "unclipped-import.json"), fullImport(false));
+    await expect(build(["--release", release.id, "--manifest", "unclipped-import.json"])).rejects.toThrow("Feature invalid or outside reviewed Saudi boundary");
     const failed = await pool!.query(`SELECT status,(SELECT count(*)::integer FROM jenan_map.feature WHERE "releaseId"=$1) AS features FROM jenan_map.release WHERE id=$1`, [release.id]);
     expect(failed.rows).toEqual([{ status: "Failed", features: 0 }]);
+    expect(await service.runtime()).toEqual(runtimeBefore);
+    // The reviewed path cuts them to the boundary (PostGIS ST_Intersection, within the documented tolerance, originals retained privately) and the whole
+    // real layers are imported. This used to be refused too, until the clipping tolerance of 2026-10-18.
+    release = await service.command({
+      action: "create", version: `clipped-real-source-${randomUUID()}`, source: "Pinned geoBoundaries SAU real geometry, clipped to the reviewed ADM0; not production basemap",
+      sourceDate: countrySource.provenance.sourceDate, license: "ODbL-1.0; original ADM2 source retained under CC-BY-SA-2.0; geoBoundaries product CC BY 4.0",
+    }, adminId) as { id: string };
+    await writeFile(path.join(staging, "import.json"), fullImport(true));
+    await build(["--release", release.id, "--manifest", "import.json"]);
+    const clipped = await pool!.query(`SELECT r.status, count(*) FILTER (WHERE f."layerId"='regions')::int AS regions, count(*) FILTER (WHERE f."layerId"='governorates')::int AS governorates,
+      count(*) FILTER (WHERE ST_Covers(ST_Buffer(b.geometry, $2::float8), f.geometry))::int AS within_tolerance, count(*)::int AS total
+      FROM jenan_map.feature f JOIN jenan_map.boundary b ON b."releaseId"=f."releaseId" JOIN jenan_map.release r ON r.id=f."releaseId" WHERE f."releaseId"=$1 GROUP BY r.status`, [release.id, CLIP_TOLERANCE_DEGREES]);
+    expect(clipped.rows).toEqual([{ status: "Ready", regions: regions.length, governorates: governorates.length, within_tolerance: regions.length + governorates.length, total: regions.length + governorates.length }]);
     expect(await service.runtime()).toEqual(runtimeBefore);
     // This subset tests import mechanics only; it is not a complete administrative layer or basemap.
     release = await service.command({
@@ -139,5 +155,5 @@ describe.skipIf(!enabled)("actual pinned geoBoundaries Saudi import (private dis
     await expect(pool!.query(`UPDATE jenan_map.boundary SET coverage='{}' WHERE "releaseId"=$1`, [release.id])).rejects.toThrow("immutable");
     await expect(service.command({ action: "approve", releaseId: release.id, confirmation: "APPROVE", reason: "Incomplete real source fixture must remain blocked" }, adminId)).rejects.toThrow("RELEASE_NOT_READY");
     expect(await service.runtime()).toEqual(runtimeBefore);
-  });
+      }, 300_000);
 });
