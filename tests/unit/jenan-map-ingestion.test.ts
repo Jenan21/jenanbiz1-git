@@ -198,6 +198,19 @@ it("an inline (non-download) asset request does not need export permission", asy
   expect(response.status).toBe(200);
   expect(response.headers.get("content-disposition")).toContain("inline");
 });
+it("a request the client abandoned while its file was verified is not a failure: nothing is streamed and nothing is logged", async () => {
+  const glyph = readyFixtureFiles()[3];
+  await mkdir(path.join(root, releaseId)); await writeFile(path.join(root, glyph.artifact.storageKey), glyph.bytes);
+  mocks.query.mockResolvedValueOnce([{ status: "Ready" }]).mockResolvedValueOnce([glyph.artifact]);
+  const left = new AbortController(); left.abort();
+  const logged = vi.spyOn(console, "error").mockImplementation(() => undefined);
+  try {
+    const response = await releaseAssetResponse(new NextRequest("http://localhost/", { signal: left.signal }), releaseId, ["glyphs", "Noto", "0-255.pbf"], true);
+    expect(response.status).toBe(499);
+    expect(response.body).toBeNull();
+    expect(logged).not.toHaveBeenCalled();
+  } finally { logged.mockRestore(); }
+});
 it("derives layer binding style IDs from retained bytes under the candidate lock and audits", async () => {
   const style = readyFixtureFiles()[1];
   await mkdir(path.join(root, releaseId)); await writeFile(path.join(root, style.artifact.storageKey), style.bytes);

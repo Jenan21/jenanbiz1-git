@@ -104,12 +104,16 @@ async function streamArtifact(request: NextRequest, artifact: Artifact, admin: b
       return new NextResponse(null, { status: 416, headers });
     }
     const handle = await openArtifact(artifact);
+    // The client may have left while the file was being verified: nobody is waiting for an answer, and that is neither a failure nor worth a log line.
+    if (request.signal.aborted) {
+      await handle.close();
+      return new NextResponse(null, { status: 499, headers: privateHeaders });
+    }
     headers.set("content-length", String(range ? range.end - range.start + 1 : size));
     if (range) headers.set("content-range", `bytes ${range.start}-${range.end}/${size}`);
     const stream = handle.createReadStream({ start: range?.start ?? 0, end: range?.end ?? size - 1, autoClose: true });
     const abort = () => stream.destroy();
-    if (request.signal.aborted) abort();
-    else request.signal.addEventListener("abort", abort, { once: true });
+    request.signal.addEventListener("abort", abort, { once: true });
     stream.once("close", () => request.signal.removeEventListener("abort", abort));
     return new NextResponse(Readable.toWeb(stream) as ReadableStream<Uint8Array>, { status: range ? 206 : 200, headers });
 }
