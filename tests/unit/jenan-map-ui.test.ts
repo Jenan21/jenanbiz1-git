@@ -16,11 +16,13 @@ import {
   mapSearchUrl,
 } from "@/features/jenan-map/api";
 import {
+  cameraMoveFor,
   coordinateDraft,
   EARTH_RADIUS_METERS,
   geodesicRing,
   isCoordinate,
   MAP_RADII,
+  ringBounds,
 } from "@/features/jenan-map/geometry";
 import {
   fromLegacyProjectLocation,
@@ -189,6 +191,13 @@ describe("Jenan PRO map geometry and draft isolation", () => {
     expect(() => geodesicRing(24, 46, 500, 2)).toThrow();
     expect(() => coordinateDraft(100, 46, "map")).toThrow();
   });
+  it.each(MAP_RADII)("frames the %im ring by its true extent, centred on the point", (radius) => {
+    const [[west, south], [east, north]] = ringBounds(24.7136, 46.6753, radius);
+    expect(distance([46.6753, 24.7136], [46.6753, north])).toBeCloseTo(radius, 0);
+    expect(distance([46.6753, 24.7136], [46.6753, south])).toBeCloseTo(radius, 0);
+    expect(east - 46.6753).toBeCloseTo(46.6753 - west, 9);
+    expect(east).toBeGreaterThan(west);
+  });
   it("clears every address field whenever coordinates are selected", () => {
     const saved = {
       ...coordinateDraft(24, 46, "search"),
@@ -210,6 +219,25 @@ describe("Jenan PRO map geometry and draft isolation", () => {
     expect(saved.formattedAddress).toBe("عنوان سابق");
     expect(draft.source).toBe("map");
     expect(Number.isFinite(Date.parse(draft.selectedAt))).toBe(true);
+  });
+});
+
+describe("how the camera follows the analysis point and radius", () => {
+  const here = { latitude: 24.7136, longitude: 46.6753, radius: 1000 };
+  const elsewhere = { latitude: 24.8216, longitude: 46.6633 };
+  it.each([
+    ["leaves the saved viewport alone on the first pass", undefined, { ...here, source: "search" as const }, "stay"],
+    ["stays put while nothing is selected", here, null, "stay"],
+    ["frames the ring of the first search result", null, { ...here, source: "search" as const }, "fit"],
+    ["only follows the first click", null, { ...here, source: "map" as const }, "center"],
+    ["frames the ring of a device location", here, { ...here, ...elsewhere, source: "geolocation" as const }, "fit"],
+    ["frames the ring of typed coordinates", here, { ...here, ...elsewhere, source: "coordinates" as const }, "fit"],
+    ["frames the ring of a later search result", here, { ...here, ...elsewhere, source: "search" as const }, "fit"],
+    ["only follows a click or a dragged marker", here, { ...here, ...elsewhere, source: "map" as const }, "center"],
+    ["frames the ring again for a new radius", here, { ...here, radius: 3000, source: "map" as const }, "fit"],
+    ["does nothing when only the layers change", here, { ...here, source: "search" as const }, "stay"],
+  ])("%s", (_name, previous, next, move) => {
+    expect(cameraMoveFor(previous, next)).toBe(move);
   });
 });
 

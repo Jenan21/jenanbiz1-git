@@ -11,7 +11,8 @@ import {
   type RefObject,
 } from "react";
 import { createPortal } from "react-dom";
-import { assertPinnedRelease, mapManifestUrl, mapRequest, mapSearchUrl } from "./api";
+import { assertPinnedRelease, mapManifestUrl, mapRequest, mapSearchUrl, MANIFEST_TIMEOUT_MS, SLOW_MANIFEST_NOTICE_MS } from "./api";
+import { MAP_STOPPED_MESSAGE } from "@/services/jenan-map/contracts";
 import { focusLoopTarget } from "./accessibility";
 import { saveOwnedMapLocation } from "./location-api";
 import { availableLayerIds, loadMapPreferences, persistMapPreferences } from "./preferences-api";
@@ -28,8 +29,8 @@ import styles from "./jenan-map.module.css";
 
 const Renderer = lazy(() => import("./map-renderer"));
 const statusLabels = {
-  maintenance: "الخريطة تحت الصيانة حالياً. لم يتم تغيير موقعك المحفوظ.",
-  disabled: "خدمة الخريطة معطلة حالياً.",
+  maintenance: MAP_STOPPED_MESSAGE,
+  disabled: MAP_STOPPED_MESSAGE,
   unavailable: "لا يوجد إصدار خريطة منشور متاح حالياً.",
   enabled: "لا يوجد إصدار خريطة منشور متاح حالياً.",
 };
@@ -50,6 +51,7 @@ export function JenanMapModal({
   const dialog = useRef<HTMLDivElement>(null);
   const [manifest, setManifest] = useState<MapManifest | null>(null);
   const [manifestLoading, setManifestLoading] = useState(true);
+  const [slowManifest, setSlowManifest] = useState(false);
   const [attempt, setAttempt] = useState(0);
   const [error, setError] = useState("");
   const [rendererError, setRendererError] = useState("");
@@ -143,9 +145,10 @@ export function JenanMapModal({
 
   useEffect(() => {
     const controller = new AbortController();
+    const slow = setTimeout(() => setSlowManifest(true), SLOW_MANIFEST_NOTICE_MS);
     mapRequest<MapManifest>(mapManifestUrl(preview), {
       signal: controller.signal,
-    })
+    }, MANIFEST_TIMEOUT_MS)
       .then(async (data) => {
         if (controller.signal.aborted) return;
         assertPinnedRelease(data, preview);
@@ -165,9 +168,16 @@ export function JenanMapModal({
         if (!controller.signal.aborted) setError(reason.message);
       })
       .finally(() => {
-        if (!controller.signal.aborted) setManifestLoading(false);
+        clearTimeout(slow);
+        if (!controller.signal.aborted) {
+          setManifestLoading(false);
+          setSlowManifest(false);
+        }
       });
-    return () => controller.abort();
+    return () => {
+      clearTimeout(slow);
+      controller.abort();
+    };
   }, [attempt, preview]);
 
   async function saveSettings() {
@@ -606,8 +616,15 @@ export function JenanMapModal({
                       (enabled && !canRender
                         ? "لا يتضمن الإصدار نمط خريطة معتمداً. يمكنك إدخال الإحداثيات يدوياً."
                         : "") ||
+                      (manifest?.status === "maintenance" && manifest.maintenanceMessage?.trim()) ||
                       statusLabels[manifest?.status ?? "unavailable"]}
                 </h3>
+                {manifestLoading && slowManifest && (
+                  <p>
+                    أول فتح بعد التحديث يتحقق من سلامة ملفات الخريطة، وقد
+                    يستغرق نحو دقيقة.
+                  </p>
+                )}
                 {!manifestLoading && (
                   <button
                     className={styles.secondary}
@@ -625,6 +642,9 @@ export function JenanMapModal({
                   >
                     إعادة المحاولة
                   </button>
+                )}
+                {(manifest?.status === "maintenance" || manifest?.status === "disabled") && !manifestLoading && (
+                  <p>لم يتغير موقعك المحفوظ، وبقية خدمات المنصة تعمل كالمعتاد.</p>
                 )}
                 <p>لا نستخدم خرائط عامة بديلة أو بيانات تجريبية.</p>
               </div>

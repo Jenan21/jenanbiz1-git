@@ -1,4 +1,13 @@
 import type { MapRelease } from "./types";
+import { MAP_STOPPED_MESSAGE } from "@/services/jenan-map/contracts";
+
+/**
+ * The first request for a map after the server started, or after a release was imported, makes the server check every file of the release,
+ * which for a country-sized archive is a read of about a gigabyte: slow once, instant afterwards. The manifest therefore gets far longer than
+ * the interactive requests, and after `SLOW_MANIFEST_NOTICE_MS` the dialog says why it is waiting instead of looking stuck.
+ */
+export const MANIFEST_TIMEOUT_MS = 120_000;
+export const SLOW_MANIFEST_NOTICE_MS = 6_000;
 
 export async function mapRequest<T>(
   url: string,
@@ -29,8 +38,8 @@ export async function mapRequest<T>(
         AUTHORITATIVE_BOUNDARY_UNAVAILABLE:
           "الحدود السعودية المعتمدة غير متاحة. لا يمكن تأكيد الموقع حالياً.",
         NO_PUBLISHED_RELEASE: "لا يوجد إصدار خريطة منشور متاح حالياً.",
-        MAP_MAINTENANCE: "الخريطة تحت الصيانة حالياً.",
-        MAP_DISABLED: "خدمة الخريطة معطلة حالياً.",
+        MAP_MAINTENANCE: MAP_STOPPED_MESSAGE,
+        MAP_DISABLED: MAP_STOPPED_MESSAGE,
         RELEASE_NOT_PUBLISHED:
           "تغير الإصدار المنشور. أعد فتح الخريطة قبل حفظ الموقع.",
         STALE_REVISION: "تغيرت إعدادات الخريطة في نافذة أخرى. أعد فتح الخريطة لاستعادتها.",

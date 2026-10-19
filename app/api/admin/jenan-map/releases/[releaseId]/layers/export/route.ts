@@ -7,6 +7,8 @@ import { audit } from "@/services/jenan-map/service";
 import { db } from "@/lib/db";
 
 export const runtime = "nodejs";
+// Up to 100,000 features are read from PostGIS and, for GeoPackage, written to a file.
+export const maxDuration = 120;
 const querySchema = z.object({ layerId: z.string().regex(/^[a-z][a-z-]{0,63}$/), format: z.enum(FEATURE_EXPORT_FORMATS).default("geojson") });
 
 /** Exports one layer of a release as GeoJSON, JSON, CSV or GeoPackage when the layer's licence allows redistribution. */

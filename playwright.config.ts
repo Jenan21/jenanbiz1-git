@@ -74,6 +74,16 @@ export default defineConfig({
       use: { viewport: { width: 1440, height: 900 }, locale: "en-US" },
     },
     {
+      // Needs the real-data environment from tests/integration/jenan-map-provision-local.integration.test.ts and a server started against
+      // it (docs/jenan-map.md); skipped unless RUN_JENAN_MAP_REAL_E2E=1, and not part of the CI groups.
+      name: "jenan-map-real",
+      testMatch: /jenan-map-real(-admin)?\.spec\.ts/,
+      timeout: 300_000,
+      // The first request of every route compiles it in the dev server, which takes many seconds on a small machine.
+      expect: { timeout: 30_000 },
+      use: { viewport: { width: 1440, height: 900 }, locale: "ar-SA" },
+    },
+    {
       name: "auth-visual-acceptance",
       testMatch: /auth-visual\.spec\.ts/,
       use: { viewport: { width: 1661, height: 947 }, locale: "ar-SA" },

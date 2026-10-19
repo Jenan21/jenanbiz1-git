@@ -267,16 +267,22 @@
   background: #091925;
   overflow: hidden;
 }
-.canvas {
+/* The map library's stylesheet reaches the page with the lazy renderer chunk, after this file, and sets `position: relative` on the very same
+   element. A single class would lose that tie and the map would collapse to zero height, so the rule carries the panel as well. */
+.mapPanel > .canvas {
   position: absolute;
   inset: 0;
 }
-.canvas :global(.maplibregl-ctrl-attrib) {
+/* The attribution is a legal notice and has to stay readable over the light and the dark basemap alike. The library paints it on a pale pane
+   while the text inherited the pale colour of this dialog, so it is given a dark pane of its own. */
+.canvas :global(.maplibregl-ctrl.maplibregl-ctrl-attrib) {
   max-width: calc(100% - 12px);
   font-size: 10px;
+  background: rgba(7, 18, 30, 0.88);
+  color: var(--map-text);
 }
-.canvas :global(.maplibregl-ctrl-attrib a) {
-  color: #1d4850;
+.canvas :global(.maplibregl-ctrl.maplibregl-ctrl-attrib a) {
+  color: var(--map-teal);
 }
 .mapMessage {
   min-height: 440px;
@@ -395,8 +401,17 @@
     order: 2;
   }
   .mapPanel {
-    min-height: 310px;
+    min-height: clamp(310px, 42dvh, 480px);
     flex-shrink: 0;
+  }
+  /* On a narrow screen the attribution takes three lines; the badge clears it and gives up its address line so it hides less of the map. */
+  .draftBadge {
+    bottom: 66px;
+    inset-inline: 10px;
+    padding: 8px 12px;
+  }
+  .draftBadge small {
+    display: none;
   }
   .mapMessage {
     min-height: 310px;

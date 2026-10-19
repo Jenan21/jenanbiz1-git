@@ -85,6 +85,7 @@ test.describe("public map isolation", () => {
       `/api/jenan-map/artifacts/${id}`,
       "/api/admin/jenan-map",
       "/api/admin/jenan-map/layers",
+      "/api/admin/jenan-map/health",
       `/api/admin/jenan-map/preview?releaseId=${id}`,
       `/api/admin/jenan-map/export?releaseId=${id}`,
       `/api/admin/jenan-map/artifacts/${id}`,
@@ -220,19 +221,22 @@ test.describe("authenticated map harness — fixture states, not real-map accept
     });
   }
 
-  for (const [status, message] of [
-    ["maintenance", "الخريطة تحت الصيانة حالياً. لم يتم تغيير موقعك المحفوظ."],
-    ["disabled", "خدمة الخريطة معطلة حالياً."],
+  const stopped = "Jenan PRO Map قيد التحديث حاليًا، ستعود الخدمة قريبًا.";
+  for (const [status, message, maintenanceMessage] of [
+    ["maintenance", stopped, undefined],
+    ["maintenance", "نعود بعد تحديث الطبقات ظهر الخميس.", "نعود بعد تحديث الطبقات ظهر الخميس."],
+    ["disabled", stopped, undefined],
   ]) {
-    test(`${status} state cannot confirm a selection`, async ({ page }) => {
+    test(`${status} state cannot confirm a selection (${maintenanceMessage ? "custom message" : "standard message"})`, async ({ page }) => {
       await page.route("**/api/jenan-map", (route) =>
-        route.fulfill({ json: { status, release: null } }),
+        route.fulfill({ json: { status, release: null, maintenanceMessage } }),
       );
       await page.goto("/jenan-map");
       await page
         .getByRole("button", { name: "اختيار موقع على الخريطة" })
         .click();
       await expect(page.getByRole("heading", { name: message })).toBeVisible();
+      await expect(page.getByText("بقية خدمات المنصة تعمل كالمعتاد")).toBeVisible();
       await expect(
         page.getByRole("button", { name: "تأكيد الموقع" }),
       ).toBeDisabled();
@@ -243,6 +247,22 @@ test.describe("authenticated map harness — fixture states, not real-map accept
       ).toBeVisible();
     });
   }
+
+  test("a slow first open explains itself and is not cut off at ten seconds", async ({ page }) => {
+    // The first request after a server start makes the server check every file of the release, which takes longer than the interactive requests.
+    await page.route("**/api/jenan-map", async (route) => {
+      await new Promise((resolve) => setTimeout(resolve, 12_000));
+      await route.fulfill({ json: { status: "maintenance", release: null } });
+    });
+    await page.goto("/jenan-map");
+    await page.getByRole("button", { name: "اختيار موقع على الخريطة" }).click();
+    const dialog = page.getByRole("dialog");
+    await expect(dialog.getByRole("heading", { name: "جارٍ الاتصال بخريطة جنان برو…" })).toBeVisible();
+    await expect(dialog.getByText("أول فتح بعد التحديث يتحقق من سلامة ملفات الخريطة")).toBeVisible({ timeout: 9_000 });
+    await expect(dialog.getByRole("heading", { name: stopped })).toBeVisible({ timeout: 15_000 });
+    await expect(dialog.getByText("انتهت مهلة الاتصال")).toHaveCount(0);
+    await expect(dialog.getByText("أول فتح بعد التحديث")).toHaveCount(0);
+  });
 
   test("ordinary members cannot reach preview, admin assets or cross-origin validation", async ({
     page,
@@ -255,9 +275,11 @@ test.describe("authenticated map harness — fixture states, not real-map accept
       `/api/admin/jenan-map/preview?releaseId=${id}`,
       `/api/admin/jenan-map/artifacts/${id}`,
       `/api/admin/jenan-map/search?releaseId=${id}&q=Riyadh`,
+      "/api/admin/jenan-map/health",
     ]) {
       expect((await page.request.get(path)).status()).toBe(403);
     }
+    expect((await page.request.post("/api/admin/jenan-map/health", { data: { action: "verify-published" } })).status()).toBe(403);
     expect(
       (
         await page.request.post("/api/jenan-map/validate", {

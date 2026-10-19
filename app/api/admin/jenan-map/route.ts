@@ -4,6 +4,8 @@ import { commandSchema } from "@/services/jenan-map/contracts";
 import { command, overviewFacts, preverifyCommand, snapshot } from "@/services/jenan-map/service";
 
 export const runtime = "nodejs";
+// Approving, publishing, rolling back and enabling read every stored archive in full (checksums and formats) before the transaction opens.
+export const maxDuration = 300;
 export async function GET(request: NextRequest) {
   try {
     const auth = await access(request, true);

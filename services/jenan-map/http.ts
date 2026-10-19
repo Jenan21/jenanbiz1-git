@@ -38,24 +38,33 @@ export function failure(error: unknown) {
   return json({ error: error instanceof MapError ? error.code : "MAP_UNAVAILABLE" }, error instanceof MapError ? error.status : 503);
 }
 
-export async function access(request: NextRequest, admin = false, mutation = false) {
+// Painting a map takes hundreds of small ranged reads (tiles, glyph ranges, the style), so asset delivery has its own, much larger
+// budget; panning and zooming must never spend the budget that guards searches, saves and administrator actions.
+export const MAP_ASSET_REQUESTS_PER_MINUTE = 3000;
+
+export async function access(request: NextRequest, admin = false, mutation = false, assets = false) {
   const user = await getCurrentUser();
   if (!user) return { response: json({ error: "AUTHENTICATION_REQUIRED" }, 401) };
   if (admin && !hasPlatformAdminAccess(user.systemRole)) return { response: json({ error: "ADMIN_REQUIRED" }, 403) };
   if (mutation && !hasValidOrigin(request)) return { response: json({ error: "INVALID_ORIGIN" }, 403) };
-  const response = await enforceRouteRateLimit(request, { userId: user.id, scope: admin ? "jenan-map:admin" : "jenan-map:read", limit: admin ? 60 : 180, windowMs: 60_000 });
+  const policy = assets
+    ? { scope: "jenan-map:assets", limit: MAP_ASSET_REQUESTS_PER_MINUTE }
+    : admin ? { scope: "jenan-map:admin", limit: 60 } : { scope: "jenan-map:read", limit: 180 };
+  const response = await enforceRouteRateLimit(request, { userId: user.id, ...policy, windowMs: 60_000 });
   return response ? { response } : { user };
 }
 
 /** A download is an export: it needs the artifact's own export permission, on every route that can stream it. */
+const isDownload = (request: NextRequest) => request.nextUrl.searchParams.get("download") === "1";
+
 function assertDownloadAllowed(request: NextRequest, artifact: Artifact) {
-  if (request.nextUrl.searchParams.get("download") === "1" &&
+  if (isDownload(request) &&
       (artifact as Artifact & { exportAllowed?: boolean }).exportAllowed !== true) throw new MapError("EXPORT_LICENSE_PERMISSION_REQUIRED", 403);
 }
 
 export async function artifactResponse(request: NextRequest, artifactId: string, admin: boolean) {
   try {
-    const auth = await access(request, admin);
+    const auth = await access(request, admin, false, !isDownload(request));
     if (auth.response) return auth.response;
     if (!idSchema.safeParse(artifactId).success) return json({ error: "INVALID_ARTIFACT_ID" }, 400);
     const artifact = await authorizedArtifact(artifactId, admin);
@@ -97,7 +106,7 @@ async function streamArtifact(request: NextRequest, artifact: Artifact, admin: b
 
 export async function releaseAssetResponse(request: NextRequest, releaseId: string, segments: string[], admin: boolean) {
   try {
-    const auth = await access(request, admin);
+    const auth = await access(request, admin, false, !isDownload(request));
     if (auth.response) return auth.response;
     if (!idSchema.safeParse(releaseId).success || segments.length < 2 || segments.length > 3) throw new MapError("INVALID_ASSET_PATH", 400);
     const [requestedKind, ...name] = segments;

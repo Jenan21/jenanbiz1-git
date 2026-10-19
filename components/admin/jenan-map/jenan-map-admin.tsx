@@ -11,7 +11,9 @@ import { MapLayerCatalog } from "./layer-catalog";
 import { MapArtifactImport } from "./artifact-import";
 import { MapBackupPanel } from "./backup-panel";
 import { MapExportPanel } from "./export-panel";
+import { MapHealthPanel } from "./health-panel";
 import { MapLayerBinding } from "./layer-binding";
+import { MAP_STOPPED_MESSAGE } from "@/services/jenan-map/contracts";
 
 const releaseLabels: Record<string, string> = { Draft: "مسودة", Processing: "قيد المعالجة", Importing: "قيد الاستيراد", Ready: "جاهز للمراجعة", Approved: "معتمد", Published: "منشور", Archived: "مؤرشف", Failed: "فشل" };
 const runtimeLabels: Record<string, string> = { enabled: "مفعّل", maintenance: "صيانة", disabled: "معطّل" };
@@ -23,7 +25,7 @@ export function JenanMapAdmin({ section }: { section: MapAdminSection }) {
   const [message, setMessage] = useState("");
   const [loadedAt, setLoadedAt] = useState<string | null>(null);
   const [pending, setPending] = useState<MapConfirmation | null>(null);
-  const [maintenanceMessage, setMaintenanceMessage] = useState("");
+  const [maintenanceMessage, setMaintenanceMessage] = useState<string>(MAP_STOPPED_MESSAGE);
   const [runtimeStatus, setRuntimeStatus] = useState("maintenance");
 
   async function load() {
@@ -37,7 +39,7 @@ export function JenanMapAdmin({ section }: { section: MapAdminSection }) {
       }
       setSnapshot(data);
       setLoadedAt(new Date().toISOString());
-      setMaintenanceMessage(data.runtime.maintenanceMessage ?? "");
+      setMaintenanceMessage(data.runtime.maintenanceMessage ?? MAP_STOPPED_MESSAGE);
       setRuntimeStatus(data.runtime.status);
       return true;
     } catch (error) {
@@ -189,13 +191,13 @@ export function JenanMapAdmin({ section }: { section: MapAdminSection }) {
 
     {section === "backup" ? <><MapBackupPanel snapshot={snapshot} disabled={loading || busy} onSettled={load} /><MapExportPanel activeReleaseId={snapshot?.runtime.publishedReleaseId ?? null} disabled={loading || busy} /></> : null}
 
-    {section === "health" ? <MapPanel title="حالة التشغيل — بلا ادعاء سلامة"><dl><dt>قراءة قاعدة البيانات</dt><dd>{snapshot ? "تمت قراءة الحالة في وقت التحديث" : "غير متاحة"}</dd><dt>فحص الملفات</dt><dd>غير معروف — التسجيل لا يثبت سلامة الملفات</dd><dt>التغطية السعودية</dt><dd>غير مقاسة</dd><dt>اختبار متصفح فعلي</dt><dd>غير مثبت</dd><dt>الأداء والتزامن</dt><dd>غير مقاس</dd><dt>بيانات الحي والنطاق</dt><dd>غير مقبولة تشغيلياً بعد</dd><dt>آخر قراءة</dt><dd>{displayDate(loadedAt)}</dd></dl><p>هذه ليست لوحة مراقبة نشطة. نجاح قراءة الحالة لا يعني صحة محرك الخرائط أو اكتمال البيانات.</p></MapPanel> : null}
+    {section === "health" ? <MapHealthPanel disabled={loading || busy} /> : null}
 
     {section === "audit" ? <MapPanel title="سجل الإجراءات الإداري">{snapshot?.audit.length ? <MapTable headers={["الوقت", "الإجراء", "المستخدم", "الإصدار", "سبب الإجراء"]}>{snapshot.audit.map((entry) => <tr key={entry.id}><td>{displayDate(entry.createdAt)}</td><td><bdi>{entry.action}</bdi></td><td><code>{entry.actorId}</code></td><td><code>{entry.releaseId ?? "إعداد تشغيل"}</code></td><td>{typeof entry.metadata?.reason === "string" ? entry.metadata.reason : "غير مسجل"}</td></tr>)}</MapTable> : <MapEmpty>{snapshot ? "لا توجد إجراءات تدقيق مسجلة ضمن نافذة القراءة الحالية." : "سجل التدقيق غير متاح."}</MapEmpty>}</MapPanel> : null}
 
     {section === "settings" ? <MapPanel title="سياسة التشغيل ورسالة الصيانة"><p>تُحفظ الحالة ورسالة الصيانة في الخادم. تعطيل الخدمة أو تغيير رسالة الصيانة يتطلب تأكيداً وسبباً مسجلاً، ولا يغيّر إعدادات الخرائط الحالية.</p><form onSubmit={(event) => { event.preventDefault(); setPending({ action: "runtime", title: runtimeStatus === "disabled" ? "تأكيد تعطيل الخريطة" : "تأكيد تغيير التشغيل", description: "سيغيّر هذا الإجراء إتاحة خريطة جنان برو للمستخدمين، مع إبقاء مؤشر الإصدار محفوظاً.", values: { status: runtimeStatus, maintenanceMessage: runtimeStatus === "maintenance" ? maintenanceMessage.trim() : null } }); }}>
       <label>حالة التشغيل<select value={runtimeStatus} disabled={!actionEnabled("runtime")} onChange={(event) => setRuntimeStatus(event.target.value)}><option value="enabled" disabled={!snapshot?.runtime.publishedReleaseId}>مفعّل — يتطلب إصداراً منشوراً صالحاً</option><option value="maintenance">صيانة</option><option value="disabled">معطّل</option></select></label>
-      <label>رسالة الصيانة العربية<textarea value={maintenanceMessage} required={runtimeStatus === "maintenance"} minLength={8} maxLength={1000} disabled={!actionEnabled("runtime") || runtimeStatus !== "maintenance"} onChange={(event) => setMaintenanceMessage(event.target.value)} placeholder="خريطة جنان برو قيد الصيانة، يرجى المحاولة لاحقاً." /></label>
+      <label>رسالة الصيانة العربية<textarea value={maintenanceMessage} required={runtimeStatus === "maintenance"} minLength={8} maxLength={1000} disabled={!actionEnabled("runtime") || runtimeStatus !== "maintenance"} onChange={(event) => setMaintenanceMessage(event.target.value)} placeholder={MAP_STOPPED_MESSAGE} /></label>
       <Button type="submit" disabled={!actionEnabled("runtime")}>مراجعة وتأكيد التغيير</Button>
     </form>{!canMapAction(snapshot, "runtime") ? <p>إجراء إعدادات التشغيل غير متاح من الخادم؛ الحفظ معطّل.</p> : null}</MapPanel> : null}
     {pending && snapshot ? <MapActionConfirmation key={`${pending.action}-${pending.versionId ?? ""}`} pending={pending} busy={busy} revision={snapshot.runtime.revision} publishedReleaseId={snapshot.runtime.publishedReleaseId} onCancel={() => setPending(null)} onConfirm={confirmAction} /> : null}

@@ -14,7 +14,7 @@ vi.mock("@/services/jenan-map/layers", async (original) => ({
 }));
 import { importSchema, ingestArtifact, localImportStream, type ImportInput } from "@/services/jenan-map/ingestion";
 import { servedStyle } from "@/services/jenan-map/service";
-import { releaseAssetResponse } from "@/services/jenan-map/http";
+import { access, MAP_ASSET_REQUESTS_PER_MINUTE, releaseAssetResponse } from "@/services/jenan-map/http";
 import { POST } from "@/app/api/admin/jenan-map/releases/[releaseId]/artifacts/route";
 import { ingestLayerBindings, bindLayersSchema } from "@/services/jenan-map/layer-ingestion";
 import { POST as bindLayers } from "@/app/api/admin/jenan-map/releases/[releaseId]/layers/route";
@@ -140,6 +140,26 @@ it.each([[false, 403], [true, 200]])("a release asset download needs the artifac
   expect(response.status).toBe(status);
   if (status === 403) expect(await response.json()).toMatchObject({ error: "EXPORT_LICENSE_PERMISSION_REQUIRED" });
   else expect(response.headers.get("content-disposition")).toContain("attachment");
+});
+it.each([
+  ["a published map", false, "http://localhost/", "jenan-map:assets", MAP_ASSET_REQUESTS_PER_MINUTE],
+  ["an administrator's preview", true, "http://localhost/", "jenan-map:assets", MAP_ASSET_REQUESTS_PER_MINUTE],
+  ["an export download", true, "http://localhost/?download=1", "jenan-map:admin", 60],
+])("painting %s spends the asset budget, but an export keeps the tight one", async (_name, admin, url, scope, limit) => {
+  const glyph = readyFixtureFiles()[3];
+  await mkdir(path.join(root, releaseId)); await writeFile(path.join(root, glyph.artifact.storageKey), glyph.bytes);
+  if (admin) mocks.query.mockResolvedValueOnce([{ status: "Ready" }]).mockResolvedValueOnce([{ ...glyph.artifact, exportAllowed: true }]);
+  else mocks.query.mockResolvedValueOnce([{ status: "enabled", publishedReleaseId: releaseId }])
+    .mockResolvedValueOnce([{ status: "Published" }]).mockResolvedValueOnce([glyph.artifact]);
+  expect((await releaseAssetResponse(new NextRequest(url), releaseId, ["glyphs", "Noto", "0-255.pbf"], admin)).status).toBe(200);
+  expect(mocks.rate).toHaveBeenCalledWith(expect.anything(), { userId: "admin", scope, limit, windowMs: 60_000 });
+});
+it("keeps the small budgets that guard searches, saves and administrator actions", async () => {
+  await access(new NextRequest("http://localhost/"));
+  await access(new NextRequest("http://localhost/"), true);
+  expect(mocks.rate.mock.calls.map(([, policy]) => [policy.scope, policy.limit])).toEqual([["jenan-map:read", 180], ["jenan-map:admin", 60]]);
+  // One screen of map is dozens of ranged reads; the asset budget has to hold many screens a minute.
+  expect(MAP_ASSET_REQUESTS_PER_MINUTE).toBeGreaterThanOrEqual(1000);
 });
 it("an inline (non-download) asset request does not need export permission", async () => {
   const glyph = readyFixtureFiles()[3];

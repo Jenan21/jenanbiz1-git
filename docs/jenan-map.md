@@ -106,7 +106,7 @@ The local adapter checks SHA-256 through the open file descriptor before trustin
 
 `/admin/jenan-map` has allowlisted child views for versions, updates, sources, layers, storage, health, audit and settings. All admin APIs independently check the session and platform administrator role; state changes also check origin, schema and rate limits. The standalone `/jenan-map` harness is authenticated and does not activate project analysis/start/feasibility integrations.
 
-The implemented HTTP surface includes manifest/search/validation/artifact reads, owned location/preferences, administrator snapshot/actions/private preview/export, the administrator layer catalog, and bounded browser/private-staging artifact import. Automatic scheduling, country-scale tile building, real categorized comparisons, raw bulk bundles and unmeasured health/telemetry controls remain deferred. The layer catalog starts with nullable provenance/confidence and unavailable records. A client toggle is never a permission to expose internal raw data or unpublished files.
+The implemented HTTP surface includes manifest/search/validation/artifact reads, owned location/preferences, administrator snapshot/actions/private preview/export, the administrator layer catalog, the administrator health measurement, and bounded browser/private-staging artifact import. Automatic scheduling, country-scale tile building, real categorized comparisons, raw bulk bundles, and browser, CDN and load telemetry remain deferred (the health section reports only what the server itself can measure; see "Measured health"). The layer catalog starts with nullable provenance/confidence and unavailable records. A client toggle is never a permission to expose internal raw data or unpublished files.
 
 ### Portability and retention
 
@@ -150,7 +150,7 @@ The supplied statement does not enumerate the original fourteen items verbatim. 
 | 9 | Layer provenance/access control and truthful no-data states | Durable release bindings and selected-layer search implemented; unsupported analytical layers remain unavailable |
 | 10 | Isolated import/normalize/compare/build/review workflow | Actual binary/asset ingestion plus offline geometry preparation; full country tile build and genuine diffs remain deferred |
 | 11 | Approval, atomic publish, explicit rollback and retention | Nine isolated PostGIS lifecycle tests pass; no live publication |
-| 12 | Admin routes, runtime status, health and audit | Implementation under review; unmeasured health remains unknown |
+| 12 | Admin routes, runtime status, health and audit | Implementation under review; unmeasured health remains unknown — **superseded 2026-10-19:** health is now measured server-side (see "Measured health"); browser, CDN and load stay unmeasured |
 | 13 | Authorized portable exports, checksums, license and restore | Licensed individual streaming downloads implemented; full bundle and destination restore acceptance remain deferred |
 | 14 | Lint/types/Prisma/build/unit/E2E, review and handover | Local checks pass as recorded below; CodeQL and real-data acceptance blocked; **v1 not accepted** |
 
@@ -364,9 +364,92 @@ The S3 acceptance run exposed three scale defects that the local filesystem had 
 - **PostGIS dump** (`node scripts/jenan-map/dump-postgis.mjs`, an operator tool needing `pg_dump` and `pg_restore`; `DATABASE_URL` and `JENAN_MAP_BACKUP_ROOT`): dumps the `jenan_map` schema in custom format into the private backup folder, passing credentials through the environment and never the command line, verifies the dump by listing it with `pg_restore`, and writes a manifest with its SHA-256. It never restores. The artifact bytes are in the full backup or the shared store, not in the database. To restore, create a scratch database with the `postgis` extension and run `pg_restore --no-owner --exit-on-error --dbname <scratch> <file>`, then review before anything else. Verified with real `pg_dump` 17.5: a 147 MB dump of 771,158 features restored into a scratch database with identical row counts (releases, features, artifacts, audit).
 - The full backup (above) remains the complete portable form: PMTiles, style, glyphs, sprites, features, boundary, sources, layer configuration and provenance.
 
+### Browser acceptance on real data (2026-10-19)
+
+The service-level acceptance above proves the data and the services. This proves what a person sees: it drives the real application in a real browser (Playwright, Chromium) against the real Saudi z15 PMTiles, the real glyphs, the real PostGIS features, real sessions and the real screens. It is **opt-in** and not part of CI: it needs about 4 GB of provisioned data and a server started against it.
+
+1. **Provision once** (a disposable loopback database named `jenan_map_e2e` or `jenan_map_test` with the application and map migrations applied, the prepared stage folder from the section above, and a new empty absolute folder). It builds two real releases through the same offline builder and ingestion path an operator uses, leaves **release A (z15, Light) Published** with the runtime enabled and **release B (z15, Dark) Ready**, and writes `state.json` (244 s on the reference machine):
+
+   ```sh
+   RUN_JENAN_MAP_PROVISION=1 DATABASE_URL=postgresql://.../jenan_map_e2e JENAN_MAP_LOCAL_RUN=<new empty folder> JENAN_MAP_ACCEPTANCE_STAGE=<prepared folder> node ./node_modules/vitest/vitest.mjs run tests/integration/jenan-map-provision-local.integration.test.ts
+   ```
+
+2. **Serve it:** `next dev` (or `next start`) with that `DATABASE_URL`, `JENAN_MAP_STORAGE_ROOT=<folder>/storage`, `JENAN_MAP_BACKUP_ROOT=<folder>/backups` and `NEXT_PUBLIC_APP_URL=<the server's origin>`. A development server that has compiled the administration pages needs `NODE_OPTIONS=--max-old-space-size=2560` (it ran out of a 1.5 GB heap during a restore) and a machine with comfortably more than 8 GB; run the browser and the server alone on it. **If the development server ever dies, delete `.next/dev` before starting it again:** a Turbopack cache left behind by a crash made every page reload in a loop (132 reloads in two minutes) until it was removed.
+3. **Run** the member spec, then the administration spec (which approves, publishes, rolls back, backs up and restores inside that environment and ends with release A published again). Screenshots and measured traffic are written to `<folder>/evidence/`. Each spec compiles every route it will open before the browser starts: a development server compiles a route on its first request, and on a small machine that competes with the browser for memory.
+
+   ```sh
+   RUN_JENAN_MAP_REAL_E2E=1 JENAN_MAP_LOCAL_RUN=<folder> DATABASE_URL=... PLAYWRIGHT_BASE_URL=http://127.0.0.1:3101 node ./node_modules/@playwright/test/cli.js test jenan-map-real.spec --project=jenan-map-real
+   RUN_JENAN_MAP_REAL_E2E=1 JENAN_MAP_LOCAL_RUN=<folder> DATABASE_URL=... PLAYWRIGHT_BASE_URL=http://127.0.0.1:3101 node ./node_modules/@playwright/test/cli.js test jenan-map-real-admin --project=jenan-map-real
+   ```
+
+**Member spec (`tests/e2e/jenan-map-real.spec.ts`): 13 of 13 passed** on 2026-10-19 (5.4 minutes in the final run, on the final code):
+
+1. the published release loads its real style, layers, vector tiles (all `206`), glyph ranges including the Arabic block 1536-1791, with no failed request, no console error, a painted map and attribution text of at least 4.5:1 contrast;
+2. **the §26 scenario**: Saudi Arabia → Riyadh → the district النرجس → the street طريق الملك فهد → a hospital POI, each picked from the real search response, with the marker at the middle of the map; confirm; the database row holds the exact point with its real region and city; after a full reload the picker reopens the same point and the API returns the same location;
+3. the analysis ring for 500 m, 1 km, 3 km and 5 km is measured **in pixels from a screenshot** against the radius the zoom level and latitude imply: 236 px measured, 236 px expected, at all four radii, drawn in every direction and fully in view;
+4. the same ring on a 390x844 phone is framed to the small map: 122 px measured, 121 px expected, drawn in 85 % of the directions (the point badge and the attribution cover the rest);
+5. a device location inside Saudi Arabia is saved with source `geolocation`; one in Cairo is shown as a draft and refused by the server, and replaces nothing;
+6. typed coordinates are checked against the real boundary: Cairo, Dubai and Sinai refused; the Empty Quarter accepted and saved with source `coordinates`;
+7. a click and a dragged marker move the point by the distance they cover on the ground (within 5-7 %), and the saved point is the dragged one;
+8. hiding the roads layer changes the real map and showing it again restores it; layers and radius saved with «حفظ إعدادات العرض» are restored after a reload;
+9. a pan and zoom session of the real map: tile reads only, all `206`, none failed, no failure panel;
+10. a burst of 600 glyph requests (about 555 a minute, three times the old whole budget) is served with `200` and search still answers;
+11. the picker at 2560x1440, 1920x1080, 1440x900, 1366x768, 1280x800, 1024x1366, 820x1180, 430x932, 390x844 and 360x800: no sideways scrolling, every control inside the screen, a usable map;
+12. `/`, `/login` and `/register` make no map request: no engine, no worker, no API call;
+13. an unpublished release is refused to a member by every preview, artifact and asset route, and the private preview of it shows an error instead of a map.
+
+Measured on the reference machine (a loaded 8 GB Windows laptop, `next dev`, software WebGL), so these are correctness figures, not performance claims: opening the picker to a painted map took 7.5 s; that first load made 17 map requests (6 ranged tile reads, 156 KB; 7 glyph ranges, 581 KB; the style, the manifest, the saved location and the preferences), none failed; the page's JavaScript heap was 35 MB; a 29 s pan and zoom session made 17 tile reads.
+
+**Administration spec (`tests/e2e/jenan-map-real-admin.spec.ts`): 11 of 11 passed** on 2026-10-19 on the final code (scenarios 1-7 in one run and 8-11 in the next, because `next dev` restarted itself on its memory threshold between them: «Server is approaching the used memory threshold, restarting...»; a request in flight at that moment is refused). The 11 scenarios run against the same environment and with an administrator's real session:
+
+1. the overview shows values that match the database: the runtime state, the published version, the dataset and layer counts read from PostgreSQL, the PMTiles size equal to the stored file, the PostGIS version and the storage status;
+2. all ten sections open under their own titles with no error;
+3. a release is previewed privately in its own (dark) style: painted, searchable, with no failed request, while a member still receives the published release;
+4. a member sees the dark release after it is published, and the light one again after a roll back. On a freshly provisioned environment the dark release is approved and published here; on later runs it is rolled back to (it was published before). Every step asks for a reason and an explicit confirmation, the statuses are exactly Archived/Published and then Published/Archived, no release is deleted, and the audit records carry the administrator and the reason;
+5. switching a layer off hides it from the member's picker and from search and deletes none of its data; switching it on restores it;
+6. maintenance (the standard text and an administrator's own text) and disabled show members the exact message while `/dashboard` keeps working; the map is enabled again at the end;
+7. a layer exports as GeoJSON, JSON, CSV and GeoPackage with the same real features, the licence travelling with the data, a byte order mark and Arabic names in the places CSV, and `GPKG` in the SQLite header;
+8. a full backup is created and validated, restored as a new candidate (the production pointer does not move), and the candidate opens in private preview with real data;
+9. the health section shows measured values and the feature count of every layer, reaches `ok` only after the deep verification, reports `failed` and names the file when a published file is moved away, and is `ok` again when it is put back;
+10. the audit log lists the latest 100 records exactly as the database holds them, with who, which release and why, and shows the reason an administrator typed;
+11. a member is refused every administration API.
+
+On the reference machine approve, publish and roll back took about a minute together (each reads the 975 MB archive back), a full backup 2 to 4 minutes, its validation 20 to 60 seconds and the restore about 2 minutes. The administration spec changes the provisioned environment: release B ends Archived, a backup and restored candidates are left behind, and release A is published again. It can be repeated on the same environment (see scenario 4); provision a new environment to exercise approve and publish of B again.
+
+### Defects the browser run exposed (fixed)
+
+None of these could be seen by fixture tests, which mock the renderer.
+
+- **The map had no height.** MapLibre's stylesheet arrives with the lazily loaded renderer chunk, after the dialog's CSS, and sets `position: relative` on the same element that the dialog's `.canvas` rule sets to `absolute`. With equal specificity the later rule won, the container collapsed to zero height and the user saw an empty panel while every request succeeded. The rule is now `.mapPanel > .canvas`. Guard: the member spec asserts the container is taller than 300 px and that the picture is mostly painted.
+- **Updates were silently dropped.** A new radius, a layer switched back on or a new point was applied only when `isStyleLoaded()` was true, which is false while any tile or glyph is still loading (most of the time after a camera move), and the update was never retried. The renderer now waits only for the style's first load. Guards: the ring measurement at four radii and the hide-and-restore layer test.
+- **Tiles, glyphs and the style shared a budget of 180 requests a minute** with searches and saves, although one screen of map is dozens of ranged reads, so panning could answer `429`, and the renderer treats any map error as fatal. Asset delivery now has its own budget (`jenan-map:assets`, 3,000 a minute per user, `MAP_ASSET_REQUESTS_PER_MINUTE`); the API, search and administrator budgets are unchanged, and a download (an export) keeps the tight administrator budget. Unit tests pin all three.
+- **A search result left the camera at country zoom**, so the radius ring could be entirely off screen. A point chosen from search, the device or typed coordinates, and every new radius, now frame the whole ring (`cameraMoveFor` and `ringBounds` in `features/jenan-map/geometry.ts`); a click or a dragged marker only follows the point; the first pass obeys the saved viewport.
+- **The attribution was unreadable** (pale text on a pale pane). It now has a dark pane (about 8.5:1). The attribution is a legal notice of the ODbL and CC BY terms, so it is asserted at 4.5:1 in the browser.
+- **On a phone** the point badge covered the attribution and the map was short. The badge clears it and the map is `clamp(310px, 42dvh, 480px)` tall.
+- **The stopped-map message** is now exactly «Jenan PRO Map قيد التحديث حاليًا، ستعود الخدمة قريبًا.» for maintenance (the default text of the form) and for a disabled map; an administrator's own maintenance wording is shown in maintenance. The rest of the platform keeps answering (the browser run opens `/dashboard` while the map is stopped). The text is the single constant `MAP_STOPPED_MESSAGE`.
+- **The first open could time out.** The first request for a map after the server starts, or after a release is imported or restored, makes the server verify every file of the release (a `SHA-256` over the 975 MB z15 archive took 10 s on the reference machine, 24 s once), and the picker gave up after 10 s with «انتهت مهلة الاتصال». The manifest now waits up to 120 s (`MANIFEST_TIMEOUT_MS`) and after 6 s the dialog says that the first open checks the files and may take about a minute. A fixture browser test holds the manifest for 12 s. With the S3 driver the check is a `HEAD` and a recorded checksum per object, so this concerned the filesystem driver; concurrent first requests share one verification.
+
+### Measured health (admin → الحالة التشغيلية)
+
+The health section used to be static "unknown" text. `GET /api/admin/jenan-map/health` now measures, on every refresh: the database round trip, PostGIS (asked for its version and timed), the storage driver (the filesystem, or a listing of the bucket with the configured credentials), the runtime state and whether the production pointer leads to a release that is Published, every file of the published release (present and of the recorded size, by a `stat` or a `HEAD`, without reading its bytes), and the feature count of each layer with the recorded boundary. A check that cannot be taken is reported as failed, never skipped, and the verdict is `failed`, `attention` or `ok`.
+
+The verdict is **`ok` only after a deep verification**: `POST` with `{"action":"verify-published"}` (the button «فحص عميق لملفات الإصدار المنشور») reads every file back from storage and runs the checks that approval runs (checksums, the PMTiles container, the style, glyph and sprite references, the Saudi coverage evidence). Concurrent requests share one run; it takes as long as the files are big (minutes for the z15 archive); each run is recorded in the audit log as `health.verify` with who ran it, how long it took and how many bytes it read. What the server cannot know is listed as not measured and is never shown as healthy: rendering in a browser, CDN and caching, and performance under load. Administrators only; the verification also requires a same-origin request. `tests/unit/jenan-map-health.test.ts` covers the verdicts, a missing or resized file, an unreachable database, the object-store path, the shared verification run and the route's access rules.
+
+### Production verification requirements (not simulated here)
+
+These need an environment this work does not have, and none of them is claimed as passed:
+
+- **Live shared object storage.** A real Cloudflare R2 or AWS S3 bucket: ranged PMTiles reads, the full read-and-hash of the 975 MB z15 archive that approval, publication, rollback and the deep verification perform (these requests must fit the hosting platform's request time limit; `maxDuration = 300` is set on them, the platform's own cap decides), credential rotation and latency from the application's region. Objects above 5 GiB need multipart upload, which is not implemented.
+- **CDN and caching.** Map assets are authenticated and release-pinned, so they are sent `private, no-store`. If a CDN is placed in front, its cache keys, `Range` handling and cookie handling have to be verified, and whether published immutable artifacts may be cached publicly is a product decision.
+- **Production PostgreSQL 17 with PostGIS.** The map migration chain applied by a DBA, and query latency on the real feature table under concurrent users (this work measured one user on a laptop).
+- **Browser and load on real infrastructure.** First paint and memory on real devices with hardware WebGL, concurrent users, mobile networks. The figures above come from software WebGL on a loaded laptop.
+- **SonarQube for IDE connected mode.** It needs the owner's SonarQube Cloud sign-in inside VS Code. The SonarQube Cloud analysis of the pull requests is already enforced in CI.
+- **CodeQL alert 14** (`js/http-to-file-access` in `scripts/jenan-map/prepare-open-data.mjs`) appears only on the pull request's merge ref. The script is an operator tool that writes files it downloaded, pinned by SHA-256, into a private staging folder. It is left for a maintainer's decision and is not dismissed here.
+
 ### Still open after this change
 
-- **Project integration:** `features/jenan-map/project-adapter.ts` still only adapts coordinates. The analysis, start-project and feasibility screens were not changed: the analysis screen still uses its own Leaflet picker, which loads OpenStreetMap's public tile server unless `NEXT_PUBLIC_MAP_TILE_URL` is set. Replacing it is an owner decision, because it changes a closed baseline.
-- **Live object storage and CDN:** no live Cloudflare R2, AWS S3 or CDN endpoint was tested (see above); multipart upload for objects above 5 GiB is not implemented.
-- **Backups to shared storage:** backups stay on a private local folder.
-- Browser-level end-to-end runs on the real data, performance measurements under load, production-database verification, and the GitHub checks of the pushed commit are recorded in the pull request, not here.
+Inside the map's scope, everything that can be verified on one machine has been verified. What remains is:
+
+- **Known limits of v1:** the production style carries no sprite sheet (POIs are vector symbols with Arabic and English labels), so sprite delivery, bounds validation and the JSON, PNG and `@2x` variants are covered by fixture tests only, in published and preview mode; a release carries exactly one style (a dark map is a separate release, there is no in-app theme toggle); backups stay on a private local folder; a server that dies in the middle of a restore leaves an inert `Processing` candidate (it can never be approved, nothing is published or changed) because nothing is left running to mark it failed.
+- **Deferred by the owner:** integration with Project Analysis, Start Project and Feasibility. `features/jenan-map/project-adapter.ts` still only adapts coordinates; the analysis screen still uses its own Leaflet picker, which loads OpenStreetMap's public tile server unless `NEXT_PUBLIC_MAP_TILE_URL` is set. Replacing it changes a closed baseline.
+- **The production verification requirements above.**

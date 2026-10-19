@@ -5,7 +5,7 @@ import * as maplibregl from "maplibre-gl";
 import type { GeoJSONSource, Map as LibreMap, Marker } from "maplibre-gl";
 import { Protocol } from "pmtiles";
 import { controlledReleaseMapUrl } from "./api";
-import { geodesicRing } from "./geometry";
+import { cameraMoveFor, geodesicRing, ringBounds, type FramedPoint } from "./geometry";
 import type { RendererProps } from "./types";
 import "maplibre-gl/dist/maplibre-gl.css";
 import styles from "./jenan-map.module.css";
@@ -23,6 +23,7 @@ export default function MapRenderer({
 }: RendererProps) {
   const container = useRef<HTMLDivElement>(null);
   const map = useRef<LibreMap | null>(null);
+  const styleReady = useRef(false);
   const marker = useRef<Marker | null>(null);
   const selection = useRef(onSelect);
   const failure = useRef(onError);
@@ -38,7 +39,9 @@ export default function MapRenderer({
   function updateMap() {
     const instance = map.current;
     const current = latest.current;
-    if (!instance?.isStyleLoaded()) return;
+    // `isStyleLoaded()` is false for as long as any tile or glyph is still loading, which after every camera move is most of the time, and an
+    // update made then was dropped for good: a new radius or a layer switched back on never reached the map. The style only has to have loaded once.
+    if (!instance || !styleReady.current) return;
     for (const layer of release.layers) {
       for (const id of layer.styleLayerIds ?? []) {
         if (instance.getLayer(id))
@@ -107,23 +110,32 @@ export default function MapRenderer({
   useEffect(() => {
     update.current = updateMap;
   });
+  const framed = useRef<FramedPoint | null | undefined>(undefined);
   useEffect(() => {
     latest.current = { location, radius, visibleLayers };
     update.current();
-    if (location && map.current) {
-      const center = map.current.getCenter();
-      if (
-        Math.abs(center.lat - location.latitude) > 0.005 ||
-        Math.abs(center.lng - location.longitude) > 0.005
-      ) {
-        map.current.easeTo({
-          center: [location.longitude, location.latitude],
-          duration: window.matchMedia("(prefers-reduced-motion: reduce)")
-            .matches
-            ? 0
-            : 450,
-        });
-      }
+    const instance = map.current;
+    const move = cameraMoveFor(
+      framed.current,
+      location ? { latitude: location.latitude, longitude: location.longitude, radius, source: location.source } : null,
+    );
+    framed.current = location ? { latitude: location.latitude, longitude: location.longitude, radius } : null;
+    if (!location || !instance || move === "stay") return;
+    const duration = window.matchMedia("(prefers-reduced-motion: reduce)").matches ? 0 : 450;
+    if (move === "fit") {
+      const canvas = instance.getCanvas();
+      // The padding must leave room for the box itself on a small screen.
+      const padding = Math.floor(Math.min(56, canvas.clientWidth / 4, canvas.clientHeight / 4));
+      if (padding > 0)
+        instance.fitBounds(ringBounds(location.latitude, location.longitude, radius), { padding, maxZoom: 16, duration });
+      return;
+    }
+    const center = instance.getCenter();
+    if (
+      Math.abs(center.lat - location.latitude) > 0.005 ||
+      Math.abs(center.lng - location.longitude) > 0.005
+    ) {
+      instance.easeTo({ center: [location.longitude, location.latitude], duration });
     }
   }, [location, radius, visibleLayers]);
 
@@ -251,6 +263,7 @@ export default function MapRenderer({
         });
         instance.on("load", () => {
           loaded = true;
+          styleReady.current = true;
           clearTimeout(timeout);
           instance
             ?.getCanvas()
@@ -283,6 +296,7 @@ export default function MapRenderer({
     void initialize();
     return () => {
       disposed = true;
+      styleReady.current = false;
       clearTimeout(timeout);
       controller.abort();
       resize?.disconnect();

@@ -42,6 +42,8 @@ export interface MapRelease {
 export interface MapManifest {
   status: "enabled" | "maintenance" | "disabled" | "unavailable";
   release: MapRelease | null;
+  /** The wording an administrator chose for maintenance mode; absent means the standard message. */
+  maintenanceMessage?: string | null;
 }
 
 export interface SearchResult {

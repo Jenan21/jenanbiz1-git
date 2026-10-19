@@ -73,3 +73,43 @@ export function geodesicRing(
   ring.push([...ring[0]]);
   return ring;
 }
+
+/** The smallest box that holds the analysis ring; the camera frames it. */
+export function ringBounds(
+  latitude: number,
+  longitude: number,
+  radius: number,
+): [[number, number], [number, number]] {
+  const ring = geodesicRing(latitude, longitude, radius, 32);
+  const longitudes = ring.map(([lng]) => lng);
+  const latitudes = ring.map(([, lat]) => lat);
+  return [
+    [Math.min(...longitudes), Math.min(...latitudes)],
+    [Math.max(...longitudes), Math.max(...latitudes)],
+  ];
+}
+
+export type CameraMove = "fit" | "center" | "stay";
+export interface FramedPoint {
+  latitude: number;
+  longitude: number;
+  radius: number;
+}
+
+/**
+ * How the camera follows a change of the analysis point or radius. `previous` is undefined on the first pass, when the saved
+ * viewport rules, and null when nothing had been selected. A point chosen from search, the device or typed coordinates, and every
+ * new radius, bring the whole ring into view; a click or a dragged marker only follows the point.
+ */
+export function cameraMoveFor(
+  previous: FramedPoint | null | undefined,
+  next: (FramedPoint & { source: LocationSource | null }) | null,
+): CameraMove {
+  if (!next || previous === undefined) return "stay";
+  const moved =
+    !previous ||
+    previous.latitude !== next.latitude ||
+    previous.longitude !== next.longitude;
+  if (!moved) return previous && previous.radius !== next.radius ? "fit" : "stay";
+  return next.source === "map" || next.source === null ? "center" : "fit";
+}

@@ -1,13 +1,10 @@
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
-import { createHash, randomUUID } from "node:crypto";
-import { copyFile, mkdir, readFile, readdir, rm, writeFile } from "node:fs/promises";
-import { existsSync } from "node:fs";
+import { randomUUID } from "node:crypto";
+import { mkdir, readdir, rm, writeFile } from "node:fs/promises";
 import path from "node:path";
 import pg from "pg";
-import { build } from "../../scripts/jenan-map/build.mjs";
-import { FONT_STACKS } from "../../scripts/jenan-map/glyphs.mjs";
-import { buildStyle } from "../../scripts/jenan-map/styles.mjs";
 import type { MapCommand } from "@/services/jenan-map/contracts";
+import { createRealRelease, realArchive, type RealArchive } from "./support/real-saudi-release";
 
 // ACCEPTANCE on REAL data (no fixtures): the real Saudi PMTiles, real OSM-derived places/streets/POIs, real geoBoundaries, real glyphs and
 // the real Jenan style. Opt-in: needs the files from `npm run jenan-map:saudi-pmtiles|glyphs` and prepare-saudi-import, and a disposable PostGIS.
@@ -15,96 +12,22 @@ import type { MapCommand } from "@/services/jenan-map/contracts";
 const enabled = process.env.RUN_JENAN_MAP_ACCEPTANCE === "1";
 // Also runnable against a real S3-compatible store (JENAN_MAP_STORAGE_DRIVER=s3 and the JENAN_MAP_S3_* settings): then no artifact may touch local disk.
 const sharedStorage = process.env.JENAN_MAP_STORAGE_DRIVER === "s3";
-const data = path.resolve(".jenan-map-data");
 const root = path.resolve(`work/map-acceptance-${randomUUID()}`);
 const staging = path.join(root, "staging"), storage = path.join(root, "storage");
 const pool = enabled ? new pg.Pool({ connectionString: process.env.DATABASE_URL }) : null;
 let service: typeof import("@/services/jenan-map/service");
 let backupService: typeof import("@/services/jenan-map/backup-service");
 let restore: typeof import("@/services/jenan-map/restore");
-let ingestion: typeof import("@/services/jenan-map/ingestion");
-let layerIngestion: typeof import("@/services/jenan-map/layer-ingestion");
 let database: typeof import("@/lib/db");
-let validation: typeof import("@/services/jenan-map/validation");
 let adminId: string, userId: string;
 const saved = new Map<string, string | undefined>();
 const releases: { a?: string; b?: string } = {};
 
-const sha = async (file: string) => { const h = createHash("sha256"); h.update(await readFile(file)); return h.digest("hex"); };
 // The admin route verifies the stored archives before a command's transaction opens; the suite does the same, so a slow object store
 // cannot make an approval outlive its transaction.
 const execute = async (input: MapCommand) => service.command(input, adminId, await service.preverifyCommand(input));
 
-type TilesManifest = { source: { name: string; build: string; osmReplicationTime: string; schema: string | number } };
-
-async function newRelease(label: string, tilesFile: string, tilesManifest: TilesManifest) {
-  const stage = path.resolve(process.env.JENAN_MAP_ACCEPTANCE_STAGE ?? ".jenan-map-data/stage");
-  const created = await service.command({
-    action: "create", version: `${label}-${randomUUID().slice(0, 8)}`, source: `${tilesManifest.source.name} build ${tilesManifest.source.build}`,
-    sourceDate: tilesManifest.source.osmReplicationTime, license: "ODbL-1.0",
-  }, adminId) as { id: string };
-  // The offline importer reads the prepared real staging folder (features, boundary, original sources, coverage).
-  const work = path.join(staging, label);
-  await mkdir(work, { mode: 0o700 });
-  for (const name of await readdir(stage)) await copyFile(path.join(stage, name), path.join(staging, `${label}-${name}`));
-  const importJson = JSON.parse(await readFile(path.join(stage, "import.json"), "utf8"));
-  const prefixed = { ...importJson, featuresFile: `${label}-features.geojson`, boundaryFile: `${label}-boundary.geojson`,
-    sourceFiles: importJson.sourceFiles.map((s: { filename: string }) => ({ ...s, filename: `${label}-${s.filename}` })) };
-  await writeFile(path.join(staging, `${label}-import.json`), JSON.stringify(prefixed));
-  await build(["--release", created.id, "--manifest", `${label}-import.json`]);
-
-  const importArtifact = async (kind: string, filename: string, file: string, publicSafe: boolean, license: string) => {
-    const bytes = await readFile(file);
-    // The logical name is unique per asset (the three font stacks all contain 0-255.pbf); a file's basename is not.
-    const staged = `${label}-${filename.replaceAll(/[^a-zA-Z0-9._-]/g, "_")}`;
-    if (!existsSync(path.join(staging, staged))) await copyFile(file, path.join(staging, staged));
-    const metadata = ingestion.importSchema.parse({ kind, filename, sha256: createHash("sha256").update(bytes).digest("hex"), byteSize: bytes.length, publicSafe,
-      exportAllowed: publicSafe, ...(publicSafe ? { exportLicense: license } : {}), confirmation: "IMPORT OWNED MAP ARTIFACT" });
-    return ingestion.ingestArtifact(created.id, metadata, await ingestion.localImportStream(staged), adminId);
-  };
-
-  const tilesName = path.basename(tilesFile);
-  const base = validation.releaseAssetBase(created.id);
-  const style = buildStyle({ theme: "light", language: "ar", releaseBase: base, tileFilename: tilesName });
-  const styleFile = path.join(staging, `${label}-style.json`);
-  await writeFile(styleFile, JSON.stringify(style));
-  const darkFile = path.join(staging, `${label}-style-dark.json`);
-  await writeFile(darkFile, JSON.stringify(buildStyle({ theme: "dark", language: "ar", releaseBase: base, tileFilename: tilesName })));
-  const schemaFile = path.join(staging, `${label}-schema.json`);
-  const { PMTiles } = await import("pmtiles");
-  const { open } = await import("node:fs/promises");
-  const handle = await open(tilesFile, "r");
-  let vectorLayers: unknown[] = [];
-  try {
-    const pm = new PMTiles({ getKey: () => tilesFile, getBytes: async (o: number, l: number) => { const b = Buffer.alloc(l); const r = await handle.read(b, 0, l, o); return { data: Uint8Array.from(b.subarray(0, r.bytesRead)).buffer }; } });
-    vectorLayers = ((await pm.getMetadata()) as { vector_layers: unknown[] }).vector_layers;
-  } finally { await handle.close(); }
-  await writeFile(schemaFile, JSON.stringify({ version: String(tilesManifest.source.schema), vector_layers: vectorLayers.map((v) => ({ id: (v as { id: string }).id })) }));
-  const { layers, confirmation, ...coverage } = importJson;
-  void layers; void confirmation;
-  const coverageFile = path.join(staging, `${label}-coverage.json`);
-  const { featuresFile, boundaryFile, sourceFiles, clipAdministrativeToBoundary, ...coverageOnly } = coverage as Record<string, unknown>;
-  void featuresFile; void boundaryFile; void sourceFiles; void clipAdministrativeToBoundary;
-  await writeFile(coverageFile, JSON.stringify({ ...coverageOnly, layers: importJson.layers }));
-
-  await importArtifact("pmtiles", tilesName, tilesFile, true, "ODbL-1.0");
-  await importArtifact("style", "style.json", styleFile, true, "Jenan PRO Map style");
-  await importArtifact("schema", "schema.json", schemaFile, false, "");
-  await importArtifact("coverage", "coverage.json", coverageFile, false, "");
-  const glyphRoot = path.join(data, "glyphs");
-  const glyphManifest = JSON.parse(await readFile(path.join(glyphRoot, "manifest.json"), "utf8"));
-  for (const entry of (glyphManifest.files as Array<{ filename: string }>).filter((item) => FONT_STACKS.includes(item.filename.split("/")[0]))) {
-    await importArtifact("glyphs", entry.filename, path.join(glyphRoot, entry.filename), true, "OFL-1.1");
-  }
-
-  // The prepared bindings come from the real style (every style layer claimed once), so nothing is adjusted here.
-  const bindings = JSON.parse(await readFile(path.join(stage, "bindings.json"), "utf8"));
-  const bound = layerIngestion.bindLayersSchema.parse(bindings);
-  expect(new Set(bound.layers.flatMap((layer) => layer.styleLayerIds))).toEqual(new Set(style.layers.map((layer: { id: string }) => layer.id)));
-  await layerIngestion.ingestLayerBindings(created.id, bound, adminId);
-  void darkFile; void sha;
-  return created.id;
-}
+const newRelease = (label: string, archive: RealArchive) => createRealRelease({ label, archive, actor: adminId, staging });
 
 describe.skipIf(!enabled)("Jenan PRO Map acceptance on real Saudi data", () => {
   beforeAll(async () => {
@@ -116,9 +39,6 @@ describe.skipIf(!enabled)("Jenan PRO Map acceptance on real Saudi data", () => {
     service = await import("@/services/jenan-map/service");
     backupService = await import("@/services/jenan-map/backup-service");
     restore = await import("@/services/jenan-map/restore");
-    ingestion = await import("@/services/jenan-map/ingestion");
-    layerIngestion = await import("@/services/jenan-map/layer-ingestion");
-    validation = await import("@/services/jenan-map/validation");
     adminId = (await database.db.user.create({ data: { email: `acc-admin-${randomUUID()}@example.invalid`, status: "ACTIVE", systemRole: "ADMIN" } })).id;
     userId = (await database.db.user.create({ data: { email: `acc-user-${randomUUID()}@example.invalid`, status: "ACTIVE", systemRole: "USER" } })).id;
     for (const [key, value] of Object.entries({ JENAN_MAP_BUILD_ACTOR: adminId, JENAN_MAP_STAGING_ROOT: staging, JENAN_MAP_STORAGE_ROOT: storage })) {
@@ -137,16 +57,8 @@ describe.skipIf(!enabled)("Jenan PRO Map acceptance on real Saudi data", () => {
     await rm(root, { recursive: true, force: true });
   });
 
-  const tiles = (dir: string) => { const folder = path.join(data, dir); const file = path.join(folder, (existsSync(folder) ? [] : [""]).concat([]).join("") || ""); void file; return folder; };
-  const archive = async (dir: string) => {
-    const folder = tiles(dir);
-    const name = (await readdir(folder)).find((n) => n.endsWith(".pmtiles"))!;
-    return { file: path.join(folder, name), manifest: JSON.parse(await readFile(path.join(folder, `${name}.manifest.json`), "utf8")) };
-  };
-
   it("imports version A (z12) from real data, validates it, approves and publishes it", async () => {
-    const a = await archive("saudi-z12");
-    releases.a = await newRelease("versionA", a.file, a.manifest);
+    releases.a = await newRelease("versionA", await realArchive("saudi-z12"));
     expect((await pool!.query(`SELECT status FROM jenan_map.release WHERE id=$1`, [releases.a])).rows[0].status).toBe("Ready");
     const counts = (await pool!.query(`SELECT "layerId", count(*)::int AS n FROM jenan_map.feature WHERE "releaseId"=$1 GROUP BY 1 ORDER BY 1`, [releases.a])).rows;
     expect(Object.fromEntries(counts.map((r) => [r.layerId, r.n]))).toMatchObject({ governorates: expect.any(Number), pois: expect.any(Number), places: expect.any(Number), regions: expect.any(Number), roads: expect.any(Number) });
@@ -241,8 +153,7 @@ describe.skipIf(!enabled)("Jenan PRO Map acceptance on real Saudi data", () => {
   }, 300_000);
 
   it("previews version B (z15) without touching customers, then publishes it atomically", async () => {
-    const b = await archive("saudi");
-    releases.b = await newRelease("versionB", b.file, b.manifest);
+    releases.b = await newRelease("versionB", await realArchive("saudi"));
     const before = await service.runtime();
     const preview = await service.previewManifest(releases.b) as { release: { id: string } };
     expect(preview.release.id).toBe(releases.b);

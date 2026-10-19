@@ -5,6 +5,8 @@ import { idSchema, MapError } from "@/services/jenan-map/contracts";
 import { assertImportCandidate, importSchema, ingestArtifact, localImportStream } from "@/services/jenan-map/ingestion";
 
 export const runtime = "nodejs";
+// A multi-gigabyte archive is hashed and validated while it is staged.
+export const maxDuration = 300;
 const MULTIPART_LIMIT = 32 * 1024 * 1024;
 export async function POST(request: NextRequest, context: { params: Promise<{ releaseId: string }> }) {
   try {

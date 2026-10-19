@@ -1,7 +1,7 @@
 import { createHash, randomUUID } from "node:crypto";
 import { Prisma } from "@/generated/prisma/client";
 import { db, type DbExecutor } from "@/lib/db";
-import { type Artifact, type MapCommand, type MapRuntime, type Release, type SavedLocation, MapError } from "./contracts";
+import { type Artifact, type MapCommand, type MapRuntime, type Release, type SavedLocation, MAP_STOPPED_MESSAGE, MapError } from "./contracts";
 import { assertStorageConfigured, downloadMetadata, logicalFilename, openArtifact, storageState } from "./storage";
 import { releaseAssetBase, validateReleaseArtifacts } from "./validation";
 import { layerProvenanceProblems, readyLayerSearchFilter, releaseManifestLayers } from "./layers";
@@ -244,7 +244,7 @@ export async function command(input: MapCommand, actor: string, verified?: Preve
           if (release.status !== "Published") throw new MapError("NO_PUBLISHED_RELEASE");
           await verifyReady(release.id, tx, verified);
         }
-        const maintenanceMessage = input.status === "maintenance" ? input.maintenanceMessage ?? "الخريطة قيد الصيانة مؤقتًا. يرجى المحاولة لاحقًا." : null;
+        const maintenanceMessage = input.status === "maintenance" ? input.maintenanceMessage ?? MAP_STOPPED_MESSAGE : null;
         await tx.$executeRaw(sql`UPDATE jenan_map.runtime SET status = ${input.status}, "maintenanceMessage" = ${maintenanceMessage}, revision = revision + 1, "updatedAt" = now() WHERE id = 1`);
         await audit(tx, actor, "runtime", state.publishedReleaseId, { reason: input.reason, from: state.status, to: input.status, maintenanceMessage });
         return { status: input.status, revision: state.revision + 1 };
