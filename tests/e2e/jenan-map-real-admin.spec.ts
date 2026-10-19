@@ -5,6 +5,7 @@ import {
   attachJson, attachShot, baseUrl, enabled, evidence, expectNoFailedRequests, expectNoPolicyViolations, expectPaintedMap, expectPolicyEnforced, home, loadState, openPicker,
   pixels, recordPolicyViolations, removeMember, searchAndPick, seedMember, settle, summarize, warm, watchMapTraffic, RIYADH, type Member, type Provisioned,
 } from "./jenan-map-real-support";
+import { csvRecords } from "../unit/jenan-map-csv";
 
 // BROWSER ACCEPTANCE of the Jenan PRO Map administration on REAL Saudi data: every screen, every release action with its confirmation, the
 // effect on what a member sees, the exports, the full backup and the restore, the audit log and the measured health. Opt-in, and it changes the
@@ -327,6 +328,15 @@ test("a layer exports as GeoJSON, JSON, CSV and GeoPackage with the same real fe
   expect([...csv.subarray(0, 3)], "UTF-8 byte order mark, so Arabic opens correctly in a spreadsheet").toEqual([0xef, 0xbb, 0xbf]);
   const lines = csv.toString("utf8").replace(/^\uFEFF/, "").trim().split("\r\n");
   expect(lines.length - 1).toBe(n);
+  // A CSV has no header block, so every row carries the release, source, licence, ownership and attribution that JSON and GeoJSON state once.
+  const records = csvRecords(csv.toString("utf8"));
+  expect(records).toHaveLength(n);
+  for (const record of records) {
+    expect(record).toMatchObject({
+      release_id: state.a.id, provenance_license: json.license, provenance_ownership: json.ownership,
+      provenance_attribution: json.attribution ?? "", provenance_source: json.source ?? "",
+    });
+  }
   const gpkg = await get(row, "GeoPackage");
   expect(gpkg.subarray(0, 15).toString("latin1")).toBe("SQLite format 3");
   expect(gpkg.subarray(68, 72).toString("latin1"), "the SQLite application id of a GeoPackage").toBe("GPKG");
@@ -336,6 +346,9 @@ test("a layer exports as GeoJSON, JSON, CSV and GeoPackage with the same real fe
   const placesCsv = (await get(places, "CSV")).toString("utf8");
   expect(placesCsv.charCodeAt(0), "byte order mark").toBe(0xfeff);
   expect(placesCsv).toMatch(/[\u0600-\u06FF]{3,}/);
+  expect(csvRecords(placesCsv)[0], "the places CSV names its source and licence too").toMatchObject({
+    provenance_license: "ODbL-1.0", provenance_attribution: expect.stringContaining("OpenStreetMap contributors"), release_id: state.a.id,
+  });
   await attachJson(testInfo, "export-checked.json", { layer: "regions", features: n, geojsonBytes: JSON.stringify(geojson).length, csvBytes: csv.length, gpkgBytes: gpkg.length, placesCsvBytes: placesCsv.length });
 });
 

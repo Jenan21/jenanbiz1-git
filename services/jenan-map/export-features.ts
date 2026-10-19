@@ -14,6 +14,11 @@ export type ExportFeature = {
   latitude: number; longitude: number; geometry: unknown;
 };
 
+/** What a downloaded layer says about where it comes from: every export format carries all of it. */
+export type ExportMeta = {
+  releaseId: string; layer: string; license: string; ownership: string; attribution: string | null; source: string | null; generatedAt: string;
+};
+
 /** Spreadsheet formula characters at the start of a cell would run as a formula when the file is opened. */
 export function csvCell(value: unknown): string {
   let text = value === null || value === undefined ? "" : Array.isArray(value) ? value.join("; ") : String(value);
@@ -21,9 +26,22 @@ export function csvCell(value: unknown): string {
   return /[",\r\n]/.test(text) ? `"${text.replaceAll('"', '""')}"` : text;
 }
 
-export function featuresToCsv(features: ExportFeature[]): string {
-  const header = ["id", "label", "category", "layer", "source_id", "aliases", "latitude", "longitude"];
-  const rows = features.map((f) => [f.id, f.label, f.category, f.layerId, f.sourceId, f.aliases, f.latitude, f.longitude].map(csvCell).join(","));
+// A CSV file has no header block, so the provenance travels as columns on every row: a row that is copied, filtered or pasted elsewhere keeps its
+// source, licence and attribution. (`layer` is already a column of each row.)
+const PROVENANCE_COLUMNS: ReadonlyArray<readonly [string, (meta: ExportMeta) => string | null]> = [
+  ["release_id", (meta) => meta.releaseId],
+  ["provenance_source", (meta) => meta.source],
+  ["provenance_license", (meta) => meta.license],
+  ["provenance_ownership", (meta) => meta.ownership],
+  ["provenance_attribution", (meta) => meta.attribution],
+  ["generated_at", (meta) => meta.generatedAt],
+];
+
+export function featuresToCsv(features: ExportFeature[], meta: ExportMeta): string {
+  const header = ["id", "label", "category", "layer", "source_id", "aliases", "latitude", "longitude", ...PROVENANCE_COLUMNS.map(([name]) => name)];
+  // The provenance cells are the same on every row, so they are escaped once.
+  const provenance = PROVENANCE_COLUMNS.map(([, value]) => csvCell(value(meta))).join(",");
+  const rows = features.map((f) => `${[f.id, f.label, f.category, f.layerId, f.sourceId, f.aliases, f.latitude, f.longitude].map(csvCell).join(",")},${provenance}`);
   // A byte-order mark makes Excel read the Arabic text as UTF-8.
   return `\uFEFF${header.join(",")}\r\n${rows.join("\r\n")}${rows.length ? "\r\n" : ""}`;
 }
@@ -44,9 +62,6 @@ export const featureExportContentType: Record<FeatureExportFormat, string> = {
 };
 export const featureExportExtension: Record<FeatureExportFormat, string> = { geojson: "geojson", json: "json", csv: "csv", gpkg: "gpkg" };
 
-type ExportMeta = {
-  releaseId: string; layer: string; license: string; ownership: string; attribution: string | null; source: string | null; generatedAt: string;
-};
 export type FeatureExport = { body: string; contentType: string; count: number; meta: ExportMeta };
 export type BinaryFeatureExport = { body: Buffer; contentType: string; count: number; meta: ExportMeta };
 
@@ -91,7 +106,7 @@ export async function exportFeatures(input: { releaseId: string; layerId: string
   }
   const rows = await layerRows<{ id: string; label: string; category: string; layerId: string | null; sourceId: string | null; aliases: string[] | null; latitude: number; longitude: number; geometry: unknown }>(input, GEOJSON_COLUMNS);
   const features: ExportFeature[] = rows.map((row) => ({ ...row, aliases: row.aliases ?? [] }));
-  if (input.format === "csv") return { body: featuresToCsv(features), contentType: featureExportContentType.csv, count: features.length, meta };
+  if (input.format === "csv") return { body: featuresToCsv(features, meta), contentType: featureExportContentType.csv, count: features.length, meta };
   const collection = featuresToGeoJson(features, meta);
   return { body: JSON.stringify(input.format === "json" ? { ...meta, features: features } : collection), contentType: featureExportContentType[input.format], count: features.length, meta };
 }

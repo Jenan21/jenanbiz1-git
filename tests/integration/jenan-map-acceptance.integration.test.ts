@@ -5,6 +5,7 @@ import path from "node:path";
 import pg from "pg";
 import type { MapCommand } from "@/services/jenan-map/contracts";
 import { createRealRelease, realArchive, type RealArchive } from "./support/real-saudi-release";
+import { csvRecords } from "../unit/jenan-map-csv";
 
 // ACCEPTANCE on REAL data (no fixtures): the real Saudi PMTiles, real OSM-derived places/streets/POIs, real geoBoundaries, real glyphs and
 // the real Jenan style. Opt-in: needs the files from `npm run jenan-map:saudi-pmtiles|glyphs` and prepare-saudi-import, and a disposable PostGIS.
@@ -71,10 +72,13 @@ describe.skipIf(!enabled)("Jenan PRO Map acceptance on real Saudi data", () => {
   }, 900_000);
 
   it("finds real Saudi names in Arabic and English: city, district, street and POI", async () => {
-    const find = async (q: string) => (await service.search({ q, radiusMeters: 10_000 })).results as Array<{ label: string; category: string; latitude: number; longitude: number }>;
+    const find = async (q: string, layerIds?: string[]) => (await service.search({ q, radiusMeters: 10_000, ...(layerIds ? { layerIds } : {}) })).results as Array<{ label: string; category: string; latitude: number; longitude: number }>;
     const riyadh = await find("الرياض");
     expect(riyadh.length).toBeGreaterThan(0);
-    expect(riyadh.some((r) => r.category === "places" || r.category === "governorates" || r.category === "regions")).toBe(true);
+    // 154 features share this name's rank (125 roads, 23 POIs, 6 places) and equal ranks are ordered by their ids, which are drawn at random for every
+    // build: an unrestricted search is not guaranteed to show a place among its 20 results (it did not in about 4 builds in 10). The city is asked of
+    // the places layer, as the picker does for the layer it is switched to. The other names below have fewer than 20 matches or only one category.
+    expect((await find("الرياض", ["places"])).some((r) => r.category === "places")).toBe(true);
     expect((await find("النرجس")).some((r) => r.category === "places")).toBe(true);
     expect((await find("طريق الملك فهد")).some((r) => r.category === "roads")).toBe(true);
     expect((await find("مستشفى")).some((r) => r.category === "pois")).toBe(true);
@@ -129,6 +133,18 @@ describe.skipIf(!enabled)("Jenan PRO Map acceptance on real Saudi data", () => {
     expect(JSON.parse(geojson.body).features).toHaveLength(inDatabase);
     expect(csv.body.split("\r\n").filter(Boolean)).toHaveLength(inDatabase + 1);
     expect(gpkg).toMatchObject({ count: inDatabase, meta: { license: "ODbL-1.0", ownership: "OPEN_LICENSE" } });
+
+    // The source, licence and attribution travel with the data in every format: in the CSV they are columns of every row.
+    const rows = csvRecords(csv.body);
+    expect(rows).toHaveLength(inDatabase);
+    const provenance = (row: Record<string, string>) => [row.release_id, row.provenance_source, row.provenance_license, row.provenance_ownership, row.provenance_attribution].join("|");
+    expect(new Set(rows.map(provenance)).size, "one provenance for the whole layer").toBe(1);
+    expect(rows[0]).toMatchObject({ release_id: releaseId, provenance_license: "ODbL-1.0", provenance_ownership: "OPEN_LICENSE" });
+    expect(rows[0].provenance_attribution).toContain("OpenStreetMap contributors");
+    expect(rows[0].provenance_source).not.toBe("");
+    const header = JSON.parse(geojson.body).properties;
+    expect(header).toMatchObject({ license: rows[0].provenance_license, ownership: rows[0].provenance_ownership, attribution: rows[0].provenance_attribution, source: rows[0].provenance_source, releaseId });
+    expect(gpkg.meta).toMatchObject({ license: rows[0].provenance_license, attribution: rows[0].provenance_attribution, source: rows[0].provenance_source });
 
     // Read the GeoPackage back with SQLite, and compare one feature's geometry with the bytes PostGIS itself produces.
     const { DatabaseSync } = await import("node:sqlite");

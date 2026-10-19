@@ -7,23 +7,54 @@ const mocks = vi.hoisted(() => ({ query: vi.fn() }));
 vi.mock("@/lib/db", () => ({ db: { $queryRaw: mocks.query } }));
 vi.mock("@/services/jenan-map/service", () => ({ audit: vi.fn(), artifacts: vi.fn(), releaseById: vi.fn(), runtime: vi.fn() }));
 
-import { csvCell, exportFeatures, featuresToCsv, featuresToGeoJson, type ExportFeature } from "@/services/jenan-map/export-features";
+import { csvCell, exportFeatures, featuresToCsv, featuresToGeoJson, type ExportFeature, type ExportMeta } from "@/services/jenan-map/export-features";
 import { backupFolderName, backupRoot, listBackups } from "@/services/jenan-map/backup-service";
+import { csvRecords, parseCsv } from "./jenan-map-csv";
 
 const feature = (over: Partial<ExportFeature> = {}): ExportFeature => ({
   id: "f1", label: "حي النرجس", category: "neighbourhood", layerId: "places", sourceId: "node/1", aliases: ["Narjis", "النرجس"],
   latitude: 24.8216, longitude: 46.6633, geometry: { type: "Point", coordinates: [46.6633, 24.8216] }, ...over,
 });
+const meta: ExportMeta = {
+  releaseId: "1c1b5f07-9581-4e3b-a0a3-9fc7ea08ead1", layer: "places", license: "ODbL-1.0", ownership: "OPEN_LICENSE",
+  attribution: "© OpenStreetMap contributors (ODbL 1.0; https://www.openstreetmap.org/copyright)",
+  source: "Protomaps basemap build (OpenStreetMap + Natural Earth) build 20261017", generatedAt: "2026-10-19T14:00:00.000Z",
+};
+const CSV_HEADER = "id,label,category,layer,source_id,aliases,latitude,longitude,release_id,provenance_source,provenance_license,provenance_ownership,provenance_attribution,generated_at";
 
 describe("feature export formats", () => {
   it("writes CSV that opens correctly with Arabic text and cannot run as a spreadsheet formula", () => {
-    const csv = featuresToCsv([feature(), feature({ id: "f2", label: '=HYPERLINK("http://evil")', aliases: [] }), feature({ id: "f3", label: 'a,"b"\nc' })]);
-    expect(csv.startsWith("\uFEFFid,label,category,layer,source_id,aliases,latitude,longitude\r\n")).toBe(true);
+    const csv = featuresToCsv([feature(), feature({ id: "f2", label: '=HYPERLINK("http://evil")', aliases: [] }), feature({ id: "f3", label: 'a,"b"\nc' })], meta);
+    expect(csv.startsWith(`\uFEFF${CSV_HEADER}\r\n`)).toBe(true);
     expect(csv).toContain("حي النرجس");
     expect(csv).toContain('"\'=HYPERLINK(""http://evil"")"');
     expect(csv).toContain('"a,""b""\nc"');
     expect(csvCell("+1")).toBe("'+1");
     expect(csvCell(null)).toBe("");
+  });
+  it("carries the release, source, licence, ownership, attribution and export time on every row", () => {
+    const records = csvRecords(featuresToCsv([feature(), feature({ id: "f2" }), feature({ id: "f3", label: 'a,"b"\nc' })], meta));
+    expect(records).toHaveLength(3);
+    for (const record of records) {
+      expect(record).toMatchObject({
+        release_id: meta.releaseId, provenance_source: meta.source, provenance_license: "ODbL-1.0", provenance_ownership: "OPEN_LICENSE",
+        provenance_attribution: meta.attribution, generated_at: meta.generatedAt, layer: "places",
+      });
+    }
+    // Commas, quotes and line breaks in a feature never shift the provenance cells that follow it.
+    expect(records[2].label).toBe('a,"b"\nc');
+  });
+  it("leaves a missing attribution or source empty, never the words null or undefined", () => {
+    const [record] = csvRecords(featuresToCsv([feature()], { ...meta, attribution: null, source: null, license: "Commercial agreement 2026-04", ownership: "LICENSED" }));
+    expect(record).toMatchObject({ provenance_attribution: "", provenance_source: "", provenance_license: "Commercial agreement 2026-04", provenance_ownership: "LICENSED" });
+  });
+  it("keeps spreadsheet formula protection on the provenance cells too", () => {
+    const [record] = csvRecords(featuresToCsv([feature()], { ...meta, attribution: '=HYPERLINK("http://evil")', source: "@cmd" }));
+    expect(record.provenance_attribution).toBe('\'=HYPERLINK("http://evil")');
+    expect(record.provenance_source).toBe("'@cmd");
+  });
+  it("writes a header-only file for a layer without features", () => {
+    expect(parseCsv(featuresToCsv([], meta))).toEqual([CSV_HEADER.split(",")]);
   });
   it("writes GeoJSON with geometry, provenance and no invented fields", () => {
     const collection = featuresToGeoJson([feature()], { license: "ODbL-1.0" });
@@ -55,6 +86,31 @@ describe("feature export is gated by licence", () => {
     expect(out.meta).toMatchObject({ license: "ODbL-1.0", ownership: "OPEN_LICENSE", attribution: "© OpenStreetMap contributors" });
     expect(JSON.parse(out.body).features).toHaveLength(2);
     expect(out.contentType).toBe("application/geo+json");
+  });
+  it("exports CSV with the same provenance as the other formats, on every row", async () => {
+    const provenance = { license: "ODbL-1.0", attribution: "© OpenStreetMap contributors (ODbL 1.0)", source: "Protomaps basemap build 20261017" };
+    const exported = async (format: "csv" | "json" | "geojson") => {
+      mocks.query.mockResolvedValueOnce([{ provenance, status: "ready" }]);
+      mocks.query.mockResolvedValueOnce([feature(), feature({ id: "f2" })]);
+      return exportFeatures({ releaseId: release, layerId: "places", format });
+    };
+    const csv = await exported("csv"), json = await exported("json"), geojson = await exported("geojson");
+    // Every field of the export metadata has a CSV column of its own; a field added to the metadata has to be given one here and in the CSV.
+    const columnOf: Record<keyof ExportMeta, string> = {
+      releaseId: "release_id", layer: "layer", source: "provenance_source", license: "provenance_license",
+      ownership: "provenance_ownership", attribution: "provenance_attribution", generatedAt: "generated_at",
+    };
+    expect(Object.keys(csv.meta).sort()).toEqual(Object.keys(columnOf).sort());
+    const records = csvRecords(csv.body);
+    expect(records).toHaveLength(2);
+    for (const record of records) {
+      for (const [field, column] of Object.entries(columnOf)) expect(record[column], column).toBe(String(csv.meta[field as keyof ExportMeta]));
+    }
+    // And they are the values the JSON and GeoJSON downloads carry.
+    const shared = Object.fromEntries(Object.entries(csv.meta).filter(([field]) => field !== "generatedAt"));
+    expect(JSON.parse(json.body)).toMatchObject(shared);
+    expect(JSON.parse(geojson.body).properties).toMatchObject(shared);
+    expect(shared).toMatchObject({ license: "ODbL-1.0", ownership: "OPEN_LICENSE", attribution: provenance.attribution, source: provenance.source, releaseId: release });
   });
   it("never returns a partial file when the layer exceeds the limit", async () => {
     mocks.query.mockResolvedValueOnce([{ provenance: { license: "ODbL-1.0" }, status: "ready" }]);
@@ -113,6 +169,8 @@ describe("backup location", () => {
       await expect(listBackups()).resolves.toEqual({ configured: false, backups: [] });
       process.env.JENAN_MAP_BACKUP_ROOT = dir;
       await mkdir(path.join(dir, "older")); await mkdir(path.join(dir, "newer")); await mkdir(path.join(dir, "half.partial"));
+      // The staging folder of a backup in progress (or of one that was interrupted) is never offered as a backup.
+      await mkdir(path.join(dir, "newer.0a1b2c3d4e5f.partial"));
       await writeFile(path.join(dir, "stray.txt"), "x");
       await utimes(path.join(dir, "older"), new Date("2026-10-01T00:00:00Z"), new Date("2026-10-01T00:00:00Z"));
       await utimes(path.join(dir, "newer"), new Date("2026-10-02T00:00:00Z"), new Date("2026-10-02T00:00:00Z"));

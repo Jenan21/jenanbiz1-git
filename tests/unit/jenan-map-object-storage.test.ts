@@ -2,7 +2,7 @@ import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import type { AddressInfo } from "node:net";
 import { assertStorageConfigured, objectStore, openArtifact, resetObjectStoreCache, storageState, storeFailure } from "@/services/jenan-map/storage";
 import { MapError, type Artifact } from "@/services/jenan-map/contracts";
-import { ObjectStoreError } from "../../scripts/jenan-map/s3-store.mjs";
+import { ObjectStoreError, signRequest } from "../../scripts/jenan-map/s3-store.mjs";
 import { credentials, fakeStore, sha } from "./jenan-map-fake-s3";
 
 const RELEASE = "1c1b5f07-9581-4e3b-a0a3-9fc7ea08ead1";
@@ -73,6 +73,21 @@ describe("shared object storage behind the same artifact handle", () => {
     const before = fake.seen.filter((item) => item.range).length;
     await Promise.all(Array.from({ length: 8 }, () => openArtifact(artifact(), true)));
     expect(fake.seen.filter((item) => item.range === `bytes=0-${bytes.length - 1}`).length - before).toBe(1);
+  });
+  it("the fake store itself returns a whole object, and a range of it, byte for byte, whatever bytes it holds", async () => {
+    // Every byte value, including those at or above 0x80 that a text encoding would rewrite.
+    const everyByte = Buffer.from(Array.from({ length: 256 }, (_, value) => value));
+    const key = `${RELEASE}/${sha(everyByte)}.bin`;
+    await objectStore()!.putBytes(key, everyByte, sha(everyByte));
+    const url = `${process.env.JENAN_MAP_S3_ENDPOINT}/jenan-map/${key}`;
+    const read = (headers: Record<string, string> = {}) => fetch(url, { headers: signRequest({ ...credentials, region: "auto", method: "GET", url, headers, now: new Date() }) });
+    const whole = await read();
+    expect(whole.status).toBe(200);
+    expect(Number(whole.headers.get("content-length"))).toBe(everyByte.length);
+    expect(Buffer.from(await whole.arrayBuffer()).equals(everyByte)).toBe(true);
+    const part = await read({ range: "bytes=120-140" });
+    expect(part.status).toBe(206);
+    expect(Buffer.from(await part.arrayBuffer()).equals(everyByte.subarray(120, 141))).toBe(true);
   });
   it("hashes once a store that records no checksum, then trusts it", async () => {
     resetObjectStoreCache();

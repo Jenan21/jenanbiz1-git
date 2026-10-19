@@ -6,6 +6,7 @@ import { createReadStream } from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import { Readable } from "node:stream";
+import { setTimeout as sleep } from "node:timers/promises";
 import { buildBackupManifest, canonicalJson, mayRedistribute, ownershipOf, validateBackup, type BackupArtifact, type BackupInput } from "@/services/jenan-map/backup";
 import { validateBackupDirectory, writeBackup } from "@/services/jenan-map/backup-files";
 
@@ -120,7 +121,25 @@ describe("restore validation (folder on disk)", () => {
     const out = path.join(dir, "backup");
     await expect(writeBackup(out, input(), async (a) => Readable.from([a.kind === "pmtiles" ? Buffer.from("different") : bytesOf[a.kind]]))).rejects.toThrow(/BACKUP_ARTIFACT_CHANGED/);
     expect(existsSync(out)).toBe(false);
-    expect(existsSync(`${out}.partial`)).toBe(false);
+    expect(readdirSync(dir), "no staging folder is left behind").toEqual([]);
+  });
+  // The folder name only resolves seconds, so two requests for the same release in the same second ask for the same folder.
+  const slow = async (a: BackupArtifact) => Readable.from((async function* () { await sleep(80); yield bytesOf[a.kind]; })());
+  it("keeps two backups started at the same moment apart: one is completed, the other is refused, and neither deletes the other's work", async () => {
+    const out = path.join(dir, "backup");
+    const results = await Promise.allSettled([writeBackup(out, input(), slow), writeBackup(out, input(), slow)]);
+    expect(results.map((result) => result.status).sort()).toEqual(["fulfilled", "rejected"]);
+    expect(String((results.find((result) => result.status === "rejected") as PromiseRejectedResult).reason)).toContain("BACKUP_FOLDER_EXISTS");
+    expect(await validateBackupDirectory(out, { requireStyleMatchesTiles: true })).toMatchObject({ ok: true, problems: [] });
+    expect(readdirSync(dir), "the refused attempt removed only its own staging folder").toEqual(["backup"]);
+  });
+  it("stages every attempt in a folder of its own, named after the target and ending in .partial so it is never listed or restored", async () => {
+    const out = path.join(dir, "backup");
+    const staging = new Set<string>();
+    const watched = async (a: BackupArtifact) => { for (const name of readdirSync(dir)) if (name.endsWith(".partial")) staging.add(name); return slow(a); };
+    await Promise.allSettled([writeBackup(out, input(), watched), writeBackup(out, input(), watched)]);
+    expect(staging.size).toBe(2);
+    for (const name of staging) expect(name).toMatch(/^backup\.[0-9a-f]{12}\.partial$/);
   });
   it("rejects wrong formats, an empty manifest and a missing source registry", () => {
     const built = buildBackupManifest(input());
