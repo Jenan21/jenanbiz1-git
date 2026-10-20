@@ -42,13 +42,24 @@ it, under a stricter rule (see Adapters below).
 
 ### Adapters
 
-An engine reaches a database only through an adapter: a directory named `adapters` inside the
-engine's own tree. The boundary test allows an adapter to import exactly `pg`, `zod` and files of
-the engine's own tree. An adapter never imports Prisma, the application's database layer,
-Projects, the Map's service or the Data Center. It is the only code that imports the driver, it
-is not re-exported by the engine's index, and it still may not read the environment, the clock or
-the network. The pure core talks to an adapter through a port (an interface), so the place where
-the computation runs can change without changing the contracts.
+An engine reaches anything outside its own tree only through an adapter: a directory named
+`adapters` inside the engine's own tree. There are two kinds, and the boundary test checks each
+against its own exact list:
+
+- **A database adapter** (the Spatial Engine's PostGIS reader) may import exactly `pg`, `zod` and
+  files of the engine's own tree. It is the only code that imports the driver.
+- **A Data Center provider** (the Spatial Engine's `data-center-provider.ts`) may import `zod`,
+  files of the engine's own tree and the Data Center's three read services
+  (`discoverDataCenterVersions`, `readDataCenterVersionContent`, `resolveDataCenterMapReference`)
+  with the pure modules they share. It never imports a driver, Prisma or the application's database
+  layer, holds no SQL and calls nothing that writes (no usage record, no audit entry). It has no
+  access policy of its own: the Data Center applies its existing policy to the actor it is given.
+  No other file of an engine may import those services.
+
+Neither is re-exported by the engine's index, and neither may read the environment, the clock or
+the network. An adapter never imports Projects or the Map's service. The pure core talks to an
+adapter through a port (an interface), so the place where the computation runs, or the way the
+Data Center is reached, can change without changing the contracts.
 
 | Module | Responsibility |
 | --- | --- |

@@ -48,7 +48,7 @@ Center. Those analyses therefore report their data as unavailable until the data
 | `location` | A GeoJSON `Point`, `Polygon` or `MultiPolygon` in WGS84 (the main location) |
 | `candidates` | Up to 20 more locations with unique lower-case ids (`primary` is reserved) |
 | `parameters` | `radiiMeters`, `roles`, `nearestCount`, `maxSearchMeters`, `cluster`, `grid` |
-| `data` | Optional pins of a role to a Data Center version or a Map layer |
+| `data` | Optional selections of a role from the Data Center (an exact version, or a type as of an instant) or from a Map layer |
 | `mapLayerPolicy` | `REGISTERED_ONLY` or `ALLOW_UNREGISTERED` (see below) |
 | `options` | `requestId` (correlation) and `evaluatedAt` (replay only) |
 
@@ -69,6 +69,19 @@ feature role (`place`, `poi`, `road` or `competitor`); constraint screening need
 `constraint:*` role; the population role belongs to catchment; a site comparison needs at least
 one candidate and one more analysis. A pinned dataset must belong to a requested role.
 
+**Selecting data for a role** (`data.roles[role]`) takes one of three forms and nothing else:
+
+| Form | Meaning |
+| --- | --- |
+| `{ source: "DATA_CENTER", versionId }` | That exact published version. It is used as given and never replaced by another |
+| `{ source: "DATA_CENTER", typeKey, asOf? }` | The preferred published version of that type in force as of `asOf` (the evaluation instant when it is omitted), chosen by the Data Center's written selection policy (below) |
+| `{ source: "MAP", layerKey, releaseId? }` | A Map layer, optionally of a named release |
+
+A Data Center selection names a version or a type, never both, and an exact version has no
+`asOf`. `typeKey` has the Data Center's own shape (`geojson`), `asOf` is a UTC instant, and
+nothing else (no query, no geography of the caller's own) is accepted; the place the analysis is
+about narrows a type selection from the request's locations when the data is resolved.
+
 **Locations are bounded** so cost is known before any data is read: an area has at most 2,000
 positions in total, at most 100 rings and 100 parts, a closed ring, no antimeridian crossing, an
 extent above zero and at most 250,000 km² (measured with a spherical pre-check accurate to about
@@ -85,6 +98,12 @@ same normalized object and the same request hash; the `defaultsApplied` list is 
 `evaluatedAt` defaults to the injected clock. A caller may pin it only when the service allows it
 (replay and acceptance paths), never to a future instant, because an earlier instant would make
 stale data look fresh.
+
+The instant a Data Center type is selected as of (`asOf`) is written in one canonical form
+(`2026-06-01T00:00:00.000Z`), so two spellings of the same instant are the same request with the
+same hash. It cannot be later than the evaluation instant (with the same minute of clock
+tolerance): a selection "as of" a time that has not come selects nothing that was in force. A
+replay that pins an earlier evaluation instant holds the selection to that instant.
 
 `prepareSpatialRequest` normalizes, estimates the cost and refuses a request above the server
 budget (`REQUEST_TOO_LARGE`).
@@ -165,9 +184,14 @@ which added the `nearestCount` component to `PROXIMITY` (`proximity.<role>.neare
 (M2), which prices the nearest-place search of each place role in `LOCATION_CONTEXT`
 (`context.<role>`).
 
+Resolving a Data Center selection has no cost component yet: no implemented analysis reads Data
+Center data (M3 builds the data source; `PROXIMITY` and `CATCHMENT` read it in M4), so a
+selection costs nothing until an analysis uses it. M4 prices what each analysis reads, the size of
+the dataset included, and the dataset caps below bound it in the meantime.
+
 ## Gaps
 
-The shared gaps plus ten of its own, all bilingual and worded as facts:
+The shared gaps plus nineteen of its own, all bilingual and worded as facts:
 
 | Code | Severity | Says |
 | --- | --- | --- |
@@ -181,6 +205,18 @@ The shared gaps plus ten of its own, all bilingual and worded as facts:
 | `MAP_SOURCE_ID_UNRECOGNIZED` | warning | Features near the location have a source id the engine does not recognize, so their kind is unknown |
 | `ROAD_LABEL_POINTS_ONLY` | warning | The road layer holds label points, not a road network |
 | `NETWORK_ANALYSIS_NOT_SUPPORTED` | info | Distances are straight lines; travel distance and time are not supported |
+| `DATA_CENTER_NOT_IN_FORCE` | blocking | Datasets of the type exist but none was in force as of the instant |
+| `DATA_CENTER_CONTENT_INVALID` | blocking | The selected version is not valid WGS84 GeoJSON (the Data Center's own code is stated); nothing was repaired |
+| `DATA_CENTER_INTEGRITY_FAILED` | blocking | The stored checksum does not match the stored content |
+| `DATA_CENTER_PIN_CHANGED` | blocking | The content is not the one expected; it was not replaced by another version |
+| `DATA_CENTER_VERSION_NOT_SPATIAL` | blocking | The selected version is not spatial (GeoJSON) data |
+| `DATA_CENTER_TOO_MANY_CANDIDATES` | blocking | So many datasets of the type match that a choice would rest on part of them; none was selected |
+| `DATA_CENTER_COMPETING_DATASETS` | info | Other datasets of the type were in force; the one chosen and the policy that chose it are stated (a lower bound, `19+`, when the Data Center's listing was cut) |
+| `MAP_DATA_CENTER_BINDING_REFUSED` | warning | A Map layer's reference to the Data Center was not accepted, so the layer is unregistered and its rights and quality are not taken from the Data Center |
+| `MAP_DATA_CENTER_BINDING_CHANGED` | info | The Data Center changed what it states about the version a layer is bound to; its current statements are used |
+
+A dataset that is unavailable, has no coverage or cannot be reached uses the shared codes
+`DATASET_NOT_AVAILABLE`, `NO_COVERAGE` and `BACKEND_UNAVAILABLE` (backend `DATA_CENTER`).
 
 `BOUNDARY_UNOFFICIAL` was information in M1 and is a warning from M2: a value that rests on an
 unofficial boundary is limited and must be presented with that limit.
@@ -228,7 +264,11 @@ and carries a `spatial-confidence-v1` breakdown when it has a value.
 | `context.<level>.intersecting_units` | text | Labels joined with ` \| `, only when two or more polygons intersect the target |
 | `context.<place role>.nearest.distance`, `.name`, `.feature_ref` | metres, text, text | The nearest mapped place of the kind (`place:<kind>`), searched in rings of 500 m, 1, 3, 5, 10, 25 and 50 km up to `maxSearchMeters` (default 5 km). The role `place` accepts any recognized kind and adds `.kind`. `.feature_ref` is the place's reference (below) |
 
-Roles that are not places are ignored by `LOCATION_CONTEXT`. The representative point of an area
+Roles that are not places are ignored by `LOCATION_CONTEXT`, whether they select a Map layer or a
+Data Center dataset: the analyses that measure them (`PROXIMITY`, `CATCHMENT`) read them from M4.
+A Data Center selection for a *place* role is refused, not ignored (see Whole-run refusals): the
+places of `LOCATION_CONTEXT` come from the Map, and a dataset that was asked for is never
+silently replaced by Map data. The representative point of an area
 is PostGIS's point on its surface and is stated in the limitations with six decimals. Containment
 is planar on the stored WGS84 geometry, as the Map's own lookups are, and an edge counts as
 covered. Distances are geodesic (geography, metres) and are rounded to 0.1 m.
@@ -271,8 +311,9 @@ locale), so the nearest of several that tie is always the same one.
 | A layer is missing, empty, or unregistered in production | `NOT_AVAILABLE` with `DATASET_NOT_AVAILABLE` naming the role |
 
 Whole-run refusals (an `EngineError`, before or instead of a result): an invalid request
-(`INVALID_INPUT`), a cost above the budget (`REQUEST_TOO_LARGE`), an unsupported analysis, a pin
-to the Data Center (not readable yet), a pin to a layer the role is not read from or to something
+(`INVALID_INPUT`), a cost above the budget (`REQUEST_TOO_LARGE`), an unsupported analysis, a Data
+Center selection for a place role (`data_center_pin_for_map_role`: places are read from the Map,
+and Map data is never silently used in place of a dataset that was asked for), a pin to a layer the role is not read from or to something
 that is not a release id, an invalid location (`INVALID_INPUT`, naming the target and the reason),
 unregistered layers requested in production (`MAP_LAYER_POLICY_VIOLATION`), and a backend that
 cannot be used (`BACKEND_UNAVAILABLE` with a `reason`: one of the adapter's failure kinds,
@@ -313,8 +354,10 @@ limitations.
 
 ## The Map read adapter
 
-`services/analysis-engines/spatial/adapters` is the only code of the engine that talks to a
-database. It changes nothing in `jenan_map`: no file, no schema, no row.
+`services/analysis-engines/spatial/adapters/postgis-map-reader.ts` and its session are the only
+code of the engine that talks to a database. They change nothing in `jenan_map`: no file, no
+schema, no row. (The Data Center provider in the same directory talks to the Data Center's read
+services, never to a database; see the next section.)
 
 - **Snapshot.** Every call opens `BEGIN ISOLATION LEVEL REPEATABLE READ READ ONLY`, sets
   `statement_timeout`, `lock_timeout`, `idle_in_transaction_session_timeout` and `search_path`
@@ -361,12 +404,198 @@ role's privileges stop anything else, and the adapter has no raw-SQL method for 
 matter. On PostgreSQL before 15 the operator should also revoke `CREATE` on schema `public` from
 `PUBLIC`.
 
+## The Data Center provider (M3)
+
+M3 builds the engine's data source: how a dataset is found in the Data Center and read, exactly
+and deterministically, under the Data Center's own access policy. No analysis reads Data Center
+data yet (that is `PROXIMITY` and `CATCHMENT` in M4); M3 delivers the machinery they will use.
+
+### What was added to the Data Center, and where
+
+Three read functions and two pure helpers, in `services/data-center/`, **on the engines branch
+only**: no migration, no schema change, no change to an existing Data Center file, nothing on the
+frozen baseline `jenan-data-center/integration@04d6148`.
+
+| Function | Does |
+| --- | --- |
+| `discoverDataCenterVersions` (`discovery.ts`) | Metadata of published versions, never their content: dataset, version and its SHA-256, source, ownership, license class, usage policy, attribution, coverage, quality, freshness, publication (the Data Center's Map contract `DataCenterMapReference`) |
+| `readDataCenterVersionContent` (`version-content.ts`) | The content of exactly one published version, verified |
+| `resolveDataCenterMapReference` (existing) | What the Data Center says now about one version, used for Map releases (below) |
+| `computeDataCenterVersionChecksum` (`version-checksum.ts`) | Recomputes a version's SHA-256 exactly as `service.ts` composes it |
+| `rankVersions` (`version-selection.ts`) | The selection policy below |
+
+### Access: the existing policy, unchanged
+
+Both new functions use `accessiblePublishedVersionWhere` verbatim, so a caller sees exactly what
+retrieval shows it: an administrator everything that is published and in force; a person the
+platform's data, their own private sources and the organization sources where they are an active
+owner or hold `data-center.read` (and a version's `requiredPermission`); a robot only the sources
+it holds an unrevoked, unexpired `READ` grant for, matching its principal, robot, role, specialty
+and mission, and only while it is assigned to that mission. Everywhere: the source's retrieval
+switch, validity windows, no open conflict, evidence not conflicted, item not archived, and only
+the item's published version. A version restricted to a specialty or mission context is visible
+only to a caller that names it (`specialty`, `missionContext` of the provider).
+
+**No existence oracle.** A version that is forbidden, hidden, unpublished, superseded, expired,
+archived, not yet effective or nonexistent, and a robot that holds no grant, all get one answer in
+one shape: discovery lists the id as unavailable without a reason, the content read raises
+`PUBLISHED_VERSION_NOT_FOUND` (404, identical message), and the provider reports `NOT_AVAILABLE`.
+Nothing is written: no usage record, no audit entry, no event.
+
+### Choosing a version: `dc-version-selection-v1`
+
+An exact version (`versionIds`) is used as given. A type (`typeKeys`) as of an instant (`asOf`) is
+chosen by one written, fixed policy; the same request, instant and available versions always give
+the same version.
+
+- **In force as of an instant**: published by then (the latest `PUBLISHED` event; an unknown
+  publication date is excluded), its source date not after the instant, effective by then, and
+  neither its effective period nor its expiry ended.
+- **Without `asOf`** nothing is compared with a clock: the Data Center's access policy alone
+  decides what is served, as retrieval does. (Comparing the publication time with the caller's
+  clock made a version published at that very moment look unpublished, which a real-database
+  test found.)
+- **Preference** among the versions in force: the later source date (an unknown one last), then
+  the later publication date (unknown last), then the smaller version id compared by code point.
+  The last rule is a fixed tie-break, independent of the order the database returns rows in. The
+  version "latest now" is never used when an instant is given.
+- A version's reason for not being in force is reported (`NOT_PUBLISHED_AT_AS_OF`, ...).
+- Caps: more than 2,000 rows or 500 candidates is `TOO_MANY_CANDIDATES` (refused, never cut); the
+  listing holds up to 20 versions in force and says when it was cut (`truncated`).
+
+`asOf` only narrows what the Data Center serves today. Only an item's published version is
+retrievable, so a superseded version is not served for a past instant either, and the newer
+version is never returned in its place.
+
+**Geography** uses the structured coverage the Data Center stores, never geometry (no PostGIS in
+the Data Center): country codes, region codes and a WGS84 box. Every filter given must hold, boxes
+that touch intersect, and a version whose coverage was never declared matches no geographic filter
+(unknown is never turned into "everywhere"). `NO_COVERAGE` (datasets of the type exist, none
+covers the place) is told apart from `NOT_AVAILABLE` (nothing readable exists). The engine derives
+the filter from the request's locations (`targetGeography`: the box of every target widened by
+the distance searched).
+
+### Reading one version
+
+`readDataCenterVersionContent` reads one version after the access check, and then:
+
+1. recomputes the stored checksum from the stored columns and refuses on a difference
+   (`VERSION_CHECKSUM_MISMATCH`), returning nothing of the content;
+2. refuses a pinned `expectedChecksum` that is not the version's (`EXPECTED_CHECKSUM_MISMATCH`);
+3. for a dataset of type `geojson`, validates the content as WGS84 GeoJSON with the Data Center's
+   own validator (no `crs`, positions in range, closed rings, structure limits, at most 10,000
+   features) and refuses invalid content with the validator's code (422); nothing is repaired;
+4. `require: "GEOJSON"` refuses a dataset that is not spatial (`CONTENT_NOT_SPATIAL`).
+
+There is no fallback to another version, ever. Topological validity (self-intersections and the
+like) is not decided here: PostGIS decides it when the features reach it (M4).
+
+### The port and the provider
+
+The engine never reads a Data Center table. `SpatialDataCenterPort` (`data-center-port.ts`) has
+three read-only questions: `discover(selection)`, `readContent({ versionId, expectedChecksum? })`
+and `resolveMapReference(versionId)`. Expected states are outcomes, not exceptions:
+`NOT_AVAILABLE`, `INTEGRITY_FAILED`, `PIN_CONTENT_CHANGED`, `NOT_SPATIAL`, `CONTENT_INVALID`
+(with the Data Center's code, and only a code). An exception, `DataCenterProviderError` (kind
+`UNAVAILABLE` or `UNKNOWN`, the original in `cause`, never its message), means the Data Center
+could not be asked at all.
+
+`createDataCenterProvider({ actor, now, specialty?, missionContext? })`
+(`adapters/data-center-provider.ts`) implements it by calling the three Data Center services and
+nothing else. It has no access policy of its own, imports no database layer, Prisma or driver
+(a static test, and a unit test that fails if it touches `db`), and reads no clock: `now` is only
+what the Data Center states freshness at and defaults `asOf` to.
+
+### Resolving what a request selected
+
+`dataSourceRequestsOf(roles, { geography })` turns the Data Center selections of a normalized
+request into resolver requests, in role order (an exact version is never narrowed by place).
+`resolveSpatialDataSources({ requests, port, evaluatedAt })` then, role by role: discovers; reads
+the content **with the discovered checksum pinned**; verifies that the version and checksum read
+are the ones selected (otherwise `PIN_CONTENT_CHANGED`, with no fallback); checks the features of
+the dataset (`checkDatasetFeatures`: a dataset is used whole or not at all, so no feature, more
+than 10,000, a feature without geometry, or a geometry collection refuses the whole dataset);
+and builds the input descriptor. Roles that resolve to the same version share one input.
+
+The result lists, per role, a status (`RESOLVED`, `NOT_AVAILABLE`, `NO_COVERAGE`, `NOT_IN_FORCE`,
+`TOO_MANY_CANDIDATES`, `INTEGRITY_FAILED`, `PIN_CONTENT_CHANGED`, `NOT_SPATIAL`, `CONTENT_INVALID`,
+`BACKEND_UNAVAILABLE`), a trace of how the dataset was chosen (mode, policy, instant, discovery
+status, the version selected, the versions in force, those that were not and why), and its gaps.
+When several datasets were in force the choice is reported (`DATA_CENTER_COMPETING_DATASETS`).
+
+The input descriptor (`data-center-inputs.ts`) states what the Data Center states and nothing
+else: id `dc:<versionId>`, the SHA-256, the source, ownership, license, license class, usage
+policy, attribution, whether export is permitted, evidence status, quality (measured, or
+unavailable, with its method, method version and date), coverage and freshness (recomputed at the
+run's instant, never at "now"). The license class stays undeclared when it is undeclared; the
+Data Center does not record completeness, so it is `UNKNOWN`; the Data Center's own resolved time
+and confidence number are not copied.
+
+### Map references
+
+A Map release can keep a binding to a Data Center version (`DataCenterMapBinding`: the release
+and layer ids, the artifact's digest, and the snapshot of the Data Center's reference). The Data
+Center remains the source of truth for rights, ownership, source, attribution, quality and
+freshness; the Map remains the source of truth for the artifact and its geometry; no foreign key
+links them. `reconcileMapBinding` (`map-data-center.ts`) parses the binding with the Data Center's
+own schema, checks it was kept for this release and layer, asks for exactly the version it names
+through `resolveDataCenterMapReference`, and compares the answer with the snapshot using the Data
+Center's `assessMapBinding`. The result is `RECONCILED` or `NOT_REGISTERED` with one of
+`BINDING_INVALID`, `BINDING_FOR_ANOTHER_LAYER`, `VERSION_UNAVAILABLE`, `INCONSISTENT` or
+`BACKEND_UNAVAILABLE`. `applyMapBinding` then gives a reconciled layer the Data Center's
+*current* statements (the snapshot is only compared), keeps the Map's identity, reference and
+artifact digest, uses the Data Center's declared coverage (the Map's extent only when the Data
+Center declares none), and makes a refused layer unregistered. A binding can only enrich a layer or
+take its registration away; it never grants it. The real Map records no binding yet, so the
+engine run does not call this; it is a tested capability, ready for the Map to store one.
+
+### Usage
+
+`buildDataCenterUsageIntents` derives, from the inputs of a finished result only, what the Data
+Center's usage record needs (version, SHA-256, consumer `analysis-engine:spatial`, purpose, roles).
+It is **prepared, not written**: the permanent record belongs with the run record (M5), in the
+same step, so a failed run leaves no usage behind.
+
+### Decision for the owner: selections that the current analysis cannot read
+
+`LOCATION_CONTEXT` reads places from the Map only. A Data Center selection for a *place* role is
+therefore refused (`data_center_pin_for_map_role`) rather than silently replaced by Map data. A
+selection for a role no requested analysis reads (a point of interest, a road) is neither resolved
+nor listed, exactly as a Map pin for such a role always was; it appears in the normalized request
+and is hashed with it. `PROXIMITY` and `CATCHMENT` resolve those selections in M4. The alternative
+is a general information gap for any unread role or selection; it was not added because the engine
+already says nothing about unread roles without a pin.
+
 ## Tests
 
 - **Unit** (no database): the Map contract and its fixtures, error mapping, the session (with a
   scripted pool), the static SQL checks, the reader, the read-role generator, the input
   descriptors, the Map state, `LOCATION_CONTEXT` and the engine run (with a fake port shaped like
-  the real Saudi release), and the boundary rules for adapters.
+  the real Saudi release), and the boundary rules for adapters. M3 adds: the checksum
+  recomputation and the selection policy (`version-checksum`, `version-selection`: 41), the
+  Data Center input descriptors, dataset checks, resolution and prepared usage with a fake port,
+  the provider with the Data Center's three services replaced (requests, one answer for every
+  refusal, outcome per error, zero database access), the request contract and normalization of
+  Data Center selections, and the Map binding reconciliation with a fake port.
+- **Data Center integration** (opt-in, real migrated PostgreSQL, every test in a transaction
+  that is always rolled back): `DATA_CENTER_DATABASE_TESTS=1` and a `DATABASE_URL` that points at
+  a database migrated from scratch.
+  - `data-center-discovery.integration.test.ts` (24): exact versions and no substitution, the
+    same answer for every kind of unavailable version, conflicts, platform, private,
+    organization, permission, robot-grant, specialty and mission access, selection, tie-break,
+    `asOf` and validity windows, unknown publication dates, limits, geography, quality, rights,
+    determinism and no writes.
+  - `data-center-version-content.integration.test.ts` (38): the verified read, a drift guard that
+    creates versions through the real service in 13 shapes and recomputes each checksum, nine
+    tampering cases and lineage, fifteen invalid GeoJSON forms, access for people, organizations
+    and robots, and no writes.
+  - `spatial-data-center-provider.integration.test.ts` (32): the provider and the resolver on
+    real data: an exact pin, access (people, organizations, robots with and without a grant,
+    revoked, unassigned, other specialty), every kind of unavailable version, selection by type
+    and as of an instant, competing versions and the tie-break, a cut listing, geography, invalid
+    GeoJSON, a tampered version, no fallback to a newer version or to the runner-up, requests
+    taken through normalization and resolution, a Map release bound to a version (reconciled,
+    superseded, hidden, changed since the snapshot, tampered), and no writes.
 - **PostGIS** (opt-in). `RUN_SPATIAL_ENGINE_POSTGIS_TESTS=1` and `SPATIAL_ENGINE_TEST_ADMIN_URL`
   (a loopback PostgreSQL with PostGIS); `SPATIAL_ENGINE_REAL_MAP_DB` (the name of the real Map
   database) adds the real Saudi suite. Every database and role they create is named `se_*` and
@@ -399,6 +628,17 @@ nearest-place search ranks them all); the statement timeout fails it safe.
 - Before M4 the number of metrics per result entry must be bounded for requests with many roles
   and many nearest features (the schema allows 500).
 - The cost weights remain provisional until M7.
+- A Data Center dataset's completeness is `UNKNOWN`: the Data Center does not record it, so a
+  count from it is never presented as an inventory.
+- A Data Center content is validated structurally (WGS84, ranges, closed rings, limits); the
+  topological validity of its geometry is decided by PostGIS in M4.
+- An exact Data Center version is used as given and is not narrowed by place; its declared coverage
+  is stated in its input, and M4 compares it with the target and reports `NO_COVERAGE` where it
+  does not apply.
+- Only the published version of a Data Center item is served, so `asOf` cannot reach a version
+  that has since been superseded; it only narrows what is served today.
+- The Map records no binding to a Data Center version yet, so the reconciliation is a tested
+  capability that the engine run does not call.
 - CodeQL runs only for pull requests into `main`; its trigger needs to include
   `jenan-engines/integration` for the closure gate.
 
@@ -408,7 +648,7 @@ nearest-place search ranks them all); the statement timeout fails it safe.
 | --- | --- | --- |
 | M1 | Shared core, contracts, states, gaps, confidence policy, canonical hashing, cost estimator, request normalization, Map layer policy, geometry pre-checks, port seam, unit tests | Done |
 | M2 | Read-only Map adapter over PostGIS, a Map read contract test, `LOCATION_CONTEXT` | Done |
-| M3 | Data Center discovery and content read functions (on the engines branch only) and the provider | Planned |
+| M3 | Data Center discovery and content read functions (on the engines branch only), the provider, deterministic version selection, request selections, Map reference reconciliation, prepared usage | Done |
 | M4 | `PROXIMITY` and `CATCHMENT` | Planned |
 | M5 | `AnalysisEngineRun` models and additive migration, audit, admin acceptance route (no UI) | Planned |
 | M6 | `DENSITY`, `CONSTRAINT_SCREENING`, `SITE_COMPARISON` | Planned |
