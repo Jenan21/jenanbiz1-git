@@ -84,6 +84,41 @@ describe("Data Center provenance and forms", () => {
     expect(commandSchema.safeParse(payload).success).toBe(true);
     expect(payload).not.toHaveProperty("organizationId");
   });
+  it("leaves ownership and license class undeclared unless the administrator chooses them", () => {
+    const base = { name: "Atlas", kind: "OFFICIAL", scope: "PLATFORM", owner: "Authority", license: "ODbL-1.0", freshnessDays: "90", allowExport: "false", allowRetrieval: "true", attributionRequired: "false", ownership: "", licenseClass: "" };
+    const form = new FormData();
+    for (const [key, value] of Object.entries(base)) form.set(key, value);
+    const blank = commandPayload(form, DATA_CENTER_COMMANDS.source);
+    expect(blank).not.toHaveProperty("ownership");
+    expect(blank).not.toHaveProperty("licenseClass");
+    expect(blank).toMatchObject({ attributionRequired: false });
+    expect(commandSchema.safeParse(blank).success).toBe(true);
+    const declared = new FormData();
+    for (const [key, value] of Object.entries({ ...base, ownership: "THIRD_PARTY", licenseClass: "OPEN_LICENSE", attributionRequired: "true", attribution: "© OpenStreetMap contributors", sourceUrl: "https://www.openstreetmap.org/copyright" })) declared.set(key, value);
+    const payload = commandPayload(declared, DATA_CENTER_COMMANDS.source);
+    expect(payload).toMatchObject({ ownership: "THIRD_PARTY", licenseClass: "OPEN_LICENSE", attributionRequired: true, attribution: "© OpenStreetMap contributors" });
+    expect(commandSchema.safeParse(payload).success).toBe(true);
+  });
+  it("builds explicit robot grant and revoke commands that the server contract accepts", () => {
+    const form = new FormData();
+    for (const [key, value] of Object.entries({ sourceId: "s1", robotId: "r1", principalId: "p1", roleKey: "analyst", specialty: "demography", missionId: "m1", access: "PROPOSE", expiresAt: "2030-01-01T10:00", reason: "Mission data need" })) form.set(key, value);
+    const grant = commandPayload(form, DATA_CENTER_COMMANDS.grantRobot);
+    expect(grant).toMatchObject({ action: "grant-robot-access", access: "PROPOSE", sourceId: "s1" });
+    expect(grant.expiresAt).toMatch(/^2030-01-01T.*Z$/);
+    expect(commandSchema.safeParse(grant).success).toBe(true);
+    const revoke = new FormData();
+    revoke.set("reason", "Mission ended");
+    const payload = commandPayload(revoke, DATA_CENTER_COMMANDS.revokeRobot, { grantId: "g1" });
+    expect(payload).toEqual({ action: "revoke-robot-access", grantId: "g1", reason: "Mission ended" });
+    expect(commandSchema.safeParse(payload).success).toBe(true);
+  });
+  it("shows the robot grant panel with a truthful loading state and no fabricated grants", () => {
+    const html = renderToStaticMarkup(createElement(DataCenterWorkspace, { section: "robot-knowledge" }));
+    expect(html).toContain("منح وصول الروبوتات إلى المصادر");
+    expect(html).toContain("منح وصول لروبوت");
+    expect(html).toContain("جارٍ تحميل المنح");
+    expect(html).not.toContain("سحب الوصول");
+  });
   it("retains classification and separates dates, tags, provenance from raw text", () => {
     const form = new FormData();
     for (const [key, value] of Object.entries({ title: "Dataset", sourceId: "s1", typeKey: "dataset", layer: "DATA", content: "Content", evidenceStatus: "UNVERIFIED", origin: "HUMAN", category: "ASSET", department: "operations", sourcePublishedAt: "2026-10-01T12:00", specialties: "finance, operations،research", provenance: '[{"label":"Official","reference":"https://example.com","kind":"SOURCE"}]' })) form.set(key, value);

@@ -1,6 +1,6 @@
 import { hasPlatformAdminAccess, memberHasPermission } from "@/lib/auth/authorization";
 import { db, type DbExecutor } from "@/lib/db";
-import type { SystemRole, DataCenterSource } from "@/generated/prisma/client";
+import type { Prisma, SystemRole, DataCenterSource } from "@/generated/prisma/client";
 import { DataCenterError, type DataCenterActor } from "./contracts";
 
 export function isDataCenterAdmin(actor: DataCenterActor) {
@@ -12,15 +12,31 @@ export function requireDataCenterPrincipal(actor: DataCenterActor) {
 export function requireDataCenterAdmin(actor: DataCenterActor) {
   if (!isDataCenterAdmin(actor)) throw new DataCenterError("ADMIN_REQUIRED", 403);
 }
+/**
+ * Sources an AI principal may use. A robot has no implicit access: it needs an unrevoked, unexpired grant that matches its
+ * principal, robot, role, specialty and mission, and the robot must still be assigned to that mission.
+ */
+export async function robotSourceIds(actor: DataCenterActor, tx: DbExecutor = db, access: "READ" | "PROPOSE" = "READ") {
+  if (!actor.robotId || !actor.roleKey || !actor.specialty || !actor.missionId) throw new DataCenterError("EXPLICIT_ROBOT_GRANT_REQUIRED", 403);
+  const mission = await tx.mission.findFirst({ where: { id: actor.missionId, assignedRobots: { some: { id: actor.robotId } } }, select: { id: true } });
+  if (!mission) throw new DataCenterError("ROBOT_MISSION_ASSIGNMENT_REQUIRED", 403);
+  const grants = await tx.dataCenterRobotGrant.findMany({ where: {
+    principalId: actor.id, robotId: actor.robotId, roleKey: actor.roleKey, specialty: actor.specialty, missionId: actor.missionId,
+    revokedAt: null, expiresAt: { gt: new Date() }, ...(access === "PROPOSE" ? { access: "PROPOSE" as const } : {}),
+  }, select: { sourceId: true } });
+  if (!grants.length) throw new DataCenterError("EXPLICIT_ROBOT_GRANT_REQUIRED", 403);
+  return grants.map((grant) => grant.sourceId);
+}
 export async function authorizedOrganizationIds(actor: DataCenterActor, permission = "data-center.read", tx: DbExecutor = db) {
   const memberships = await tx.organizationMember.findMany({
     where: { userId: actor.id, status: "ACTIVE" }, include: { role: { include: { permissions: { include: { permission: true } } } } },
   });
   return memberships.filter((m) => memberHasPermission(m, permission)).map((m) => m.organizationId);
 }
-export async function sourceScopeWhere(actor: DataCenterActor, tx: DbExecutor = db) {
+export async function sourceScopeWhere(actor: DataCenterActor, tx: DbExecutor = db): Promise<Prisma.DataCenterSourceWhereInput> {
   requireDataCenterPrincipal(actor);
   if (isDataCenterAdmin(actor)) return {};
+  if (actor.kind === "AI") return { id: { in: await robotSourceIds(actor, tx) } };
   const orgs = await authorizedOrganizationIds(actor, "data-center.read", tx);
   return { OR: [
     { scope: "PLATFORM" as const },
@@ -32,6 +48,10 @@ export async function assertSourceAccess(source: DataCenterSource | null, actor:
   requireDataCenterPrincipal(actor);
   if (!source) throw new DataCenterError("SOURCE_NOT_FOUND", 404);
   if (isDataCenterAdmin(actor)) return source;
+  if (actor.kind === "AI") {
+    if (!(await robotSourceIds(actor, tx, write ? "PROPOSE" : "READ")).includes(source.id)) throw new DataCenterError("SOURCE_NOT_FOUND", 404);
+    return source;
+  }
   const own = source.scope === "PRIVATE" && source.ownerId === actor.id;
   const org = source.scope === "ORGANIZATION" && (await authorizedOrganizationIds(actor, write ? "data-center.write" : "data-center.read", tx)).includes(source.organizationId!);
   if (!own && !org && !(source.scope === "PLATFORM" && !write)) throw new DataCenterError("SOURCE_NOT_FOUND", 404);

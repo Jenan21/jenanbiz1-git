@@ -18,6 +18,8 @@ export async function getAccessibleItem(tx: DbExecutor, actor: DataCenterActor, 
 }
 export async function createDataCenterSource(input: CreateSourceInput, actor: DataCenterActor) {
   requireDataCenterPrincipal(actor);
+  // Robots only act on sources an administrator has explicitly granted them; they never register sources themselves.
+  if (actor.kind === "AI") throw new DataCenterError("HUMAN_OPERATION_REQUIRED", 403);
   const data = sourceSchema.parse(input);
   if (data.scope === "PLATFORM") requireDataCenterAdmin(actor);
   if (data.scope === "ORGANIZATION") {
@@ -239,6 +241,8 @@ export async function listDataCenterArea(area: string, actor: DataCenterActor, o
       [rows, total] = await Promise.all([db.dataCenterUsage.findMany({ ...pagination, orderBy: { createdAt: "desc" } }), db.dataCenterUsage.count()]); break;
     case "academy":
       [rows, total] = await Promise.all([db.dataCenterAcademyRelease.findMany({ ...pagination, orderBy: { createdAt: "desc" } }), db.dataCenterAcademyRelease.count()]); break;
+    case "grants":
+      [rows, total] = await Promise.all([db.dataCenterRobotGrant.findMany({ ...pagination, orderBy: { createdAt: "desc" }, include: { source: { select: { name: true } } } }), db.dataCenterRobotGrant.count()]); break;
     default: throw new DataCenterError("UNKNOWN_AREA");
   }
   return { area, rows, total, page, limit };
@@ -267,6 +271,8 @@ export async function dispatchDataCenterCommand(command: DataCenterCommand, acto
     case "import-academy-source": return (await import("./retrieval")).importAcademyDataCenterSource(input as Extract<DataCenterCommand, { action: "import-academy-source" }>, actor);
     case "request-academy-release": return (await import("./retrieval")).requestAcademyDataCenterRelease(input as Extract<DataCenterCommand, { action: "request-academy-release" }>, actor);
     case "approve-academy-release": return (await import("./retrieval")).approveAcademyDataCenterRelease(input as Extract<DataCenterCommand, { action: "approve-academy-release" }>, actor);
+    case "grant-robot-access": return (await import("./robot-grants")).grantDataCenterRobotAccess(input as Extract<DataCenterCommand, { action: "grant-robot-access" }>, actor);
+    case "revoke-robot-access": return (await import("./robot-grants")).revokeDataCenterRobotAccess(input as Extract<DataCenterCommand, { action: "revoke-robot-access" }>, actor);
   }
 }
 export { sourceScopeWhere };

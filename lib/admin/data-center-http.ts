@@ -80,7 +80,7 @@ export async function adminDataCenterPost(request: NextRequest) {
       : action === "approve-academy-release" ? await approveAcademyDataCenterRelease(input as Extract<typeof command, { action: "approve-academy-release" }>, actor)
       : action === "import-academy-source" ? await importAcademyDataCenterSource(input as Extract<typeof command, { action: "import-academy-source" }>, actor)
       : await dispatchDataCenterCommand(command, actor);
-    return dataCenterJson({ success: true, result }, action.startsWith("create") || action === "register-type" ? 201 : 200);
+    return dataCenterJson({ success: true, result }, action.startsWith("create") || action === "register-type" || action === "grant-robot-access" ? 201 : 200);
   } catch (error) { return dataCenterFailure(error); }
 }
 const retrievalQuerySchema = z.object({

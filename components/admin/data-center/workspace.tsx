@@ -21,6 +21,11 @@ const statLabels: Record<string, string> = {
   sources: "مصادر مسجلة", items: "سجلات المحتوى", published: "لها إصدار منشور", reviews: "بانتظار المراجعة",
   conflicts: "تعارضات مفتوحة", imports: "عمليات استيراد", usage: "سجلات استخدام", types: "أنواع مسجلة", academyReleases: "اقتراحات الأكاديمية",
 };
+const grantStates = { ACTIVE: "سارية", EXPIRED: "منتهية", REVOKED: "مسحوبة" } as const;
+function grantState(grant: DataCenterRecord): keyof typeof grantStates {
+  if (grant.revokedAt) return "REVOKED";
+  return new Date(String(grant.expiresAt)).getTime() <= Date.now() ? "EXPIRED" : "ACTIVE";
+}
 type FormState = { definition: CommandDefinition; fixed?: DataCenterRecord } | null;
 type Snapshot = { rows: DataCenterRecord[]; total: number | null; data: DataCenterRecord };
 
@@ -57,6 +62,7 @@ export function DataCenterWorkspace({ section }: { section: DataCenterSection })
   const [retrievalParams, setRetrievalParams] = useState("");
   const [refresh, setRefresh] = useState(0);
   const [platform, setPlatform] = useState<PlatformMetricsState>({ status: "loading" });
+  const [grants, setGrants] = useState<DataCenterRecord[]>([]);
 
   const load = useCallback(async (signal: AbortSignal) => {
     setLoading(true);
@@ -79,7 +85,11 @@ export function DataCenterWorkspace({ section }: { section: DataCenterSection })
           } });
         } else setSnapshot({ rows: asRecords(data.rows), total: typeof data.total === "number" ? data.total : null, data });
       }
-      if (section === "robot-knowledge" && !signal.aborted) setCapabilities(payload.capabilities as DataCenterRecord ?? null);
+      if (section === "robot-knowledge" && !signal.aborted) {
+        setCapabilities(payload.capabilities as DataCenterRecord ?? null);
+        const grantsPayload = await dataCenterRequest(`${DATA_CENTER_API}?area=grants&limit=100`, { signal });
+        if (!signal.aborted) setGrants(asRecords(payloadData(grantsPayload).rows));
+      }
       if (section === "imports") {
         const overview = await dataCenterRequest(`${DATA_CENTER_API}?area=overview`, { signal });
         if (!signal.aborted) setCapabilities(overview.capabilities as DataCenterRecord ?? null);
@@ -142,7 +152,7 @@ export function DataCenterWorkspace({ section }: { section: DataCenterSection })
     }
     setForm({ definition: command, fixed });
     setFeedback("");
-    if (key === "item") {
+    if (key === "item" || key === "grantRobot") {
       try {
         const [sourcePayload, typePayload] = await Promise.all([
           dataCenterRequest(`${DATA_CENTER_API}?area=sources&limit=100`),
@@ -292,6 +302,18 @@ export function DataCenterWorkspace({ section }: { section: DataCenterSection })
                 <span>صفحة {displayDataCenterValue(context.page)}</span>
                 <button className={styles.button} disabled={busy || Number(context.page ?? 1) >= 100 || Number(context.page ?? 1) * Number(context.limit ?? 20) >= Number(context.total)} onClick={() => void retrievePage(new URLSearchParams(retrievalParams), Number(context.page ?? 1) + 1)}>نتائج تالية</button>
               </div> : null}
+            </Card> : null}
+            {section === "robot-knowledge" ? <Card className={styles.panel}>
+              <div className={styles.toolbar}><h2>منح وصول الروبوتات إلى المصادر</h2><button className={styles.button} disabled={busy} onClick={() => void openForm("grantRobot")}>منح وصول لروبوت</button></div>
+              <p className={styles.muted}>لا يصل أي روبوت إلى مصدر دون منحة صريحة تحدد الروبوت والحساب والدور والتخصص والمهمة وتاريخ الانتهاء. منحة القراءة لا تتيح اقتراح محتوى، وتُسحب المنح ولا تُحذف.</p>
+              {loading ? <p className={styles.empty} role="status">جارٍ تحميل المنح…</p> : !grants.length ? <p className={styles.empty}>لا توجد منح وصول للروبوتات.</p> : <div className={styles.records}>{grants.map((grant) => {
+                const state = grantState(grant);
+                return <article className={styles.record} key={String(grant.id)}>
+                  <div className={styles.toolbar}><div><h3>{displayDataCenterValue((grant.source as DataCenterRecord | undefined)?.name ?? grant.sourceId)}</h3><small>{displayDataCenterValue(grant.roleKey)} · {displayDataCenterValue(grant.specialty)} · {displayDataCenterValue(grant.access)}</small></div>
+                    <div className={styles.actions}><span className={styles.badge}>{grantStates[state]}</span><button className={`${styles.button} ${styles.secondary}`} disabled={busy || state !== "ACTIVE"} onClick={() => void openForm("revokeRobot", { grantId: grant.id })}>سحب الوصول</button></div></div>
+                  <details><summary>تفاصيل المنحة</summary><RecordDetails record={grant} /></details>
+                </article>;
+              })}</div>}
             </Card> : null}
             {section === "imports" ? <ImportPanel capabilities={capabilities} busy={busy} setBusy={setBusy} onComplete={(message) => { setFeedback(message); setRefresh((value) => value + 1); }} onError={setError} /> : null}
             {section === "academy" ? <Card className={styles.panel}><h2>حوكمة محتوى الأكاديمية</h2><p className={styles.muted}>الاقتراح يربط إصداراً منشوراً بجهة تعليمية؛ لا ينسخ المحتوى تلقائياً إلى مكتبة الدورات ولا يحوّل المحتوى المولّد إلى مصدر موثوق.</p><button className={styles.button} disabled title="لا يوجد مولد محتوى أكاديمية في هذا الإصدار">توليد مادة تعليمية — غير متاح</button></Card> : null}

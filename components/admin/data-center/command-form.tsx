@@ -103,6 +103,16 @@ export const DATA_CENTER_COMMANDS: Record<string, CommandDefinition> = {
     input("reference", "المرجع أو رابط المصدر"), input("evidenceId", "معرّف دليل موجود (لنمط EXISTING_EVIDENCE)", { optional: true }),
     input("notes", "ملاحظات الربط", { kind: "textarea", optional: true }),
   ] },
+  grantRobot: { action: "grant-robot-access", title: "منح روبوت وصولاً إلى مصدر", fields: [
+    input("sourceId", "المصدر"), input("robotId", "معرّف الروبوت"), input("principalId", "معرّف الحساب الذي يعمل به الروبوت"),
+    input("roleKey", "دور الروبوت"), input("specialty", "التخصص"), input("missionId", "معرّف المهمة المسندة للروبوت"),
+    input("access", "نوع الوصول — الاقتراح يتطلب منحة PROPOSE صريحة", { options: ["READ", "PROPOSE"] }),
+    input("expiresAt", "تاريخ انتهاء المنحة (حتى 365 يوماً)", { kind: "datetime-local" }),
+    input("reason", "سبب المنح", { kind: "textarea" }),
+  ] },
+  revokeRobot: { action: "revoke-robot-access", title: "سحب منحة وصول روبوت", fields: [
+    input("reason", "سبب السحب", { kind: "textarea" }),
+  ] },
 };
 
 export function commandPayload(form: FormData, definition: CommandDefinition, fixed: DataCenterRecord = {}) {

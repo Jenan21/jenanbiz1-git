@@ -30,6 +30,8 @@ const fieldLabels: Record<string, string> = {
   total: "العدد الكلي", rows: "السجلات", limit: "حد العرض",
   ownership: "ملكية البيانات", licenseClass: "تصنيف الترخيص المعلن", usagePolicy: "سياسة الاستخدام",
   attribution: "نص الإسناد", attributionRequired: "الإسناد إلزامي",
+  robotId: "معرّف الروبوت", principalId: "الحساب الذي يعمل به الروبوت", roleKey: "دور الروبوت", access: "نوع الوصول",
+  grantedById: "مانح الوصول", revokedAt: "تاريخ السحب", revokedById: "ساحب الوصول", revokeReason: "سبب السحب",
 };
 
 export function RecordDetails({ record }: { record: DataCenterRecord }) {

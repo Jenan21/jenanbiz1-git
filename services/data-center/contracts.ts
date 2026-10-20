@@ -6,6 +6,7 @@ export const lifecycleStates = ["DRAFT", "IN_REVIEW", "APPROVED", "PUBLISHED", "
 // Ownership says who owns the data; the license text and the declared license class describe usage rights and are never inferred from it.
 export const ownerships = ["PLATFORM_OWNED", "USER_OWNED", "THIRD_PARTY", "AI_GENERATED"] as const;
 export const licenseClasses = ["JENAN_OWNED", "OPEN_LICENSE", "LICENSED", "RESTRICTED"] as const;
+export const grantAccess = ["READ", "PROPOSE"] as const;
 export const DEFAULT_USAGE_POLICY = "Internal use; redistribution requires explicit permission";
 const text = (max: number) => z.string().trim().min(1).max(max);
 const id = text(128);
@@ -56,11 +57,14 @@ export const commandSchema = z.discriminatedUnion("action", [
   z.object({ action: z.literal("request-academy-release"), versionId: id, targetKind: z.enum(["COURSE", "ROBOT", "SPECIALTY"]), targetId: id, notes: text(4000) }).strict(),
   z.object({ action: z.literal("approve-academy-release"), releaseId: id, notes: text(4000) }).strict(),
   z.object({ action: z.literal("import-academy-source"), sourceId: id, resourceVersionId: id }).strict(),
+  z.object({ action: z.literal("grant-robot-access"), sourceId: id, robotId: id, principalId: id, roleKey: text(80), specialty: text(80), missionId: id, access: z.enum(grantAccess).default("READ"), reason: text(2000), expiresAt: z.iso.datetime() }).strict(),
+  z.object({ action: z.literal("revoke-robot-access"), grantId: id, reason: text(2000) }).strict(),
 ]);
 export type CreateSourceInput = z.input<typeof sourceSchema>;
 export type CreateItemInput = z.input<typeof itemSchema>;
 export type DataCenterCommand = z.infer<typeof commandSchema>;
-export interface DataCenterActor { id: string; systemRole: string; kind: "HUMAN" | "AI"; }
+// Robot identity fields are filled only by trusted server code that has authenticated the robot runtime; never from request input.
+export interface DataCenterActor { id: string; systemRole: string; kind: "HUMAN" | "AI"; robotId?: string; roleKey?: string; specialty?: string; missionId?: string; }
 export class DataCenterError extends Error {
   constructor(public readonly code: string, public readonly status = 400) { super(code); }
 }

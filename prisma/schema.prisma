@@ -4323,6 +4323,12 @@ enum DataCenterLicenseClass {
   RESTRICTED
 }
 
+// READ lets a robot retrieve published knowledge; PROPOSE additionally lets it submit draft proposals for human review.
+enum DataCenterGrantAccess {
+  READ
+  PROPOSE
+}
+
 model DataCenterType {
   key                    String          @id
   label                  String
@@ -4360,6 +4366,7 @@ model DataCenterSource {
   createdAt         DateTime        @default(now())
   items             DataCenterItem[]
   imports           DataCenterImport[]
+  robotGrants       DataCenterRobotGrant[]
 
   @@index([scope, organizationId, ownerId])
 }
@@ -4547,4 +4554,29 @@ model DataCenterEvidenceLink {
 
   @@unique([versionId, kind, reference])
   @@index([evidenceId])
+}
+
+// Explicit, time-limited and revocable access of one robot (acting as one principal, in one role, specialty and mission) to one source.
+// robotId, principalId, missionId, grantedById and revokedById are database-only foreign keys to Robot, User and Mission.
+// The row is append-only except for revocation (trigger DataCenterRobotGrant_guard).
+model DataCenterRobotGrant {
+  id                String                @id @default(cuid())
+  sourceId          String
+  source            DataCenterSource      @relation(fields: [sourceId], references: [id], onDelete: Restrict, onUpdate: NoAction)
+  robotId           String
+  principalId       String
+  roleKey           String
+  specialty         String
+  missionId         String
+  access            DataCenterGrantAccess @default(READ)
+  reason            String
+  grantedById       String
+  expiresAt         DateTime
+  createdAt         DateTime              @default(now())
+  revokedAt         DateTime?
+  revokedById       String?
+  revokeReason      String?
+
+  @@index([principalId, robotId, missionId, revokedAt])
+  @@index([sourceId])
 }

@@ -58,6 +58,17 @@ describe("Data Center authenticated HTTP boundary", () => {
     expect(result.status).toBe(201);
     expect(mocks.command).toHaveBeenCalledWith(expect.objectContaining({ action: "register-type", requiresIndependentReview: false }), expect.objectContaining({ id: "admin", kind: "HUMAN" }));
   });
+  it("accepts robot grant commands only from administrators and never lets a request choose the actor", async () => {
+    const grant = { action: "grant-robot-access", sourceId: "s", robotId: "r", principalId: "p", roleKey: "analyst", specialty: "demography", missionId: "m", reason: "Mission data need", expiresAt: "2030-01-01T00:00:00.000Z" };
+    expect((await adminDataCenterPost(request(undefined, grant))).status).toBe(201);
+    expect(mocks.command).toHaveBeenCalledWith(expect.objectContaining({ action: "grant-robot-access", access: "READ" }), { id: "admin", systemRole: "ADMIN", kind: "HUMAN" });
+    expect((await adminDataCenterPost(request(undefined, { action: "revoke-robot-access", grantId: "g", reason: "Mission ended" }))).status).toBe(200);
+    mocks.command.mockClear();
+    expect((await adminDataCenterPost(request(undefined, { ...grant, kind: "AI", robotIdentity: { robotId: "r" } }))).status).toBe(400);
+    mocks.getUser.mockResolvedValueOnce({ id: "u", systemRole: "USER" });
+    expect((await adminDataCenterPost(request(undefined, grant))).status).toBe(403);
+    expect(mocks.command).not.toHaveBeenCalled();
+  });
   it("bounds streamed bodies even when content-length is absent", async () => {
     const streamed = new NextRequest("http://localhost/api/admin/data-center", { method: "POST", body: "too long" });
     await expect(readDataCenterBody(streamed, 2)).rejects.toThrow("BODY_TOO_LARGE");

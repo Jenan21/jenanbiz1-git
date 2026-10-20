@@ -8,6 +8,7 @@ const mocks = vi.hoisted(() => {
     dataCenterVersion: { create: vi.fn(), findUniqueOrThrow: vi.fn() },
     dataCenterEvent: { create: vi.fn() }, dataCenterReview: { create: vi.fn() },
     dataCenterConflict: { count: vi.fn(), create: vi.fn(), findUnique: vi.fn(), update: vi.fn() },
+    mission: { findFirst: vi.fn() }, dataCenterRobotGrant: { findMany: vi.fn() },
   };
   return { tx, db: { ...tx, $transaction: vi.fn() } };
 });
@@ -47,10 +48,21 @@ describe("Data Center transactional workflows (mocked executor)", () => {
     expect(mocks.tx.dataCenterItem.create).not.toHaveBeenCalled();
   });
   it("derives AI origin from the trusted machine principal even if a service caller supplies HUMAN", async () => {
-    mocks.tx.dataCenterSource.findUnique.mockResolvedValue({ ...source, scope: "PRIVATE", ownerId: admin.id });
-    const result = await createDataCenterItem({ ...input, origin: "HUMAN" }, { ...admin, kind: "AI" });
+    const robot = { id: "robot-principal", systemRole: "ADMIN", kind: "AI" as const, robotId: "robot-1", roleKey: "analyst", specialty: "demography", missionId: "mission-1" };
+    mocks.tx.mission.findFirst.mockResolvedValue({ id: "mission-1" });
+    mocks.tx.dataCenterRobotGrant.findMany.mockResolvedValue([{ sourceId: "s" }]);
+    const result = await createDataCenterItem({ ...input, origin: "HUMAN" }, robot);
     expect(result.version.origin).toBe("AI");
     expect(result.status).toBe("DRAFT");
+    expect(mocks.tx.dataCenterRobotGrant.findMany).toHaveBeenCalledWith(expect.objectContaining({ where: expect.objectContaining({ principalId: "robot-principal", access: "PROPOSE", revokedAt: null }) }));
+  });
+  it("denies robots that hold no explicit PROPOSE grant for the source", async () => {
+    const robot = { id: "robot-principal", systemRole: "ADMIN", kind: "AI" as const, robotId: "robot-1", roleKey: "analyst", specialty: "demography", missionId: "mission-1" };
+    mocks.tx.mission.findFirst.mockResolvedValue({ id: "mission-1" });
+    mocks.tx.dataCenterRobotGrant.findMany.mockResolvedValue([]);
+    await expect(createDataCenterItem(input, robot)).rejects.toThrow("EXPLICIT_ROBOT_GRANT_REQUIRED");
+    await expect(createDataCenterItem(input, { id: "robot-principal", systemRole: "ADMIN", kind: "AI" })).rejects.toThrow("EXPLICIT_ROBOT_GRANT_REQUIRED");
+    expect(mocks.tx.dataCenterItem.create).not.toHaveBeenCalled();
   });
   it("creates a new draft version without updating old content", async () => {
     mocks.tx.dataCenterItem.findUnique.mockResolvedValue({ ...item, status: "PUBLISHED" });
