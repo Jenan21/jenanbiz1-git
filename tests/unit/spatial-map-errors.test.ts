@@ -26,6 +26,7 @@ describe("Map read errors", () => {
     ["53300", "too many connections for role", "UNREACHABLE"],
     ["28P01", "password authentication failed for user", "UNREACHABLE"],
     ["28000", "no pg_hba.conf entry for host", "UNREACHABLE"],
+    ["3D000", 'database "jenan" does not exist', "UNREACHABLE"],
     ["08006", "connection failure", "UNREACHABLE"],
   ] as const)("reads SQLSTATE %s as %s", (code, message, kind) => {
     const error = toMapReadError(coded(code, message));

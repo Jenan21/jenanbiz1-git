@@ -40,6 +40,7 @@ function kindFromSqlState(code: string, message: string): MapReadErrorKind | nul
     case "57P02":
     case "57P03":
     case "53300":
+    case "3D000": // invalid_catalog_name: the database named in the connection does not exist
       return "UNREACHABLE";
     default:
       return code.startsWith("08") || code.startsWith("28") ? "UNREACHABLE" : null;
