@@ -382,7 +382,7 @@ function ImportPanel({ capabilities, busy, setBusy, onComplete, onError }: {
       <label>مفتاح النوع<input name="typeKey" required maxLength={80} /></label>
       <label>الطبقة<select name="layer">{["DATA", "KNOWLEDGE", "INTELLIGENCE", "CONTEXT"].map((layer) => <option key={layer}>{layer}</option>)}</select></label>
       <label className={styles.wide}>عنوان المحتوى<input name="title" required maxLength={240} /></label>
-      <div className={`${styles.actions} ${styles.wide}`}><button className={styles.button} type="submit" disabled={busy || !scannerAvailable}>رفع وفحص واستيراد</button><button className={styles.button} disabled title="لا يوجد موصل API معتمد">استيراد API — غير متاح</button></div>
+      <div className={`${styles.actions} ${styles.wide}`}><button className={styles.button} type="submit" disabled={busy || !scannerAvailable}>رفع وفحص واستيراد</button><button className={styles.button} type="button" disabled title="لا يوجد موصل API معتمد">استيراد API — غير متاح</button></div>
     </form>
   </Card>;
 }

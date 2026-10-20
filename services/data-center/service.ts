@@ -148,7 +148,7 @@ export async function createDataCenterConflict(input: { itemId: string; otherIte
   requireDataCenterAdmin(actor);
   if (input.itemId === input.otherItemId) throw new DataCenterError("DISTINCT_ITEMS_REQUIRED");
   return db.$transaction(async (tx) => {
-    for (const id of [input.itemId, input.otherItemId].sort()) await lockDataCenterItem(tx, id);
+    for (const id of [input.itemId, input.otherItemId].sort(byCodePoint)) await lockDataCenterItem(tx, id);
     const first = await getAccessibleItem(tx, actor, input.itemId);
     const second = await getAccessibleItem(tx, actor, input.otherItemId);
     const conflict = await tx.dataCenterConflict.create({ data: { ...input, itemVersion: first.currentVersion, otherVersion: second.currentVersion } });
@@ -163,7 +163,7 @@ export async function resolveDataCenterConflict(input: { conflictId: string; res
     await lockDataCenterItem(tx, `conflict:${input.conflictId}`);
     const conflict = await tx.dataCenterConflict.findUnique({ where: { id: input.conflictId } });
     if (!conflict || conflict.resolvedAt) throw new DataCenterError("OPEN_CONFLICT_NOT_FOUND", 404);
-    for (const id of [conflict.itemId, conflict.otherItemId].sort()) await lockDataCenterItem(tx, id);
+    for (const id of [conflict.itemId, conflict.otherItemId].sort(byCodePoint)) await lockDataCenterItem(tx, id);
     const archiveIds = input.resolution === "KEEP_FIRST" ? [conflict.otherItemId]
       : input.resolution === "KEEP_SECOND" ? [conflict.itemId]
       : input.resolution === "SUPERSEDED" ? [conflict.itemId, conflict.otherItemId] : [];

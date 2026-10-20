@@ -13,7 +13,7 @@ const mocks = vi.hoisted(() => {
   return { tx, db: { ...tx, $transaction: vi.fn() } };
 });
 vi.mock("@/lib/db", () => ({ db: mocks.db }));
-import { createDataCenterItem, createDataCenterVersion, reviewDataCenterItem, transitionDataCenterItem, resolveDataCenterConflict } from "@/services/data-center/service";
+import { createDataCenterConflict, createDataCenterItem, createDataCenterVersion, reviewDataCenterItem, transitionDataCenterItem, resolveDataCenterConflict } from "@/services/data-center/service";
 
 const admin = { id: "admin", systemRole: "ADMIN", kind: "HUMAN" as const };
 const source = { id: "s", kind: "OFFICIAL", scope: "PLATFORM", freshnessDays: 90 };
@@ -102,5 +102,21 @@ describe("Data Center transactional workflows (mocked executor)", () => {
     expect(mocks.tx.dataCenterVersion.create).not.toHaveBeenCalled();
     expect(mocks.tx.dataCenterItem.update).not.toHaveBeenCalled();
     expect(mocks.tx.dataCenterItem.updateMany).toHaveBeenCalledWith({ where: { id: { in: ["i", "other"] } }, data: { revision: { increment: 1 } } });
+  });
+  it("locks the two items of a conflict in one canonical order whichever is named first, so concurrent conflicts cannot deadlock", async () => {
+    mocks.tx.dataCenterItem.findUnique.mockImplementation(async ({ where }: { where: { id: string } }) => ({ ...item, id: where.id }));
+    mocks.tx.dataCenterConflict.create.mockResolvedValue({ id: "c" });
+    const locks = () => mocks.tx.$executeRaw.mock.calls.map((call) => call[1]);
+    await createDataCenterConflict({ itemId: "z-item", otherItemId: "a-item", reason: "Different published figures" }, admin);
+    const first = locks();
+    mocks.tx.$executeRaw.mockClear();
+    await createDataCenterConflict({ itemId: "a-item", otherItemId: "z-item", reason: "Different published figures" }, admin);
+    expect(locks()).toEqual(first);
+    expect(first).toEqual(["data-center:a-item", "data-center:z-item"]);
+    mocks.tx.$executeRaw.mockClear();
+    mocks.tx.dataCenterConflict.findUnique.mockResolvedValue({ id: "c", itemId: "z-item", otherItemId: "a-item", resolvedAt: null });
+    mocks.tx.dataCenterConflict.update.mockResolvedValue({ id: "c" });
+    await resolveDataCenterConflict({ conflictId: "c", resolution: "KEEP_BOTH", notes: "Different methodologies; retain both labelled estimates" }, admin);
+    expect(locks()).toEqual(["data-center:conflict:c", "data-center:a-item", "data-center:z-item"]);
   });
 });

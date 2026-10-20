@@ -42,6 +42,15 @@ describe("Data Center navigation and truthful states", () => {
       expect(html).not.toContain("<script");
     }
   });
+  it("gives every button inside a form an explicit type so none can submit by accident", () => {
+    for (const section of DATA_CENTER_SECTIONS) {
+      const html = renderToStaticMarkup(createElement(DataCenterWorkspace, { section: section.key }));
+      for (const form of html.match(/<form[\s\S]*?<\/form>/g) ?? [])
+        for (const button of form.match(/<button[^>]*>/g) ?? []) expect(button, `${section.key}: ${button}`).toMatch(/\stype="(button|submit)"/);
+    }
+    const imports = renderToStaticMarkup(createElement(DataCenterWorkspace, { section: "imports" }));
+    expect(imports).toMatch(/<button[^>]*type="button"[^>]*disabled[^>]*>استيراد API — غير متاح<\/button>/);
+  });
   it("preserves zero without translating unavailable metrics into zero", () => {
     expect(displayDataCenterValue(0)).toBe("0");
     expect(displayDataCenterValue(null)).toBe("غير متاح");

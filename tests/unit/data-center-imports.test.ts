@@ -47,6 +47,14 @@ describe("Data Center upload boundary", () => {
     expect(() => validateDataCenterGeoJson({ ...feature, geometry: { type: "Point", coordinates: [200, 95] } })).toThrow("INVALID_GEOJSON_COORDINATES");
     expect(() => validateDataCenterGeoJson({ type: "FeatureCollection", features: [{ geometry: null }] })).toThrow("INVALID_GEOJSON_FEATURE");
   });
+  it("applies the JSON node budget to each document instead of sharing it between validations", () => {
+    // Each feature is 25 JSON nodes, so 3,000 of them fit the 100,000-node budget and 4,400 of them do not.
+    const collection = (count: number) => ({ type: "FeatureCollection", features: Array.from({ length: count }, () => ({ type: "Feature", properties: { values: Array.from({ length: 20 }, (_, i) => i) }, geometry: null })) });
+    expect(validateDataCenterGeoJson(collection(3000))).toHaveLength(3000);
+    expect(validateDataCenterGeoJson(collection(3000))).toHaveLength(3000);
+    expect(() => validateDataCenterGeoJson(collection(4400))).toThrow("IMPORT_STRUCTURE_LIMIT");
+    expect(validateDataCenterGeoJson(collection(10))).toHaveLength(10);
+  });
   it("extracts XLSX values but rejects formula workbooks", async () => {
     configureDataCenterScanner({ name: "test", scan: async () => "CLEAN" });
     const workbook = new ExcelJS.Workbook();

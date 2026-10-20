@@ -44,7 +44,9 @@ export function parseDataCenterCsv(text: string) {
   if (!rows.length || rows[0].length > 200 || rows.some((r) => r.length !== rows[0].length)) throw new DataCenterError("INVALID_CSV_COLUMNS");
   return rows;
 }
-function validateJson(value: unknown, depth = 0, count = { n: 0 }): void {
+function validateJson(value: unknown, depth = 0, budget?: { n: number }): void {
+  // One node counter per top-level call; recursion passes the same object down.
+  const count = budget ?? { n: 0 };
   if (depth > 30 || ++count.n > 100_000) throw new DataCenterError("IMPORT_STRUCTURE_LIMIT");
   if (typeof value === "number" && !Number.isFinite(value)) throw new DataCenterError("INVALID_JSON_NUMBER");
   if (Array.isArray(value)) for (const item of value) validateJson(item, depth + 1, count);
