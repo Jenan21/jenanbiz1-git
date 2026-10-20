@@ -1,7 +1,7 @@
 import { Prisma } from "@/generated/prisma/client";
 import { db, type DbExecutor } from "@/lib/db";
 import { memberHasPermission } from "@/lib/auth/authorization";
-import { DataCenterError, type DataCenterActor, type DataCenterContextRequest, type DataCenterSemanticAdapter } from "./contracts";
+import { coverageFromColumns, DataCenterError, type DataCenterActor, type DataCenterContextRequest, type DataCenterSemanticAdapter } from "./contracts";
 import { deterministicConfidence, isDataCenterAdmin, requireDataCenterAdmin, sourceScopeWhere } from "./policy";
 import { auditDataCenter, createDataCenterItemInTransaction } from "./service";
 import { validateDataCenterGeoJson } from "./imports";
@@ -76,6 +76,9 @@ export async function retrieveDataCenterContext(input: DataCenterContextRequest,
     provenance: v.provenance, checksum: v.checksum, sourceId: v.item.sourceId, source: v.item.source.name,
     license: v.item.source.license, owner: v.item.source.owner, scope: v.item.source.scope,
     sourceOrganization: v.item.source.sourceOrganization, sourcePublishedAt: v.sourcePublishedAt, expiresAt: v.expiresAt,
+    sourceUrl: v.item.source.sourceUrl, ownership: v.item.source.ownership, licenseClass: v.item.source.licenseClass, usagePolicy: v.item.source.usagePolicy,
+    allowExport: v.item.source.allowExport, attribution: v.attribution ?? v.item.source.attribution, attributionRequired: v.item.source.attributionRequired,
+    coverage: coverageFromColumns(v),
     effectiveFrom: v.effectiveFrom, effectiveTo: v.effectiveTo,
     confidence: deterministicConfidence({ evidenceStatus: v.evidenceStatus, origin: v.origin,
       provenanceCount: Array.isArray(v.provenance) ? v.provenance.length : 0, sourcePublishedAt: v.sourcePublishedAt,
@@ -93,7 +96,7 @@ export async function retrieveDataCenterGeoContext(input: DataCenterContextReque
     try {
       for (const feature of validateDataCenterGeoJson(JSON.parse(row.content))) {
         if (features.length >= 10_000) break;
-        features.push({ feature, source: { itemId: row.itemId, versionId: row.versionId, version: row.version, evidenceStatus: row.evidenceStatus, confidence: row.confidence, license: row.license, checksum: row.checksum } });
+        features.push({ feature, source: { itemId: row.itemId, versionId: row.versionId, version: row.version, evidenceStatus: row.evidenceStatus, confidence: row.confidence, license: row.license, checksum: row.checksum, ownership: row.ownership, attribution: row.attribution } });
       }
     } catch { invalidItems++; }
   }
@@ -158,7 +161,7 @@ export async function exportDataCenter(input: DataCenterContextRequest & { forma
   const rows = result.rows.filter((r) => permitted.has(r.sourceId));
   await db.$transaction((tx) => auditDataCenter(tx, actor, "exported", actor.id, { format: input.format, versionIds: rows.map((r) => r.versionId), excludedByLicense: result.rows.length - rows.length }));
   if (input.format === "json") return { body: JSON.stringify({ ...result, rows, excludedByLicense: result.rows.length - rows.length }), mimeType: "application/json" };
-  const fields = ["itemId", "versionId", "version", "title", "content", "evidenceStatus", "source", "license", "checksum"] as const;
+  const fields = ["itemId", "versionId", "version", "title", "content", "evidenceStatus", "source", "license", "checksum", "ownership", "usagePolicy", "attribution"] as const;
   const escape = (v: unknown) => `"${String(v ?? "").replace(/^[=+\-@\t\r]/, "'$&").replaceAll('"', '""')}"`;
   return { body: [fields.join(","), ...rows.map((r) => fields.map((f) => escape(r[f])).join(","))].join("\r\n"), mimeType: "text/csv; charset=utf-8" };
 }

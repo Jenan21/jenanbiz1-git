@@ -99,6 +99,26 @@ describe("Data Center provenance and forms", () => {
     expect(payload).toMatchObject({ ownership: "THIRD_PARTY", licenseClass: "OPEN_LICENSE", attributionRequired: true, attribution: "© OpenStreetMap contributors" });
     expect(commandSchema.safeParse(payload).success).toBe(true);
   });
+  it("assembles declared coverage and attribution from the version form and omits coverage when nothing is filled", () => {
+    const base = { title: "Layer", content: "Content", reason: "Extent updated", evidenceStatus: "ESTIMATED" };
+    const form = new FormData();
+    for (const [key, value] of Object.entries({ ...base, attribution: "© Atlas", coverageCountries: "sa, ae", coverageRegions: "sa-01", bboxWest: "34.5", bboxSouth: "16", bboxEast: "55.7", bboxNorth: "32.2" })) form.set(key, value);
+    const payload = commandPayload(form, DATA_CENTER_COMMANDS.version, { itemId: "i1" });
+    expect(payload).toMatchObject({ attribution: "© Atlas", coverage: { countryCodes: ["SA", "AE"], regionCodes: ["SA-01"], boundingBox: { west: 34.5, south: 16, east: 55.7, north: 32.2 } } });
+    for (const loose of ["coverageCountries", "coverageRegions", "bboxWest", "bboxNorth"]) expect(payload).not.toHaveProperty(loose);
+    expect(commandSchema.safeParse(payload).success).toBe(true);
+    const empty = new FormData();
+    for (const [key, value] of Object.entries(base)) empty.set(key, value);
+    const unset = commandPayload(empty, DATA_CENTER_COMMANDS.version, { itemId: "i1" });
+    expect(unset).not.toHaveProperty("coverage");
+    expect(unset).not.toHaveProperty("attribution");
+    expect(commandSchema.safeParse(unset).success).toBe(true);
+    const html = renderToStaticMarkup(createElement(CommandForm, { definition: DATA_CENTER_COMMANDS.version, busy: false, fixed: { itemId: "i1" }, onSubmit: async () => true }));
+    const west = html.match(/<input[^>]*name="bboxWest"[^>]*>/)?.[0] ?? "";
+    expect(west).toContain('min="-180"');
+    expect(west).toContain('max="180"');
+    expect(west).toContain('step="any"');
+  });
   it("builds explicit robot grant and revoke commands that the server contract accepts", () => {
     const form = new FormData();
     for (const [key, value] of Object.entries({ sourceId: "s1", robotId: "r1", principalId: "p1", roleKey: "analyst", specialty: "demography", missionId: "m1", access: "PROPOSE", expiresAt: "2030-01-01T10:00", reason: "Mission data need" })) form.set(key, value);

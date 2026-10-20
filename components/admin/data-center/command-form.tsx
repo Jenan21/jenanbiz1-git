@@ -12,6 +12,17 @@ export type CommandDefinition = { action: string; title: string; fields: Field[]
 const layers = ["DATA", "KNOWLEDGE", "INTELLIGENCE", "CONTEXT"];
 const input = (name: string, label: string, extra: Partial<Field> = {}): Field => ({ name, label, ...extra });
 const reason = input("reason", "سبب الإجراء", { kind: "textarea" });
+// Version-level attribution and declared WGS84 coverage (plain metadata, no geometry). All optional: undeclared stays undeclared.
+const versionRightsFields = [
+  input("attribution", "إسناد هذا الإصدار — يتقدم على إسناد المصدر عند ذكره", { kind: "textarea", optional: true }),
+  input("coverageCountries", "رموز الدول ISO 3166-1 مثل SA (مفصولة بفواصل)", { optional: true }),
+  input("coverageRegions", "رموز المناطق ISO 3166-2 مثل SA-01 (مفصولة بفواصل)", { optional: true }),
+  input("bboxWest", "الحد الغربي — خط الطول من -180 إلى 180", { kind: "number", optional: true }),
+  input("bboxSouth", "الحد الجنوبي — خط العرض من -90 إلى 90", { kind: "number", optional: true }),
+  input("bboxEast", "الحد الشرقي — خط الطول من -180 إلى 180", { kind: "number", optional: true }),
+  input("bboxNorth", "الحد الشمالي — خط العرض من -90 إلى 90", { kind: "number", optional: true }),
+];
+const bboxBounds: Record<string, [number, number]> = { bboxWest: [-180, 180], bboxEast: [-180, 180], bboxSouth: [-90, 90], bboxNorth: [-90, 90] };
 
 export const DATA_CENTER_COMMANDS: Record<string, CommandDefinition> = {
   source: { action: "create-source", title: "إضافة مصدر", fields: [
@@ -44,6 +55,7 @@ export const DATA_CENTER_COMMANDS: Record<string, CommandDefinition> = {
     input("requiredPermission", "صلاحية الاسترجاع المطلوبة", { optional: true }),
     input("provenance", "المراجع: JSON [{label, reference, kind}]", { kind: "textarea", optional: true }),
     input("upstreamVersionIds", "معرّفات الإصدارات التي اشتُق منها هذا الإصدار (مفصولة بفواصل)", { optional: true }),
+    ...versionRightsFields,
   ] },
   type: { action: "register-type", title: "تسجيل نوع", fields: [
     input("key", "مفتاح النوع (حروف لاتينية صغيرة)"), input("label", "اسم النوع"),
@@ -64,6 +76,7 @@ export const DATA_CENTER_COMMANDS: Record<string, CommandDefinition> = {
     input("requiredPermission", "صلاحية الاسترجاع المطلوبة", { optional: true }),
     input("provenance", "المراجع: JSON [{label, reference, kind}]", { kind: "textarea", optional: true }),
     input("upstreamVersionIds", "معرّفات الإصدارات التي اشتُق منها هذا الإصدار (مفصولة بفواصل)", { optional: true }),
+    ...versionRightsFields,
   ] },
   transition: { action: "transition-item", title: "تغيير حالة السجل", fields: [
     input("status", "الحالة الجديدة", { options: ["IN_REVIEW", "APPROVED", "PUBLISHED", "ARCHIVED", "DRAFT"] }), reason,
@@ -119,16 +132,22 @@ export const DATA_CENTER_COMMANDS: Record<string, CommandDefinition> = {
 
 export function commandPayload(form: FormData, definition: CommandDefinition, fixed: DataCenterRecord = {}) {
   const payload: DataCenterRecord = { action: definition.action, ...fixed };
+  const list = (value: string) => value.split(/[,،]/).map((part) => part.trim()).filter(Boolean);
+  const coverage: { countryCodes?: string[]; regionCodes?: string[]; boundingBox?: Record<string, number> } = {};
   for (const field of definition.fields) {
     const value = String(form.get(field.name) ?? "").trim();
     if (!value && field.optional) continue;
     if (["allowExport", "allowRetrieval", "requiresIndependentReview", "attributionRequired"].includes(field.name)) payload[field.name] = value === "true";
+    else if (field.name === "coverageCountries") coverage.countryCodes = list(value).map((code) => code.toUpperCase());
+    else if (field.name === "coverageRegions") coverage.regionCodes = list(value).map((code) => code.toUpperCase());
+    else if (field.name in bboxBounds) coverage.boundingBox = { ...coverage.boundingBox, [field.name.slice(4).toLowerCase()]: Number(value) };
     else if (field.kind === "number") payload[field.name] = Number(value);
     else if (field.kind === "datetime-local") payload[field.name] = new Date(value).toISOString();
-    else if (["specialties", "missionContexts", "upstreamVersionIds"].includes(field.name)) payload[field.name] = value.split(/[,،]/).map((part) => part.trim()).filter(Boolean);
+    else if (["specialties", "missionContexts", "upstreamVersionIds"].includes(field.name)) payload[field.name] = list(value);
     else if (field.name === "provenance") payload[field.name] = JSON.parse(value);
     else payload[field.name] = value;
   }
+  if (Object.keys(coverage).length) payload.coverage = coverage;
   return payload;
 }
 
@@ -162,7 +181,7 @@ export function CommandForm({ definition, fixed, busy, onSubmit, sources = [], t
               if (layer instanceof HTMLSelectElement && selectedType?.layer) layer.value = String(selectedType.layer);
             }} /><datalist id={`dc-${field.name}-options`}>{choices.map((record) => <option key={String(record.id ?? record.key)} value={String(record.id ?? record.key)}>{String(record.name ?? record.label ?? record.id ?? record.key)}</option>)}</datalist></>
             : field.kind === "textarea" ? <textarea name={field.name} required={!field.optional} rows={4} maxLength={field.name === "content" ? 200000 : 10000} placeholder={field.placeholder} defaultValue={field.defaultValue} />
-            : <input name={field.name} required={!field.optional} type={field.kind ?? "text"} defaultValue={field.defaultValue} placeholder={field.placeholder} maxLength={2000} min={field.kind === "number" ? 1 : undefined} max={field.name === "freshnessDays" ? 3650 : undefined} />}
+            : <input name={field.name} required={!field.optional} type={field.kind ?? "text"} defaultValue={field.defaultValue} placeholder={field.placeholder} maxLength={2000} min={bboxBounds[field.name]?.[0] ?? (field.kind === "number" ? 1 : undefined)} max={bboxBounds[field.name]?.[1] ?? (field.name === "freshnessDays" ? 3650 : undefined)} step={field.name in bboxBounds ? "any" : undefined} />}
         </label>;
       })}
       {error ? <p role="alert" className={`${styles.feedback} ${styles.error} ${styles.wide}`}>{error}</p> : null}

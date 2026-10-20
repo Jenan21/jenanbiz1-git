@@ -4415,6 +4415,13 @@ model DataCenterVersion {
   effectiveFrom     DateTime?
   effectiveTo       DateTime?
   checksum          String
+  attribution       String?
+  coverageCountries String[]           @default([])
+  coverageRegions   String[]           @default([])
+  bboxWest          Float?
+  bboxSouth         Float?
+  bboxEast          Float?
+  bboxNorth         Float?
   createdById       String
   createdAt         DateTime           @default(now())
   reviews           DataCenterReview[]

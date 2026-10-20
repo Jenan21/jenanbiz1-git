@@ -143,7 +143,7 @@ export function DataCenterWorkspace({ section }: { section: DataCenterSection })
         if (field.name === "reason") return field;
         const value = current[field.name] ?? selected[field.name];
         if (value === null || value === undefined) return field;
-        const defaultValue = ["specialties", "missionContexts"].includes(field.name) && Array.isArray(value) ? value.join(", ")
+        const defaultValue = ["specialties", "missionContexts", "coverageCountries", "coverageRegions"].includes(field.name) && Array.isArray(value) ? value.join(", ")
           : field.name === "provenance" ? JSON.stringify(value)
           : field.kind === "datetime-local" ? new Date(new Date(String(value)).getTime() - new Date(String(value)).getTimezoneOffset() * 60000).toISOString().slice(0, 16)
           : String(value);

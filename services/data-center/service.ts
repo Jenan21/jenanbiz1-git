@@ -1,7 +1,7 @@
 import { createHash } from "node:crypto";
 import { Prisma, type DataCenterLifecycle } from "@/generated/prisma/client";
 import { db, type DbExecutor } from "@/lib/db";
-import { commandSchema, DataCenterError, DEFAULT_USAGE_POLICY, itemSchema, resolveSourceOwnership, sourceSchema, versionSchema, type CreateItemInput, type CreateSourceInput, type DataCenterActor, type DataCenterCommand } from "./contracts";
+import { byCodePoint, commandSchema, coverageToColumns, DataCenterError, DEFAULT_USAGE_POLICY, itemSchema, resolveSourceOwnership, sourceSchema, versionSchema, type CreateItemInput, type CreateSourceInput, type DataCenterActor, type DataCenterCommand } from "./contracts";
 import { assertEvidence, assertSourceAccess, deterministicConfidence, requireDataCenterAdmin, requireDataCenterPrincipal, sourceScopeWhere } from "./policy";
 
 export async function auditDataCenter(tx: DbExecutor, actor: DataCenterActor, action: string, entityId: string, metadata: Prisma.InputJsonValue = {}) {
@@ -10,8 +10,6 @@ export async function auditDataCenter(tx: DbExecutor, actor: DataCenterActor, ac
 export async function lockDataCenterItem(tx: DbExecutor, itemId: string) {
   await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${`data-center:${itemId}`}))`;
 }
-// Locale-independent ordering, so lock order and canonical hashing never depend on the host's collation.
-const byCodePoint = (a: string, b: string) => (a < b ? -1 : a > b ? 1 : 0);
 /** Records "derived from" edges for a version that is being created. Upstream versions must be readable by the actor. */
 async function linkUpstreamVersions(tx: DbExecutor, versionId: string, upstreamVersionIds: string[], actor: DataCenterActor) {
   const ids = [...new Set(upstreamVersionIds)].sort(byCodePoint);
@@ -77,9 +75,13 @@ function versionData(data: ReturnType<typeof itemSchema.parse> | ReturnType<type
     sourcePublishedAt: sourcePublishedAt?.toISOString() ?? null, expiresAt: expiresAt?.toISOString() ?? null,
     effectiveFrom: effectiveFrom?.toISOString() ?? null, effectiveTo: effectiveTo?.toISOString() ?? null };
   const upstreamVersionIds = [...new Set(data.upstreamVersionIds)].sort(byCodePoint);
+  const coverage = coverageToColumns(data.coverage);
+  const coverageDeclared = coverage.coverageCountries.length > 0 || coverage.coverageRegions.length > 0 || coverage.bboxWest !== null;
   // Optional snapshot fields join the hash only when present, so versions without them keep their original checksum.
-  const hashed = { ...normalized, ...(upstreamVersionIds.length ? { upstreamVersionIds } : {}) };
-  return { ...normalized, itemId, number, sourcePublishedAt, expiresAt, effectiveFrom, effectiveTo,
+  const hashed = { ...normalized, ...(data.attribution ? { attribution: data.attribution } : {}),
+    ...(coverageDeclared ? { coverage: { countryCodes: coverage.coverageCountries, regionCodes: coverage.coverageRegions, boundingBox: data.coverage?.boundingBox ?? null } } : {}),
+    ...(upstreamVersionIds.length ? { upstreamVersionIds } : {}) };
+  return { ...normalized, ...coverage, attribution: data.attribution ?? null, itemId, number, sourcePublishedAt, expiresAt, effectiveFrom, effectiveTo,
     checksum: createHash("sha256").update(JSON.stringify(hashed)).digest("hex"), createdById: actor.id,
     confidence: deterministicConfidence({ evidenceStatus: data.evidenceStatus, provenanceCount: data.provenance.length, sourcePublishedAt, freshnessDays, sourceKind, origin: data.origin, expiresAt,
       completeness: 4 + (data.provenance.length ? 2 : 0) + (sourcePublishedAt ? 2 : 0) + (effectiveFrom || effectiveTo ? 2 : 0), consistency: 0 }) };

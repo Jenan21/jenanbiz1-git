@@ -1,4 +1,4 @@
-import { randomUUID } from "node:crypto";
+import { randomUUID, createHash } from "node:crypto";
 import { afterAll, describe, expect, it, vi } from "vitest";
 import type { DbExecutor } from "@/lib/db";
 
@@ -18,7 +18,7 @@ vi.mock("@/lib/db", async (importOriginal) => {
 });
 import { db } from "@/lib/db";
 import { createDataCenterItem, createDataCenterSource, createDataCenterVersion, getDataCenterItem, reviewDataCenterItem, transitionDataCenterItem } from "@/services/data-center/service";
-import { retrieveDataCenterContext } from "@/services/data-center/retrieval";
+import { exportDataCenter, retrieveDataCenterContext } from "@/services/data-center/retrieval";
 import { grantDataCenterRobotAccess, revokeDataCenterRobotAccess } from "@/services/data-center/robot-grants";
 import type { DataCenterActor } from "@/services/data-center/contracts";
 
@@ -182,6 +182,59 @@ describe.skipIf(!enabled)("Data Center foundation on real PostgreSQL (always rol
       const stored = await tx.dataCenterVersionLineage.findFirstOrThrow({ where: { versionId: derived.version.id } });
       await rejected(tx, () => tx.dataCenterVersionLineage.update({ where: { id: stored.id }, data: { upstreamVersionId: second.version.id } }), /immutable/i);
       await rejected(tx, () => tx.dataCenterVersionLineage.delete({ where: { id: stored.id } }), /immutable/i);
+    });
+  });
+  it("stores structured coverage and attribution per version, covers them with the checksum and enforces them in the database", async () => {
+    await isolated(async (tx, admin) => {
+      const source = await createDataCenterSource({ name: "Atlas", kind: "OFFICIAL", scope: "PLATFORM", owner: "Authority", license: "ODbL-1.0", allowExport: true, ownership: "THIRD_PARTY",
+        licenseClass: "OPEN_LICENSE", usagePolicy: "Share-alike; credit required", attribution: "© Atlas contributors", attributionRequired: true }, admin);
+      const box = { west: 34.5, south: 16, east: 55.7, north: 32.2 };
+      const coverage = { countryCodes: ["SA", "AE"], regionCodes: ["SA-01", "SA-02"], boundingBox: box };
+      const covered = await createDataCenterItem(dataset(source.id, "Atlas layer", "atlas layer content", { coverage, attribution: "© Atlas 2026" }), admin);
+      expect(covered.version).toMatchObject({ coverageCountries: ["AE", "SA"], coverageRegions: ["SA-01", "SA-02"], bboxWest: 34.5, bboxSouth: 16, bboxEast: 55.7, bboxNorth: 32.2, attribution: "© Atlas 2026" });
+      const bare = await createDataCenterItem(dataset(source.id, "Atlas notes", "atlas notes content"), admin);
+      expect(bare.version).toMatchObject({ coverageCountries: [], coverageRegions: [], bboxWest: null, bboxNorth: null, attribution: null });
+
+      const reordered = await createDataCenterItem(dataset(source.id, "Atlas layer", "atlas layer content", { coverage: { ...coverage, countryCodes: ["AE", "SA"], regionCodes: ["SA-02", "SA-01"] }, attribution: "© Atlas 2026" }), admin);
+      expect(reordered.version.checksum).toBe(covered.version.checksum);
+      const moved = await createDataCenterItem(dataset(source.id, "Atlas layer", "atlas layer content", { coverage: { ...coverage, boundingBox: { ...box, east: 56 } }, attribution: "© Atlas 2026" }), admin);
+      expect(moved.version.checksum).not.toBe(covered.version.checksum);
+      const credited = await createDataCenterItem(dataset(source.id, "Atlas layer", "atlas layer content", { coverage, attribution: "© Someone else" }), admin);
+      expect(credited.version.checksum).not.toBe(covered.version.checksum);
+      // Versions without optional fields keep the checksum of the original algorithm.
+      const original = { title: "Atlas notes", content: "atlas notes content", evidenceStatus: "ESTIMATED", origin: "HUMAN", provenance: [], specialties: [], missionContexts: [],
+        requiredPermission: null, sourcePublishedAt: null, expiresAt: null, effectiveFrom: null, effectiveTo: null };
+      expect(bare.version.checksum).toBe(createHash("sha256").update(JSON.stringify(original)).digest("hex"));
+
+      await publish(covered.id, admin);
+      await publish(bare.id, admin);
+      const rows = (await retrieveDataCenterContext({ query: "atlas" }, admin)).rows;
+      expect(rows.find((row) => row.itemId === covered.id)).toMatchObject({ ownership: "THIRD_PARTY", licenseClass: "OPEN_LICENSE", usagePolicy: "Share-alike; credit required", allowExport: true,
+        attribution: "© Atlas 2026", attributionRequired: true, coverage: { crs: "WGS84", countryCodes: ["AE", "SA"], regionCodes: ["SA-01", "SA-02"], boundingBox: box } });
+      expect(rows.find((row) => row.itemId === bare.id)).toMatchObject({ attribution: "© Atlas contributors", coverage: null });
+      const csv = (await exportDataCenter({ query: "atlas", format: "csv" }, admin)).body;
+      expect(csv.split("\r\n")[0]).toBe("itemId,versionId,version,title,content,evidenceStatus,source,license,checksum,ownership,usagePolicy,attribution");
+      expect(csv).toContain("© Atlas 2026");
+      expect(csv).toContain("© Atlas contributors");
+      expect(JSON.parse((await exportDataCenter({ query: "atlas", format: "json" }, admin)).body).rows.find((row: { itemId: string }) => row.itemId === covered.id)).toMatchObject({ attribution: "© Atlas 2026", ownership: "THIRD_PARTY" });
+
+      const row = (over: Record<string, unknown>) => () => tx.dataCenterVersion.create({ data: { itemId: bare.id, number: 99, title: "Raw", content: "raw", provenance: [], confidence: {}, checksum: "x", createdById: admin.id, specialties: [], missionContexts: [], ...over } });
+      await rejected(tx, row({ coverageCountries: ["sa"] }), /DataCenterVersion_coverage_countries_check/);
+      await rejected(tx, row({ coverageCountries: ["SAU"] }), /DataCenterVersion_coverage_countries_check/);
+      await rejected(tx, row({ coverageCountries: Array.from({ length: 251 }, () => "SA") }), /DataCenterVersion_coverage_countries_check/);
+      await rejected(tx, row({ coverageRegions: ["SA-01"] }), /DataCenterVersion_coverage_regions_check/);
+      await rejected(tx, row({ coverageCountries: ["SA"], coverageRegions: ["sa-01"] }), /DataCenterVersion_coverage_regions_check/);
+      await rejected(tx, row({ coverageCountries: ["AE"], coverageRegions: ["SA-01"] }), /DataCenterVersion_coverage_regions_check/);
+      await rejected(tx, row({ bboxWest: 10 }), /DataCenterVersion_coverage_bbox_check/);
+      await rejected(tx, row({ bboxWest: 10, bboxSouth: 10, bboxEast: 20 }), /DataCenterVersion_coverage_bbox_check/);
+      await rejected(tx, row({ bboxWest: 30, bboxSouth: 10, bboxEast: 20, bboxNorth: 20 }), /DataCenterVersion_coverage_bbox_check/);
+      await rejected(tx, row({ bboxWest: 10, bboxSouth: 30, bboxEast: 20, bboxNorth: 20 }), /DataCenterVersion_coverage_bbox_check/);
+      await rejected(tx, row({ bboxWest: -181, bboxSouth: 0, bboxEast: 0, bboxNorth: 1 }), /DataCenterVersion_coverage_bbox_check/);
+      await rejected(tx, row({ bboxWest: 0, bboxSouth: 0, bboxEast: 181, bboxNorth: 1 }), /DataCenterVersion_coverage_bbox_check/);
+      await rejected(tx, row({ bboxWest: 0, bboxSouth: -91, bboxEast: 1, bboxNorth: 1 }), /DataCenterVersion_coverage_bbox_check/);
+      await rejected(tx, row({ bboxWest: Number.NaN, bboxSouth: 0, bboxEast: 1, bboxNorth: 1 }), /DataCenterVersion_coverage_bbox_check/);
+      await rejected(tx, row({ attribution: "   " }), /DataCenterVersion_attribution_check/);
+      expect((await row({ number: 98, coverageCountries: ["SA"], coverageRegions: ["SA-01"], bboxWest: -180, bboxSouth: -90, bboxEast: 180, bboxNorth: 90, attribution: "Valid" })()).number).toBe(98);
     });
   });
 });

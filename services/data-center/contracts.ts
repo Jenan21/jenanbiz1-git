@@ -17,6 +17,36 @@ const httpUrl = text(2000).refine((value) => {
 export function resolveSourceOwnership(source: { kind: string; ownership?: typeof ownerships[number] }) {
   return source.ownership ?? (source.kind === "GENERATED" ? "AI_GENERATED" : "THIRD_PARTY");
 }
+const countryCode = z.string().regex(/^[A-Z]{2}$/, "ISO 3166-1 alpha-2 country code in upper case");
+const regionCode = z.string().regex(/^[A-Z]{2}-[A-Z0-9]{1,3}$/, "ISO 3166-2 region code in upper case");
+const longitude = z.number().min(-180).max(180);
+const latitude = z.number().min(-90).max(90);
+// Plain WGS84 metadata. No geometry is stored in the Data Center and antimeridian crossing is not supported in v1.
+export const coverageSchema = z.object({
+  countryCodes: z.array(countryCode).max(250).default([]),
+  regionCodes: z.array(regionCode).max(500).default([]),
+  boundingBox: z.object({ west: longitude, south: latitude, east: longitude, north: latitude }).strict()
+    .refine((box) => box.west <= box.east && box.south <= box.north, "Bounding box needs west <= east and south <= north").optional(),
+}).strict()
+  .refine((c) => new Set(c.countryCodes).size === c.countryCodes.length && new Set(c.regionCodes).size === c.regionCodes.length, "Coverage codes must be unique")
+  .refine((c) => c.regionCodes.every((region) => c.countryCodes.includes(region.slice(0, 2))), "Every region code needs its country in countryCodes");
+export type DataCenterCoverage = z.infer<typeof coverageSchema>;
+export interface CoverageColumns { coverageCountries: string[]; coverageRegions: string[]; bboxWest: number | null; bboxSouth: number | null; bboxEast: number | null; bboxNorth: number | null }
+// Locale-independent ordering, so lock order and canonical hashing never depend on the host's collation.
+export const byCodePoint = (a: string, b: string) => (a < b ? -1 : a > b ? 1 : 0);
+/** Canonical (sorted) database columns for a coverage declaration; nothing declared means empty lists and no box. */
+export function coverageToColumns(coverage?: DataCenterCoverage): CoverageColumns {
+  const box = coverage?.boundingBox;
+  return { coverageCountries: [...(coverage?.countryCodes ?? [])].sort(byCodePoint), coverageRegions: [...(coverage?.regionCodes ?? [])].sort(byCodePoint),
+    bboxWest: box?.west ?? null, bboxSouth: box?.south ?? null, bboxEast: box?.east ?? null, bboxNorth: box?.north ?? null };
+}
+/** Returns null when no coverage was declared, so consumers never mistake "unknown" for "worldwide". */
+export function coverageFromColumns(row: CoverageColumns) {
+  const boundingBox = row.bboxWest === null || row.bboxSouth === null || row.bboxEast === null || row.bboxNorth === null ? null
+    : { west: row.bboxWest, south: row.bboxSouth, east: row.bboxEast, north: row.bboxNorth };
+  if (!row.coverageCountries.length && !row.coverageRegions.length && !boundingBox) return null;
+  return { crs: "WGS84" as const, countryCodes: row.coverageCountries, regionCodes: row.coverageRegions, boundingBox };
+}
 export const sourceSchema = z.object({
   name: text(240), kind: z.enum(["MANUAL", "FILE", "OFFICIAL", "ACADEMY", "GENERATED", "API"]),
   scope: z.enum(["PLATFORM", "ORGANIZATION", "PRIVATE"]), organizationId: id.optional(),
@@ -41,6 +71,8 @@ export const itemSchema = z.object({
   origin: z.enum(["HUMAN", "AI", "IMPORT", "CALCULATION", "ACADEMY"]).default("HUMAN"),
   // Versions this one was derived from; stored as lineage rows with real foreign keys.
   upstreamVersionIds: z.array(id).max(20).default([]),
+  // Version-level credit line (overrides the source statement for this version) and declared geographic coverage.
+  attribution: text(1000).optional(), coverage: coverageSchema.optional(),
 }).strict();
 export const versionSchema = itemSchema.omit({ sourceId: true, typeKey: true, layer: true }).extend({ itemId: id, reason: text(2000) });
 export const commandSchema = z.discriminatedUnion("action", [

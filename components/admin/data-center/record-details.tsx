@@ -33,6 +33,9 @@ const fieldLabels: Record<string, string> = {
   robotId: "معرّف الروبوت", principalId: "الحساب الذي يعمل به الروبوت", roleKey: "دور الروبوت", access: "نوع الوصول",
   grantedById: "مانح الوصول", revokedAt: "تاريخ السحب", revokedById: "ساحب الوصول", revokeReason: "سبب السحب",
   upstream: "الإصدارات المصدرية (الاشتقاق)", upstreamVersionId: "معرّف الإصدار المصدري",
+  coverageCountries: "دول التغطية", coverageRegions: "مناطق التغطية", coverage: "التغطية الجغرافية (WGS84)",
+  bboxWest: "الحد الغربي", bboxSouth: "الحد الجنوبي", bboxEast: "الحد الشرقي", bboxNorth: "الحد الشمالي",
+  countryCodes: "رموز الدول", regionCodes: "رموز المناطق", boundingBox: "المستطيل المحيط",
 };
 
 export function RecordDetails({ record }: { record: DataCenterRecord }) {
