@@ -117,8 +117,8 @@ function geographyConditions(geography: z.output<typeof geographySchema> | undef
 /** Only the version an item has published is readable; the access policy already excludes archived items and unpublished ones. */
 const isPublishedVersion = (row: DiscoveryRow) => row.number === row.item.publishedVersion;
 
-/** Builds the Map reference of every row with three set-based queries (quality, publication, nothing per row), never one query per version. */
-async function referencesFor(rows: readonly DiscoveryRow[], now: Date) {
+/** Builds the Map reference of every row with set-based queries (quality, publication), never one query per version. */
+export async function buildDataCenterReferences(rows: readonly DiscoveryRow[], now: Date) {
   const ids = rows.map((row) => row.id);
   const qualities = ids.length === 0 ? [] : await db.dataCenterQualityAssessment.findMany({
     where: { versionId: { in: ids } }, orderBy: [{ measuredAt: "desc" }, { createdAt: "desc" }, { id: "desc" }],
@@ -159,7 +159,7 @@ export async function discoverDataCenterVersions(request: DataCenterDiscoveryReq
     const requested = [...new Set(input.versionIds)];
     const rows = await db.dataCenterVersion.findMany({ where: { AND: [access, { id: { in: requested } }] }, select: discoverySelect, take: requested.length });
     const readable = new Map(rows.filter(isPublishedVersion).map((row) => [row.id, row]));
-    const built = new Map((await referencesFor([...readable.values()], now)).map((entry) => [entry.facts.versionId, entry.reference]));
+    const built = new Map((await buildDataCenterReferences([...readable.values()], now)).map((entry) => [entry.facts.versionId, entry.reference]));
     const candidates = requested.flatMap((id) => (built.has(id) ? [{ reference: built.get(id) as DataCenterMapReference }] : []));
     const unavailable = requested.filter((id) => !built.has(id));
     return {
@@ -191,7 +191,7 @@ export async function discoverDataCenterVersions(request: DataCenterDiscoveryReq
     return empty(unfiltered.some(isPublishedVersion) ? "NO_COVERAGE" : "NOT_AVAILABLE");
   }
 
-  const built = await referencesFor(published, now);
+  const built = await buildDataCenterReferences(published, now);
   const byId = new Map(built.map((entry) => [entry.facts.versionId, entry]));
   const { ranked, excluded } = rankVersions(built.map((entry) => entry.facts), asOf, asOfIsExplicit);
   const limit = input.limit ?? DEFAULT_DISCOVERY_LIMIT;
