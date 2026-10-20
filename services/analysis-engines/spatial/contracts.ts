@@ -154,6 +154,7 @@ export const spatialRuntimeSchema = z.object({
   postgis: z.string().max(40).nullable(),
   geos: z.string().max(40).nullable(),
   proj: z.string().max(40).nullable(),
+  mapReleaseId: identifierSchema.nullable().optional(),
 }).strict();
 export type SpatialRuntime = z.infer<typeof spatialRuntimeSchema>;
 

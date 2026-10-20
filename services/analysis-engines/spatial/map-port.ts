@@ -8,7 +8,7 @@ import type { SpatialDataPort } from "./ports";
  */
 export interface MapDescribeRequest {
   /** The release to describe. Omitted: the release the Map has published. */
-  releaseId?: string;
+  releaseId?: string | null;
   /** The layers whose reviewed provenance, binding and feature presence are wanted. */
   layers: readonly string[];
 }

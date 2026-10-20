@@ -105,7 +105,7 @@ export class PostgisMapReader implements SpatialMapPort {
     const layerIds = [...new Set(request.layers)];
     return this.session.run(async (query): Promise<MapDescription> => {
       const runtime = parseRows(runtimeRow, await query(QUERIES.runtime))[0] ?? null;
-      const releaseId = request.releaseId ?? runtime?.publishedReleaseId ?? null;
+      const releaseId = request.releaseId === undefined ? runtime?.publishedReleaseId ?? null : request.releaseId;
       const none: MapDescription = { runtime, release: null, boundary: null, layers: [] };
       if (releaseId === null) return none;
       const release = parseRows(releaseRow, await query(QUERIES.release, [releaseId]))[0] ?? null;

@@ -100,6 +100,10 @@ export function createDataCenterProvider(options: DataCenterProviderOptions): Sp
     ...(options.missionContext === undefined ? {} : { missionContext: options.missionContext }),
   };
   return {
+    replayContext: {
+      ...(options.specialty === undefined ? {} : { specialty: options.specialty }),
+      ...(options.missionContext === undefined ? {} : { missionContext: options.missionContext }),
+    },
     async discover(selection) {
       try {
         return fromDiscovery(await discoverDataCenterVersions(discoveryRequestOf(selection, context), actor, { now }));

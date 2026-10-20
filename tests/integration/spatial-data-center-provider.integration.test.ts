@@ -28,9 +28,15 @@ import { dataSourceRequestsOf, resolveSpatialDataSources, type DataSourceRequest
 import { applyMapBinding, reconcileMapBinding } from "@/services/analysis-engines/spatial/map-data-center";
 import { buildMapLayerInput } from "@/services/analysis-engines/spatial/map-inputs";
 import { normalizeSpatialRequest } from "@/services/analysis-engines/spatial/normalize";
+import { readHistoricalDataCenterVersion, HistoricalVersionUnavailable } from "@/services/analysis-engines/spatial/adapters/historical-data-center";
+import { replaySpatialAnalysis, SpatialReplayUnavailable } from "@/services/analysis-engines/spatial/adapters/replay-service";
+import { runSpatialAnalysisPersisted } from "@/services/analysis-engines/spatial/adapters/run-service";
+import { readAnalysisEngineRunForReplay } from "@/services/analysis-engines/spatial/adapters/run-persistence";
 import { MAP_BINDING_CONTRACT } from "@/services/data-center/map-contract";
 import { resolveDataCenterMapReference } from "@/services/data-center/map-resolver";
 import { engineInputSchema } from "@/services/analysis-engines/shared/contracts";
+import { FakeMapPort } from "../unit/support/spatial-fake-map-port";
+import { baseRequest } from "../unit/support/spatial-request-fixtures";
 import { osmProvenance, publishedRelease, realBoundary, RELEASE_ID } from "../unit/support/spatial-map-fixtures";
 
 const enabled = process.env.DATA_CENTER_DATABASE_TESTS === "1";
@@ -51,6 +57,15 @@ async function isolated(run: (tx: DbExecutor, admin: DataCenterActor) => Promise
     } finally { context.tx = null; }
   }, { timeout: 120_000 })).rejects.toBe(rollback);
 }
+async function rejectedMutation(tx: DbExecutor, work: () => Promise<unknown>) {
+  await tx.$executeRawUnsafe("SAVEPOINT m5_expected_failure");
+  try {
+    await expect(work()).rejects.toThrow(/append-only/i);
+  } finally {
+    await tx.$executeRawUnsafe("ROLLBACK TO SAVEPOINT m5_expected_failure");
+    await tx.$executeRawUnsafe("RELEASE SAVEPOINT m5_expected_failure");
+  }
+}
 async function publish(itemId: string, actor: DataCenterActor) {
   await transitionDataCenterItem({ itemId, status: "IN_REVIEW", reason: "Submit reviewed source" }, actor);
   await reviewDataCenterItem({ itemId, decision: "APPROVED", notes: "Methodology reviewed; evidence label retained" }, actor);
@@ -58,7 +73,7 @@ async function publish(itemId: string, actor: DataCenterActor) {
   await transitionDataCenterItem({ itemId, status: "PUBLISHED", reason: "Release labelled estimate" }, actor);
 }
 /** Test-only: the Data Center's tables are append-only, so backdating a publication or tampering with a stored version needs the immutability trigger off for a moment, inside the rolled-back transaction. */
-async function withoutImmutability(tx: DbExecutor, table: "DataCenterEvent" | "DataCenterVersion", work: () => Promise<unknown>) {
+async function withoutImmutability(tx: DbExecutor, table: "DataCenterEvent" | "DataCenterVersion" | "DataCenterReview", work: () => Promise<unknown>) {
   await tx.$executeRawUnsafe(`ALTER TABLE "${table}" DISABLE TRIGGER "${table}_immutable"`);
   try { await work(); } finally { await tx.$executeRawUnsafe(`ALTER TABLE "${table}" ENABLE TRIGGER "${table}_immutable"`); }
 }
@@ -150,6 +165,188 @@ describe.skipIf(!enabled)("the Spatial Engine's Data Center provider on real Pos
       const port = providerFor(admin);
       expect((await port.readContent({ versionId: item.version.id })).status).toBe("OK");
       expect(await port.readContent({ versionId: item.version.id, expectedChecksum: "0".repeat(64) })).toEqual({ status: "PIN_CONTENT_CHANGED" });
+    });
+  });
+
+  it("persists an exact run and replays its superseded Data Center version without discovery fallback", async () => {
+    await isolated(async (tx, admin) => {
+      const source = await platformSource(admin);
+      const item = await dataset(tx, admin, source.id);
+      const runId = `spatial-run-${randomUUID()}`;
+      const request = baseRequest({ data: { roles: { "poi:hospital": { source: "DATA_CENTER", versionId: item.version.id } } } });
+      const result = await runSpatialAnalysisPersisted(new FakeMapPort(), request, {
+        environment: "test",
+        clock: () => NOW,
+        newRunId: () => runId,
+        dataCenterPort: providerFor(admin),
+        actor: { kind: "USER", id: admin.id },
+        dataCenterActor: admin,
+      });
+      const saved = await tx.analysisEngineRun.findUniqueOrThrow({ where: { runId }, include: { inputs: true } });
+      const storedInput = saved.inputs.find((entry) => entry.dataCenterVersionId === item.version.id);
+      expect(saved.outputHash).toBe(result.determinism.outputHash);
+      expect(storedInput).toMatchObject({ contentHash: item.version.checksum, dataCenterSourceId: source.id, dataCenterTypeKey: "geojson" });
+      expect(storedInput?.usageIntent).toMatchObject({ versionId: item.version.id, checksum: item.version.checksum, roles: ["poi:hospital"] });
+      expect(storedInput?.provenance).toMatchObject({
+        reference: { version: { versionId: item.version.id }, source: { sourceId: source.id } },
+        version: { versionId: item.version.id, checksum: item.version.checksum },
+      });
+
+      const newer = await createDataCenterVersion({ itemId: item.id, title: "Revised", content: geojson("second"), evidenceStatus: "ESTIMATED", reason: "New evidence" }, admin);
+      await publish(item.id, admin);
+      expect(await providerFor(admin).readContent({ versionId: item.version.id })).toEqual({ status: "NOT_AVAILABLE" });
+      const historical = await readHistoricalDataCenterVersion({
+        versionId: item.version.id, expectedChecksum: item.version.checksum, expectedSourceId: source.id, expectedTypeKey: "geojson", actor: admin, context: {},
+      });
+      expect(historical.checksum).toBe(item.version.checksum);
+      expect(historical.features).toHaveLength(1);
+
+      const replay = await replaySpatialAnalysis(new FakeMapPort(), runId, admin, { clock: () => NOW, newRunId: () => `replay-${randomUUID()}` });
+      expect(replay.determinism).toEqual(result.determinism);
+      expect(newer.number).toBe(2);
+
+      await rejectedMutation(tx, () => tx.analysisEngineRun.update({ where: { runId }, data: { subject: "mutated" } }));
+      await rejectedMutation(tx, () => tx.analysisEngineRun.delete({ where: { runId } }));
+      expect(storedInput).toBeDefined();
+      const where = { runId_inputId: { runId, inputId: storedInput!.inputId } };
+      await rejectedMutation(tx, () => tx.analysisEngineRunInput.update({ where, data: { contentHash: "0".repeat(64) } }));
+      await rejectedMutation(tx, () => tx.analysisEngineRunInput.delete({ where }));
+      expect(await tx.analysisEngineRun.findUniqueOrThrow({ where: { runId }, include: { inputs: true } })).toEqual(saved);
+    });
+  });
+
+  it("conceals historical versions outside the Data Center actor's current source scope", async () => {
+    await isolated(async (_tx, admin) => {
+      const owner = await user(_tx, "history-owner");
+      const stranger = await user(_tx, "history-stranger");
+      const source = await createDataCenterSource({ name: "Private history", kind: "MANUAL", scope: "PRIVATE", owner: "Owner", license: "Internal" }, owner);
+      const item = await dataset(_tx, admin, source.id);
+      await expect(readHistoricalDataCenterVersion({
+        versionId: item.version.id,
+        expectedChecksum: item.version.checksum,
+        expectedSourceId: source.id,
+        expectedTypeKey: "geojson",
+        actor: stranger,
+        context: {},
+      })).rejects.toBeInstanceOf(HistoricalVersionUnavailable);
+      await expect(readHistoricalDataCenterVersion({
+        versionId: `missing-${randomUUID()}`,
+        expectedChecksum: item.version.checksum,
+        expectedSourceId: source.id,
+        expectedTypeKey: "geojson",
+        actor: stranger,
+        context: {},
+      })).rejects.toMatchObject({ name: "HistoricalVersionUnavailable", message: "Historical Data Center version is unavailable" });
+      expect((await readHistoricalDataCenterVersion({
+        versionId: item.version.id,
+        expectedChecksum: item.version.checksum,
+        expectedSourceId: source.id,
+        expectedTypeKey: "geojson",
+        actor: owner,
+        context: {},
+      })).checksum).toBe(item.version.checksum);
+      expect(admin.kind).toBe("HUMAN");
+    });
+  });
+
+  it("fails replay explicitly when historical content is lost or changed, despite a readable newer version", async () => {
+    await isolated(async (tx, admin) => {
+      const source = await platformSource(admin);
+      const item = await dataset(tx, admin, source.id);
+      const runId = `lost-content-${randomUUID()}`;
+      const original = await runSpatialAnalysisPersisted(new FakeMapPort(), baseRequest({
+        data: { roles: { "poi:hospital": { source: "DATA_CENTER", versionId: item.version.id } } },
+      }), {
+        environment: "test", clock: () => NOW, newRunId: () => runId,
+        dataCenterPort: providerFor(admin), actor: { kind: "USER", id: admin.id }, dataCenterActor: admin,
+      });
+      const newer = await createDataCenterVersion({ itemId: item.id, title: "Replacement", content: geojson("replacement"), evidenceStatus: "ESTIMATED", reason: "New release" }, admin);
+      await publish(item.id, admin);
+      expect((await providerFor(admin).readContent({ versionId: newer.id })).status).toBe("OK");
+      for (const content of ["null", geojson("tampered")]) {
+        await withoutImmutability(tx, "DataCenterVersion", () =>
+          tx.$executeRaw`UPDATE "DataCenterVersion" SET "content" = ${content} WHERE "id" = ${item.version.id}`);
+        await expect(replaySpatialAnalysis(new FakeMapPort(), runId, admin, {
+          clock: () => NOW, newRunId: () => `refused-${randomUUID()}`,
+        })).rejects.toMatchObject({ name: "SpatialReplayMismatch", mismatch: "INPUT_HASH" });
+      }
+      await tx.$executeRawUnsafe("SET CONSTRAINTS ALL IMMEDIATE");
+      await withoutImmutability(tx, "DataCenterReview", () =>
+        tx.$executeRaw`DELETE FROM "DataCenterReview" WHERE "versionId" = ${item.version.id}`);
+      await withoutImmutability(tx, "DataCenterVersion", () =>
+        tx.$executeRaw`DELETE FROM "DataCenterVersion" WHERE "id" = ${item.version.id}`);
+      await expect(replaySpatialAnalysis(new FakeMapPort(), runId, admin, {
+        clock: () => NOW, newRunId: () => `missing-history-${randomUUID()}`,
+      })).rejects.toBeInstanceOf(SpatialReplayUnavailable);
+      expect(await tx.analysisEngineRun.count({ where: { runId } })).toBe(1);
+      expect((await tx.analysisEngineRun.findUniqueOrThrow({ where: { runId } })).outputHash).toBe(original.determinism.outputHash);
+    });
+  });
+
+  it("conceals missing and foreign runs, permits the owner, and rechecks revoked source access at replay time", async () => {
+    await isolated(async (tx, admin) => {
+      const owner = await user(tx, "run-owner");
+      const stranger = await user(tx, "run-stranger");
+      const source = await createDataCenterSource({ name: "Private replay", kind: "MANUAL", scope: "PRIVATE", owner: "Owner", license: "Internal" }, owner);
+      const item = await dataset(tx, admin, source.id);
+      const runId = `private-run-${randomUUID()}`;
+      const original = await runSpatialAnalysisPersisted(new FakeMapPort(), baseRequest({
+        data: { roles: { "poi:hospital": { source: "DATA_CENTER", versionId: item.version.id } } },
+      }), {
+        environment: "test", clock: () => NOW, newRunId: () => runId,
+        dataCenterPort: providerFor(owner), actor: { kind: "USER", id: owner.id }, dataCenterActor: owner,
+      });
+      const options = { clock: () => NOW, newRunId: () => `access-replay-${randomUUID()}` };
+      const missing = await replaySpatialAnalysis(new FakeMapPort(), `missing-${randomUUID()}`, stranger, options).catch((error: unknown) => error);
+      const denied = await replaySpatialAnalysis(new FakeMapPort(), runId, stranger, options).catch((error: unknown) => error);
+      expect(missing).toBeInstanceOf(SpatialReplayUnavailable);
+      expect(denied).toEqual(missing);
+      expect(await readAnalysisEngineRunForReplay(runId, { ...owner, kind: "AI" })).toBeNull();
+      expect((await replaySpatialAnalysis(new FakeMapPort(), runId, owner, options)).determinism).toEqual(original.determinism);
+      await tx.dataCenterSource.update({ where: { id: source.id }, data: { allowRetrieval: false } });
+      await expect(replaySpatialAnalysis(new FakeMapPort(), runId, owner, options)).rejects.toEqual(missing);
+    });
+  });
+
+  it("persists failed requests with SQL NULL results and no usage rows", async () => {
+    await isolated(async (tx, admin) => {
+      const runId = `failed-run-${randomUUID()}`;
+      await expect(runSpatialAnalysisPersisted(new FakeMapPort(), null, {
+        environment: "test", clock: () => NOW, newRunId: () => runId, actor: { kind: "USER", id: admin.id },
+      })).rejects.toMatchObject({ code: "INVALID_INPUT" });
+      const saved = await tx.analysisEngineRun.findUniqueOrThrow({ where: { runId }, include: { inputs: true } });
+      expect(saved).toMatchObject({ status: "FAILED", errorCode: "INVALID_INPUT", result: null, outputHash: null, inputs: [] });
+      expect(await tx.$queryRaw`SELECT "runId" FROM "AnalysisEngineRun" WHERE "runId" = ${runId} AND "result" IS NULL AND "confidence" IS NULL`).toEqual([{ runId }]);
+    });
+  });
+
+  it("replays per-role type-selection provenance when two roles originally shared one version", async () => {
+    await isolated(async (tx, admin) => {
+      const source = await platformSource(admin);
+      const item = await dataset(tx, admin, source.id, { publishedAt: ago(1), coverage: { countryCodes: ["SA"], boundingBox: riyadhBox } });
+      const runId = `type-selection-${randomUUID()}`;
+      const original = await runSpatialAnalysisPersisted(new FakeMapPort(), baseRequest({
+        parameters: { roles: ["poi:hospital", "poi:clinic"] },
+        data: { roles: {
+          "poi:clinic": { source: "DATA_CENTER", versionId: item.version.id },
+          "poi:hospital": { source: "DATA_CENTER", typeKey: "geojson" },
+        } },
+      }), {
+        environment: "test", clock: () => NOW, newRunId: () => runId,
+        dataCenterPort: providerFor(admin), actor: { kind: "USER", id: admin.id }, dataCenterActor: admin,
+      });
+      const inputs = await tx.analysisEngineRunInput.findMany({ where: { runId, kind: "DATA_CENTER_VERSION" } });
+      expect(inputs).toHaveLength(1);
+      expect(inputs[0]).toMatchObject({ dataCenterVersionId: item.version.id, contentHash: item.version.checksum, roles: ["poi:clinic", "poi:hospital"] });
+      expect(inputs[0]?.provenance).toMatchObject({ selections: [
+        { role: "poi:clinic", trace: { mode: "EXACT" } },
+        { role: "poi:hospital", trace: { mode: "BY_TYPE", asOfExplicit: false, asOf: EVALUATED_AT } },
+      ] });
+      await createDataCenterVersion({ itemId: item.id, title: "Updated shared dataset", content: geojson("new"), evidenceStatus: "ESTIMATED", reason: "Next publication" }, admin);
+      await publish(item.id, admin);
+      expect((await replaySpatialAnalysis(new FakeMapPort(), runId, admin, {
+        clock: () => new Date(NOW.getTime() + DAY), newRunId: () => `type-replay-${randomUUID()}`,
+      })).determinism).toEqual(original.determinism);
     });
   });
 

@@ -1,5 +1,6 @@
 import type { DataCenterGeoFeature } from "@/services/data-center/contracts";
 import type { DataCenterMapReference } from "@/services/data-center/map-contract";
+import type { DataCenterSelectionTrace } from "../shared/contracts";
 import type { BoundingBox } from "./geometry-precheck";
 
 /**
@@ -39,6 +40,8 @@ export interface DataCenterDiscovery {
   truncated: boolean;
   /** By type: readable matches that were not in force as of the instant, with the reason. */
   notInForce: Array<{ versionId: string; reason: string }>;
+  /** Present only on the internal replay adapter; it preserves discovery facts without running discovery again. */
+  traceSnapshot?: DataCenterSelectionTrace;
 }
 
 export type DataCenterContentOutcome =
@@ -50,6 +53,8 @@ export type DataCenterContentOutcome =
   | { status: "CONTENT_INVALID"; code: string };
 
 export interface SpatialDataCenterPort {
+  /** The trusted access context configured on a production provider, retained for exact replay authorization. */
+  replayContext?: { specialty?: string; missionContext?: string };
   discover(selection: DataCenterSelection): Promise<DataCenterDiscovery>;
   /** The content of exactly one version. With `expectedChecksum`, a version whose checksum differs is not read. */
   readContent(request: { versionId: string; expectedChecksum?: string }): Promise<DataCenterContentOutcome>;

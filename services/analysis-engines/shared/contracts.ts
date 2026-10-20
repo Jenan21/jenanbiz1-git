@@ -54,6 +54,18 @@ export const inputCoverageSchema = z.object({
   regionCodes: z.array(regionCodeSchema).max(500),
   boundingBox: boundingBoxSchema.nullable(),
 }).strict();
+export const dataCenterSelectionTraceSchema = z.object({
+  mode: z.enum(["EXACT", "BY_TYPE"]),
+  policy: z.string().min(1).max(120),
+  asOf: timestampSchema.nullable(),
+  asOfExplicit: z.boolean(),
+  discoveryStatus: z.enum(["FOUND", "NOT_AVAILABLE", "NO_COVERAGE", "NOT_IN_FORCE", "TOO_MANY_CANDIDATES"]),
+  selectedVersionId: identifierSchema.nullable(),
+  candidateVersionIds: z.array(identifierSchema).max(500),
+  candidatesTruncated: z.boolean(),
+  notInForce: z.array(z.object({ versionId: identifierSchema, reason: z.string().min(1).max(100) }).strict()).max(500),
+}).strict();
+export type DataCenterSelectionTrace = z.infer<typeof dataCenterSelectionTraceSchema>;
 
 const engineInputObject = z.object({
   id: identifierSchema,

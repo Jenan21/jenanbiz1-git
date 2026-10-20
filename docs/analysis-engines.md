@@ -43,8 +43,7 @@ it, under a stricter rule (see Adapters below).
 ### Adapters
 
 An engine reaches anything outside its own tree only through an adapter: a directory named
-`adapters` inside the engine's own tree. There are two kinds, and the boundary test checks each
-against its own exact list:
+`adapters` inside the engine's own tree. The boundary test checks each adapter against its own exact list:
 
 - **A database adapter** (the Spatial Engine's PostGIS reader) may import exactly `pg`, `zod` and
   files of the engine's own tree. It is the only code that imports the driver.
@@ -55,6 +54,11 @@ against its own exact list:
   layer, holds no SQL and calls nothing that writes (no usage record, no audit entry). It has no
   access policy of its own: the Data Center applies its existing policy to the actor it is given.
   No other file of an engine may import those services.
+- **M5 run persistence and historical replay adapters** have explicit, narrow exceptions for
+  Prisma and the application database. The persistence adapter inserts run/input rows only; the
+  historical reader performs one exact-version read and applies Data Center source-scope,
+  permission, specialty and mission-context checks. It never discovers versions or writes to
+  Data Center tables. The replay service is internal and is not re-exported by the engine index.
 
 Neither is re-exported by the engine's index, and neither may read the environment, the clock or
 the network. An adapter never imports Projects or the Map's service. The pure core talks to an
@@ -172,14 +176,52 @@ contract (`run-record.ts`) defines the record: engine key and version, contract 
 environment, status, the three hashes, the normalized request and the full result (each at most
 2 MiB of canonical JSON), error code, confidence and gap summaries, actor, an opaque `subject`,
 timing, cost, runtime, and one input row per input holding a full snapshot of its descriptor.
-A run without a result is `FAILED` and names its error code. The record is append-only and has
-no foreign key to Projects or to the Map. The Prisma models and their additive migration are
-delivered with the Spatial Engine milestone M5; until then the contract is the specification.
+A run without a result is `FAILED` and names its error code. The M5 additive migration creates
+these shared tables only: neither Projects, the Map nor the Data Center is referenced by a
+foreign key. Database triggers reject updates and deletes, and the runtime persistence API
+exposes insert and authorized-read operations only.
+
+For each Data Center input, the run-input row stores its exact version id and checksum, source
+id, type key, immutable reference, version provenance/eligibility metadata, and a run-linked
+usage intent (consumer, purpose, roles, version id and content hash). This is the engine's
+traceable usage record; the frozen Data Center schema and `DataCenterUsage` table are unchanged.
+The resolver captures the full Data Center reference and each role's selection trace through
+an internal persistence hook, separately from `EngineInput`. Resolution timestamps and Data
+Center heuristic confidence therefore do not enter the public input descriptor or its hashes.
+Roles sharing a version retain their own exact/by-type selection traces in the provenance row.
+
+Historical replay is internal, not discovery. A run is readable only by its owning actor or a
+platform Data Center administrator; ownership matches both actor kind and actor id. The historical reader then applies current source scope,
+retrieval, permission, specialty and mission-context access checks, but reads only the saved
+version id; it does not require that version to remain currently published and never falls back.
+Missing or inaccessible history has one unavailable response. If accessible historical content
+does not match its recorded checksum, replay fails explicitly. Replay uses the saved normalized
+request, evaluation instant, Map release/reference, Data Center reference, version and hashes,
+and returns no result unless the recomputed request, input and output hashes match.
 
 Reproducing a run means running the same engine version with the stored request and the stored
 `evaluatedAt` against inputs with the same checksums, and comparing output hashes. The
 evaluation instant can be pinned only by replay and acceptance callers, never to a future
 time.
+
+### M5 database acceptance
+
+Run migrations against a newly created disposable PostgreSQL database, not the application's
+existing database. Set `DATABASE_URL` to that database and run `prisma migrate deploy`.
+With `DATA_CENTER_DATABASE_TESTS=1`, run the Data Center integration suites together with
+`tests/integration/spatial-data-center-provider.integration.test.ts`.
+
+The M5 cases exercise real nested run/input inserts, exact version/hash and usage provenance,
+superseded-version replay, shared-version per-role selection, missing historical rows, invalid
+or changed historical content, run ownership and revoked source retrieval, SQL NULL failure
+records, and update/delete rejection on both history tables. They use rolled-back transactions;
+expected SQL failures have savepoints. Historical data loss/corruption is simulated only in
+test fixtures, restoring immutable triggers before rollback, never in the production adapter.
+
+The approved SQL migrations retain constraints/indexes that Prisma does not fully model,
+including Data Center's deferrable version foreign keys. Do not rewrite this frozen baseline
+to make a raw `migrate diff --to-schema` empty. Verify applied migration names/checksums and
+unchanged pre-M5 models instead; M5 adds only the two analysis-history tables and their guards.
 
 ## Extending the core
 

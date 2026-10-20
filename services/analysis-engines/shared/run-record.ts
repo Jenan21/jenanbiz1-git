@@ -123,6 +123,7 @@ export interface RunRecordContext {
   actor: { kind: typeof actorKinds[number]; id: string | null };
   subject?: string | null;
   createdAt: string;
+  runtime?: Record<string, unknown>;
 }
 
 /** Builds the append-only record of a finished run. A result that breaks its own contract is refused instead of being stored. */
@@ -152,7 +153,7 @@ export function buildRunRecord(envelope: RunEnvelope, context: RunRecordContext)
     subject: context.subject ?? null,
     timing: { startedAt: envelope.timing.startedAt, finishedAt: envelope.timing.finishedAt, durationMs: envelope.timing.durationMs },
     cost: { costUnits: envelope.limits.costUnits, budgetUnits: envelope.limits.budgetUnits },
-    runtime: envelope.engine.runtime ?? {},
+    runtime: { ...(envelope.engine.runtime ?? {}), ...(context.runtime ?? {}) },
     createdAt: context.createdAt,
     inputs: envelope.inputs.map(toRunInputRecord),
   };

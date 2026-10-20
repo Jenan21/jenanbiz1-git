@@ -4630,3 +4630,61 @@ model DataCenterQualityAssessment {
 
   @@index([versionId, measuredAt])
 }
+
+// Engine history is deliberately independent of Projects, Map, and Data Center foreign keys.
+model AnalysisEngineRun {
+  runId          String                    @id
+  engineKey      String
+  engineVersion  String
+  requestContract String
+  resultContract String
+  environment    String
+  status         String
+  requestHash    String
+  inputsHash     String?
+  outputHash     String?
+  request        Json
+  result         Json?
+  errorCode      String?
+  confidence     Json?
+  gaps           Json
+  actorKind      String
+  actorId        String?
+  subject        String?
+  startedAt      DateTime
+  finishedAt     DateTime
+  durationMs     Int
+  costUnits      Int
+  budgetUnits    Int
+  runtime        Json
+  createdAt      DateTime                  @default(now())
+  inputs         AnalysisEngineRunInput[]
+
+  @@index([engineKey, createdAt])
+  @@index([actorKind, actorId, createdAt])
+}
+
+model AnalysisEngineRunInput {
+  runId                 String
+  run                   AnalysisEngineRun @relation(fields: [runId], references: [runId], onDelete: Restrict, onUpdate: NoAction)
+  inputId               String
+  roles                 String[]
+  kind                  String
+  governance            String
+  completeness          String
+  refSystem             String
+  refId                 String
+  refVersion            Int?
+  checksum              String?
+  dataCenterVersionId   String?
+  dataCenterSourceId    String?
+  dataCenterTypeKey     String?
+  contentHash           String?
+  provenance            Json?
+  usageIntent           Json?
+  snapshot              Json
+  createdAt             DateTime           @default(now())
+
+  @@id([runId, inputId])
+  @@index([dataCenterVersionId, contentHash])
+}

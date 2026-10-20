@@ -15,19 +15,35 @@ const exact = (role = "poi:hospital", versionId = DC_VERSION_ID): DataSourceRequ
 const byType = (role = "poi:hospital", over: { asOf?: string } = {}): DataSourceRequest => ({ role, selection: { kind: "BY_TYPE", typeKey: "geojson", ...over } });
 const resolve = (requests: DataSourceRequest[], behaviour: FakeDataCenterBehaviour = {}) => {
   const port = new FakeDataCenterPort(behaviour);
-  return { port, result: resolveSpatialDataSources({ requests, port, evaluatedAt: EVALUATED_AT }) };
+  const provenance = new Map();
+  return {
+    port,
+    provenance,
+    result: resolveSpatialDataSources({
+      requests, port, evaluatedAt: EVALUATED_AT,
+      onInputResolved: (inputId, captured) => {
+        const previous = provenance.get(inputId);
+        provenance.set(inputId, previous
+          ? { reference: captured.reference, selections: [...previous.selections, ...captured.selections] }
+          : captured);
+      },
+    }),
+  };
 };
 const gapCodes = (gaps: Array<{ code: string }>) => gaps.map((gap) => gap.code);
 
 describe("an exact Data Center pin", () => {
   it("is resolved to an input with the Data Center's own statements, the validated features, and how it was selected", async () => {
-    const { port, result } = resolve([exact()]);
+    const { port, provenance, result } = resolve([exact()]);
     const { sources, inputs, gaps } = await result;
     expect(sources).toHaveLength(1);
     const source = sources[0]!;
     expect(source.status).toBe("RESOLVED");
     if (source.status !== "RESOLVED") return;
     expect(source.input).toMatchObject({ id: `dc:${DC_VERSION_ID}`, kind: "DATA_CENTER_VERSION", governance: "DC_PUBLISHED", roles: ["poi:hospital"], checksum: { algorithm: "SHA-256", value: DC_SHA }, completeness: "UNKNOWN" });
+    expect(source.input).not.toHaveProperty("dataCenterReference");
+    expect(source.input).not.toHaveProperty("dataCenterSelection");
+    expect(provenance.get(source.input.id)).toEqual({ reference: makeReference(), selections: [{ role: "poi:hospital", trace: source.trace }] });
     expect(engineInputSchema.safeParse(source.input).success).toBe(true);
     expect(source.features).toHaveLength(3);
     expect(source.features.map((feature) => feature.index)).toEqual([0, 1, 2]);
@@ -76,7 +92,7 @@ describe("a selection by type", () => {
 
   it("takes the version the Data Center's policy selected, says how, and reports the datasets it chose among", async () => {
     const discovery = foundDiscovery(selected, { mode: "BY_TYPE", policy: "dc-version-selection-v1", asOf: "2026-06-01T00:00:00.000Z", asOfExplicit: true, candidates: [selected, competing], notInForce: [{ versionId: "late-version", reason: "NOT_PUBLISHED_AT_AS_OF" }] });
-    const { port, result } = resolve([byType("poi:hospital", { asOf: "2026-06-01T00:00:00.000Z" })], { discover: discovery });
+    const { port, provenance, result } = resolve([byType("poi:hospital", { asOf: "2026-06-01T00:00:00.000Z" })], { discover: discovery });
     const { sources, inputs, gaps } = await result;
     const source = sources[0]!;
     expect(source.status).toBe("RESOLVED");
@@ -86,6 +102,7 @@ describe("a selection by type", () => {
       mode: "BY_TYPE", policy: "dc-version-selection-v1", asOf: "2026-06-01T00:00:00.000Z", asOfExplicit: true, discoveryStatus: "FOUND", selectedVersionId: DC_VERSION_ID,
       candidateVersionIds: [DC_VERSION_ID, DC_OTHER_VERSION_ID], candidatesTruncated: false, notInForce: [{ versionId: "late-version", reason: "NOT_PUBLISHED_AT_AS_OF" }],
     });
+    expect(provenance.get(source.input.id)).toEqual({ reference: selected, selections: [{ role: "poi:hospital", trace: source.trace }] });
     expect(inputs[0]?.limitations).toContain("Selected by the policy dc-version-selection-v1 among the published datasets of type geojson, as of 2026-06-01T00:00:00.000Z.");
     expect(gaps).toHaveLength(1);
     expect(gaps[0]).toMatchObject({ code: "DATA_CENTER_COMPETING_DATASETS", severity: "INFO", inputId: `dc:${DC_VERSION_ID}`, subject: "poi:hospital" });

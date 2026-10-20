@@ -12,7 +12,7 @@ import { mapAdminLayers, mapLayerForRole, type MapDescription } from "./map-cont
 import type { GeometryCheck, SpatialMapPort } from "./map-port";
 import { MapReadError } from "./map-read-error";
 import { BOUNDARY_ROLE, resolveFeatureMapState, resolveMapState, type FeatureMapRequest, type LayerState, type LocationContextMapState } from "./map-state";
-import { dataSourceRequestsOf, resolveSpatialDataSources } from "./data-sources";
+import { dataSourceRequestsOf, resolveSpatialDataSources, type DataCenterRunInputProvenance } from "./data-sources";
 import { targetGeography } from "./dataset-features";
 import { resolveFeatureSources, runFeatureAnalyses } from "./feature-analysis";
 import { prepareSpatialRequest } from "./prepare";
@@ -36,6 +36,14 @@ export interface RunSpatialOptions {
   requireReadOnlyRole?: boolean;
   /** The actor-scoped Data Center adapter; absent configuration yields per-role unavailable outcomes, never a Map fallback. */
   dataCenterPort?: SpatialDataCenterPort;
+  /** Internal persistence hook; provenance is captured separately from the engine's public input descriptor. */
+  captureDataCenterInput?: (inputId: string, provenance: DataCenterRunInputProvenance) => void;
+  /** Exact pins and envelope metadata supplied only by the persisted-run replay service. */
+  replay?: {
+    mapReleaseId: string | null;
+    mapReleaseByRole: Readonly<Record<string, string>>;
+    defaultsApplied: readonly string[];
+  };
 }
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -98,7 +106,7 @@ function featureMapRequests(request: SpatialNormalizedRequest, roles: readonly s
     if (selection?.source === "DATA_CENTER") return [];
     const layerKey = selection?.source === "MAP" ? selection.layerKey : mapLayerForRole(role);
     if (layerKey === null || layerKey === undefined) return [];
-    return [{ role, layerKey, releaseId: selection?.source === "MAP" ? selection.releaseId ?? null : pins.get(role) ?? null }];
+    return [{ role, layerKey, releaseId: selection?.source === "MAP" ? selection.releaseId ?? pins.get(role) ?? null : pins.get(role) ?? null }];
   }).sort((first, second) => compareText(first.role, second.role));
 }
 
@@ -162,6 +170,9 @@ export async function runSpatialAnalysis(port: SpatialMapPort, input: unknown, o
   const requestedMetricCount = Math.max(proximityMetricCount, catchmentMetricCount);
   if (requestedMetricCount > 500) throw new EngineError("REQUEST_TOO_LARGE", { reason: "result_metric_limit", maximum: 500, requested: requestedMetricCount });
   const pins = readPins(normalized, placeRoles, new Set(measuredRoles));
+  if (options.replay) for (const role of [...new Set([...placeRoles, ...measuredRoles])]) {
+    if (pins.get(role) == null && options.replay.mapReleaseByRole[role] !== undefined) pins.set(role, options.replay.mapReleaseByRole[role] as string);
+  }
 
   const capabilities = await probe(port, options.requireReadOnlyRole ?? options.environment === "production");
   const targets: ContextTarget[] = [{ id: PRIMARY_TARGET_ID, location: normalized.location }, ...normalized.candidates.map((candidate) => ({ id: candidate.id, location: candidate.location }))];
@@ -175,7 +186,10 @@ export async function runSpatialAnalysis(port: SpatialMapPort, input: unknown, o
   let published: MapDescription;
   const pinned = new Map<string, MapDescription>();
   try {
-    published = await port.describeMap({ layers: [...new Set(describedLayers)].sort(compareText) });
+    const publishedRequest = options.replay === undefined
+      ? { layers: [...new Set(describedLayers)].sort(compareText) }
+      : { releaseId: options.replay.mapReleaseId, layers: [...new Set(describedLayers)].sort(compareText) };
+    published = await port.describeMap(publishedRequest);
     const layersByRelease = new Map<string, string[]>();
     for (const { layerKey, releaseId } of mapRequests) if (releaseId !== null && releaseId !== published.release?.id) {
       layersByRelease.set(releaseId, [...(layersByRelease.get(releaseId) ?? []), layerKey]);
@@ -205,6 +219,7 @@ export async function runSpatialAnalysis(port: SpatialMapPort, input: unknown, o
   });
   const dataCenter = await resolveSpatialDataSources({
     requests: discoveryRequests, port: options.dataCenterPort ?? unavailableDataCenter(), evaluatedAt,
+    ...(options.captureDataCenterInput === undefined ? {} : { onInputResolved: options.captureDataCenterInput }),
   });
   const featureSources = resolveFeatureSources(resolvedMapFeatures.sources, dataCenter.sources, measuredRoles);
 
@@ -243,11 +258,11 @@ export async function runSpatialAnalysis(port: SpatialMapPort, input: unknown, o
     engine: {
       key: SPATIAL_ENGINE_KEY, version: SPATIAL_ENGINE_VERSION, contracts: { request: SPATIAL_REQUEST_CONTRACT, result: SPATIAL_RESULT_CONTRACT }, environment: options.environment,
       policies: [spatialConfidencePolicy],
-      runtime: { backend: capabilities.backend, placement: capabilities.placement, postgis: capabilities.postgis, geos: capabilities.geos, proj: capabilities.proj },
+      runtime: { backend: capabilities.backend, placement: capabilities.placement, postgis: capabilities.postgis, geos: capabilities.geos, proj: capabilities.proj, mapReleaseId: resolved.state.publishedReleaseId },
       capabilities: { analyses: [...SPATIAL_SUPPORTED_ANALYSES], excluded: [...spatialExclusions] },
     },
     status: deriveRunStatus(results.flatMap((entry) => entry.metrics), normalizedGaps),
-    request: { normalized, defaultsApplied: prepared.defaultsApplied, mapLayerPolicy: prepared.mapLayerPolicy },
+    request: { normalized, defaultsApplied: options.replay?.defaultsApplied ?? prepared.defaultsApplied, mapLayerPolicy: prepared.mapLayerPolicy },
     inputs,
     dataAvailability,
     results,

@@ -2,6 +2,7 @@ import { compareText } from "../shared/canonical";
 import type { EngineInput } from "../shared/contracts";
 import { EngineError } from "../shared/errors";
 import { createGap, normalizeGaps, type Gap } from "../shared/gaps";
+import type { DataCenterMapReference } from "@/services/data-center/map-contract";
 import type { SpatialNormalizedRequest } from "./contracts";
 import { buildDataCenterInput } from "./data-center-inputs";
 import {
@@ -65,6 +66,11 @@ export interface DataSourceTrace {
   notInForce: Array<{ versionId: string; reason: string }>;
 }
 
+export interface DataCenterRunInputProvenance {
+  reference: DataCenterMapReference;
+  selections: Array<{ role: string; trace: DataSourceTrace }>;
+}
+
 export type ResolvedDataSource =
   | { status: "RESOLVED"; role: string; input: EngineInput; features: SpatialDatasetFeature[]; trace: DataSourceTrace; gaps: Gap[] }
   | { status: DataSourceFailure; role: string; trace: DataSourceTrace | null; gaps: Gap[] };
@@ -81,6 +87,7 @@ export interface ResolvedDataSources {
 const typeKeyOf = (selection: DataCenterSelection) => (selection.kind === "BY_TYPE" ? selection.typeKey : "exact version");
 
 function traceOf(discovery: DataCenterDiscovery): DataSourceTrace {
+  if (discovery.traceSnapshot) return discovery.traceSnapshot;
   return {
     mode: discovery.mode, policy: discovery.policy, asOf: discovery.asOf, asOfExplicit: discovery.asOfExplicit, discoveryStatus: discovery.status,
     selectedVersionId: discovery.selected?.version.versionId ?? null, candidateVersionIds: discovery.candidates.map((candidate) => candidate.version.versionId),
@@ -114,7 +121,12 @@ function contentFailure(role: string, title: string, outcome: Exclude<DataCenter
   }
 }
 
-async function resolveOne(request: DataSourceRequest, port: SpatialDataCenterPort, evaluatedAt: string): Promise<ResolvedDataSource> {
+async function resolveOne(
+  request: DataSourceRequest,
+  port: SpatialDataCenterPort,
+  evaluatedAt: string,
+  onInputResolved?: (inputId: string, provenance: DataCenterRunInputProvenance) => void,
+): Promise<ResolvedDataSource> {
   const { role, selection } = request;
   let discovery: DataCenterDiscovery;
   try {
@@ -150,19 +162,27 @@ async function resolveOne(request: DataSourceRequest, port: SpatialDataCenterPor
     reference: outcome.reference, roles: [role], evaluatedAt,
     ...(selection.kind === "BY_TYPE" ? { selection: { policy: discovery.policy, asOf: discovery.asOf ?? evaluatedAt, typeKey: selection.typeKey } } : {}),
   });
+  onInputResolved?.(input.id, { reference: outcome.reference, selections: [{ role, trace }] });
   const gaps: Gap[] = [];
-  if (selection.kind === "BY_TYPE" && discovery.candidates.length > 1) {
+  const candidateCount = discovery.traceSnapshot?.candidateVersionIds.length ?? discovery.candidates.length;
+  const candidatesTruncated = discovery.traceSnapshot?.candidatesTruncated ?? discovery.truncated;
+  if (selection.kind === "BY_TYPE" && candidateCount > 1) {
     // A listing cut at the Data Center's limit counts a lower bound, and says so.
-    const others = discovery.candidates.length - 1;
-    gaps.push(createGap(spatialGapCatalog, "DATA_CENTER_COMPETING_DATASETS", { count: discovery.truncated ? `${others}+` : others, typeKey: selection.typeKey, dataset: selected.dataset.title, policy: discovery.policy }, { inputId: input.id, subject: role }));
+    const others = candidateCount - 1;
+    gaps.push(createGap(spatialGapCatalog, "DATA_CENTER_COMPETING_DATASETS", { count: candidatesTruncated ? `${others}+` : others, typeKey: selection.typeKey, dataset: selected.dataset.title, policy: discovery.policy }, { inputId: input.id, subject: role }));
   }
   return { status: "RESOLVED", role, input, features: checked.features, trace, gaps };
 }
 
-export async function resolveSpatialDataSources(args: { requests: readonly DataSourceRequest[]; port: SpatialDataCenterPort; evaluatedAt: string }): Promise<ResolvedDataSources> {
+export async function resolveSpatialDataSources(args: {
+  requests: readonly DataSourceRequest[];
+  port: SpatialDataCenterPort;
+  evaluatedAt: string;
+  onInputResolved?: (inputId: string, provenance: DataCenterRunInputProvenance) => void;
+}): Promise<ResolvedDataSources> {
   const requests = [...args.requests].sort((first, second) => compareText(first.role, second.role));
   const sources: ResolvedDataSource[] = [];
-  for (const request of requests) sources.push(await resolveOne(request, args.port, args.evaluatedAt));
+  for (const request of requests) sources.push(await resolveOne(request, args.port, args.evaluatedAt, args.onInputResolved));
 
   // Roles that resolved to the same version share one input that lists every role it serves.
   const rolesByInput = new Map<string, string[]>();
