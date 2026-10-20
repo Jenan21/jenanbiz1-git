@@ -44,7 +44,10 @@ export interface MapNearestRequest {
   location: SpatialLocation;
   /** The kind wanted (`locality`), or null for any recognized kind. */
   kind: string | null;
-  /** Ascending search distances in metres; the search stops at the first ring that finds something. */
+  /**
+   * Ascending search distances in metres. The search stops at the first ring that holds `limit` features of the wanted kind or any feature
+   * whose kind cannot be read (nothing beyond that distance can be trusted), and otherwise after the last ring.
+   */
   rings: readonly number[];
   limit: number;
 }
@@ -52,7 +55,7 @@ export interface MapNearestFeature { id: string; label: string; kind: string; so
 export interface MapNearestResult {
   /** The largest ring that was searched. */
   searchedMeters: number;
-  /** The ring in which the search stopped, or null when nothing was found. */
+  /** The ring in which the last of the matches was found, or null when there are no matches. */
   ringMeters: number | null;
   /** Features of the wanted kind, nearest first. */
   matches: MapNearestFeature[];

@@ -82,4 +82,40 @@ describe("analysis engine boundaries", () => {
     const withClock = sources.filter((source) => /new Date\(\s*\)/.test(source.text)).map((source) => source.path);
     expect(withClock).toEqual(["spatial/normalize.ts"]);
   });
+
+  describe("adapters", () => {
+    const adapters = sources.filter((entry) => isAdapter(entry.path));
+    const allowedAdapterPackages = new Set(["pg", "zod"]);
+
+    it("exist only in the Spatial Engine's adapters directory", () => {
+      expect(adapters.length).toBeGreaterThan(0);
+      for (const adapter of adapters) expect(adapter.path.startsWith("spatial/adapters/"), adapter.path).toBe(true);
+    });
+
+    it("import only pg, zod and the engine's own tree: never Prisma, the application's database layer, Projects, the Map's service, the Data Center or the framework", () => {
+      for (const adapter of adapters) {
+        for (const specifier of specifiersOf(adapter.text)) {
+          if (specifier.startsWith(".")) expect(resolve(dirname(adapter.file), specifier).startsWith(root), `${adapter.path} imports ${specifier}`).toBe(true);
+          else expect(allowedAdapterPackages.has(specifier), `${adapter.path} imports ${specifier}`).toBe(true);
+        }
+      }
+    });
+
+    it("are the only files that import the driver", () => {
+      const importers = sources.filter((entry) => specifiersOf(entry.text).includes("pg")).map((entry) => entry.path);
+      expect(importers).toEqual(["spatial/adapters/read-only-session.ts"]);
+    });
+
+    it("are not re-exported by the engine's own index, so the pure core never pulls in a driver", () => {
+      const index = sources.find((entry) => entry.path === "spatial/index.ts");
+      expect(index?.text).not.toMatch(/adapters/);
+      for (const entry of sources.filter((candidate) => !isAdapter(candidate.path))) expect(specifiersOf(entry.text).filter((specifier) => /adapters/.test(specifier)), entry.path).toEqual([]);
+    });
+
+    it("never read the environment, the clock or the network, and never log", () => {
+      for (const adapter of adapters) {
+        expect(adapter.text, adapter.path).not.toMatch(/process\.env|Date\.now|new Date\(|fetch\s*\(|console\.|Math\.random/);
+      }
+    });
+  });
 });

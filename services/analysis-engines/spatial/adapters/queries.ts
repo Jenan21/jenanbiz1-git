@@ -1,0 +1,150 @@
+/**
+ * Every statement the Map reader sends after it has opened its read-only snapshot. They are fixed text with positional parameters: nothing
+ * is ever interpolated into them, a request cannot add SQL, and each one is a single SELECT (or WITH ... SELECT). A unit test reads this
+ * file and rejects any statement that could write, lock, change a setting, or touch a table or column outside the Map read contract.
+ *
+ * Conventions: the Map's tables are always schema-qualified; geometry predicates run on the stored WGS84 geometry (planar, as the Map's
+ * own lookups do) and distances run on geography (geodesic, metres); orderings that decide a LIMIT use COLLATE "C" so they do not depend on
+ * the database's locale.
+ */
+export const QUERIES = {
+  // ---------------------------------------------------------------------------------------------------------------- backend
+  /** Whether PostGIS is installed, without raising an error when it is not. */
+  postgisPresent: `SELECT to_regprocedure('postgis_lib_version()') IS NOT NULL AS "present"`,
+
+  postgisVersions: `SELECT postgis_lib_version() AS "postgis", postgis_geos_version() AS "geos", postgis_proj_version() AS "proj"`,
+
+  /** $1 schema, $2 table names. Every column of those tables, with its exact type, so the contract can be compared with what is there. */
+  catalog: `SELECT c.relname AS "table", a.attname AS "column", format_type(a.atttypid, a.atttypmod) AS "type"
+FROM pg_catalog.pg_class c
+JOIN pg_catalog.pg_namespace n ON n.oid = c.relnamespace
+JOIN pg_catalog.pg_attribute a ON a.attrelid = c.oid
+WHERE n.nspname = $1::text AND c.relname = ANY($2::text[]) AND c.relkind IN ('r', 'p') AND a.attnum > 0 AND NOT a.attisdropped
+ORDER BY c.relname COLLATE "C", a.attnum`,
+
+  /** $1 schema, $2 table names. What the connected role may do to the tables the adapter reads. */
+  role: `SELECT r.rolsuper AS "superuser",
+  COALESCE((SELECT pg_has_role(r.oid, w.oid, 'MEMBER') FROM pg_catalog.pg_roles w WHERE w.rolname = 'pg_write_all_data'), false) AS "writeAll",
+  COALESCE(has_schema_privilege(r.oid, n.oid, 'USAGE'), false) AS "schemaUsage",
+  COALESCE(bool_and(has_table_privilege(r.oid, c.oid, 'SELECT')), false) AS "canSelectAll",
+  COALESCE(bool_or(has_table_privilege(r.oid, c.oid, 'INSERT, UPDATE, DELETE, TRUNCATE') OR has_any_column_privilege(r.oid, c.oid, 'INSERT, UPDATE')), false) AS "canWriteSome",
+  count(c.oid)::int AS "tables"
+FROM pg_catalog.pg_roles r
+LEFT JOIN pg_catalog.pg_namespace n ON n.nspname = $1::text
+LEFT JOIN pg_catalog.pg_class c ON c.relnamespace = n.oid AND c.relname = ANY($2::text[]) AND c.relkind IN ('r', 'p')
+WHERE r.rolname = current_user
+GROUP BY r.oid, r.rolsuper, n.oid`,
+
+  // ------------------------------------------------------------------------------------------------------------------ the Map
+  runtime: `SELECT r."status" AS "status", r."publishedReleaseId"::text AS "publishedReleaseId"
+FROM "jenan_map"."runtime" r
+WHERE r."id" = 1`,
+
+  /** $1 release id. Dates come back as UTC ISO 8601 text so no time zone is guessed on the way. */
+  release: `SELECT r."id"::text AS "id", r."version" AS "version", r."status" AS "status", r."source" AS "source",
+  to_char(r."sourceDate" AT TIME ZONE 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS.MS"Z"') AS "sourceDate",
+  r."license" AS "license",
+  to_char(r."publishedAt" AT TIME ZONE 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS.MS"Z"') AS "publishedAt"
+FROM "jenan_map"."release" r
+WHERE r."id" = $1::uuid`,
+
+  /** $1 release id. The boundary's extent comes from the geometry header, so the polygon itself is not read. */
+  boundary: `SELECT b."id"::text AS "id", b."authority" AS "authority", b."source" AS "source", b."coverage" AS "coverage",
+  ST_XMin(b."geometry") AS "west", ST_YMin(b."geometry") AS "south", ST_XMax(b."geometry") AS "east", ST_YMax(b."geometry") AS "north"
+FROM "jenan_map"."boundary" b
+WHERE b."releaseId" = $1::uuid`,
+
+  /** $1 release id, $2 layer ids. The display binding of each layer, if any, and whether the release holds features of it. */
+  layers: `SELECT t."layerId" AS "layerId", l."enabled" AS "bindingEnabled", l."status" AS "bindingStatus", l."visibility" AS "bindingVisibility",
+  EXISTS (SELECT 1 FROM "jenan_map"."feature" f WHERE f."releaseId" = $1::uuid AND f."layerId" = t."layerId") AS "hasFeatures"
+FROM unnest($2::text[]) AS t("layerId")
+LEFT JOIN "jenan_map"."release_layer" l ON l."releaseId" = $1::uuid AND l."layerId" = t."layerId"
+ORDER BY t."layerId" COLLATE "C"`,
+
+  // ------------------------------------------------------------------------------------------------------------------- geometry
+  /** $1 GeoJSON texts. */
+  geometryChecks: `SELECT t."ordinal"::int AS "ordinal", ST_IsValid(g."geom") AS "valid", ST_IsValidReason(g."geom") AS "reason"
+FROM unnest($1::text[]) WITH ORDINALITY AS t("geojson", "ordinal")
+CROSS JOIN LATERAL (SELECT ST_SetSRID(ST_GeomFromGeoJSON(t."geojson"), 4326) AS "geom") g
+ORDER BY t."ordinal"`,
+
+  // ------------------------------------------------------------------------------------------------------------------- locating
+  /**
+   * $1 release id, $2 GeoJSON of the target. One row: the representative point, whether a boundary exists, whether it covers or touches the
+   * target and, for an area that is only partly covered, the covered fraction of its area (computed on the sphere, only in that case).
+   */
+  locateCoverage: `WITH target AS (
+  SELECT ST_SetSRID(ST_GeomFromGeoJSON($2::text), 4326) AS geom
+), anchor AS (
+  SELECT t.geom, ST_PointOnSurface(t.geom) AS point, (ST_Dimension(t.geom) = 2) AS "isArea" FROM target t
+)
+SELECT ST_X(a.point) AS "anchorLongitude", ST_Y(a.point) AS "anchorLatitude",
+  b."id" IS NOT NULL AS "hasBoundary",
+  COALESCE(ST_Covers(b."geometry", a.geom), false) AS "covers",
+  COALESCE(ST_Intersects(b."geometry", a.geom), false) AS "intersects",
+  CASE
+    WHEN b."id" IS NULL OR NOT a."isArea" THEN NULL
+    WHEN ST_Covers(b."geometry", a.geom) OR NOT ST_Intersects(b."geometry", a.geom) THEN NULL
+    ELSE ST_Area(ST_CollectionExtract(ST_Intersection(ST_MakeValid(ST_ClipByBox2D(b."geometry", ST_Envelope(a.geom))), a.geom), 3)::geography) / NULLIF(ST_Area(a.geom::geography), 0)
+  END AS "fraction"
+FROM anchor a
+LEFT JOIN "jenan_map"."boundary" b ON b."releaseId" = $1::uuid`,
+
+  /**
+   * $1 release id, $2 GeoJSON of the target, $3 levels (layer ids), $4 rows to keep per level. The administrative polygons that intersect the
+   * target, those covering its representative point first. The edge distance is measured only for the units that cover that point.
+   */
+  locateUnits: `WITH target AS (
+  SELECT ST_SetSRID(ST_GeomFromGeoJSON($2::text), 4326) AS geom
+), anchor AS (
+  SELECT t.geom, ST_PointOnSurface(t.geom) AS point FROM target t
+), hits AS (
+  SELECT f."layerId" AS "level", f."id"::text AS "id", f."label" AS "label",
+    ST_Covers(f."geometry", a.point) AS "coversAnchor", ST_Covers(f."geometry", a.geom) AS "coversTarget",
+    f."geometry" AS "unit", a.geom AS "target"
+  FROM "jenan_map"."feature" f
+  CROSS JOIN anchor a
+  WHERE f."releaseId" = $1::uuid AND f."layerId" = ANY($3::text[]) AND ST_Intersects(f."geometry", a.geom)
+), ranked AS (
+  SELECT h.*, row_number() OVER (PARTITION BY h."level" ORDER BY h."coversAnchor" DESC, h."label" COLLATE "C", h."id") AS "rank"
+  FROM hits h
+)
+SELECT r."level" AS "level", r."id" AS "id", r."label" AS "label", r."coversAnchor" AS "coversAnchor", r."coversTarget" AS "coversTarget",
+  CASE WHEN r."coversAnchor" THEN ST_Distance(ST_Boundary(r."unit")::geography, r."target"::geography) END AS "edgeDistanceMeters",
+  r."rank"::int AS "rank"
+FROM ranked r
+WHERE r."rank" <= $4::int
+ORDER BY r."level" COLLATE "C", r."rank"`,
+
+  // ------------------------------------------------------------------------------------------------------------------- nearest
+  /**
+   * $1 release id, $2 layer id, $3 GeoJSON of the target, $4 ring in metres, $5 pattern every recognized source id of the layer matches,
+   * $6 pattern of the wanted kind, $7 rows to keep. Rows of the part "match" are the nearest features of the wanted kind within the ring; the
+   * single row of the part "unrecognized" counts the features in the ring whose source id the strict pattern does not recognize, and gives
+   * the distance of the nearest one. A feature whose kind cannot be read is never matched and never skipped silently.
+   */
+  nearest: `WITH target AS (
+  SELECT ST_SetSRID(ST_GeomFromGeoJSON($3::text), 4326)::geography AS geog
+), near AS (
+  SELECT f."id"::text AS "id", f."label" AS "label", f."sourceId" AS "sourceId", ST_Distance(f."geometry"::geography, t.geog) AS "distance"
+  FROM "jenan_map"."feature" f
+  CROSS JOIN target t
+  WHERE f."releaseId" = $1::uuid AND f."layerId" = $2::text AND ST_DWithin(f."geometry"::geography, t.geog, $4::float8)
+), matched AS (
+  SELECT n."id", n."label", n."sourceId", n."distance"
+  FROM near n
+  WHERE n."sourceId" ~ $6::text
+  ORDER BY n."distance", n."id"
+  LIMIT $7::int
+), stray AS (
+  SELECT count(*)::int AS "count", min(n."distance") AS "nearest"
+  FROM near n
+  WHERE n."sourceId" IS NULL OR n."sourceId" !~ $5::text
+)
+SELECT 'match' AS "part", m."id" AS "id", m."label" AS "label", m."sourceId" AS "sourceId", m."distance" AS "distance", NULL::int AS "count" FROM matched m
+UNION ALL
+SELECT 'unrecognized', NULL, NULL, NULL, s."nearest", s."count" FROM stray s
+ORDER BY "part", "distance", "id"`,
+} as const;
+
+export type QueryName = keyof typeof QUERIES;
