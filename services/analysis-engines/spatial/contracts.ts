@@ -72,11 +72,25 @@ const resolvedParametersSchema = z.object({
 }).strict();
 export type SpatialParameters = z.infer<typeof resolvedParametersSchema>;
 
-/** Pins a role to a specific dataset. Without a pin the engine discovers the published dataset for the role. */
+/** A Data Center type key, as the Data Center names its types (`geojson`). */
+export const dataCenterTypeKeySchema = z.string().regex(/^[a-z][a-z0-9._-]{1,79}$/, "A Data Center type key such as geojson");
+
+/**
+ * Pins a role to a specific dataset. Without a pin the engine discovers the published dataset for the role.
+ *
+ * A Data Center selection names either an exact version, which is used as given and never replaced by another, or a type, whose preferred
+ * published version as of an instant (the evaluation instant when none is given) the Data Center's written selection policy chooses.
+ */
+const dataCenterSelectionSchema = z.object({
+  source: z.literal("DATA_CENTER"), versionId: identifierSchema.optional(), typeKey: dataCenterTypeKeySchema.optional(), asOf: timestampSchema.optional(),
+}).strict()
+  .refine((selection) => (selection.versionId === undefined) !== (selection.typeKey === undefined), "Name a version or a type, one of them")
+  .refine((selection) => selection.versionId === undefined || selection.asOf === undefined, "asOf applies to a selection by type; an exact version is used as given");
 const dataSelectionSchema = z.discriminatedUnion("source", [
-  z.object({ source: z.literal("DATA_CENTER"), versionId: identifierSchema }).strict(),
+  dataCenterSelectionSchema,
   z.object({ source: z.literal("MAP"), layerKey: identifierSchema, releaseId: identifierSchema.optional() }).strict(),
 ]);
+export type SpatialDataSelection = z.infer<typeof dataSelectionSchema>;
 const dataRolesSchema = z.record(roleSchema, dataSelectionSchema);
 
 interface RequestView {

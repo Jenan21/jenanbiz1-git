@@ -38,14 +38,16 @@ const backendUnavailable = (reason: string) => new EngineError("BACKEND_UNAVAILA
 const reasonOf = (error: unknown) => (error instanceof MapReadError ? error.kind : "UNKNOWN");
 
 /**
- * Reads the pins of the request. The Data Center cannot be read yet, so a pin to it is refused instead of being silently ignored. A pin to a
- * Map layer must name the layer the role is read from, and its release, if any, must be a release id.
+ * Reads the pins of the request. LOCATION_CONTEXT reads places from the Map, so a pin to a Data Center dataset for a place role is refused
+ * rather than silently replaced by Map data; a pin to a Map layer must name the layer the role is read from, and its release, if any, must
+ * be a release id. A pin for a role this analysis does not read (a point of interest, a road) is not used and not resolved, as for a role
+ * with no pin: the Data Center datasets those roles select are read by the analyses that measure them.
  */
 function readPins(request: SpatialNormalizedRequest, placeRoles: readonly string[]): Map<string, string | null> {
   const pins = new Map<string, string | null>();
   for (const [role, selection] of Object.entries(request.data.roles)) {
-    if (selection.source === "DATA_CENTER") throw new EngineError("INVALID_INPUT", { reason: "data_center_pin_not_supported", role: clip(role, 80) });
     if (!placeRoles.includes(role)) continue; // LOCATION_CONTEXT reads place roles only
+    if (selection.source === "DATA_CENTER") throw new EngineError("INVALID_INPUT", { reason: "data_center_pin_for_map_role", role: clip(role, 80) });
     if (selection.layerKey !== mapLayerForRole(role)) throw new EngineError("INVALID_INPUT", { reason: "map_pin_layer_mismatch", role: clip(role, 80) });
     if (selection.releaseId !== undefined && !UUID.test(selection.releaseId)) throw new EngineError("INVALID_INPUT", { reason: "map_pin_release_invalid", role: clip(role, 80) });
     pins.set(role, selection.releaseId ?? null);

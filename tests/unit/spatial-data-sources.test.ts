@@ -2,11 +2,13 @@ import { describe, expect, it } from "vitest";
 import { deriveInputGaps, engineInputSchema, gapSchema } from "@/services/analysis-engines/shared";
 import { DataCenterProviderError } from "@/services/analysis-engines/spatial/data-center-port";
 import { MAX_DATASET_FEATURES } from "@/services/analysis-engines/spatial/dataset-features";
-import { resolveSpatialDataSources, type DataSourceRequest } from "@/services/analysis-engines/spatial/data-sources";
+import { dataSourceRequestsOf, resolveSpatialDataSources, type DataSourceRequest } from "@/services/analysis-engines/spatial/data-sources";
+import { normalizeSpatialRequest } from "@/services/analysis-engines/spatial/normalize";
 import { buildDataCenterUsageIntents } from "@/services/analysis-engines/spatial/usage-intents";
 import {
   DC_OTHER_SHA, DC_OTHER_VERSION_ID, DC_SHA, DC_VERSION_ID, emptyDiscovery, FakeDataCenterPort, foundDiscovery, geoFeature, geoFeatures, makeReference, okContent, type FakeDataCenterBehaviour,
 } from "./support/spatial-fake-dc-port";
+import { baseRequest } from "./support/spatial-request-fixtures";
 
 const EVALUATED_AT = "2026-10-20T12:00:00.000Z";
 const exact = (role = "poi:hospital", versionId = DC_VERSION_ID): DataSourceRequest => ({ role, selection: { kind: "EXACT", versionId } });
@@ -228,5 +230,49 @@ describe("what a resolved version still says about itself", () => {
     // The port has two questions only, both reads: there is no way to record a usage through it.
     expect(Object.getOwnPropertyNames(FakeDataCenterPort.prototype).filter((name) => !["constructor", "answer", "callsOf"].includes(name)).sort()).toEqual(["discover", "readContent"]);
     expect(new Set(port.calls.map((call) => call.method))).toEqual(new Set(["discover", "readContent"]));
+  });
+});
+
+describe("the Data Center selections of a request, as requests for the resolver", () => {
+  const roles = (selections: Record<string, unknown>) => normalizeSpatialRequest(baseRequest({ parameters: { roles: Object.keys(selections) }, data: { roles: selections } } as never), { environment: "test", now: () => new Date(EVALUATED_AT) }).normalized.data.roles;
+  const geography = { countryCodes: ["SA"], boundingBox: { west: 46, south: 24, east: 47, north: 25 } };
+
+  it("turns an exact version and a type as of an instant into the selections the resolver reads, in role order", () => {
+    const requests = dataSourceRequestsOf(roles({
+      "poi:school": { source: "DATA_CENTER", typeKey: "geojson", asOf: "2026-06-01T00:00:00Z" }, "poi:hospital": { source: "DATA_CENTER", versionId: DC_VERSION_ID }, "poi:clinic": { source: "DATA_CENTER", typeKey: "geojson" },
+    }));
+    expect(requests).toEqual([
+      { role: "poi:clinic", selection: { kind: "BY_TYPE", typeKey: "geojson" } },
+      { role: "poi:hospital", selection: { kind: "EXACT", versionId: DC_VERSION_ID } },
+      { role: "poi:school", selection: { kind: "BY_TYPE", typeKey: "geojson", asOf: "2026-06-01T00:00:00.000Z" } },
+    ]);
+  });
+
+  it("narrows a type to the place when given one, and never narrows an exact version, which is used as given", () => {
+    const requests = dataSourceRequestsOf(roles({ "poi:hospital": { source: "DATA_CENTER", versionId: DC_VERSION_ID }, "poi:school": { source: "DATA_CENTER", typeKey: "geojson" } }), { geography });
+    expect(requests).toEqual([
+      { role: "poi:hospital", selection: { kind: "EXACT", versionId: DC_VERSION_ID } },
+      { role: "poi:school", selection: { kind: "BY_TYPE", typeKey: "geojson", geography } },
+    ]);
+  });
+
+  it("leaves out the roles pinned to the Map and the roles with no pin, which are not the Data Center's to resolve", () => {
+    expect(dataSourceRequestsOf(roles({ "poi:hospital": { source: "MAP", layerKey: "pois" } }))).toEqual([]);
+    expect(dataSourceRequestsOf({})).toEqual([]);
+  });
+
+  it("refuses a selection that names neither a version nor a type, whatever produced it", () => {
+    expect(() => dataSourceRequestsOf({ "poi:hospital": { source: "DATA_CENTER" } } as never)).toThrow(expect.objectContaining({ code: "CONTRACT_VIOLATION" }));
+  });
+
+  it("resolves what the request selected, end to end through the port, and only that", async () => {
+    const requests = dataSourceRequestsOf(roles({ "poi:hospital": { source: "DATA_CENTER", versionId: DC_VERSION_ID }, "poi:school": { source: "DATA_CENTER", typeKey: "geojson", asOf: "2026-06-01T00:00:00Z" } }), { geography });
+    const { port, result } = resolve(requests);
+    const { sources } = await result;
+    expect(sources.map((source) => [source.role, source.status])).toEqual([["poi:hospital", "RESOLVED"], ["poi:school", "RESOLVED"]]);
+    expect(port.callsOf("discover").map((call) => call.request)).toEqual([
+      { kind: "EXACT", versionId: DC_VERSION_ID },
+      { kind: "BY_TYPE", typeKey: "geojson", asOf: "2026-06-01T00:00:00.000Z", geography },
+    ]);
   });
 });

@@ -198,6 +198,39 @@ describe("request", () => {
       expect(accepts(baseRequest({ data: { roles: { "poi:hospital": { source: "SQL", query: "select 1" } } } as never }))).toBe(false);
       expect(accepts(baseRequest({ data: { roles: { "poi:hospital": { source: "DATA_CENTER" } } } as never }))).toBe(false);
     });
+
+    describe("a Data Center selection", () => {
+      const pin = (selection: unknown) => baseRequest({ data: { roles: { "poi:hospital": selection } } } as never);
+
+      it("names an exact version, or a type optionally as of an instant, and nothing in between", () => {
+        expect(accepts(pin({ source: "DATA_CENTER", versionId: "cmvgpaznv0081j0t6fpqxjtqv" }))).toBe(true);
+        expect(accepts(pin({ source: "DATA_CENTER", typeKey: "geojson" }))).toBe(true);
+        expect(accepts(pin({ source: "DATA_CENTER", typeKey: "geojson", asOf: "2026-06-01T00:00:00.000Z" }))).toBe(true);
+        expect(accepts(pin({ source: "DATA_CENTER", typeKey: "geojson", asOf: "2026-06-01T00:00:00Z" }))).toBe(true);
+        expect(accepts(pin({ source: "DATA_CENTER", versionId: "v1", typeKey: "geojson" }))).toBe(false);
+        expect(accepts(pin({ source: "DATA_CENTER" }))).toBe(false);
+        expect(accepts(pin({ source: "DATA_CENTER", asOf: "2026-06-01T00:00:00.000Z" }))).toBe(false);
+      });
+
+      it("uses an exact version as given: no instant, no type", () => {
+        expect(accepts(pin({ source: "DATA_CENTER", versionId: "v1", asOf: "2026-06-01T00:00:00.000Z" }))).toBe(false);
+        expect(accepts(pin({ source: "DATA_CENTER", versionId: "bad id with spaces" }))).toBe(false);
+        expect(accepts(pin({ source: "DATA_CENTER", versionId: "x".repeat(129) }))).toBe(false);
+      });
+
+      it.each(["GeoJSON", "geo json", "g", "1geo", "x".repeat(81), "", "geo;drop"])("refuses %j as a type key", (typeKey) => {
+        expect(accepts(pin({ source: "DATA_CENTER", typeKey }))).toBe(false);
+      });
+
+      it.each(["2026-06-01T00:00:00+03:00", "2026-06-01", "yesterday", "", "2026-13-01T00:00:00Z"])("refuses %j as an instant: only a UTC instant", (asOf) => {
+        expect(accepts(pin({ source: "DATA_CENTER", typeKey: "geojson", asOf }))).toBe(false);
+      });
+
+      it("refuses anything else in a selection, such as a query or a geography of the caller's own", () => {
+        expect(accepts(pin({ source: "DATA_CENTER", typeKey: "geojson", geography: { countryCodes: ["SA"] } }))).toBe(false);
+        expect(accepts(pin({ source: "DATA_CENTER", typeKey: "geojson", query: "select 1" }))).toBe(false);
+      });
+    });
   });
 
   it("limits options to a correlation id and a UTC instant", () => {

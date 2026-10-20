@@ -35,11 +35,12 @@ describe("the engine's run: what it refuses before it reads anything", () => {
     expect((await resultOf(contextRequest(), {}, { budgetUnits: 5 })).limits).toEqual({ costUnits: 5, budgetUnits: 5 });
   });
 
-  it("refuses a pin to the Data Center, which this version cannot read, instead of ignoring it", async () => {
-    const request = contextRequest({ data: { roles: { "place:neighbourhood": { source: "DATA_CENTER", versionId: "dc-version-1" } } } });
-    const { port, result } = run(request);
-    expect(await failureOf(result)).toMatchObject({ code: "INVALID_INPUT", details: { reason: "data_center_pin_not_supported", role: "place:neighbourhood" } });
-    expect(port.calls).toEqual([]);
+  it("refuses a Data Center selection for a place role, which this analysis reads from the Map, instead of silently using Map data in its place", async () => {
+    for (const selection of [{ source: "DATA_CENTER", versionId: "dc-version-1" }, { source: "DATA_CENTER", typeKey: "geojson" }, { source: "DATA_CENTER", typeKey: "geojson", asOf: "2026-06-01T00:00:00.000Z" }]) {
+      const { port, result } = run(contextRequest({ data: { roles: { "place:neighbourhood": selection } } }));
+      expect(await failureOf(result)).toMatchObject({ code: "INVALID_INPUT", details: { reason: "data_center_pin_for_map_role", role: "place:neighbourhood" } });
+      expect(port.calls).toEqual([]);
+    }
   });
 
   it.each([
@@ -317,6 +318,23 @@ describe("the engine's run: pinned Map releases", () => {
     const { port, result } = run(request, behaviour());
     await result;
     expect(port.callsOf("describeMap")).toHaveLength(1);
+  });
+
+  it("neither reads nor lists a Data Center selection for a role it does not read: the figures and the inputs are those of the same request without it", async () => {
+    const roles = ["place:neighbourhood", "poi:hospital"];
+    const plain = await resultOf(contextRequest({}, roles), behaviour());
+    for (const selection of [{ source: "DATA_CENTER", versionId: "dc-version-1" }, { source: "DATA_CENTER", typeKey: "geojson", asOf: "2026-06-01T00:00:00Z" }]) {
+      const { port, result } = run(contextRequest({ data: { roles: { "poi:hospital": selection } } }, roles), behaviour());
+      const output = await result;
+      expect(output.results).toEqual(plain.results);
+      expect(output.inputs).toEqual(plain.inputs);
+      expect(output.gaps).toEqual(plain.gaps);
+      expect(output.inputs.some((input) => input.ref.system === "DATA_CENTER")).toBe(false);
+      expect(port.callsOf("describeMap")).toHaveLength(1);
+      // The selection is part of the request the run answered, so it is part of what was hashed.
+      expect(output.request.normalized.data.roles["poi:hospital"]).toMatchObject({ source: "DATA_CENTER" });
+      expect(output.determinism.requestHash).not.toBe(plain.determinism.requestHash);
+    }
   });
 });
 

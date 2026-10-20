@@ -22,7 +22,10 @@ import { grantDataCenterRobotAccess, revokeDataCenterRobotAccess } from "@/servi
 import { recordDataCenterQualityAssessment } from "@/services/data-center/quality";
 import type { DataCenterActor } from "@/services/data-center/contracts";
 import { createDataCenterProvider } from "@/services/analysis-engines/spatial/adapters/data-center-provider";
-import { resolveSpatialDataSources, type DataSourceRequest } from "@/services/analysis-engines/spatial/data-sources";
+import { SPATIAL_REQUEST_CONTRACT } from "@/services/analysis-engines/spatial/constants";
+import { targetGeography } from "@/services/analysis-engines/spatial/dataset-features";
+import { dataSourceRequestsOf, resolveSpatialDataSources, type DataSourceRequest } from "@/services/analysis-engines/spatial/data-sources";
+import { normalizeSpatialRequest } from "@/services/analysis-engines/spatial/normalize";
 import { engineInputSchema } from "@/services/analysis-engines/shared/contracts";
 
 const enabled = process.env.DATA_CENTER_DATABASE_TESTS === "1";
@@ -497,6 +500,52 @@ describe.skipIf(!enabled)("the Spatial Engine's Data Center provider on real Pos
       expect(result.sources.map((entry) => entry.status)).toEqual(["NO_COVERAGE", "NOT_IN_FORCE", "NOT_AVAILABLE"]);
       expect(result.gaps.map((gap) => gap.code).sort()).toEqual(["DATASET_NOT_AVAILABLE", "DATA_CENTER_NOT_IN_FORCE", "NO_COVERAGE"]);
       expect(result.inputs).toEqual([]);
+    });
+  });
+
+  // ------------------------------------------------------------------------------------------------- the selections of a request
+  const requestFor = (location: unknown, selections: Record<string, unknown>) => normalizeSpatialRequest({
+    contract: SPATIAL_REQUEST_CONTRACT, analyses: ["LOCATION_CONTEXT"], location, parameters: { roles: Object.keys(selections) }, data: { roles: selections },
+  }, { environment: "test", now: () => NOW }).normalized;
+
+  it("serves the selections of a request: an exact version, a type as of an instant, and a type narrowed to the place the request is about", async () => {
+    await isolated(async (tx, admin) => {
+      const source = await platformSource(admin);
+      const older = await dataset(tx, admin, source.id, { title: "Riyadh hospitals", sourcePublishedAt: ago(40), publishedAt: ago(30), coverage: { countryCodes: ["SA"], boundingBox: riyadhBox } });
+      const newer = await dataset(tx, admin, source.id, { title: "Riyadh hospitals 2026", sourcePublishedAt: ago(5), publishedAt: ago(2), coverage: { countryCodes: ["SA"], boundingBox: riyadhBox } });
+      const dubai = await dataset(tx, admin, source.id, { title: "Dubai hospitals", sourcePublishedAt: ago(1), publishedAt: ago(1), coverage: { countryCodes: ["AE"], boundingBox: dubaiBox } });
+      const request = requestFor({ type: "Point", coordinates: [46.67, 24.71] }, {
+        "poi:hospital": { source: "DATA_CENTER", versionId: older.version.id },
+        "poi:school": { source: "DATA_CENTER", typeKey: "geojson", asOf: ago(20).toISOString() },
+        "poi:clinic": { source: "DATA_CENTER", typeKey: "geojson" },
+      });
+      const requests = dataSourceRequestsOf(request.data.roles, { geography: targetGeography([request.location], 5000) });
+      const result = await resolveSpatialDataSources({ requests, port: providerFor(admin), evaluatedAt: EVALUATED_AT });
+
+      expect(result.sources.map((entry) => [entry.role, entry.status])).toEqual([["poi:clinic", "RESOLVED"], ["poi:hospital", "RESOLVED"], ["poi:school", "RESOLVED"]]);
+      // The clinic is the latest dataset that covers the place: Dubai's is newer still, and is never chosen for Riyadh.
+      expect(result.sources[0]).toMatchObject({ trace: { selectedVersionId: newer.version.id, candidateVersionIds: [newer.version.id, older.version.id] } });
+      // As of twenty days ago the newer dataset was not yet published, so the school dataset is the older one; the exact pin is the older one as given.
+      expect(result.sources[2]).toMatchObject({ trace: { selectedVersionId: older.version.id, asOfExplicit: true, candidateVersionIds: [older.version.id] } });
+      expect(result.sources[1]).toMatchObject({ trace: { mode: "EXACT", selectedVersionId: older.version.id } });
+      // Two roles resolve to the same version: one input serves both.
+      expect(result.inputs.map((input) => [input.ref.id, input.roles])).toEqual([[older.version.id, ["poi:hospital", "poi:school"]], [newer.version.id, ["poi:clinic"]]].sort((a, b) => String(a[0]).localeCompare(String(b[0]))));
+      expect(JSON.stringify(result)).not.toContain(dubai.version.id);
+      expect(result.gaps.map((gap) => [gap.code, gap.subject])).toEqual([["DATA_CENTER_COMPETING_DATASETS", "poi:clinic"]]);
+    });
+  });
+
+  it("finds no dataset for a place nothing covers, by type, while an exact pin is used as given and states the coverage it declares", async () => {
+    await isolated(async (tx, admin) => {
+      const source = await platformSource(admin);
+      const riyadh = await dataset(tx, admin, source.id, { title: "Riyadh hospitals", coverage: { countryCodes: ["SA"], boundingBox: riyadhBox } });
+      const jeddah = { type: "Point", coordinates: [39.2, 21.5] };
+      const request = requestFor(jeddah, { "poi:hospital": { source: "DATA_CENTER", versionId: riyadh.version.id }, "poi:school": { source: "DATA_CENTER", typeKey: "geojson" } });
+      const requests = dataSourceRequestsOf(request.data.roles, { geography: targetGeography([request.location], 5000) });
+      const result = await resolveSpatialDataSources({ requests, port: providerFor(admin), evaluatedAt: EVALUATED_AT });
+      expect(result.sources.map((entry) => [entry.role, entry.status])).toEqual([["poi:hospital", "RESOLVED"], ["poi:school", "NO_COVERAGE"]]);
+      expect(result.inputs[0]).toMatchObject({ roles: ["poi:hospital"], coverage: { boundingBox: riyadhBox } });
+      expect(result.gaps.map((gap) => [gap.code, gap.subject])).toEqual([["NO_COVERAGE", "poi:school"]]);
     });
   });
 

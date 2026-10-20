@@ -1,9 +1,11 @@
 import { compareText } from "../shared/canonical";
 import type { EngineInput } from "../shared/contracts";
+import { EngineError } from "../shared/errors";
 import { createGap, normalizeGaps, type Gap } from "../shared/gaps";
+import type { SpatialNormalizedRequest } from "./contracts";
 import { buildDataCenterInput } from "./data-center-inputs";
 import {
-  DataCenterProviderError, type DataCenterContentOutcome, type DataCenterDiscovery, type DataCenterDiscoveryStatus, type DataCenterSelection, type SpatialDataCenterPort,
+  DataCenterProviderError, type DataCenterContentOutcome, type DataCenterDiscovery, type DataCenterDiscoveryStatus, type DataCenterGeography, type DataCenterSelection, type SpatialDataCenterPort,
 } from "./data-center-port";
 import { checkDatasetFeatures, type SpatialDatasetFeature } from "./dataset-features";
 import { spatialGapCatalog } from "./gaps";
@@ -21,6 +23,27 @@ import { spatialGapCatalog } from "./gaps";
  *  - nothing is written, and no usage is recorded (see `usage-intents.ts`).
  */
 export interface DataSourceRequest { role: string; selection: DataCenterSelection }
+
+/**
+ * The Data Center selections of a normalized request as requests for the resolver, one per role, in role order (the selections for the Map
+ * are not the Data Center's to resolve). An exact version is requested exactly; a type keeps its instant, and is narrowed to the place the
+ * analysis is about when the caller gives that geography: the structured coverage the Data Center stores (country, region, box), so that a
+ * dataset that does not cover the place is never chosen for it.
+ */
+export function dataSourceRequestsOf(roles: SpatialNormalizedRequest["data"]["roles"], options: { geography?: DataCenterGeography } = {}): DataSourceRequest[] {
+  const requests: DataSourceRequest[] = [];
+  for (const [role, selection] of Object.entries(roles)) {
+    if (selection.source !== "DATA_CENTER") continue;
+    if (selection.versionId !== undefined) requests.push({ role, selection: { kind: "EXACT", versionId: selection.versionId } });
+    else if (selection.typeKey !== undefined) {
+      requests.push({
+        role,
+        selection: { kind: "BY_TYPE", typeKey: selection.typeKey, ...(selection.asOf === undefined ? {} : { asOf: selection.asOf }), ...(options.geography === undefined ? {} : { geography: options.geography }) },
+      });
+    } else throw new EngineError("CONTRACT_VIOLATION", { reason: "data_center_selection_empty" });
+  }
+  return requests.sort((first, second) => compareText(first.role, second.role));
+}
 
 export const dataSourceFailures = [
   "NOT_AVAILABLE", "NO_COVERAGE", "NOT_IN_FORCE", "TOO_MANY_CANDIDATES", "INTEGRITY_FAILED", "PIN_CONTENT_CHANGED", "NOT_SPATIAL", "CONTENT_INVALID", "BACKEND_UNAVAILABLE",

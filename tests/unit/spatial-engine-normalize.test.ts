@@ -92,6 +92,55 @@ describe("canonical form", () => {
   });
 });
 
+describe("Data Center selections", () => {
+  const select = (selection: unknown, extra: Record<string, unknown> = {}) => baseRequest({ data: { roles: { "poi:hospital": selection } }, ...extra } as never);
+  const selectionOf = (result: ReturnType<typeof normalize>) => result.normalized.data.roles["poi:hospital"];
+
+  it("writes the instant a type is selected as of in one canonical form, so two spellings are the same request", () => {
+    const short = normalize(select({ source: "DATA_CENTER", typeKey: "geojson", asOf: "2026-06-01T00:00:00Z" }));
+    const long = normalize(select({ source: "DATA_CENTER", typeKey: "geojson", asOf: "2026-06-01T00:00:00.000000Z" }));
+    expect(selectionOf(short)).toEqual({ source: "DATA_CENTER", typeKey: "geojson", asOf: "2026-06-01T00:00:00.000Z" });
+    expect(selectionOf(long)).toEqual(selectionOf(short));
+    expect(requestHash(long)).toBe(requestHash(short));
+    expect(requestHash(normalize(select({ source: "DATA_CENTER", typeKey: "geojson", asOf: "2026-06-02T00:00:00Z" })))).not.toBe(requestHash(short));
+  });
+
+  it("keeps an exact version and a type without an instant as they were given, and tells them apart in the hash", () => {
+    const exact = normalize(select({ source: "DATA_CENTER", versionId: "cmvgpaznv0081j0t6fpqxjtqv" }));
+    const byType = normalize(select({ source: "DATA_CENTER", typeKey: "geojson" }));
+    expect(selectionOf(exact)).toEqual({ source: "DATA_CENTER", versionId: "cmvgpaznv0081j0t6fpqxjtqv" });
+    expect(selectionOf(byType)).toEqual({ source: "DATA_CENTER", typeKey: "geojson" });
+    expect(requestHash(exact)).not.toBe(requestHash(byType));
+    expect(requestHash(byType)).not.toBe(requestHash(normalize(select({ source: "DATA_CENTER", typeKey: "geojson", asOf: "2026-06-01T00:00:00Z" }))));
+  });
+
+  it("refuses an instant later than the evaluation instant, with the clock's own minute of tolerance", () => {
+    const at = (asOf: string, extra: Record<string, unknown> = {}, allow = false) => normalize(select({ source: "DATA_CENTER", typeKey: "geojson", asOf }, extra), "test", { allowEvaluatedAtOverride: allow });
+    expect(selectionOf(at("2026-10-20T12:00:00.000Z"))).toMatchObject({ asOf: "2026-10-20T12:00:00.000Z" });
+    expect(selectionOf(at("2026-10-20T12:01:00.000Z"))).toMatchObject({ asOf: "2026-10-20T12:01:00.000Z" });
+    const error = failure(() => at("2026-10-20T12:01:00.001Z"));
+    expect(error).toMatchObject({ code: "INVALID_INPUT", status: 400 });
+    expect(String((error?.details as { first?: string }).first)).toContain("data.roles.poi:hospital.asOf: cannot be later than the evaluation instant");
+    // A replay that pins an earlier evaluation instant holds the selection to that instant, not to the clock.
+    const pinned = { options: { evaluatedAt: "2026-06-01T00:00:00.000Z" } };
+    expect(selectionOf(at("2026-06-01T00:00:00.000Z", pinned, true))).toMatchObject({ asOf: "2026-06-01T00:00:00.000Z" });
+    expect(failure(() => at("2026-06-02T00:00:00.000Z", pinned, true))).toMatchObject({ code: "INVALID_INPUT" });
+  });
+
+  it("normalizes to itself", () => {
+    const first = normalize(select({ source: "DATA_CENTER", typeKey: "geojson", asOf: "2026-06-01T00:00:00Z" }));
+    expect(normalizedSpatialRequestSchema.safeParse(first.normalized).success).toBe(true);
+    expect(normalize(first.normalized).normalized).toEqual(first.normalized);
+  });
+
+  it("does not modify the request it was given", () => {
+    const input = select({ source: "DATA_CENTER", typeKey: "geojson", asOf: "2026-06-01T00:00:00Z" });
+    const before = structuredClone(input);
+    normalize(input);
+    expect(input).toEqual(before);
+  });
+});
+
 describe("map layer policy", () => {
   it("is registered-only in production and allows unregistered layers elsewhere, by default", () => {
     expect(defaultMapLayerPolicy("production")).toBe("REGISTERED_ONLY");

@@ -2,7 +2,7 @@ import { compareText } from "../shared/canonical";
 import { EngineError } from "../shared/errors";
 import type { EngineEnvironment } from "../shared/states";
 import { DEFAULT_CLUSTER, DEFAULT_GRID, DEFAULT_MAX_SEARCH_METERS, DEFAULT_NEAREST_COUNT, DEFAULT_RADII_METERS, spatialAnalyses } from "./constants";
-import { normalizedSpatialRequestSchema, spatialRequestSchema, type SpatialNormalizedRequest } from "./contracts";
+import { normalizedSpatialRequestSchema, spatialRequestSchema, type SpatialDataSelection, type SpatialNormalizedRequest } from "./contracts";
 import { resolveMapLayerPolicy, type MapLayerPolicy } from "./policy";
 
 export interface NormalizeOptions {
@@ -34,6 +34,19 @@ function invalid(first: string, issues = 1): never {
 }
 
 /**
+ * The canonical form of a selection: the instant a Data Center type is selected as of is written the one way (`toISOString`), so that two
+ * spellings of the same instant hash the same, and it cannot lie after the evaluation instant (a selection "as of" a time that has not
+ * come is not a selection of anything that was in force).
+ */
+function canonicalSelection(role: string, selection: SpatialDataSelection, evaluatedAt: string): SpatialDataSelection {
+  if (selection.source !== "DATA_CENTER" || selection.asOf === undefined) return selection;
+  const instant = Date.parse(selection.asOf);
+  if (Number.isNaN(instant)) return invalid(`data.roles.${role}.asOf: not a valid instant`);
+  if (instant > Date.parse(evaluatedAt) + FUTURE_TOLERANCE_MS) return invalid(`data.roles.${role}.asOf: cannot be later than the evaluation instant`);
+  return { ...selection, asOf: new Date(instant).toISOString() };
+}
+
+/**
  * Validates a request and turns it into its canonical form: defaults filled in, radii sorted ascending, roles and analyses sorted and
  * de-duplicated (analyses in the order of the engine), candidates sorted by id. Two requests that ask for the same analysis normalize
  * to the same object, so they have the same hash.
@@ -56,6 +69,8 @@ export function normalizeSpatialRequest(input: unknown, options: NormalizeOption
 
   const defaultsApplied: string[] = [];
   if (request.mapLayerPolicy === undefined) defaultsApplied.push("mapLayerPolicy");
+  const evaluatedAt = pinned ?? now.toISOString();
+  const dataRoles = Object.fromEntries(Object.entries(request.data?.roles ?? {}).map(([role, selection]) => [role, canonicalSelection(role, selection, evaluatedAt)]));
   const parameters = request.parameters ?? {};
   const orDefault = <T>(name: string, value: T | undefined, fallback: T): T => {
     if (value !== undefined) return value;
@@ -79,7 +94,7 @@ export function normalizeSpatialRequest(input: unknown, options: NormalizeOption
       cluster: orDefault("cluster", parameters.cluster, { epsMeters: DEFAULT_CLUSTER.epsMeters, minPoints: DEFAULT_CLUSTER.minPoints }),
       grid: orDefault("grid", parameters.grid, { cellMeters: DEFAULT_GRID.cellMeters }),
     },
-    data: { roles: request.data?.roles ?? {} },
+    data: { roles: dataRoles },
   };
   const checked = normalizedSpatialRequestSchema.safeParse(normalized);
   if (!checked.success) throw new EngineError("CONTRACT_VIOLATION", { reason: "normalized_request_invalid", first: checked.error.issues[0]?.message ?? "invalid" });
@@ -87,7 +102,7 @@ export function normalizeSpatialRequest(input: unknown, options: NormalizeOption
   return {
     normalized: checked.data,
     requestId: request.options?.requestId ?? null,
-    evaluatedAt: pinned ?? now.toISOString(),
+    evaluatedAt,
     defaultsApplied: defaultsApplied.sort(compareText),
     mapLayerPolicy,
   };
