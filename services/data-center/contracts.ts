@@ -39,6 +39,8 @@ export const itemSchema = z.object({
   sourcePublishedAt: z.iso.datetime().optional(), expiresAt: z.iso.datetime().optional(),
   effectiveFrom: z.iso.datetime().optional(), effectiveTo: z.iso.datetime().optional(),
   origin: z.enum(["HUMAN", "AI", "IMPORT", "CALCULATION", "ACADEMY"]).default("HUMAN"),
+  // Versions this one was derived from; stored as lineage rows with real foreign keys.
+  upstreamVersionIds: z.array(id).max(20).default([]),
 }).strict();
 export const versionSchema = itemSchema.omit({ sourceId: true, typeKey: true, layer: true }).extend({ itemId: id, reason: text(2000) });
 export const commandSchema = z.discriminatedUnion("action", [

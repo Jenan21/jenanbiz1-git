@@ -32,6 +32,7 @@ const fieldLabels: Record<string, string> = {
   attribution: "نص الإسناد", attributionRequired: "الإسناد إلزامي",
   robotId: "معرّف الروبوت", principalId: "الحساب الذي يعمل به الروبوت", roleKey: "دور الروبوت", access: "نوع الوصول",
   grantedById: "مانح الوصول", revokedAt: "تاريخ السحب", revokedById: "ساحب الوصول", revokeReason: "سبب السحب",
+  upstream: "الإصدارات المصدرية (الاشتقاق)", upstreamVersionId: "معرّف الإصدار المصدري",
 };
 
 export function RecordDetails({ record }: { record: DataCenterRecord }) {

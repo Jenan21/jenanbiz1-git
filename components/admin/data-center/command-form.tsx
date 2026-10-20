@@ -43,6 +43,7 @@ export const DATA_CENTER_COMMANDS: Record<string, CommandDefinition> = {
     input("missionContexts", "سياقات المهام (مفصولة بفواصل)", { optional: true }),
     input("requiredPermission", "صلاحية الاسترجاع المطلوبة", { optional: true }),
     input("provenance", "المراجع: JSON [{label, reference, kind}]", { kind: "textarea", optional: true }),
+    input("upstreamVersionIds", "معرّفات الإصدارات التي اشتُق منها هذا الإصدار (مفصولة بفواصل)", { optional: true }),
   ] },
   type: { action: "register-type", title: "تسجيل نوع", fields: [
     input("key", "مفتاح النوع (حروف لاتينية صغيرة)"), input("label", "اسم النوع"),
@@ -62,6 +63,7 @@ export const DATA_CENTER_COMMANDS: Record<string, CommandDefinition> = {
     input("missionContexts", "سياقات المهام (مفصولة بفواصل)", { optional: true }),
     input("requiredPermission", "صلاحية الاسترجاع المطلوبة", { optional: true }),
     input("provenance", "المراجع: JSON [{label, reference, kind}]", { kind: "textarea", optional: true }),
+    input("upstreamVersionIds", "معرّفات الإصدارات التي اشتُق منها هذا الإصدار (مفصولة بفواصل)", { optional: true }),
   ] },
   transition: { action: "transition-item", title: "تغيير حالة السجل", fields: [
     input("status", "الحالة الجديدة", { options: ["IN_REVIEW", "APPROVED", "PUBLISHED", "ARCHIVED", "DRAFT"] }), reason,
@@ -123,7 +125,7 @@ export function commandPayload(form: FormData, definition: CommandDefinition, fi
     if (["allowExport", "allowRetrieval", "requiresIndependentReview", "attributionRequired"].includes(field.name)) payload[field.name] = value === "true";
     else if (field.kind === "number") payload[field.name] = Number(value);
     else if (field.kind === "datetime-local") payload[field.name] = new Date(value).toISOString();
-    else if (["specialties", "missionContexts"].includes(field.name)) payload[field.name] = value.split(/[,،]/).map((part) => part.trim()).filter(Boolean);
+    else if (["specialties", "missionContexts", "upstreamVersionIds"].includes(field.name)) payload[field.name] = value.split(/[,،]/).map((part) => part.trim()).filter(Boolean);
     else if (field.name === "provenance") payload[field.name] = JSON.parse(value);
     else payload[field.name] = value;
   }

@@ -4422,6 +4422,8 @@ model DataCenterVersion {
   imports           DataCenterImport[]
   academyReleases   DataCenterAcademyRelease[]
   evidenceLinks     DataCenterEvidenceLink[]
+  upstream          DataCenterVersionLineage[] @relation("DataCenterLineageVersion")
+  downstream        DataCenterVersionLineage[] @relation("DataCenterLineageUpstream")
 
   @@unique([itemId, number])
   @@index([createdAt])
@@ -4579,4 +4581,18 @@ model DataCenterRobotGrant {
 
   @@index([principalId, robotId, missionId, revokedAt])
   @@index([sourceId])
+}
+
+// Directed "derived from" edge between two immutable versions. Rows are append-only and are written only while the downstream
+// version is being created; the DataCenterVersionLineage_acyclic trigger then makes cycles impossible.
+model DataCenterVersionLineage {
+  id                String            @id @default(cuid())
+  versionId         String
+  version           DataCenterVersion @relation("DataCenterLineageVersion", fields: [versionId], references: [id], onDelete: Restrict, onUpdate: NoAction)
+  upstreamVersionId String
+  upstreamVersion   DataCenterVersion @relation("DataCenterLineageUpstream", fields: [upstreamVersionId], references: [id], onDelete: Restrict, onUpdate: NoAction)
+  createdAt         DateTime          @default(now())
+
+  @@unique([versionId, upstreamVersionId])
+  @@index([upstreamVersionId])
 }

@@ -10,6 +10,18 @@ export async function auditDataCenter(tx: DbExecutor, actor: DataCenterActor, ac
 export async function lockDataCenterItem(tx: DbExecutor, itemId: string) {
   await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${`data-center:${itemId}`}))`;
 }
+// Locale-independent ordering, so lock order and canonical hashing never depend on the host's collation.
+const byCodePoint = (a: string, b: string) => (a < b ? -1 : a > b ? 1 : 0);
+/** Records "derived from" edges for a version that is being created. Upstream versions must be readable by the actor. */
+async function linkUpstreamVersions(tx: DbExecutor, versionId: string, upstreamVersionIds: string[], actor: DataCenterActor) {
+  const ids = [...new Set(upstreamVersionIds)].sort(byCodePoint);
+  if (!ids.length) return ids;
+  const upstream = await tx.dataCenterVersion.findMany({ where: { id: { in: ids } }, select: { id: true, item: { select: { source: true } } } });
+  if (upstream.length !== ids.length) throw new DataCenterError("UPSTREAM_VERSION_NOT_FOUND", 404);
+  for (const version of upstream) await assertSourceAccess(version.item.source, actor, false, tx);
+  await tx.dataCenterVersionLineage.createMany({ data: ids.map((upstreamVersionId) => ({ versionId, upstreamVersionId })) });
+  return ids;
+}
 export async function getAccessibleItem(tx: DbExecutor, actor: DataCenterActor, itemId: string, write = false) {
   const item = await tx.dataCenterItem.findUnique({ where: { id: itemId }, include: { source: true, type: true } });
   if (!item) throw new DataCenterError("ITEM_NOT_FOUND", 404);
@@ -45,8 +57,9 @@ export async function createDataCenterItemInTransaction(tx: DbExecutor, input: C
   const item = await tx.dataCenterItem.create({ data: { sourceId: source.id, typeKey: type.key, layer: type.layer, title: data.title, createdById: actor.id } });
   const version = await tx.dataCenterVersion.create({ data: versionData(data, item.id, 1, actor, source.freshnessDays, source.kind) });
   if (data.provenance.length) await tx.dataCenterEvidenceLink.createMany({ data: data.provenance.map((p) => ({ versionId: version.id, kind: p.kind, reference: p.reference, label: p.label, linkedById: actor.id })), skipDuplicates: true });
+  const upstreamVersionIds = await linkUpstreamVersions(tx, version.id, data.upstreamVersionIds, actor);
   await tx.dataCenterEvent.create({ data: { itemId: item.id, version: 1, toStatus: "DRAFT", actorId: actor.id, reason: "Initial proposal; review required" } });
-  await auditDataCenter(tx, actor, "item.created", item.id, { versionId: version.id, evidenceStatus: version.evidenceStatus });
+  await auditDataCenter(tx, actor, "item.created", item.id, { versionId: version.id, evidenceStatus: version.evidenceStatus, upstreamVersionIds });
   return { ...item, version };
 }
 export async function createDataCenterItem(input: CreateItemInput, actor: DataCenterActor) {
@@ -63,8 +76,11 @@ function versionData(data: ReturnType<typeof itemSchema.parse> | ReturnType<type
     specialties: data.specialties, missionContexts: data.missionContexts, requiredPermission: data.requiredPermission ?? null,
     sourcePublishedAt: sourcePublishedAt?.toISOString() ?? null, expiresAt: expiresAt?.toISOString() ?? null,
     effectiveFrom: effectiveFrom?.toISOString() ?? null, effectiveTo: effectiveTo?.toISOString() ?? null };
+  const upstreamVersionIds = [...new Set(data.upstreamVersionIds)].sort(byCodePoint);
+  // Optional snapshot fields join the hash only when present, so versions without them keep their original checksum.
+  const hashed = { ...normalized, ...(upstreamVersionIds.length ? { upstreamVersionIds } : {}) };
   return { ...normalized, itemId, number, sourcePublishedAt, expiresAt, effectiveFrom, effectiveTo,
-    checksum: createHash("sha256").update(JSON.stringify(normalized)).digest("hex"), createdById: actor.id,
+    checksum: createHash("sha256").update(JSON.stringify(hashed)).digest("hex"), createdById: actor.id,
     confidence: deterministicConfidence({ evidenceStatus: data.evidenceStatus, provenanceCount: data.provenance.length, sourcePublishedAt, freshnessDays, sourceKind, origin: data.origin, expiresAt,
       completeness: 4 + (data.provenance.length ? 2 : 0) + (sourcePublishedAt ? 2 : 0) + (effectiveFrom || effectiveTo ? 2 : 0), consistency: 0 }) };
 }
@@ -78,9 +94,10 @@ export async function createDataCenterVersion(input: zVersionInput, actor: DataC
     assertEvidence(data, actor);
     const version = await tx.dataCenterVersion.create({ data: versionData(data, item.id, item.currentVersion + 1, actor, item.source.freshnessDays, item.source.kind) });
     if (data.provenance.length) await tx.dataCenterEvidenceLink.createMany({ data: data.provenance.map((p) => ({ versionId: version.id, kind: p.kind, reference: p.reference, label: p.label, linkedById: actor.id })), skipDuplicates: true });
+    const upstreamVersionIds = await linkUpstreamVersions(tx, version.id, data.upstreamVersionIds, actor);
     const updatedItem = await tx.dataCenterItem.update({ where: { id: item.id }, data: { currentVersion: version.number, title: data.title, status: "DRAFT", revision: { increment: 1 } } });
     await tx.dataCenterEvent.create({ data: { itemId: item.id, version: version.number, fromStatus: item.status, toStatus: "DRAFT", actorId: actor.id, reason: data.reason } });
-    await auditDataCenter(tx, actor, "version.created", item.id, { versionId: version.id, reason: data.reason });
+    await auditDataCenter(tx, actor, "version.created", item.id, { versionId: version.id, reason: data.reason, upstreamVersionIds });
     return { ...version, item: updatedItem };
   });
 }
@@ -191,7 +208,7 @@ export async function linkDataCenterEvidence(input: { versionId: string; evidenc
 export async function getDataCenterItem(itemId: string, actor: DataCenterActor) {
   requireDataCenterAdmin(actor);
   const item = await getAccessibleItem(db, actor, itemId);
-  const versions = await db.dataCenterVersion.findMany({ where: { itemId }, orderBy: { number: "desc" }, take: 100, include: { reviews: true, evidenceLinks: true } });
+  const versions = await db.dataCenterVersion.findMany({ where: { itemId }, orderBy: { number: "desc" }, take: 100, include: { reviews: true, evidenceLinks: true, upstream: true } });
   return { ...item, versions, events: await db.dataCenterEvent.findMany({ where: { itemId }, take: 100, orderBy: { createdAt: "desc" } }) };
 }
 export async function getDataCenterOverview(actor: DataCenterActor) {

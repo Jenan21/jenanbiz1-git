@@ -17,7 +17,7 @@ vi.mock("@/lib/db", async (importOriginal) => {
   }) };
 });
 import { db } from "@/lib/db";
-import { createDataCenterItem, createDataCenterSource, reviewDataCenterItem, transitionDataCenterItem } from "@/services/data-center/service";
+import { createDataCenterItem, createDataCenterSource, createDataCenterVersion, getDataCenterItem, reviewDataCenterItem, transitionDataCenterItem } from "@/services/data-center/service";
 import { retrieveDataCenterContext } from "@/services/data-center/retrieval";
 import { grantDataCenterRobotAccess, revokeDataCenterRobotAccess } from "@/services/data-center/robot-grants";
 import type { DataCenterActor } from "@/services/data-center/contracts";
@@ -145,6 +145,43 @@ describe.skipIf(!enabled)("Data Center foundation on real PostgreSQL (always rol
         await rejected(tx, () => tx.dataCenterRobotGrant.create({ data: { ...base, grantedById: admin.id, expiresAt: new Date(Date.now() + 3_600_000), [column]: "missing" } }), pattern);
       await rejected(tx, () => tx.dataCenterRobotGrant.create({ data: { ...base, grantedById: admin.id, expiresAt: new Date(Date.now() - 1000), createdAt: new Date() } }), /DataCenterRobotGrant_validity_check/);
       await rejected(tx, () => tx.dataCenterRobotGrant.create({ data: { ...base, grantedById: admin.id, expiresAt: new Date(Date.now() + 3_600_000), roleKey: "  " } }), /DataCenterRobotGrant_text_check/);
+    });
+  });
+  it("stores version lineage as real foreign keys, hashes it, hides unreadable upstreams and keeps edges acyclic and immutable", async () => {
+    await isolated(async (tx, admin) => {
+      const source = await createDataCenterSource({ name: "Survey source", kind: "OFFICIAL", scope: "PLATFORM", owner: "Authority", license: "Open" }, admin);
+      const raw = await createDataCenterItem(dataset(source.id, "Raw survey", "raw survey rows"), admin);
+      const second = await createDataCenterItem(dataset(source.id, "Second input", "second input rows"), admin);
+      const derived = await createDataCenterItem(dataset(source.id, "Cleaned survey", "cleaned rows", { upstreamVersionIds: [raw.version.id, raw.version.id] }), admin);
+      const plain = await createDataCenterItem(dataset(source.id, "Cleaned survey", "cleaned rows"), admin);
+      expect((await tx.dataCenterVersionLineage.findMany({ where: { versionId: derived.version.id } })).map((edge) => edge.upstreamVersionId)).toEqual([raw.version.id]);
+      expect(await tx.dataCenterVersionLineage.count({ where: { versionId: plain.version.id } })).toBe(0);
+      expect(derived.version.checksum).not.toBe(plain.version.checksum);
+
+      const next = await createDataCenterVersion({ itemId: derived.id, title: "Cleaned survey v2", content: "cleaned rows v2", evidenceStatus: "ESTIMATED", reason: "Adds the second input", upstreamVersionIds: [second.version.id, raw.version.id] }, admin);
+      expect((await tx.dataCenterVersionLineage.findMany({ where: { versionId: next.id } })).map((edge) => edge.upstreamVersionId).sort()).toEqual([raw.version.id, second.version.id].sort());
+      const details = await getDataCenterItem(derived.id, admin);
+      expect(details.versions.find((version) => version.id === next.id)?.upstream).toHaveLength(2);
+      expect(await tx.auditLog.count({ where: { action: "data-center.version.created", entityId: derived.id } })).toBe(1);
+
+      await expect(createDataCenterItem(dataset(source.id, "Orphan", "x", { upstreamVersionIds: ["missing-version"] }), admin)).rejects.toMatchObject({ code: "UPSTREAM_VERSION_NOT_FOUND", status: 404 });
+      const viewer = await tx.user.create({ data: { email: `lineage-${randomUUID()}@example.test`, status: "ACTIVE" } });
+      const member: DataCenterActor = { id: viewer.id, systemRole: "USER", kind: "HUMAN" };
+      const hidden = await createDataCenterSource({ name: "Admin only", kind: "MANUAL", scope: "PRIVATE", owner: "Admin", license: "Internal" }, admin);
+      const hiddenItem = await createDataCenterItem(dataset(hidden.id, "Hidden input", "hidden rows"), admin);
+      const own = await createDataCenterSource({ name: "Member source", kind: "MANUAL", scope: "PRIVATE", owner: "Member", license: "Internal" }, member);
+      await expect(createDataCenterItem(dataset(own.id, "Leaky", "x", { upstreamVersionIds: [hiddenItem.version.id] }), member)).rejects.toMatchObject({ code: "SOURCE_NOT_FOUND" });
+      expect((await createDataCenterItem(dataset(own.id, "Allowed", "x", { upstreamVersionIds: [raw.version.id] }), member)).version.id).toBeTruthy();
+
+      const edge = (versionId: string, upstreamVersionId: string) => () => tx.dataCenterVersionLineage.create({ data: { versionId, upstreamVersionId } });
+      await rejected(tx, edge(plain.version.id, plain.version.id), /DataCenterVersionLineage_distinct_check/);
+      await rejected(tx, edge(derived.version.id, raw.version.id), /Unique constraint|DataCenterVersionLineage_versionId_upstreamVersionId_key/);
+      await rejected(tx, edge(plain.version.id, "missing-version"), /DataCenterVersionLineage_upstreamVersionId_fkey/);
+      await rejected(tx, edge("missing-version", raw.version.id), /DataCenterVersionLineage_versionId_fkey/);
+      await rejected(tx, edge(raw.version.id, derived.version.id), /lineage is fixed when a version is created/);
+      const stored = await tx.dataCenterVersionLineage.findFirstOrThrow({ where: { versionId: derived.version.id } });
+      await rejected(tx, () => tx.dataCenterVersionLineage.update({ where: { id: stored.id }, data: { upstreamVersionId: second.version.id } }), /immutable/i);
+      await rejected(tx, () => tx.dataCenterVersionLineage.delete({ where: { id: stored.id } }), /immutable/i);
     });
   });
 });
