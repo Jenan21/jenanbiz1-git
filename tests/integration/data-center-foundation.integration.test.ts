@@ -39,9 +39,12 @@ async function isolated(run: (tx: DbExecutor, admin: DataCenterActor) => Promise
   }, { timeout: 30_000 })).rejects.toBe(rollback);
 }
 // A failed statement aborts a PostgreSQL transaction, so every expected violation runs inside its own savepoint.
-async function rejected(tx: DbExecutor, work: () => Promise<unknown>, pattern: RegExp) {
+async function rejected(tx: DbExecutor, work: () => Promise<unknown>, pattern: RegExp, label?: string) {
   await tx.$executeRawUnsafe("SAVEPOINT dc_expected_failure");
-  try { await expect(work()).rejects.toThrow(pattern); } finally { await tx.$executeRawUnsafe("ROLLBACK TO SAVEPOINT dc_expected_failure"); }
+  try { await expect(work(), label).rejects.toThrow(pattern); } finally {
+    await tx.$executeRawUnsafe("ROLLBACK TO SAVEPOINT dc_expected_failure");
+    await tx.$executeRawUnsafe("RELEASE SAVEPOINT dc_expected_failure");
+  }
 }
 const sourceRow = (admin: DataCenterActor, over: Record<string, unknown> = {}) => ({ name: `S-${randomUUID()}`, kind: "MANUAL", scope: "PLATFORM" as const, ownerId: admin.id, owner: "Owner", license: "Open", ...over });
 async function publish(itemId: string, actor: DataCenterActor) {
@@ -281,6 +284,43 @@ describe.skipIf(!enabled)("Data Center foundation on real PostgreSQL (always rol
       await rejected(tx, () => tx.dataCenterQualityAssessment.update({ where: { id: measured.id }, data: { score: 1 } }), /immutable/i);
       await rejected(tx, () => tx.dataCenterQualityAssessment.delete({ where: { id: measured.id } }), /immutable/i);
       expect(await tx.dataCenterQualityAssessment.count({ where: { versionId: item.version.id } })).toBe(3);
+    });
+  });
+  it("grants organization-scoped access to a role only through explicit Data Center permission rows, and read access never allows writing", async () => {
+    await isolated(async (tx, admin) => {
+      const organization = await tx.organization.create({ data: { name: "Role org", slug: `role-${randomUUID()}` } });
+      const user = await tx.user.create({ data: { email: `analyst-${randomUUID()}@example.test`, status: "ACTIVE" } });
+      const member: DataCenterActor = { id: user.id, systemRole: "USER", kind: "HUMAN" };
+      const source = await createDataCenterSource({ name: "Org source", kind: "MANUAL", scope: "ORGANIZATION", organizationId: organization.id, owner: "Org", license: "Internal" }, admin);
+      const published = await createDataCenterItem(dataset(source.id, "Org balance sheet", "org balance sheet rows"), admin);
+      await publish(published.id, admin);
+      const visible = async () => (await retrieveDataCenterContext({ query: "balance" }, member)).rows.some((row) => row.itemId === published.id);
+      const draft = () => createDataCenterItem(dataset(source.id, "Analyst draft", "analyst draft rows"), member);
+
+      const role = await tx.role.create({ data: { organizationId: organization.id, name: "Analyst", key: `analyst-${randomUUID()}` } });
+      await tx.organizationMember.create({ data: { organizationId: organization.id, userId: user.id, roleId: role.id, status: "ACTIVE" } });
+      expect(await visible()).toBe(false);
+      await expect(draft()).rejects.toMatchObject({ code: "SOURCE_NOT_FOUND", status: 404 });
+
+      const grant = async (key: string) => {
+        const permission = await tx.permission.upsert({ where: { key }, update: {}, create: { key } });
+        await tx.rolePermission.create({ data: { roleId: role.id, permissionId: permission.id } });
+      };
+      await grant("data-center.read");
+      expect(await visible()).toBe(true);
+      await expect(draft()).rejects.toMatchObject({ code: "SOURCE_NOT_FOUND", status: 404 });
+
+      await grant("data-center.write");
+      const created = await draft();
+      expect(created).toMatchObject({ status: "DRAFT", sourceId: source.id });
+      expect(created.version).toMatchObject({ origin: "HUMAN", evidenceStatus: "ESTIMATED" });
+      await expect(createDataCenterItem(dataset(source.id, "Self-verified", "self verified rows", { evidenceStatus: "VERIFIED", provenance: [{ label: "x", reference: "x", kind: "SOURCE" }] }), member)).rejects.toMatchObject({ code: "VERIFICATION_REQUIRES_HUMAN_ADMIN_AND_EVIDENCE" });
+      await expect(transitionDataCenterItem({ itemId: created.id, status: "IN_REVIEW", reason: "Submit" }, member)).resolves.toMatchObject({ status: "IN_REVIEW" });
+      await expect(transitionDataCenterItem({ itemId: created.id, status: "APPROVED", reason: "Self approval" }, member)).rejects.toMatchObject({ code: "ADMIN_REQUIRED" });
+
+      await tx.organizationMember.update({ where: { organizationId_userId: { organizationId: organization.id, userId: user.id } }, data: { status: "SUSPENDED" } });
+      expect(await visible()).toBe(false);
+      await expect(draft()).rejects.toMatchObject({ code: "SOURCE_NOT_FOUND" });
     });
   });
   it("resolves Map references only for published, readable versions and lets a stored snapshot be checked against the Data Center", async () => {
