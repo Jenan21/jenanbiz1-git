@@ -48,6 +48,13 @@ describe("dc-version-selection-v1: which versions are in force as of an instant"
     expect(selectionExclusionReason(facts("a", { publishedAt: null }), NOW, true)).toBe("PUBLICATION_DATE_UNKNOWN");
     expect(selectionExclusionReason(facts("a", { publishedAt: null }), NOW, false)).toBeNull();
   });
+
+  it("compares nothing with a clock when no instant is given: the versions are judged as the Data Center serves them now", () => {
+    const everythingWrong = facts("a", { publishedAt: at("2026-11-01T00:00:00.000Z"), sourcePublishedAt: at("2026-12-01T00:00:00.000Z"), effectiveFrom: at("2026-11-01T00:00:00.000Z"), effectiveTo: at("2026-01-01T00:00:00.000Z"), expiresAt: at("2026-01-01T00:00:00.000Z") });
+    expect(selectionExclusionReason(everythingWrong, NOW, false)).toBeNull();
+    expect(selectionExclusionReason(everythingWrong, NOW, true)).not.toBeNull();
+    expect(rankVersions([everythingWrong], NOW, false)).toEqual({ ranked: [everythingWrong], excluded: [] });
+  });
 });
 
 describe("dc-version-selection-v1: which version is preferred", () => {
