@@ -1,8 +1,10 @@
 import { writeFileSync } from "node:fs";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { Client } from "pg";
+import { EngineError } from "@/services/analysis-engines/shared";
 import { runSpatialAnalysis, type RunSpatialOptions, type SpatialResult } from "@/services/analysis-engines/spatial";
 import { buildReadOnlyRoleStatements, PostgisMapReader } from "@/services/analysis-engines/spatial/adapters";
+import { findMapIndexProblems, parseMapSourceId, sourceIdPattern } from "@/services/analysis-engines/spatial/map-contract";
 import { contextRequest, expectNoVerdictsAndNoPercentages, gapCodes, gapsOf, metricsOf, statuses } from "../unit/support/spatial-run";
 import { copyDatabase, dropDatabase, dropRole, postgisTestsEnabled, realMapTemplate, scratchName, urlFor, withAdmin } from "./support/spatial-engine-db";
 import { point, rect } from "./support/synthetic-map";
@@ -14,6 +16,8 @@ import { point, rect } from "./support/synthetic-map";
  * queries cannot agree with itself.
  */
 const CLOCK = "2026-10-20T12:00:00.000Z";
+/** A failed run explains itself in the test report: the error code and the details the engine put on it, which are safe to print. */
+const withDetails = (error: unknown) => (error instanceof EngineError ? new Error(`${error.code} ${JSON.stringify(error.details)}`) : error);
 const databases: string[] = [];
 const roles: string[] = [];
 const readers: PostgisMapReader[] = [];
@@ -42,16 +46,21 @@ describe.runIf(postgisTestsEnabled && realMapTemplate !== "")("LOCATION_CONTEXT 
   const timings: Record<string, number[]> = {};
   const examples: Record<string, unknown> = {};
 
-  const engine = (request: unknown, options: Partial<RunSpatialOptions> = {}) => {
+  const engine = async (request: unknown, options: Partial<RunSpatialOptions> = {}) => {
     const reader = new PostgisMapReader({ connectionString: readOnlyUrl });
-    readers.push(reader);
-    return runSpatialAnalysis(reader, request, { environment: "production", clock: () => new Date(CLOCK), newRunId: () => "run-real", ...options });
+    try {
+      return await runSpatialAnalysis(reader, request, { environment: "production", clock: () => new Date(CLOCK), newRunId: () => "run-real", ...options });
+    } catch (error) {
+      throw withDetails(error);
+    } finally {
+      await reader.close();
+    }
   };
   /** A reader that stays open, for timing repeated runs on one pool. */
   const sharedEngine = () => {
     const reader = new PostgisMapReader({ connectionString: readOnlyUrl });
     readers.push(reader);
-    return (request: unknown) => runSpatialAnalysis(reader, request, { environment: "production", clock: () => new Date(CLOCK), newRunId: () => "run-real" });
+    return (request: unknown) => runSpatialAnalysis(reader, request, { environment: "production", clock: () => new Date(CLOCK), newRunId: () => "run-real" }).catch((error: unknown) => { throw withDetails(error); });
   };
   const timed = async (name: string, work: () => Promise<SpatialResult>) => {
     const started = performance.now();
@@ -275,6 +284,93 @@ describe.runIf(postgisTestsEnabled && realMapTemplate !== "")("LOCATION_CONTEXT 
     expect(metricsOf(result)["context.region"]?.status).toBe("COMPUTED");
     examples.remote = { location: chosen, ...summary(result) };
   });
+
+  // ------------------------------------------------------------------------------------------- the contract on the real data
+  it("satisfies the read contract: every table and column with its exact type, the role that cannot write, and the indexes the queries rely on", async () => {
+    const reader = new PostgisMapReader({ connectionString: readOnlyUrl });
+    readers.push(reader);
+    expect(await reader.capabilities()).toMatchObject({ roleCanWrite: false, mapSchemaReachable: true, contractProblems: [] });
+    const indexes = (await reference.query(`SELECT tablename AS "table", indexname AS name, indexdef AS definition FROM pg_indexes WHERE schemaname = 'jenan_map' AND tablename IN ('feature', 'boundary')`)).rows;
+    expect(findMapIndexProblems(indexes)).toEqual([]);
+  });
+
+  it("holds a source id the strict parser reads for every place, point of interest and road: 100% conformance, on the real data", async () => {
+    const kinds: Record<string, string[]> = {};
+    for (const layer of ["places", "pois", "roads"] as const) {
+      const total = Number((await reference.query(`SELECT count(*) AS n FROM jenan_map.feature WHERE "releaseId" = $1::uuid AND "layerId" = $2`, [releaseId, layer])).rows[0].n);
+      const matching = Number((await reference.query(`SELECT count(*) AS n FROM jenan_map.feature WHERE "releaseId" = $1::uuid AND "layerId" = $2 AND "sourceId" ~ $3`, [releaseId, layer, sourceIdPattern(layer)])).rows[0].n);
+      expect(total, `${layer} features`).toBeGreaterThan(0);
+      expect(matching, `${layer} source ids that match the strict pattern`).toBe(total);
+      const seen = new Set<string>();
+      let unparsed = 0;
+      for (const row of (await reference.query(`SELECT "sourceId" FROM jenan_map.feature WHERE "releaseId" = $1::uuid AND "layerId" = $2`, [releaseId, layer])).rows as Array<{ sourceId: string }>) {
+        const parsed = parseMapSourceId(layer, row.sourceId);
+        if (parsed.ok) seen.add(parsed.kind); else unparsed += 1;
+      }
+      expect(unparsed, `${layer} source ids the parser rejects`).toBe(0);
+      kinds[layer] = [...seen].sort();
+    }
+    expect(kinds.places).toEqual(["locality", "neighbourhood"]);
+    examples.sourceIdKinds = kinds;
+  }, 120_000);
+
+  it("never leaves a layer id empty, keeps it equal to the category, and holds the geometry types the engine measures against", async () => {
+    const rows = (await reference.query(
+      `SELECT "layerId", count(*)::int AS total, count(*) FILTER (WHERE "layerId" IS NULL OR "layerId" <> category)::int AS inconsistent, array_agg(DISTINCT GeometryType(geometry)) AS types
+       FROM jenan_map.feature WHERE "releaseId" = $1::uuid GROUP BY "layerId" ORDER BY 1`, [releaseId],
+    )).rows as Array<{ layerId: string; total: number; inconsistent: number; types: string[] }>;
+    expect(rows.every((row) => row.layerId !== null && row.inconsistent === 0)).toBe(true);
+    const types = Object.fromEntries(rows.map((row) => [row.layerId, [...row.types].sort()]));
+    expect(types.places).toEqual(["POINT"]);
+    expect(types.regions?.every((type) => type.includes("POLYGON"))).toBe(true);
+    expect(types.governorates?.every((type) => type.includes("POLYGON"))).toBe(true);
+    expect(rows.find((row) => row.layerId === "regions")?.total).toBe(13);
+  });
+
+  it("lists reviewed provenance for every layer the engine reads, describes the boundary as unofficial, and records the governorates as a data-only layer", async () => {
+    const reader = new PostgisMapReader({ connectionString: readOnlyUrl });
+    readers.push(reader);
+    const description = await reader.describeMap({ layers: ["regions", "governorates", "places", "pois", "roads"] });
+    expect(description.runtime).toEqual({ status: "enabled", publishedReleaseId: releaseId });
+    expect(description.release?.status).toBe("Published");
+    expect(description.layers.map((layer) => [layer.id, layer.provenance !== null, layer.hasFeatures])).toEqual([
+      ["regions", true, true], ["governorates", true, true], ["places", true, true], ["pois", true, true], ["roads", true, true],
+    ]);
+    expect(description.layers.find((layer) => layer.id === "governorates")?.binding).toBeNull();
+    expect(description.layers.filter((layer) => layer.id !== "governorates").every((layer) => layer.binding?.status === "ready")).toBe(true);
+    expect(description.boundary).toMatchObject({ countryCode: "SA", official: false, authorityText: expect.stringContaining("not a Saudi government authority") });
+    expect(description.boundary?.sha256).toMatch(/^[a-f0-9]{64}$/);
+  });
+
+  it("fails closed when a real place's source id changes shape: the answer for Riyadh becomes unavailable, not a different neighbourhood", async () => {
+    const target = (await reference.query(
+      `SELECT id::text AS id, "sourceId" AS "sourceId" FROM jenan_map.feature
+       WHERE "releaseId" = $1::uuid AND "layerId" = 'places' AND "sourceId" LIKE 'places:neighbourhood:%'
+       ORDER BY ST_Distance(geometry::geography, ST_SetSRID(ST_MakePoint(46.6753, 24.7136), 4326)::geography), id LIMIT 1`, [releaseId],
+    )).rows as Array<{ id: string; sourceId: string }>;
+    expect(target).toHaveLength(1);
+    const broken = (target[0] as { id: string; sourceId: string });
+    const asAdmin = new Client({ connectionString: adminUrl });
+    await asAdmin.connect();
+    try {
+      // This is the scratch copy: the Map's own guard against editing published data is lifted here, for this test only.
+      await asAdmin.query("ALTER TABLE jenan_map.feature DISABLE TRIGGER guard_feature");
+      await asAdmin.query(`UPDATE jenan_map.feature SET "sourceId" = $2 WHERE id = $1::uuid`, [broken.id, broken.sourceId.replace("places:neighbourhood:", "places:Neighbourhood:")]);
+      const result = await engine(contextRequest({ location: point(46.6753, 24.7136) }, ["place:neighbourhood"]));
+      const m = metricsOf(result);
+      expect(m["context.place:neighbourhood.nearest.distance"]).toMatchObject({ status: "NOT_COMPUTABLE", value: null, confidence: null });
+      expect(m["context.place:neighbourhood.nearest.name"]).toMatchObject({ status: "NOT_COMPUTABLE", value: null });
+      expect(gapsOf(result, "MAP_SOURCE_ID_UNRECOGNIZED")).toHaveLength(1);
+      expect(m["context.region"]).toMatchObject({ status: "COMPUTED", value: "Riyadh Region" });
+      examples.changedSourceId = summary(result);
+    } finally {
+      await asAdmin.query(`UPDATE jenan_map.feature SET "sourceId" = $2 WHERE id = $1::uuid`, [broken.id, broken.sourceId]);
+      await asAdmin.query("ALTER TABLE jenan_map.feature ENABLE TRIGGER guard_feature");
+      await asAdmin.end();
+    }
+    const restored = await engine(contextRequest({ location: point(46.6753, 24.7136) }, ["place:neighbourhood"]));
+    close(metricsOf(restored)["context.place:neighbourhood.nearest.distance"]?.value, 1236.2);
+  }, 120_000);
 
   // ------------------------------------------------------------------------------------------------------------- performance
   it("answers quickly on real data: repeated runs of the main scenarios, on one pool", async () => {

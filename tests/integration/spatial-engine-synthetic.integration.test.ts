@@ -40,11 +40,14 @@ describe.runIf(postgisTestsEnabled)("LOCATION_CONTEXT over a real PostGIS: the s
   let readOnlyUrl = "";
   let publishedId = "";
 
-  const engine = (request: unknown, options: Partial<RunSpatialOptions> & { url?: string } = {}) => {
+  const engine = async (request: unknown, options: Partial<RunSpatialOptions> & { url?: string } = {}) => {
     const { url = adminUrl, ...rest } = options;
     const reader = new PostgisMapReader({ connectionString: url });
-    readers.push(reader);
-    return runSpatialAnalysis(reader, request, { environment: "test", clock: () => new Date(CLOCK), newRunId: () => "run-1", ...rest });
+    try {
+      return await runSpatialAnalysis(reader, request, { environment: "test", clock: () => new Date(CLOCK), newRunId: () => "run-1", ...rest });
+    } finally {
+      await reader.close(); // one pool per run, closed with it, so the server's connections are never left to pile up
+    }
   };
   const analyse = (location: unknown, roles: string[] = [], extra: Record<string, unknown> = {}) => engine(contextRequest({ location, ...extra }, roles));
 

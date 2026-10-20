@@ -1,6 +1,6 @@
 import { randomBytes } from "node:crypto";
 import { Client } from "pg";
-import { afterAll, beforeAll, describe, expect, it } from "vitest";
+import { afterAll, afterEach, beforeAll, describe, expect, it } from "vitest";
 import {
   buildReadOnlyRoleStatements, openReadOnlySession, PostgisMapReader, type ReadOnlySession, type SessionPool,
 } from "@/services/analysis-engines/spatial/adapters";
@@ -38,6 +38,12 @@ async function newRole(database: string, tables: readonly string[] = MAP_CONTRAC
   }, database);
   return { role, url: urlFor(database, { user: role, password: secret }) };
 }
+
+afterEach(async () => {
+  // Each test owns the readers and sessions it opened; closing them here keeps the server's connection count flat for the whole file.
+  await Promise.allSettled(readers.splice(0).map((entry) => entry.close()));
+  await Promise.allSettled(sessions.splice(0).map((entry) => entry.close()));
+});
 
 afterAll(async () => {
   await Promise.allSettled(readers.map((entry) => entry.close()));
