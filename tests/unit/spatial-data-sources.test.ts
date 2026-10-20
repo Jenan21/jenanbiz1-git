@@ -29,7 +29,7 @@ describe("an exact Data Center pin", () => {
     expect(engineInputSchema.safeParse(source.input).success).toBe(true);
     expect(source.features).toHaveLength(3);
     expect(source.features.map((feature) => feature.index)).toEqual([0, 1, 2]);
-    expect(source.trace).toEqual({ mode: "EXACT", policy: "exact-version", asOf: null, asOfExplicit: false, discoveryStatus: "FOUND", selectedVersionId: DC_VERSION_ID, candidateVersionIds: [DC_VERSION_ID], notInForce: [] });
+    expect(source.trace).toEqual({ mode: "EXACT", policy: "exact-version", asOf: null, asOfExplicit: false, discoveryStatus: "FOUND", selectedVersionId: DC_VERSION_ID, candidateVersionIds: [DC_VERSION_ID], candidatesTruncated: false, notInForce: [] });
     expect(inputs).toEqual([source.input]);
     expect(gaps).toEqual([]);
     // Asked once for the version, then once for its content, pinned to the checksum discovery reported.
@@ -82,7 +82,7 @@ describe("a selection by type", () => {
     expect(port.callsOf("discover")[0]?.request).toEqual({ kind: "BY_TYPE", typeKey: "geojson", asOf: "2026-06-01T00:00:00.000Z" });
     expect(source.trace).toEqual({
       mode: "BY_TYPE", policy: "dc-version-selection-v1", asOf: "2026-06-01T00:00:00.000Z", asOfExplicit: true, discoveryStatus: "FOUND", selectedVersionId: DC_VERSION_ID,
-      candidateVersionIds: [DC_VERSION_ID, DC_OTHER_VERSION_ID], notInForce: [{ versionId: "late-version", reason: "NOT_PUBLISHED_AT_AS_OF" }],
+      candidateVersionIds: [DC_VERSION_ID, DC_OTHER_VERSION_ID], candidatesTruncated: false, notInForce: [{ versionId: "late-version", reason: "NOT_PUBLISHED_AT_AS_OF" }],
     });
     expect(inputs[0]?.limitations).toContain("Selected by the policy dc-version-selection-v1 among the published datasets of type geojson, as of 2026-06-01T00:00:00.000Z.");
     expect(gaps).toHaveLength(1);
@@ -94,6 +94,14 @@ describe("a selection by type", () => {
   it("says nothing about competitors when there are none", async () => {
     const { gaps } = await resolve([byType()], { discover: foundDiscovery(selected, { mode: "BY_TYPE", policy: "dc-version-selection-v1", asOf: EVALUATED_AT, candidates: [selected] }) }).result;
     expect(gaps).toEqual([]);
+  });
+
+  it("counts the datasets it chose among as a lower bound when the listing was cut, and says so in the trace", async () => {
+    const discovery = foundDiscovery(selected, { mode: "BY_TYPE", policy: "dc-version-selection-v1", asOf: EVALUATED_AT, candidates: [selected, competing, competing], truncated: true });
+    const { sources, gaps } = await resolve([byType()], { discover: discovery }).result;
+    expect(sources[0]).toMatchObject({ status: "RESOLVED", trace: { candidatesTruncated: true } });
+    expect(gaps[0]?.message.en).toContain("2+ other Data Center dataset(s) of type “geojson” were in force");
+    expect(gapSchema.safeParse(gaps[0]).success).toBe(true);
   });
 
   it.each<[string, "NOT_AVAILABLE" | "NO_COVERAGE" | "NOT_IN_FORCE" | "TOO_MANY_CANDIDATES", string, string]>([

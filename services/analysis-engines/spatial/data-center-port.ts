@@ -32,8 +32,10 @@ export interface DataCenterDiscovery {
   status: DataCenterDiscoveryStatus;
   /** The version chosen: the exact version, or the preferred of the versions in force. */
   selected: DataCenterMapReference | null;
-  /** By type: every version in force, the preferred first (including the selected one). */
+  /** By type: the versions in force, the preferred first (including the selected one), up to the Data Center's listing limit. */
   candidates: DataCenterMapReference[];
+  /** By type: more versions were in force than `candidates` lists. The selection is still the preferred of all of them. */
+  truncated: boolean;
   /** By type: readable matches that were not in force as of the instant, with the reason. */
   notInForce: Array<{ versionId: string; reason: string }>;
 }

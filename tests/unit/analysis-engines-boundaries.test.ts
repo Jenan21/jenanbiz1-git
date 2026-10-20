@@ -4,8 +4,9 @@ import { describe, expect, it } from "vitest";
 
 /**
  * The analysis engines are pure: they never read a database, a network, the clock or the environment on their own. Everything outside
- * their own tree reaches them through a contract or an injected port. Adapters that talk to PostGIS or to the Data Center arrive in later
- * milestones and are the only code allowed to import the database layer; until then this guard allows nothing beyond the list below.
+ * their own tree reaches them through a contract or an injected port. Two adapters sit behind those ports and are the only code allowed to
+ * touch anything outside the tree: the PostGIS Map adapter (the only importer of the `pg` driver) and the Data Center provider (the only
+ * importer of the Data Center's two read services, and never of a database). This guard allows nothing beyond what is listed below.
  */
 const root = join(process.cwd(), "services", "analysis-engines");
 const listFiles = (directory: string): string[] => readdirSync(directory).flatMap((name) => {
@@ -85,7 +86,9 @@ describe("analysis engine boundaries", () => {
   });
 
   describe("adapters", () => {
+    const dataCenterProviderPath = "spatial/adapters/data-center-provider.ts";
     const adapters = sources.filter((entry) => isAdapter(entry.path));
+    const databaseAdapters = adapters.filter((entry) => entry.path !== dataCenterProviderPath);
     const allowedAdapterPackages = new Set(["pg", "zod"]);
 
     it("exist only in the Spatial Engine's adapters directory", () => {
@@ -94,7 +97,7 @@ describe("analysis engine boundaries", () => {
     });
 
     it("import only pg, zod and the engine's own tree: never Prisma, the application's database layer, Projects, the Map's service, the Data Center or the framework", () => {
-      for (const adapter of adapters) {
+      for (const adapter of databaseAdapters) {
         for (const specifier of specifiersOf(adapter.text)) {
           if (specifier.startsWith(".")) expect(resolve(dirname(adapter.file), specifier).startsWith(root), `${adapter.path} imports ${specifier}`).toBe(true);
           else expect(allowedAdapterPackages.has(specifier), `${adapter.path} imports ${specifier}`).toBe(true);
@@ -117,6 +120,39 @@ describe("analysis engine boundaries", () => {
       for (const adapter of adapters) {
         expect(adapter.text, adapter.path).not.toMatch(/process\.env|Date\.now|new Date\(|fetch\s*\(|console\.|Math\.random/);
       }
+    });
+
+    describe("the Data Center provider", () => {
+      // The Data Center's two read services and the pure modules they share: the only way the engine reaches the Data Center.
+      const readServices = ["@/services/data-center/discovery", "@/services/data-center/version-content"];
+      const allowedAbsolute = new Set([...readServices, "@/services/data-center/contracts", "@/services/data-center/version-selection"]);
+      const provider = adapters.find((entry) => entry.path === dataCenterProviderPath);
+
+      it("exists, and no other adapter imports anything of the Data Center", () => {
+        expect(provider).toBeDefined();
+        for (const adapter of databaseAdapters) expect(specifiersOf(adapter.text).filter((specifier) => specifier.startsWith("@/services/data-center")), adapter.path).toEqual([]);
+      });
+
+      it("reaches the Data Center only through its two read services and their pure contracts, plus the engine's own tree", () => {
+        const specifiers = specifiersOf(provider?.text ?? "");
+        for (const service of readServices) expect(specifiers).toContain(service);
+        for (const specifier of specifiers) {
+          if (specifier.startsWith(".")) expect(resolve(dirname(provider?.file ?? ""), specifier).startsWith(root), `imports ${specifier}`).toBe(true);
+          else expect(allowedAbsolute.has(specifier), `imports ${specifier}`).toBe(true);
+        }
+      });
+
+      it("has no direct database access: no driver, no Prisma, no application database layer, no SQL, and no writer of usage, audit or anything else", () => {
+        const text = provider?.text ?? "";
+        expect(specifiersOf(text).filter((specifier) => /^pg$|@\/lib\/|@\/generated|@prisma|data-center\/(?:retrieval|service|imports|robot-grants|quality|import)/.test(specifier))).toEqual([]);
+        expect(text).not.toMatch(/\$queryRaw|\$executeRaw|\$transaction|\bPrismaClient\b|\bSELECT\s+\w+\s+FROM\b|\bdb\s*\./);
+        expect(text).not.toMatch(/recordDataCenterUsage|\.(?:create|createMany|update|updateMany|upsert|delete|deleteMany)\s*\(/);
+      });
+
+      it("is the only code of the engine that imports the Data Center's read services", () => {
+        const importers = sources.filter((entry) => specifiersOf(entry.text).some((specifier) => readServices.includes(specifier))).map((entry) => entry.path);
+        expect(importers).toEqual([dataCenterProviderPath]);
+      });
     });
   });
 });

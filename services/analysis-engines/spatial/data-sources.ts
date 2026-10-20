@@ -35,8 +35,10 @@ export interface DataSourceTrace {
   asOfExplicit: boolean;
   discoveryStatus: DataCenterDiscoveryStatus;
   selectedVersionId: string | null;
-  /** By type: the versions in force, the preferred first. */
+  /** By type: the versions in force, the preferred first, up to the Data Center's listing limit. */
   candidateVersionIds: string[];
+  /** More versions were in force than are listed. */
+  candidatesTruncated: boolean;
   notInForce: Array<{ versionId: string; reason: string }>;
 }
 
@@ -59,6 +61,7 @@ function traceOf(discovery: DataCenterDiscovery): DataSourceTrace {
   return {
     mode: discovery.mode, policy: discovery.policy, asOf: discovery.asOf, asOfExplicit: discovery.asOfExplicit, discoveryStatus: discovery.status,
     selectedVersionId: discovery.selected?.version.versionId ?? null, candidateVersionIds: discovery.candidates.map((candidate) => candidate.version.versionId),
+    candidatesTruncated: discovery.truncated,
     notInForce: discovery.notInForce.map((entry) => ({ versionId: entry.versionId, reason: entry.reason })),
   };
 }
@@ -126,7 +129,9 @@ async function resolveOne(request: DataSourceRequest, port: SpatialDataCenterPor
   });
   const gaps: Gap[] = [];
   if (selection.kind === "BY_TYPE" && discovery.candidates.length > 1) {
-    gaps.push(createGap(spatialGapCatalog, "DATA_CENTER_COMPETING_DATASETS", { count: discovery.candidates.length - 1, typeKey: selection.typeKey, dataset: selected.dataset.title, policy: discovery.policy }, { inputId: input.id, subject: role }));
+    // A listing cut at the Data Center's limit counts a lower bound, and says so.
+    const others = discovery.candidates.length - 1;
+    gaps.push(createGap(spatialGapCatalog, "DATA_CENTER_COMPETING_DATASETS", { count: discovery.truncated ? `${others}+` : others, typeKey: selection.typeKey, dataset: selected.dataset.title, policy: discovery.policy }, { inputId: input.id, subject: role }));
   }
   return { status: "RESOLVED", role, input, features: checked.features, trace, gaps };
 }

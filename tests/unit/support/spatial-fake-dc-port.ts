@@ -40,10 +40,10 @@ export const geoFeature = (index: number, over: Partial<DataCenterGeoFeature> = 
 export const geoFeatures = (count = 3) => Array.from({ length: count }, (_, index) => geoFeature(index));
 
 export const foundDiscovery = (reference: DataCenterMapReference, over: Partial<DataCenterDiscovery> = {}): DataCenterDiscovery => ({
-  mode: "EXACT", policy: "exact-version", asOf: null, asOfExplicit: false, status: "FOUND", selected: reference, candidates: [reference], notInForce: [], ...over,
+  mode: "EXACT", policy: "exact-version", asOf: null, asOfExplicit: false, status: "FOUND", selected: reference, candidates: [reference], truncated: false, notInForce: [], ...over,
 });
 export const emptyDiscovery = (status: DataCenterDiscovery["status"], over: Partial<DataCenterDiscovery> = {}): DataCenterDiscovery => ({
-  mode: "BY_TYPE", policy: "dc-version-selection-v1", asOf: "2026-10-20T12:00:00.000Z", asOfExplicit: false, status, selected: null, candidates: [], notInForce: [], ...over,
+  mode: "BY_TYPE", policy: "dc-version-selection-v1", asOf: "2026-10-20T12:00:00.000Z",   asOfExplicit: false, status, selected: null, candidates: [], truncated: false, notInForce: [], ...over,
 });
 export const okContent = (reference: DataCenterMapReference, features = geoFeatures(), over: Partial<Extract<DataCenterContentOutcome, { status: "OK" }>> = {}): DataCenterContentOutcome => ({
   status: "OK", reference, features, checksum: reference.version.checksum.value, ...over,
