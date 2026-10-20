@@ -186,7 +186,7 @@ describe("the shared run record serves the Spatial Engine", () => {
     const record = buildRunRecord(result as unknown as RunEnvelope, { actor: { kind: "USER", id: "user-1" }, subject: null, createdAt: "2026-10-20T12:00:01.000Z" });
     expect(runRecordSchema.parse(record)).toEqual(record);
     expect(record).toMatchObject({
-      engineKey: "spatial", engineVersion: "1.0.0-m1", requestContract: "jenan.spatial-analysis.request/v1", resultContract: "jenan.spatial-analysis.result/v1", environment: "test", status: "COMPLETED",
+      engineKey: "spatial", engineVersion: "1.0.0-m2", requestContract: "jenan.spatial-analysis.request/v1", resultContract: "jenan.spatial-analysis.result/v1", environment: "test", status: "COMPLETED",
       requestHash: result.determinism.requestHash, outputHash: result.determinism.outputHash, subject: null,
     });
     expect(record.inputs.map((row) => row.inputId)).toEqual(["dc:version-1"]);

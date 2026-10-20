@@ -21,6 +21,10 @@ export interface SpatialBackendCapabilities {
   proj: string | null;
   /** Whether the Map's published layers can be read through this connection. */
   mapSchemaReachable: boolean;
+  /** True when the connected role could change data the adapter reads (a superuser, or write privileges on a Map table). Production refuses such a role. */
+  roleCanWrite: boolean;
+  /** Differences between the Map's tables and the adapter's read contract; empty when they agree. */
+  contractProblems: string[];
 }
 
 /** A feature supplied inline. Test fixtures only: a production run reads Data Center versions and registered Map layers. */
