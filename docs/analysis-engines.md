@@ -37,8 +37,18 @@ the pure vocabulary of the Data Center (`services/data-center/contracts.ts`) and
 files. A static test (`tests/unit/analysis-engines-boundaries.test.ts`) fails the build if any
 file in `services/analysis-engines` imports the database, Prisma, Projects, the Map, the UI or
 the framework, calls the network, reads the environment, or uses a hidden clock or randomness.
-Database and Data Center access arrives later in `adapters/` directories, the only place the
-test allows it.
+Database and Data Center access lives in `adapters/` directories, the only place the test allows
+it, under a stricter rule (see Adapters below).
+
+### Adapters
+
+An engine reaches a database only through an adapter: a directory named `adapters` inside the
+engine's own tree. The boundary test allows an adapter to import exactly `pg`, `zod` and files of
+the engine's own tree. An adapter never imports Prisma, the application's database layer,
+Projects, the Map's service or the Data Center. It is the only code that imports the driver, it
+is not re-exported by the engine's index, and it still may not read the environment, the clock or
+the network. The pure core talks to an adapter through a port (an interface), so the place where
+the computation runs can change without changing the contracts.
 
 | Module | Responsibility |
 | --- | --- |
