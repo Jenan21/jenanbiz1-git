@@ -3,10 +3,11 @@ import type { DataCenterMapReference } from "@/services/data-center/map-contract
 import type { BoundingBox } from "./geometry-precheck";
 
 /**
- * The engine's view of the Data Center: two read-only questions, discovery of published versions and the exact read of one of them. The
- * engine never reads a Data Center table; whatever sits behind this port (the adapter that calls the Data Center's approved services)
- * applies the Data Center's own access policy, and everything that comes back is plain data in the Data Center's own Map-contract
- * vocabulary (`DataCenterMapReference`): the Data Center stays the source of truth for rights, quality, source and publication.
+ * The engine's view of the Data Center: three read-only questions, discovery of published versions, the exact read of one of them, and what
+ * the Data Center says now about a version a Map release is bound to. The engine never reads a Data Center table; whatever sits behind this
+ * port (the adapter that calls the Data Center's approved services) applies the Data Center's own access policy, and everything that comes
+ * back is plain data in the Data Center's own Map-contract vocabulary (`DataCenterMapReference`): the Data Center stays the source of
+ * truth for rights, quality, source and publication.
  *
  * Expected states of the Data Center (nothing readable, no coverage, content that is not valid) are outcomes, not exceptions; an
  * exception means the Data Center could not be asked at all. Outcomes never say why a version is unavailable: a hidden version and a
@@ -52,6 +53,11 @@ export interface SpatialDataCenterPort {
   discover(selection: DataCenterSelection): Promise<DataCenterDiscovery>;
   /** The content of exactly one version. With `expectedChecksum`, a version whose checksum differs is not read. */
   readContent(request: { versionId: string; expectedChecksum?: string }): Promise<DataCenterContentOutcome>;
+  /**
+   * What the Data Center says now about a version a Map release is bound to, as its Map contract states it (the Data Center's own
+   * `resolveDataCenterMapReference`), or null when the version is not available to the caller, whatever the reason.
+   */
+  resolveMapReference(versionId: string): Promise<DataCenterMapReference | null>;
 }
 
 export const dataCenterProviderErrorKinds = ["UNAVAILABLE", "UNKNOWN"] as const;

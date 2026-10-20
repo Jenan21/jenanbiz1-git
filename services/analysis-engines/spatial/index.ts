@@ -11,6 +11,7 @@ export * from "./gaps";
 export * from "./geometry-precheck";
 export * from "./location-context";
 export * from "./map-contract";
+export * from "./map-data-center";
 export * from "./map-inputs";
 export * from "./map-port";
 export * from "./map-read-error";

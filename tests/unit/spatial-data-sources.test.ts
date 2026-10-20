@@ -227,8 +227,8 @@ describe("what a resolved version still says about itself", () => {
     expect(buildDataCenterUsageIntents(inputs, ["LOCATION_CONTEXT"])).toEqual([
       { versionId: DC_VERSION_ID, checksum: DC_SHA, consumer: "analysis-engine:spatial", purpose: "Spatial analysis: LOCATION_CONTEXT", roles: ["poi:hospital", "poi:school"] },
     ]);
-    // The port has two questions only, both reads: there is no way to record a usage through it.
-    expect(Object.getOwnPropertyNames(FakeDataCenterPort.prototype).filter((name) => !["constructor", "answer", "callsOf"].includes(name)).sort()).toEqual(["discover", "readContent"]);
+    // The port has three questions only, all reads: there is no way to record a usage through it.
+    expect(Object.getOwnPropertyNames(FakeDataCenterPort.prototype).filter((name) => !["constructor", "answer", "callsOf"].includes(name)).sort()).toEqual(["discover", "readContent", "resolveMapReference"]);
     expect(new Set(port.calls.map((call) => call.method))).toEqual(new Set(["discover", "readContent"]));
   });
 });

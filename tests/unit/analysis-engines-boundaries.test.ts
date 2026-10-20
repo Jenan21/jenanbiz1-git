@@ -6,7 +6,7 @@ import { describe, expect, it } from "vitest";
  * The analysis engines are pure: they never read a database, a network, the clock or the environment on their own. Everything outside
  * their own tree reaches them through a contract or an injected port. Two adapters sit behind those ports and are the only code allowed to
  * touch anything outside the tree: the PostGIS Map adapter (the only importer of the `pg` driver) and the Data Center provider (the only
- * importer of the Data Center's two read services, and never of a database). This guard allows nothing beyond what is listed below.
+ * importer of the Data Center's read services, and never of a database). This guard allows nothing beyond what is listed below.
  */
 const root = join(process.cwd(), "services", "analysis-engines");
 const listFiles = (directory: string): string[] => readdirSync(directory).flatMap((name) => {
@@ -123,8 +123,8 @@ describe("analysis engine boundaries", () => {
     });
 
     describe("the Data Center provider", () => {
-      // The Data Center's two read services and the pure modules they share: the only way the engine reaches the Data Center.
-      const readServices = ["@/services/data-center/discovery", "@/services/data-center/version-content"];
+      // The Data Center's three read services: the only way the engine reaches the Data Center.
+      const readServices = ["@/services/data-center/discovery", "@/services/data-center/version-content", "@/services/data-center/map-resolver"];
       const allowedAbsolute = new Set([...readServices, "@/services/data-center/contracts", "@/services/data-center/version-selection"]);
       const provider = adapters.find((entry) => entry.path === dataCenterProviderPath);
 
@@ -133,7 +133,7 @@ describe("analysis engine boundaries", () => {
         for (const adapter of databaseAdapters) expect(specifiersOf(adapter.text).filter((specifier) => specifier.startsWith("@/services/data-center")), adapter.path).toEqual([]);
       });
 
-      it("reaches the Data Center only through its two read services and their pure contracts, plus the engine's own tree", () => {
+      it("reaches the Data Center only through its three read services and their pure contracts, plus the engine's own tree", () => {
         const specifiers = specifiersOf(provider?.text ?? "");
         for (const service of readServices) expect(specifiers).toContain(service);
         for (const specifier of specifiers) {

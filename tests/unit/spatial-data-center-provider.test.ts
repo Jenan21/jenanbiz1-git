@@ -5,11 +5,12 @@ import type { DataCenterVersionContent } from "@/services/data-center/version-co
 import { DataCenterProviderError } from "@/services/analysis-engines/spatial/data-center-port";
 import { DC_OTHER_VERSION_ID, DC_SHA, DC_VERSION_ID, geoFeatures, makeReference } from "./support/spatial-fake-dc-port";
 
-// The two Data Center read services are replaced, so what is tested is the adapter's own work: the requests it makes, how it maps the
+// The Data Center's three read services are replaced, so what is tested is the adapter's own work: the requests it makes, how it maps the
 // answers, what it tells the engine about a refusal, and that it never touches the database itself.
-const mocks = vi.hoisted(() => ({ discover: vi.fn(), read: vi.fn(), databaseAccess: [] as string[] }));
+const mocks = vi.hoisted(() => ({ discover: vi.fn(), read: vi.fn(), resolve: vi.fn(), databaseAccess: [] as string[] }));
 vi.mock("@/services/data-center/discovery", () => ({ discoverDataCenterVersions: mocks.discover }));
 vi.mock("@/services/data-center/version-content", () => ({ readDataCenterVersionContent: mocks.read }));
+vi.mock("@/services/data-center/map-resolver", () => ({ resolveDataCenterMapReference: mocks.resolve }));
 vi.mock("@/lib/db", () => ({
   db: new Proxy({}, { get(_target, key) { mocks.databaseAccess.push(String(key)); throw new Error("the provider touched the database"); } }),
 }));
@@ -39,6 +40,7 @@ const failure = async (work: Promise<unknown>) => { try { await work; } catch (e
 beforeEach(() => {
   mocks.discover.mockReset();
   mocks.read.mockReset();
+  mocks.resolve.mockReset();
   mocks.databaseAccess.length = 0;
 });
 
@@ -117,6 +119,23 @@ describe("the Data Center provider: discovery", () => {
       mocks.read.mockRejectedValue(refusal);
       expect(await createDataCenterProvider({ actor, now: NOW }).readContent({ versionId: DC_VERSION_ID, expectedChecksum: DC_SHA })).toEqual({ status: "NOT_AVAILABLE" });
     });
+
+    it("is answered as no reference when a Map release's version is asked for, whatever the reason", async () => {
+      mocks.resolve.mockRejectedValue(refusal);
+      expect(await createDataCenterProvider({ actor, now: NOW }).resolveMapReference(DC_VERSION_ID)).toBeNull();
+    });
+  });
+});
+
+describe("the Data Center provider: the reference a Map release is bound to", () => {
+  it("asks the Data Center's own Map reference service for exactly that version, as the actor, as of the instant it was given", async () => {
+    mocks.resolve.mockResolvedValue(selected);
+    expect(await createDataCenterProvider({ actor, now: NOW }).resolveMapReference(DC_VERSION_ID)).toBe(selected);
+    expect(mocks.resolve).toHaveBeenCalledTimes(1);
+    expect(mocks.resolve.mock.calls[0]).toEqual([DC_VERSION_ID, actor, NOW]);
+    expect(mocks.resolve.mock.calls[0]?.[1]).toBe(actor);
+    expect(mocks.discover).not.toHaveBeenCalled();
+    expect(mocks.read).not.toHaveBeenCalled();
   });
 });
 
@@ -191,8 +210,11 @@ describe("the Data Center provider: when the Data Center cannot be asked", () =>
     async (_name, error, kind) => {
       mocks.discover.mockRejectedValue(error);
       mocks.read.mockRejectedValue(error);
+      mocks.resolve.mockRejectedValue(error);
       const provider = createDataCenterProvider({ actor, now: NOW });
-      const failures = [await failure(provider.discover({ kind: "BY_TYPE", typeKey: "geojson" })), await failure(provider.readContent({ versionId: DC_VERSION_ID }))];
+      const failures = [
+        await failure(provider.discover({ kind: "BY_TYPE", typeKey: "geojson" })), await failure(provider.readContent({ versionId: DC_VERSION_ID })), await failure(provider.resolveMapReference(DC_VERSION_ID)),
+      ];
       for (const raised of failures) {
         expect(raised).toBeInstanceOf(DataCenterProviderError);
         expect((raised as DataCenterProviderError).kind).toBe(kind);
@@ -214,24 +236,31 @@ describe("the Data Center provider: what it never does", () => {
     const provider = createDataCenterProvider({ actor, now: NOW });
     mocks.discover.mockResolvedValue(discoveryResult({ candidates: [{ reference: selected }], selected: { reference: selected } }));
     mocks.read.mockResolvedValue(contentResult());
+    mocks.resolve.mockResolvedValue(selected);
     await provider.discover({ kind: "BY_TYPE", typeKey: "geojson" });
     await provider.readContent({ versionId: DC_VERSION_ID });
+    await provider.resolveMapReference(DC_VERSION_ID);
     for (const error of [new DataCenterError("PUBLISHED_VERSION_NOT_FOUND", 404), new DataCenterError("VERSION_CHECKSUM_MISMATCH", 500), new Error("boom")]) {
       mocks.discover.mockRejectedValueOnce(error);
       mocks.read.mockRejectedValueOnce(error);
+      mocks.resolve.mockRejectedValueOnce(error);
       await provider.discover({ kind: "BY_TYPE", typeKey: "geojson" }).catch(() => undefined);
       await provider.readContent({ versionId: DC_VERSION_ID }).catch(() => undefined);
+      await provider.resolveMapReference(DC_VERSION_ID).catch(() => undefined);
     }
     expect(mocks.databaseAccess).toEqual([]);
   });
 
-  it("uses no Data Center service other than discovery and the exact read", async () => {
+  it("makes one call to one Data Center service per question, and no other", async () => {
     mocks.discover.mockResolvedValue(discoveryResult());
     mocks.read.mockResolvedValue(contentResult());
+    mocks.resolve.mockResolvedValue(selected);
     const provider = createDataCenterProvider({ actor, now: NOW });
     await provider.discover({ kind: "BY_TYPE", typeKey: "geojson" });
+    expect([mocks.discover.mock.calls.length, mocks.read.mock.calls.length, mocks.resolve.mock.calls.length]).toEqual([1, 0, 0]);
     await provider.readContent({ versionId: DC_VERSION_ID });
-    expect(mocks.discover).toHaveBeenCalledTimes(1);
-    expect(mocks.read).toHaveBeenCalledTimes(1);
+    expect([mocks.discover.mock.calls.length, mocks.read.mock.calls.length, mocks.resolve.mock.calls.length]).toEqual([1, 1, 0]);
+    await provider.resolveMapReference(DC_VERSION_ID);
+    expect([mocks.discover.mock.calls.length, mocks.read.mock.calls.length, mocks.resolve.mock.calls.length]).toEqual([1, 1, 1]);
   });
 });

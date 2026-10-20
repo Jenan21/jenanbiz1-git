@@ -1,5 +1,6 @@
 import { DataCenterError, type DataCenterActor } from "@/services/data-center/contracts";
 import { discoverDataCenterVersions, type DataCenterDiscoveryRequest, type DataCenterDiscoveryResult } from "@/services/data-center/discovery";
+import { resolveDataCenterMapReference } from "@/services/data-center/map-resolver";
 import { readDataCenterVersionContent } from "@/services/data-center/version-content";
 import { DC_VERSION_SELECTION_POLICY } from "@/services/data-center/version-selection";
 import {
@@ -9,8 +10,8 @@ import {
 /**
  * The Data Center provider of the Spatial Engine: the adapter behind `SpatialDataCenterPort`.
  *
- * It reaches the Data Center only through the two read services the Data Center offers the engines, `discoverDataCenterVersions` and
- * `readDataCenterVersionContent`. It never reads a Data Center table, never imports the database layer or Prisma, and has no access
+ * It reaches the Data Center only through the three read services the Data Center offers the engines, `discoverDataCenterVersions`,
+ * `readDataCenterVersionContent` and `resolveDataCenterMapReference`. It never reads a Data Center table, never imports the database layer or Prisma, and has no access
  * policy of its own: those services apply the Data Center's existing policy (administrators, organization membership and permissions,
  * robot grants, specialty and mission context) to the actor given here, so the engine sees exactly what retrieval would show that actor.
  *
@@ -114,6 +115,14 @@ export function createDataCenterProvider(options: DataCenterProviderOptions): Sp
         return { status: "OK", reference: content.reference, features: content.features, checksum: content.integrity.checksum };
       } catch (error) {
         return outcomeOfReadError(error);
+      }
+    },
+    async resolveMapReference(versionId) {
+      try {
+        return await resolveDataCenterMapReference(versionId, actor, now);
+      } catch (error) {
+        if (isUnavailableToActor(error)) return null;
+        throw toProviderError(error);
       }
     },
   };

@@ -8,7 +8,7 @@ describe("spatial gap catalog", () => {
     expect(Object.keys(spatialOwnGapCatalog).sort()).toEqual([
       "ADMIN_AMBIGUOUS_ON_BOUNDARY", "ADMIN_NEAR_BOUNDARY", "ADMIN_TARGET_SPANS_UNITS", "ADMIN_UNIT_NOT_FOUND", "BOUNDARY_UNOFFICIAL", "DATASET_GEOMETRY_INVALID",
       "DATA_CENTER_COMPETING_DATASETS", "DATA_CENTER_CONTENT_INVALID", "DATA_CENTER_INTEGRITY_FAILED", "DATA_CENTER_NOT_IN_FORCE", "DATA_CENTER_PIN_CHANGED", "DATA_CENTER_TOO_MANY_CANDIDATES",
-      "DATA_CENTER_VERSION_NOT_SPATIAL", "MAP_NOT_PUBLISHED", "MAP_SOURCE_ID_UNRECOGNIZED", "NETWORK_ANALYSIS_NOT_SUPPORTED", "ROAD_LABEL_POINTS_ONLY",
+      "DATA_CENTER_VERSION_NOT_SPATIAL", "MAP_DATA_CENTER_BINDING_CHANGED", "MAP_DATA_CENTER_BINDING_REFUSED", "MAP_NOT_PUBLISHED", "MAP_SOURCE_ID_UNRECOGNIZED", "NETWORK_ANALYSIS_NOT_SUPPORTED", "ROAD_LABEL_POINTS_ONLY",
     ]);
     expect(Object.keys(spatialGapCatalog).sort()).toEqual([...Object.keys(sharedGapCatalog), ...Object.keys(spatialOwnGapCatalog)].sort());
     expect(Object.isFrozen(spatialGapCatalog)).toBe(true);
@@ -35,6 +35,9 @@ describe("spatial gap catalog", () => {
     // A Data Center dataset that cannot be used blocks the role; a choice made among equals is only reported.
     for (const code of ["DATA_CENTER_NOT_IN_FORCE", "DATA_CENTER_CONTENT_INVALID", "DATA_CENTER_INTEGRITY_FAILED", "DATA_CENTER_PIN_CHANGED", "DATA_CENTER_VERSION_NOT_SPATIAL", "DATA_CENTER_TOO_MANY_CANDIDATES"] as const) expect(spatialGapCatalog[code].severity, code).toBe("BLOCKING");
     expect(spatialGapCatalog.DATA_CENTER_COMPETING_DATASETS.severity).toBe("INFO");
+    // A Map layer whose reference to the Data Center is refused loses its registration (a warning); what the Data Center changed since is reported.
+    expect(spatialGapCatalog.MAP_DATA_CENTER_BINDING_REFUSED.severity).toBe("WARNING");
+    expect(spatialGapCatalog.MAP_DATA_CENTER_BINDING_CHANGED.severity).toBe("INFO");
   });
 
   it("explains each Data Center finding with its own names, in both languages, and promises nothing it did not do", () => {
@@ -47,6 +50,10 @@ describe("spatial gap catalog", () => {
     const competing = createGap(spatialGapCatalog, "DATA_CENTER_COMPETING_DATASETS", { count: 2, typeKey: "geojson", dataset: "Hospitals 2026", policy: "dc-version-selection-v1" });
     expect(competing.message.en).toContain("2 other Data Center dataset(s)");
     expect(competing.message.en).toContain("selected by the selection policy dc-version-selection-v1");
+    const refused = createGap(spatialGapCatalog, "MAP_DATA_CENTER_BINDING_REFUSED", { dataset: "Places (Map release r1)", reason: "INCONSISTENT: CHECKSUM_MISMATCH" });
+    expect(refused.message.en).toBe("The Map's reference from layer “Places (Map release r1)” to the Data Center was not accepted (reason: INCONSISTENT: CHECKSUM_MISMATCH), so the layer is treated as unregistered and its rights and quality are not taken from the Data Center.");
+    expect(refused.message.ar).toContain("INCONSISTENT: CHECKSUM_MISMATCH");
+    expect(createGap(spatialGapCatalog, "MAP_DATA_CENTER_BINDING_CHANGED", { dataset: "Places", changes: "LICENSE_CHANGED, USAGE_POLICY_CHANGED" }).message.en).toContain("(LICENSE_CHANGED, USAGE_POLICY_CHANGED)");
   });
 
   it("makes an unofficial boundary a limitation that must be shown with the value, not a footnote", () => {
@@ -79,7 +86,7 @@ describe("spatial gap catalog", () => {
   });
 
   it("can render every code with the parameters its text names", () => {
-    const parameters = { dataset: "D", role: "r", limit: 1, backend: "b", from: "f", to: "t", assumption: "a", unit: "U", units: "A | B", distance: 1.5, count: 2, state: "enabled", typeKey: "geojson", asOf: "2026-01-01T00:00:00.000Z", code: "INVALID_GEOJSON", policy: "dc-version-selection-v1" };
+    const parameters = { dataset: "D", role: "r", limit: 1, backend: "b", from: "f", to: "t", assumption: "a", unit: "U", units: "A | B", distance: 1.5, count: 2, state: "enabled", typeKey: "geojson", asOf: "2026-01-01T00:00:00.000Z", code: "INVALID_GEOJSON", policy: "dc-version-selection-v1", reason: "INCONSISTENT", changes: "LICENSE_CHANGED" };
     for (const code of Object.keys(spatialGapCatalog) as Array<keyof typeof spatialGapCatalog>) {
       const gap = createGap(spatialGapCatalog, code, parameters);
       expect(gap.message.en).not.toMatch(/\{[A-Za-z]+\}/);

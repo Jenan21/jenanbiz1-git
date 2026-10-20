@@ -120,6 +120,22 @@ const spatialOwnGapCatalog = defineGapCatalog({
     },
     remedy: { ar: "إن كان المطلوب مجموعة أخرى فحدّد إصدارها صراحةً.", en: "If another dataset is intended, pin its version explicitly." },
   },
+  MAP_DATA_CENTER_BINDING_REFUSED: {
+    severity: "WARNING",
+    message: {
+      ar: "لم يُقبل ربط الخريطة بمركز البيانات للطبقة «{dataset}» (السبب: {reason})؛ لذلك تُعامل الطبقة على أنها غير مسجّلة ولا تؤخذ حقوقها وجودتها من مركز البيانات.",
+      en: "The Map's reference from layer “{dataset}” to the Data Center was not accepted (reason: {reason}), so the layer is treated as unregistered and its rights and quality are not taken from the Data Center.",
+    },
+    remedy: { ar: "أعد نشر إصدار الخريطة مرتبطًا بإصدار منشور حالي في مركز البيانات.", en: "Republish the Map release bound to a current published Data Center version." },
+  },
+  MAP_DATA_CENTER_BINDING_CHANGED: {
+    severity: "INFO",
+    message: {
+      ar: "غيّر مركز البيانات بعض ما يذكره عن الإصدار المرتبط بالطبقة «{dataset}» منذ نشر الخريطة ({changes})؛ وتُستخدم أحدث بيانات مركز البيانات.",
+      en: "Since the Map release was published, the Data Center changed what it states about the version bound to layer “{dataset}” ({changes}); the Data Center's current statements are used.",
+    },
+    remedy: { ar: "راجع التغييرات وأعد نشر إصدار الخريطة إن لزم.", en: "Review the changes and republish the Map release if needed." },
+  },
   ROAD_LABEL_POINTS_ONLY: {
     severity: "WARNING",
     message: { ar: "طبقة الطرق «{dataset}» تحتوي نقاط تسمية فقط وليست شبكة طرق؛ المسافات إليها تقريبية ولا تمثل مسافة الطريق.", en: "The road layer “{dataset}” contains label points only, not a road network; distances to it are approximate and are not road distances." },

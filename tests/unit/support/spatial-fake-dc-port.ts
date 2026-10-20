@@ -50,21 +50,23 @@ export const okContent = (reference: DataCenterMapReference, features = geoFeatu
 });
 
 type Reply<Request, Result> = Result | Error | ((request: Request) => Result | Error);
+type PortMethod = "discover" | "readContent" | "resolveMapReference";
 export interface FakeDataCenterBehaviour {
   discover?: Reply<DataCenterSelection, DataCenterDiscovery>;
   readContent?: Reply<{ versionId: string; expectedChecksum?: string }, DataCenterContentOutcome>;
+  resolveMapReference?: Reply<string, DataCenterMapReference | null>;
 }
 /** A Data Center port that answers from a script and records every request, so resolution can be tested without a database. */
 export class FakeDataCenterPort implements SpatialDataCenterPort {
-  readonly calls: Array<{ method: "discover" | "readContent"; request: unknown }> = [];
+  readonly calls: Array<{ method: PortMethod; request: unknown }> = [];
   constructor(private readonly behaviour: FakeDataCenterBehaviour = {}) {}
-  private answer<Request, Result>(method: "discover" | "readContent", request: Request, reply: Reply<Request, Result> | undefined, fallback: (request: Request) => Result): Result {
+  private answer<Request, Result>(method: PortMethod, request: Request, reply: Reply<Request, Result> | undefined, fallback: (request: Request) => Result): Result {
     this.calls.push({ method, request });
     const value = reply === undefined ? fallback(request) : typeof reply === "function" ? (reply as (request: Request) => Result | Error)(request) : reply;
     if (value instanceof Error) throw value;
     return value;
   }
-  callsOf(method: "discover" | "readContent") { return this.calls.filter((call) => call.method === method); }
+  callsOf(method: PortMethod) { return this.calls.filter((call) => call.method === method); }
   async discover(selection: DataCenterSelection) {
     return this.answer("discover", selection, this.behaviour.discover, (asked) => {
       const reference = makeReference();
@@ -73,5 +75,8 @@ export class FakeDataCenterPort implements SpatialDataCenterPort {
   }
   async readContent(request: { versionId: string; expectedChecksum?: string }) {
     return this.answer("readContent", request, this.behaviour.readContent, (asked) => okContent(makeReference({ version: { versionId: asked.versionId } })));
+  }
+  async resolveMapReference(versionId: string) {
+    return this.answer("resolveMapReference", versionId, this.behaviour.resolveMapReference, (asked) => makeReference({ version: { versionId: asked } }));
   }
 }

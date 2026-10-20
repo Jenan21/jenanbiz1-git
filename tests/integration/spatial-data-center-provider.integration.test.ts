@@ -25,8 +25,13 @@ import { createDataCenterProvider } from "@/services/analysis-engines/spatial/ad
 import { SPATIAL_REQUEST_CONTRACT } from "@/services/analysis-engines/spatial/constants";
 import { targetGeography } from "@/services/analysis-engines/spatial/dataset-features";
 import { dataSourceRequestsOf, resolveSpatialDataSources, type DataSourceRequest } from "@/services/analysis-engines/spatial/data-sources";
+import { applyMapBinding, reconcileMapBinding } from "@/services/analysis-engines/spatial/map-data-center";
+import { buildMapLayerInput } from "@/services/analysis-engines/spatial/map-inputs";
 import { normalizeSpatialRequest } from "@/services/analysis-engines/spatial/normalize";
+import { MAP_BINDING_CONTRACT } from "@/services/data-center/map-contract";
+import { resolveDataCenterMapReference } from "@/services/data-center/map-resolver";
 import { engineInputSchema } from "@/services/analysis-engines/shared/contracts";
+import { osmProvenance, publishedRelease, realBoundary, RELEASE_ID } from "../unit/support/spatial-map-fixtures";
 
 const enabled = process.env.DATA_CENTER_DATABASE_TESTS === "1";
 const rollback = new Error("ROLLBACK_DATA_CENTER_TEST");
@@ -549,6 +554,109 @@ describe.skipIf(!enabled)("the Spatial Engine's Data Center provider on real Pos
     });
   });
 
+  // ---------------------------------------------------------------------------------- a Map release bound to a Data Center version
+  const layerAddress = { releaseId: RELEASE_ID, layerKey: "places" };
+  const mapLayer = (registered = true) => buildMapLayerInput({
+    layerKey: "places", roles: ["place:locality"], release: publishedRelease, boundary: realBoundary(), provenance: osmProvenance, registered, evaluatedAt: EVALUATED_AT,
+  });
+  const bindingFor = (reference: unknown, over: Record<string, unknown> = {}) => ({
+    contract: MAP_BINDING_CONTRACT, map: { releaseId: RELEASE_ID, layerKey: "places", artifactSha256: "5e6f7a8b".repeat(8), exportsArtifact: false, ...over }, reference,
+  });
+
+  it("resolves the reference a Map release is bound to through the Data Center's own Map contract, and takes the Data Center's statements for the layer", async () => {
+    await isolated(async (tx, admin) => {
+      const source = await platformSource(admin, { licenseClass: "OPEN_LICENSE", allowExport: true, attribution: "© Open Authority", usagePolicy: "Share-alike; credit required" });
+      const item = await dataset(tx, admin, source.id, { title: "Riyadh places", coverage: { countryCodes: ["SA"], regionCodes: ["SA-01"], boundingBox: riyadhBox } });
+      await recordDataCenterQualityAssessment({ versionId: item.version.id, status: "MEASURED", score: 0.82, method: "register-check", methodVersion: "2", measuredAt: ago(10).toISOString(), explanation: "Compared with the official register" }, admin);
+      const port = providerFor(admin);
+
+      // What the Map keeps for its release: the snapshot the Data Center's contract gave when the release was published.
+      const snapshot = await port.resolveMapReference(item.version.id);
+      expect(snapshot).toEqual(await resolveDataCenterMapReference(item.version.id, admin, NOW));
+      const outcome = await reconcileMapBinding({ binding: bindingFor(snapshot), layer: layerAddress, port });
+      expect(outcome).toMatchObject({ status: "RECONCILED", findings: [] });
+      const layer = mapLayer();
+      const { input, gaps } = applyMapBinding(layer, outcome, EVALUATED_AT);
+      expect(engineInputSchema.safeParse(input).success).toBe(true);
+      // The Map's layer and artifact; the Data Center's rights, quality, source and coverage.
+      expect(input).toMatchObject({
+        id: layer.id, kind: "MAP_LAYER", governance: "MAP_REGISTERED", ref: { system: "JENAN_MAP", id: `${RELEASE_ID}/places` }, checksum: { value: "5e6f7a8b".repeat(8) },
+        licenseClass: "OPEN_LICENSE", allowExport: true, usagePolicy: "Share-alike; credit required", attribution: { text: "© Open Authority", required: true },
+        quality: { status: "MEASURED", score: 0.82, method: "register-check", methodVersion: "2" }, freshness: { status: "FRESH" },
+        coverage: { countryCodes: ["SA"], regionCodes: ["SA-01"], boundingBox: riyadhBox },
+      });
+      expect(gaps).toEqual([]);
+      expect(layer).toMatchObject({ licenseClass: null, allowExport: false, quality: { status: "UNAVAILABLE" } });
+    });
+  });
+
+  it("no longer accepts a reference to a version the Data Center has superseded: the layer is unregistered, and no newer version is looked up in its place", async () => {
+    await isolated(async (tx, admin) => {
+      const source = await platformSource(admin);
+      const item = await dataset(tx, admin, source.id, { content: geojson("first") });
+      const port = providerFor(admin);
+      const snapshot = await port.resolveMapReference(item.version.id);
+      await createDataCenterVersion({ itemId: item.id, title: "Revised", content: geojson("second"), evidenceStatus: "ESTIMATED", reason: "New evidence" }, admin);
+      await publish(item.id, admin);
+
+      const outcome = await reconcileMapBinding({ binding: bindingFor(snapshot), layer: layerAddress, port });
+      expect(outcome).toMatchObject({ status: "NOT_REGISTERED", refusal: "VERSION_UNAVAILABLE", findings: [{ code: "DATA_CENTER_VERSION_UNAVAILABLE", blocking: true }] });
+      const { input, gaps } = applyMapBinding(mapLayer(), outcome, EVALUATED_AT);
+      expect(input).toMatchObject({ governance: "MAP_UNREGISTERED", licenseClass: null, allowExport: false, quality: { status: "UNAVAILABLE" } });
+      expect(gaps.map((gap) => gap.code)).toEqual(["MAP_DATA_CENTER_BINDING_REFUSED"]);
+    });
+  });
+
+  it("does not tell a hidden version from a missing one, and a robot with no grant gets the same answer", async () => {
+    await isolated(async (tx, admin) => {
+      const owner = await user(tx, "owner");
+      const stranger = await user(tx, "stranger");
+      const privateSource = await createDataCenterSource({ name: "Private", kind: "MANUAL", scope: "PRIVATE", owner: "Owner", license: "Internal" }, owner);
+      const hidden = await dataset(tx, admin, privateSource.id);
+      const snapshot = await providerFor(owner).resolveMapReference(hidden.version.id);
+      expect(snapshot).not.toBeNull();
+      const { identity } = await robot(tx, admin, []);
+
+      const refused = async (actor: DataCenterActor, reference: unknown) => reconcileMapBinding({ binding: bindingFor(reference), layer: layerAddress, port: providerFor(actor) });
+      const missing = await refused(stranger, { ...(snapshot as object), version: { ...(snapshot as { version: object }).version, versionId: "cmissing000000000000000000" } });
+      expect(missing).toMatchObject({ status: "NOT_REGISTERED", refusal: "VERSION_UNAVAILABLE" });
+      expect(await refused(stranger, snapshot)).toEqual(missing);
+      expect(await refused(identity, snapshot)).toEqual(missing);
+      expect((await refused(owner, snapshot)).status).toBe("RECONCILED");
+    });
+  });
+
+  it("uses what the Data Center says now when it changed something that does not decide the layer since the snapshot, and reports it", async () => {
+    await isolated(async (tx, admin) => {
+      const source = await platformSource(admin, { licenseClass: "OPEN_LICENSE", usagePolicy: "Share-alike; credit required" });
+      const item = await dataset(tx, admin, source.id);
+      const port = providerFor(admin);
+      const current = (await port.resolveMapReference(item.version.id))!;
+      // The snapshot the release kept was taken when the Data Center stated other rights.
+      const older = { ...current, rights: { ...current.rights, licenseClass: "LICENSED", usagePolicy: "Licensed for display only" } };
+      const outcome = await reconcileMapBinding({ binding: bindingFor(older), layer: layerAddress, port });
+      expect(outcome).toMatchObject({ status: "RECONCILED" });
+      expect(outcome.findings.map((finding) => finding.code)).toEqual(["LICENSE_CLASS_CHANGED", "USAGE_POLICY_CHANGED"]);
+      const { input, gaps } = applyMapBinding(mapLayer(), outcome, EVALUATED_AT);
+      expect(input).toMatchObject({ licenseClass: "OPEN_LICENSE", usagePolicy: "Share-alike; credit required" });
+      expect(gaps.map((gap) => [gap.code, gap.severity])).toEqual([["MAP_DATA_CENTER_BINDING_CHANGED", "INFO"]]);
+    });
+  });
+
+  it("refuses a snapshot whose content digest is not the version's, and a binding that does not satisfy the Data Center's contract", async () => {
+    await isolated(async (tx, admin) => {
+      const source = await platformSource(admin);
+      const item = await dataset(tx, admin, source.id);
+      const port = providerFor(admin);
+      const current = (await port.resolveMapReference(item.version.id))!;
+      const tampered = await reconcileMapBinding({ binding: bindingFor({ ...current, version: { ...current.version, checksum: { algorithm: "SHA-256", value: "0".repeat(64) } } }), layer: layerAddress, port });
+      expect(tampered).toMatchObject({ status: "NOT_REGISTERED", refusal: "INCONSISTENT" });
+      expect(tampered.findings.filter((finding) => finding.blocking).map((finding) => finding.code)).toEqual(["CHECKSUM_MISMATCH"]);
+      expect(await reconcileMapBinding({ binding: { ...bindingFor(current), note: "extra" }, layer: layerAddress, port })).toEqual({ status: "NOT_REGISTERED", refusal: "BINDING_INVALID", findings: [] });
+      expect(await reconcileMapBinding({ binding: bindingFor(current), layer: { releaseId: RELEASE_ID, layerKey: "pois" }, port })).toEqual({ status: "NOT_REGISTERED", refusal: "BINDING_FOR_ANOTHER_LAYER", findings: [] });
+    });
+  });
+
   // --------------------------------------------------------------------------------------------------------------------- effects
   it("writes nothing: no usage record, no audit entry, no lifecycle event, no new version, however many datasets it reads or is refused", async () => {
     await isolated(async (tx, admin) => {
@@ -562,6 +670,9 @@ describe.skipIf(!enabled)("the Spatial Engine's Data Center provider on real Pos
       await port.readContent({ versionId: item.version.id, expectedChecksum: item.version.checksum });
       await port.readContent({ versionId: item.version.id, expectedChecksum: "0".repeat(64) });
       await providerFor(stranger).readContent({ versionId: "missing" });
+      await port.resolveMapReference(item.version.id);
+      await providerFor(stranger).resolveMapReference(item.version.id);
+      await reconcileMapBinding({ binding: bindingFor(await port.resolveMapReference(item.version.id)), layer: layerAddress, port });
       await resolveSpatialDataSources({ requests: [{ role: "poi:hospital", selection: exact(item.version.id) }, { role: "poi:other", selection: byType() }], port, evaluatedAt: EVALUATED_AT });
       expect(await counts(tx)).toEqual(before);
     });
