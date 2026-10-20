@@ -4272,6 +4272,11 @@ model AgentGenomeCapability {
   @@index([type, key])
 }
 
+// Data Center. Database-only objects that this schema deliberately does not model (listed in docs/data-center-v1.md):
+//  - the composite DEFERRABLE foreign keys DataCenterItem(id, currentVersion) and (id, publishedVersion) to DataCenterVersion(itemId, number);
+//  - the foreign keys from the id columns (ownerId, createdById, actorId, ...) to User, Organization and Mission;
+//  - CHECK constraints, the data_center_immutable triggers and the full-text index DataCenterVersion_search_idx.
+// Never generate a migration from `prisma migrate diff` output for these objects: it would drop them.
 enum DataCenterScope {
   PLATFORM
   ORGANIZATION
@@ -4308,9 +4313,9 @@ model DataCenterType {
   layer                  DataCenterLayer
   requiresIndependentReview Boolean      @default(false)
   categoryKey            String?
-  category               DataCenterCategory? @relation(fields: [categoryKey], references: [key], onDelete: Restrict)
+  category               DataCenterCategory? @relation(fields: [categoryKey], references: [key], onDelete: Restrict, onUpdate: NoAction)
   departmentKey          String?
-  department             DataCenterDepartment? @relation(fields: [departmentKey], references: [key], onDelete: Restrict)
+  department             DataCenterDepartment? @relation(fields: [departmentKey], references: [key], onDelete: Restrict, onUpdate: NoAction)
   createdAt              DateTime        @default(now())
   items                  DataCenterItem[]
 
@@ -4340,9 +4345,9 @@ model DataCenterSource {
 model DataCenterItem {
   id                String              @id @default(cuid())
   sourceId          String
-  source            DataCenterSource    @relation(fields: [sourceId], references: [id], onDelete: Restrict)
+  source            DataCenterSource    @relation(fields: [sourceId], references: [id], onDelete: Restrict, onUpdate: NoAction)
   typeKey           String
-  type              DataCenterType      @relation(fields: [typeKey], references: [key], onDelete: Restrict)
+  type              DataCenterType      @relation(fields: [typeKey], references: [key], onDelete: Restrict, onUpdate: NoAction)
   layer             DataCenterLayer
   title             String
   status            DataCenterLifecycle @default(DRAFT)
@@ -4365,7 +4370,7 @@ model DataCenterItem {
 model DataCenterVersion {
   id                String             @id @default(cuid())
   itemId            String
-  item              DataCenterItem     @relation(fields: [itemId], references: [id], onDelete: Restrict)
+  item              DataCenterItem     @relation(fields: [itemId], references: [id], onDelete: Restrict, onUpdate: NoAction)
   number            Int
   title             String
   content           String
@@ -4391,12 +4396,14 @@ model DataCenterVersion {
 
   @@unique([itemId, number])
   @@index([createdAt])
+  @@index([specialties], type: Gin)
+  @@index([missionContexts], type: Gin)
 }
 
 model DataCenterReview {
   id                String            @id @default(cuid())
   versionId         String
-  version           DataCenterVersion @relation(fields: [versionId], references: [id], onDelete: Restrict)
+  version           DataCenterVersion @relation(fields: [versionId], references: [id], onDelete: Restrict, onUpdate: NoAction)
   reviewerId        String
   decision          String
   notes             String
@@ -4408,7 +4415,7 @@ model DataCenterReview {
 model DataCenterEvent {
   id                String            @id @default(cuid())
   itemId            String
-  item              DataCenterItem    @relation(fields: [itemId], references: [id], onDelete: Restrict)
+  item              DataCenterItem    @relation(fields: [itemId], references: [id], onDelete: Restrict, onUpdate: NoAction)
   version           Int
   fromStatus        DataCenterLifecycle?
   toStatus          DataCenterLifecycle
@@ -4422,9 +4429,9 @@ model DataCenterEvent {
 model DataCenterConflict {
   id                String          @id @default(cuid())
   itemId            String
-  item              DataCenterItem  @relation("DataCenterConflictItem", fields: [itemId], references: [id], onDelete: Restrict)
+  item              DataCenterItem  @relation("DataCenterConflictItem", fields: [itemId], references: [id], onDelete: Restrict, onUpdate: NoAction)
   otherItemId       String
-  otherItem         DataCenterItem  @relation("DataCenterConflictOther", fields: [otherItemId], references: [id], onDelete: Restrict)
+  otherItem         DataCenterItem  @relation("DataCenterConflictOther", fields: [otherItemId], references: [id], onDelete: Restrict, onUpdate: NoAction)
   itemVersion       Int
   otherVersion      Int
   reason            String
@@ -4441,7 +4448,7 @@ model DataCenterConflict {
 model DataCenterUsage {
   id                String            @id @default(cuid())
   versionId         String
-  version           DataCenterVersion @relation(fields: [versionId], references: [id], onDelete: Restrict)
+  version           DataCenterVersion @relation(fields: [versionId], references: [id], onDelete: Restrict, onUpdate: NoAction)
   actorId           String
   consumer          String
   missionId         String?
@@ -4455,9 +4462,9 @@ model DataCenterUsage {
 model DataCenterImport {
   id                String             @id @default(cuid())
   sourceId          String
-  source            DataCenterSource   @relation(fields: [sourceId], references: [id], onDelete: Restrict)
+  source            DataCenterSource   @relation(fields: [sourceId], references: [id], onDelete: Restrict, onUpdate: NoAction)
   versionId         String
-  version           DataCenterVersion  @relation(fields: [versionId], references: [id], onDelete: Restrict)
+  version           DataCenterVersion  @relation(fields: [versionId], references: [id], onDelete: Restrict, onUpdate: NoAction)
   actorId           String
   fileName          String
   mimeType          String
@@ -4475,7 +4482,7 @@ model DataCenterAcademyRelease {
   id                String             @id @default(cuid())
   versionId         String
   parentRevision    Int                @default(0)
-  version           DataCenterVersion  @relation(fields: [versionId], references: [id], onDelete: Restrict)
+  version           DataCenterVersion  @relation(fields: [versionId], references: [id], onDelete: Restrict, onUpdate: NoAction)
   targetKind        String
   targetId          String
   requestedById     String
@@ -4505,9 +4512,9 @@ model DataCenterDepartment {
 model DataCenterEvidenceLink {
   id                String              @id @default(cuid())
   versionId         String
-  version           DataCenterVersion   @relation(fields: [versionId], references: [id], onDelete: Restrict)
+  version           DataCenterVersion   @relation(fields: [versionId], references: [id], onDelete: Restrict, onUpdate: NoAction)
   evidenceId        String?
-  evidence          Evidence?           @relation(fields: [evidenceId], references: [id], onDelete: Restrict)
+  evidence          Evidence?           @relation(fields: [evidenceId], references: [id], onDelete: Restrict, onUpdate: NoAction)
   kind              String
   reference         String
   label             String

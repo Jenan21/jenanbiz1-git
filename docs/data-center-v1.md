@@ -130,6 +130,7 @@ models and migrations are not removed.
 | Usage | Exact version consumed, actor and consumer metadata. |
 | Import | Original file metadata, checksum, scanner, adapter and storage reference. |
 | Academy release | Requested target, approved source version and approval history. |
+| Evidence link | Append-only provenance and evidence references of a version. |
 
 `services/data-center/contracts.ts` defines validated input and adapter
 contracts. `policy.ts` centralizes authorization/evidence policies.
@@ -137,6 +138,37 @@ contracts. `policy.ts` centralizes authorization/evidence policies.
 handles ingestion, and `retrieval.ts` contains consumer context/export and
 Academy boundaries. `lib/admin/data-center-http.ts` adapts those services
 to authenticated HTTP; UI code does not query the internal tables.
+
+### Migrations and database-only constraints
+
+The Data Center migrations are additive: `20261017150000_platform_data_center_v1`,
+`20261017152000_data_center_publication_metadata` and the corrective
+`20261020053000_data_center_schema_sync`. The first two left the database
+without `DataCenterItem.revision`, `DataCenterAcademyRelease.parentRevision`
+and the `DataCenterEvidenceLink` table that the schema and the services use;
+the corrective migration adds them and leaves the earlier files untouched.
+
+A database built from the whole chain matches `prisma/schema.prisma` except
+for the objects below. They are intentional, enforced by PostgreSQL, and
+reported by `prisma migrate diff` as "removed" because the schema does not
+model them. Never generate a migration from that output: it would drop them.
+
+| Database-only constraint | Why the schema does not model it |
+| --- | --- |
+| `DataCenterItem(id, currentVersion)` and `(id, publishedVersion)` to `DataCenterVersion(itemId, number)`, `DEFERRABLE INITIALLY DEFERRED` | Prisma cannot express deferrable constraints. They guarantee that an item points only to a version it owns. |
+| `ON DELETE RESTRICT` foreign keys to `User` from `DataCenterSource.ownerId`, `DataCenterItem.createdById`, `DataCenterVersion.createdById`, `DataCenterReview.reviewerId`, `DataCenterEvent.actorId`, `DataCenterConflict.resolvedById`, `DataCenterUsage.actorId`, `DataCenterImport.actorId`, `DataCenterAcademyRelease.requestedById`, `DataCenterAcademyRelease.approvedById` and `DataCenterEvidenceLink.linkedById` | Modelling them would add a back-relation field per column to the core `User` model. |
+| `DataCenterSource.organizationId` to `Organization` and `DataCenterUsage.missionId` to `Mission` | Same reason: back-relations on `Organization` and `Mission`. |
+
+Prisma does not report, and the schema does not model, the CHECK constraints,
+the `data_center_immutable` function and its triggers (version, review,
+event, usage, import and evidence link), and the full-text index
+`DataCenterVersion_search_idx`.
+
+`prisma migrate diff` on that database also reports four differences that
+already exist on `main` and are outside the Data Center, so no Data Center
+migration touches them: the column `CommitteeReview.reviewer` and the indexes
+`JobApplication (matchScore, status)`, `JobPosting (qualityScore, status)` and
+`MarketListing (qualityScore, status)`.
 
 ## API and service boundaries
 
