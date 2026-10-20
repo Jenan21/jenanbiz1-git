@@ -210,7 +210,7 @@ export async function linkDataCenterEvidence(input: { versionId: string; evidenc
 export async function getDataCenterItem(itemId: string, actor: DataCenterActor) {
   requireDataCenterAdmin(actor);
   const item = await getAccessibleItem(db, actor, itemId);
-  const versions = await db.dataCenterVersion.findMany({ where: { itemId }, orderBy: { number: "desc" }, take: 100, include: { reviews: true, evidenceLinks: true, upstream: true } });
+  const versions = await db.dataCenterVersion.findMany({ where: { itemId }, orderBy: { number: "desc" }, take: 100, include: { reviews: true, evidenceLinks: true, upstream: true, qualityAssessments: { orderBy: { measuredAt: "desc" }, take: 5 } } });
   return { ...item, versions, events: await db.dataCenterEvent.findMany({ where: { itemId }, take: 100, orderBy: { createdAt: "desc" } }) };
 }
 export async function getDataCenterOverview(actor: DataCenterActor) {
@@ -262,6 +262,8 @@ export async function listDataCenterArea(area: string, actor: DataCenterActor, o
       [rows, total] = await Promise.all([db.dataCenterAcademyRelease.findMany({ ...pagination, orderBy: { createdAt: "desc" } }), db.dataCenterAcademyRelease.count()]); break;
     case "grants":
       [rows, total] = await Promise.all([db.dataCenterRobotGrant.findMany({ ...pagination, orderBy: { createdAt: "desc" }, include: { source: { select: { name: true } } } }), db.dataCenterRobotGrant.count()]); break;
+    case "quality":
+      [rows, total] = await Promise.all([db.dataCenterQualityAssessment.findMany({ ...pagination, orderBy: { createdAt: "desc" }, include: { version: { select: { number: true, item: { select: { id: true, title: true } } } } } }), db.dataCenterQualityAssessment.count()]); break;
     default: throw new DataCenterError("UNKNOWN_AREA");
   }
   return { area, rows, total, page, limit };
@@ -292,6 +294,7 @@ export async function dispatchDataCenterCommand(command: DataCenterCommand, acto
     case "approve-academy-release": return (await import("./retrieval")).approveAcademyDataCenterRelease(input as Extract<DataCenterCommand, { action: "approve-academy-release" }>, actor);
     case "grant-robot-access": return (await import("./robot-grants")).grantDataCenterRobotAccess(input as Extract<DataCenterCommand, { action: "grant-robot-access" }>, actor);
     case "revoke-robot-access": return (await import("./robot-grants")).revokeDataCenterRobotAccess(input as Extract<DataCenterCommand, { action: "revoke-robot-access" }>, actor);
+    case "record-quality-assessment": return (await import("./quality")).recordDataCenterQualityAssessment(input as Extract<DataCenterCommand, { action: "record-quality-assessment" }>, actor);
   }
 }
 export { sourceScopeWhere };

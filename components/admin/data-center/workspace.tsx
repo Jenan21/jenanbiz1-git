@@ -150,6 +150,10 @@ export function DataCenterWorkspace({ section }: { section: DataCenterSection })
         return { ...field, defaultValue };
       }) };
     }
+    if (key === "quality" && selected) {
+      const latest = asRecords(selected.versions)[0];
+      command = { ...command, fields: command.fields.map((field) => field.name === "versionId" && latest?.id ? { ...field, defaultValue: String(latest.id) } : field) };
+    }
     setForm({ definition: command, fixed });
     setFeedback("");
     if (key === "item" || key === "grantRobot") {
@@ -333,6 +337,7 @@ export function DataCenterWorkspace({ section }: { section: DataCenterSection })
                 {isItemSection ? <>
                   <button className={styles.button} disabled={busy} onClick={() => void openForm("version", { itemId: selected.id })}>إصدار جديد</button>
                   <button className={styles.button} disabled={busy} onClick={() => void openForm("transition", { itemId: selected.id })}>تغيير الحالة / النشر</button>
+                  <button className={`${styles.button} ${styles.secondary}`} disabled={busy || !asRecords(selected.versions).length} onClick={() => void openForm("quality")}>تسجيل تقييم جودة</button>
                   <button className={styles.button} disabled={busy || selected.status !== "IN_REVIEW"} title="يجب أن يكون السجل قيد المراجعة" onClick={() => void openForm("review", { itemId: selected.id })}>مراجعة بشرية</button>
                 </> : null}
                 {section === "conflicts" ? <button className={styles.button} disabled={busy || !!selected.resolvedAt} onClick={() => void openForm("resolve", { conflictId: selected.id })}>حسم التعارض</button> : null}

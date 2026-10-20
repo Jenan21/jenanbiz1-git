@@ -4329,6 +4329,12 @@ enum DataCenterGrantAccess {
   PROPOSE
 }
 
+// MEASURED carries a score and the method that produced it; INSUFFICIENT_DATA records that an assessment was attempted without enough data.
+enum DataCenterQualityStatus {
+  MEASURED
+  INSUFFICIENT_DATA
+}
+
 model DataCenterType {
   key                    String          @id
   label                  String
@@ -4431,6 +4437,7 @@ model DataCenterVersion {
   evidenceLinks     DataCenterEvidenceLink[]
   upstream          DataCenterVersionLineage[] @relation("DataCenterLineageVersion")
   downstream        DataCenterVersionLineage[] @relation("DataCenterLineageUpstream")
+  qualityAssessments DataCenterQualityAssessment[]
 
   @@unique([itemId, number])
   @@index([createdAt])
@@ -4602,4 +4609,24 @@ model DataCenterVersionLineage {
 
   @@unique([versionId, upstreamVersionId])
   @@index([upstreamVersionId])
+}
+
+// Explainable quality statement about one immutable version. Append-only: a newer assessment supersedes an older one.
+// No score exists unless somebody recorded how, when and with which method version it was measured; "no row" means unavailable.
+// assessedById is a database-only foreign key to User.
+model DataCenterQualityAssessment {
+  id            String                  @id @default(cuid())
+  versionId     String
+  version       DataCenterVersion       @relation(fields: [versionId], references: [id], onDelete: Restrict, onUpdate: NoAction)
+  status        DataCenterQualityStatus
+  score         Float?
+  method        String
+  methodVersion String
+  measuredAt    DateTime
+  explanation   String
+  metrics       Json                    @default("{}")
+  assessedById  String
+  createdAt     DateTime                @default(now())
+
+  @@index([versionId, measuredAt])
 }

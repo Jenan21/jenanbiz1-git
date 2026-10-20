@@ -119,6 +119,27 @@ describe("Data Center provenance and forms", () => {
     expect(west).toContain('max="180"');
     expect(west).toContain('step="any"');
   });
+  it("builds quality assessment commands from the form and keeps the score out of insufficient-data records", () => {
+    const common = { versionId: "v1", method: "manual-review", methodVersion: "2026.10", measuredAt: "2026-10-01T09:00", explanation: "Sampled 200 rows against the source" };
+    const measured = new FormData();
+    for (const [key, value] of Object.entries({ ...common, status: "MEASURED", score: "0.82", metrics: '{"completeness":0.9}' })) measured.set(key, value);
+    const payload = commandPayload(measured, DATA_CENTER_COMMANDS.quality);
+    expect(payload).toMatchObject({ action: "record-quality-assessment", status: "MEASURED", score: 0.82, metrics: { completeness: 0.9 } });
+    expect(payload.measuredAt).toMatch(/Z$/);
+    expect(commandSchema.safeParse(payload).success).toBe(true);
+    const insufficient = new FormData();
+    for (const [key, value] of Object.entries({ ...common, status: "INSUFFICIENT_DATA" })) insufficient.set(key, value);
+    const unscored = commandPayload(insufficient, DATA_CENTER_COMMANDS.quality);
+    expect(unscored).not.toHaveProperty("score");
+    expect(unscored).not.toHaveProperty("metrics");
+    expect(commandSchema.safeParse(unscored).success).toBe(true);
+    expect(commandSchema.safeParse({ ...unscored, status: "MEASURED" }).success).toBe(false);
+    const broken = new FormData();
+    for (const [key, value] of Object.entries({ ...common, status: "MEASURED", score: "0.5", metrics: "{not json" })) broken.set(key, value);
+    expect(() => commandPayload(broken, DATA_CENTER_COMMANDS.quality)).toThrow();
+    const score = renderToStaticMarkup(createElement(CommandForm, { definition: DATA_CENTER_COMMANDS.quality, busy: false, onSubmit: async () => true })).match(/<input[^>]*name="score"[^>]*>/)?.[0] ?? "";
+    for (const attribute of ['min="0"', 'max="1"', 'step="any"']) expect(score).toContain(attribute);
+  });
   it("builds explicit robot grant and revoke commands that the server contract accepts", () => {
     const form = new FormData();
     for (const [key, value] of Object.entries({ sourceId: "s1", robotId: "r1", principalId: "p1", roleKey: "analyst", specialty: "demography", missionId: "m1", access: "PROPOSE", expiresAt: "2030-01-01T10:00", reason: "Mission data need" })) form.set(key, value);

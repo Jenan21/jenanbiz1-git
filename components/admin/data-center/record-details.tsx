@@ -36,6 +36,8 @@ const fieldLabels: Record<string, string> = {
   coverageCountries: "دول التغطية", coverageRegions: "مناطق التغطية", coverage: "التغطية الجغرافية (WGS84)",
   bboxWest: "الحد الغربي", bboxSouth: "الحد الجنوبي", bboxEast: "الحد الشرقي", bboxNorth: "الحد الشمالي",
   countryCodes: "رموز الدول", regionCodes: "رموز المناطق", boundingBox: "المستطيل المحيط",
+  qualityAssessments: "تقييمات الجودة (مسجلة بشرياً)", score: "الدرجة (0 إلى 1)", method: "منهج القياس", methodVersion: "إصدار المنهج",
+  measuredAt: "تاريخ القياس", explanation: "التفسير", metrics: "مؤشرات تفسيرية", assessedById: "مسجّل التقييم",
 };
 
 export function RecordDetails({ record }: { record: DataCenterRecord }) {

@@ -7,6 +7,7 @@ export const lifecycleStates = ["DRAFT", "IN_REVIEW", "APPROVED", "PUBLISHED", "
 export const ownerships = ["PLATFORM_OWNED", "USER_OWNED", "THIRD_PARTY", "AI_GENERATED"] as const;
 export const licenseClasses = ["JENAN_OWNED", "OPEN_LICENSE", "LICENSED", "RESTRICTED"] as const;
 export const grantAccess = ["READ", "PROPOSE"] as const;
+export const qualityStatuses = ["MEASURED", "INSUFFICIENT_DATA"] as const;
 export const DEFAULT_USAGE_POLICY = "Internal use; redistribution requires explicit permission";
 const text = (max: number) => z.string().trim().min(1).max(max);
 const id = text(128);
@@ -31,6 +32,13 @@ export const coverageSchema = z.object({
   .refine((c) => new Set(c.countryCodes).size === c.countryCodes.length && new Set(c.regionCodes).size === c.regionCodes.length, "Coverage codes must be unique")
   .refine((c) => c.regionCodes.every((region) => c.countryCodes.includes(region.slice(0, 2))), "Every region code needs its country in countryCodes");
 export type DataCenterCoverage = z.infer<typeof coverageSchema>;
+// Quality is recorded, never computed here: a score needs the method, method version and date that produced it.
+const qualityMetrics = z.record(text(80), z.union([z.number(), z.string().max(500), z.boolean()])).refine((metrics) => Object.keys(metrics).length <= 30, "At most 30 metrics");
+export const qualityAssessmentSchema = z.object({
+  versionId: id, status: z.enum(qualityStatuses), score: z.number().min(0).max(1).optional(),
+  method: text(120), methodVersion: text(60), measuredAt: z.iso.datetime(), explanation: text(4000), metrics: qualityMetrics.default({}),
+}).strict().refine((v) => (v.status === "MEASURED") === (v.score !== undefined), "A score is required for MEASURED assessments and forbidden otherwise");
+export type DataCenterQualityInput = z.input<typeof qualityAssessmentSchema>;
 export interface CoverageColumns { coverageCountries: string[]; coverageRegions: string[]; bboxWest: number | null; bboxSouth: number | null; bboxEast: number | null; bboxNorth: number | null }
 // Locale-independent ordering, so lock order and canonical hashing never depend on the host's collation.
 export const byCodePoint = (a: string, b: string) => (a < b ? -1 : a > b ? 1 : 0);
@@ -93,6 +101,7 @@ export const commandSchema = z.discriminatedUnion("action", [
   z.object({ action: z.literal("import-academy-source"), sourceId: id, resourceVersionId: id }).strict(),
   z.object({ action: z.literal("grant-robot-access"), sourceId: id, robotId: id, principalId: id, roleKey: text(80), specialty: text(80), missionId: id, access: z.enum(grantAccess).default("READ"), reason: text(2000), expiresAt: z.iso.datetime() }).strict(),
   z.object({ action: z.literal("revoke-robot-access"), grantId: id, reason: text(2000) }).strict(),
+  qualityAssessmentSchema.safeExtend({ action: z.literal("record-quality-assessment") }),
 ]);
 export type CreateSourceInput = z.input<typeof sourceSchema>;
 export type CreateItemInput = z.input<typeof itemSchema>;

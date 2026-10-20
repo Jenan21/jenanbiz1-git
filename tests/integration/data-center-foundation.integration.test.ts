@@ -20,6 +20,7 @@ import { db } from "@/lib/db";
 import { createDataCenterItem, createDataCenterSource, createDataCenterVersion, getDataCenterItem, reviewDataCenterItem, transitionDataCenterItem } from "@/services/data-center/service";
 import { exportDataCenter, retrieveDataCenterContext } from "@/services/data-center/retrieval";
 import { grantDataCenterRobotAccess, revokeDataCenterRobotAccess } from "@/services/data-center/robot-grants";
+import { latestDataCenterQuality, recordDataCenterQualityAssessment } from "@/services/data-center/quality";
 import type { DataCenterActor } from "@/services/data-center/contracts";
 
 const enabled = process.env.DATA_CENTER_DATABASE_TESTS === "1";
@@ -235,6 +236,49 @@ describe.skipIf(!enabled)("Data Center foundation on real PostgreSQL (always rol
       await rejected(tx, row({ bboxWest: Number.NaN, bboxSouth: 0, bboxEast: 1, bboxNorth: 1 }), /DataCenterVersion_coverage_bbox_check/);
       await rejected(tx, row({ attribution: "   " }), /DataCenterVersion_attribution_check/);
       expect((await row({ number: 98, coverageCountries: ["SA"], coverageRegions: ["SA-01"], bboxWest: -180, bboxSouth: -90, bboxEast: 180, bboxNorth: 90, attribution: "Valid" })()).number).toBe(98);
+    });
+  });
+  it("records explainable, append-only quality assessments, never invents a score and enforces the rules in the database", async () => {
+    await isolated(async (tx, admin) => {
+      const source = await createDataCenterSource({ name: "Quality source", kind: "OFFICIAL", scope: "PLATFORM", owner: "Authority", license: "Open" }, admin);
+      const item = await createDataCenterItem(dataset(source.id, "Rated dataset", "rated dataset rows"), admin);
+      expect(await latestDataCenterQuality(tx, item.version.id)).toBeNull();
+      expect((await getDataCenterItem(item.id, admin)).versions[0].qualityAssessments).toEqual([]);
+      const revisionBefore = (await tx.dataCenterItem.findUniqueOrThrow({ where: { id: item.id } })).revision;
+
+      const method = { method: "manual-completeness-review", methodVersion: "2026.10" };
+      const measured = await recordDataCenterQualityAssessment({ versionId: item.version.id, status: "MEASURED", score: 0.82, ...method, measuredAt: "2026-10-01T09:00:00.000Z",
+        explanation: "Checked 200 sampled rows against the source document.", metrics: { completeness: 0.9, formatErrors: 3 } }, admin);
+      expect(measured).toMatchObject({ status: "MEASURED", score: 0.82, method: "manual-completeness-review", methodVersion: "2026.10", assessedById: admin.id, metrics: { completeness: 0.9, formatErrors: 3 } });
+      expect((await tx.dataCenterItem.findUniqueOrThrow({ where: { id: item.id } })).revision).toBe(revisionBefore + 1);
+      expect(await tx.auditLog.count({ where: { action: "data-center.quality.recorded", entityId: measured.id } })).toBe(1);
+
+      const insufficient = await recordDataCenterQualityAssessment({ versionId: item.version.id, status: "INSUFFICIENT_DATA", ...method, measuredAt: "2026-10-05T09:00:00.000Z",
+        explanation: "The source document no longer matches any sampled row." }, admin);
+      expect(insufficient).toMatchObject({ status: "INSUFFICIENT_DATA", score: null, metrics: {} });
+      // A later entry about an earlier measurement does not replace the most recent measurement.
+      await recordDataCenterQualityAssessment({ versionId: item.version.id, status: "MEASURED", score: 0.4, ...method, measuredAt: "2026-09-01T09:00:00.000Z", explanation: "Back-filled earlier measurement." }, admin);
+      expect(await latestDataCenterQuality(tx, item.version.id)).toMatchObject({ id: insufficient.id, status: "INSUFFICIENT_DATA", score: null });
+      expect((await getDataCenterItem(item.id, admin)).versions[0].qualityAssessments.map((entry) => entry.measuredAt.toISOString())).toEqual(["2026-10-05T09:00:00.000Z", "2026-10-01T09:00:00.000Z", "2026-09-01T09:00:00.000Z"]);
+
+      const record = (over: Record<string, unknown>) => recordDataCenterQualityAssessment({ versionId: item.version.id, status: "MEASURED", score: 0.5, ...method, measuredAt: "2026-10-02T09:00:00.000Z", explanation: "Reviewed", ...over } as never, admin);
+      await expect(record({ versionId: "missing" })).rejects.toMatchObject({ code: "VERSION_NOT_FOUND", status: 404 });
+      await expect(record({ score: undefined })).rejects.toThrow();
+      await expect(record({ measuredAt: new Date(Date.now() + 86_400_000).toISOString() })).rejects.toMatchObject({ code: "FUTURE_MEASUREMENT_DATE" });
+      await expect(recordDataCenterQualityAssessment({ versionId: item.version.id, status: "MEASURED", score: 0.5, ...method, measuredAt: "2026-10-02T09:00:00.000Z", explanation: "x" }, { id: admin.id, systemRole: "USER", kind: "HUMAN" })).rejects.toMatchObject({ code: "ADMIN_REQUIRED" });
+
+      const raw = (over: Record<string, unknown>) => () => tx.dataCenterQualityAssessment.create({ data: { versionId: item.version.id, status: "MEASURED", score: 0.5, ...method, measuredAt: new Date(), explanation: "Reviewed", assessedById: admin.id, ...over } as never });
+      await rejected(tx, raw({ score: null }), /DataCenterQualityAssessment_score_check/);
+      await rejected(tx, raw({ status: "INSUFFICIENT_DATA" }), /DataCenterQualityAssessment_score_check/);
+      for (const score of [1.5, -0.1, Number.NaN]) await rejected(tx, raw({ score }), /DataCenterQualityAssessment_score_range_check/);
+      for (const blank of ["method", "methodVersion", "explanation"]) await rejected(tx, raw({ [blank]: "  " }), /DataCenterQualityAssessment_method_check/);
+      await rejected(tx, raw({ metrics: [] }), /DataCenterQualityAssessment_metrics_check/);
+      await rejected(tx, raw({ metrics: { note: "x".repeat(9000) } }), /DataCenterQualityAssessment_metrics_check/);
+      await rejected(tx, raw({ assessedById: "missing" }), /DataCenterQualityAssessment_assessedById_fkey/);
+      await rejected(tx, raw({ versionId: "missing" }), /DataCenterQualityAssessment_versionId_fkey/);
+      await rejected(tx, () => tx.dataCenterQualityAssessment.update({ where: { id: measured.id }, data: { score: 1 } }), /immutable/i);
+      await rejected(tx, () => tx.dataCenterQualityAssessment.delete({ where: { id: measured.id } }), /immutable/i);
+      expect(await tx.dataCenterQualityAssessment.count({ where: { versionId: item.version.id } })).toBe(3);
     });
   });
 });
