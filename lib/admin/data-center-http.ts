@@ -3,6 +3,7 @@ import { z } from "zod";
 import { getCurrentUser } from "@/lib/auth/session";
 import { hasValidOrigin } from "@/lib/auth/request";
 import { enforceRouteRateLimit } from "@/lib/rate-limit/route-rate-limit";
+import { getPlatformMetrics } from "@/lib/admin/data-center-platform-metrics";
 import { commandSchema, DataCenterError, layers, type DataCenterActor } from "@/services/data-center/contracts";
 import { isDataCenterAdmin } from "@/services/data-center/policy";
 import { dispatchDataCenterCommand, getDataCenterItem, getDataCenterOverview, listDataCenterArea } from "@/services/data-center/service";
@@ -50,6 +51,7 @@ export async function adminDataCenterGet(request: NextRequest) {
     const params = request.nextUrl.searchParams;
     if (params.get("itemId")) return dataCenterJson({ success: true, item: await getDataCenterItem(params.get("itemId")!, actor) });
     const area = params.get("area") ?? "overview";
+    if (area === "platform") return dataCenterJson({ success: true, platform: await getPlatformMetrics() });
     if (area === "overview") return dataCenterJson({ success: true, dataCenter: await getDataCenterOverview(actor), capabilities: { imports: dataCenterImportCapabilities(), semantic: dataCenterSemanticStatus() } });
     const options = z.object({ page: z.coerce.number().int().min(1).max(10_000).default(1), limit: z.coerce.number().int().min(1).max(100).default(20),
       query: z.string().max(200).optional(), status: z.string().max(30).optional(), sourceId: z.string().max(128).optional(), layer: z.enum(layers).optional() }).parse(Object.fromEntries([...params].filter(([k]) => k !== "area")));

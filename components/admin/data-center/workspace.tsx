@@ -8,6 +8,8 @@ import { DATA_CENTER_SECTIONS, dataCenterHref, displayDataCenterValue, findDataC
 import { asRecords, DATA_CENTER_API, dataCenterErrorMessage, dataCenterRequest } from "./api";
 import { CommandForm, DATA_CENTER_COMMANDS, type CommandDefinition } from "./command-form";
 import { RecordDetails, type DataCenterRecord } from "./record-details";
+import { PlatformMetrics, loadPlatformMetrics } from "./platform-metrics";
+import type { PlatformMetricsState } from "@/lib/admin/data-center-platform-metric-keys";
 import styles from "./data-center.module.css";
 
 const areas: Record<DataCenterSection, string> = {
@@ -54,11 +56,14 @@ export function DataCenterWorkspace({ section }: { section: DataCenterSection })
   const [context, setContext] = useState<DataCenterRecord | null>(null);
   const [retrievalParams, setRetrievalParams] = useState("");
   const [refresh, setRefresh] = useState(0);
+  const [platform, setPlatform] = useState<PlatformMetricsState>({ status: "loading" });
 
   const load = useCallback(async (signal: AbortSignal) => {
     setLoading(true);
     setError("");
     setSnapshot({ rows: [], total: null, data: {} });
+    const metrics = section === "overview" ? loadPlatformMetrics(signal) : null;
+    if (metrics) setPlatform({ status: "loading" });
     try {
       const payload = await dataCenterRequest(`${DATA_CENTER_API}?${sectionQuery(section, page, filters.query, filters.status, filters.layer)}`, { signal });
       const data = payloadData(payload);
@@ -83,6 +88,10 @@ export function DataCenterWorkspace({ section }: { section: DataCenterSection })
       if (!signal.aborted) setError(cause instanceof Error ? cause.message : "تعذر تحميل البيانات.");
     } finally {
       if (!signal.aborted) setLoading(false);
+    }
+    if (metrics) {
+      const state = await metrics;
+      if (!signal.aborted) setPlatform(state);
     }
   }, [section, page, filters]);
 
@@ -247,6 +256,7 @@ export function DataCenterWorkspace({ section }: { section: DataCenterSection })
               <section className={styles.stats} aria-label="إحصاءات السجلات">
                 {Object.entries(statLabels).map(([key, label]) => <div key={key} className={styles.stat}><span>{label}</span><strong>{loading ? "…" : displayDataCenterValue(snapshot.data[key])}</strong></div>)}
               </section>
+              <PlatformMetrics state={platform} />
               <Card className={styles.panel}><h2>من المصدر إلى المعرفة المنشورة</h2><p className={styles.muted}>أضف مصدراً ونوعاً، ثم أنشئ سجلاً، وأرسله للمراجعة البشرية. سجّل قرار المراجعة ثم اعتمد وانشر. المصادر غير المؤرخة والثقة التقديرية تظل واضحة للمستهلك.</p><div className={styles.links}>{(["sources", "data", "knowledge", "publishing"] as const).map((key) => { const item = findDataCenterSection(key)!; return <Link key={key} href={dataCenterHref(key)}>{item.title}<small>{item.description}</small></Link>; })}</div></Card>
               <Card className={styles.panel}><h2>سياسة التشغيل</h2><p className={styles.muted}>لا توجد مؤشرات صحة أو جاهزية مصطنعة. النسخ الاحتياطي للبنية الأساسية يُدار خارج هذه الواجهة؛ التصدير ليس نسخة استعادة.</p></Card>
             </> : null}

@@ -7,7 +7,11 @@ It extends the existing Next.js App Router application, Prisma/PostgreSQL
 database, authenticated sessions, organization RBAC, audit log, rate limiting,
 and document storage. It does not replace those systems.
 
-The existing `/admin/data-center` page was a summary placeholder. PR #25 was
+`/admin/data-center` stays the single administration hub. Its former page
+showed counts from the database next to figures that were not measured: fixed
+percentage changes, values computed from a robot skill average, and a "system
+health" taken from that average. The counts are kept as the Overview /
+Platform Metrics section and the invented figures were removed. PR #25 was
 reviewed as an unmerged implementation candidate; its separation of scoped
 records, immutable content versions, ingestion, and retrieval informs this
 implementation. It is not merged wholesale.
@@ -97,6 +101,15 @@ The existing admin shell hosts these separate pages:
 `/admin/data-center/usage`, `/admin/data-center/audit`, and
 `/admin/data-center/settings`.
 
+The Overview section also shows **Platform Metrics**: row counts of users,
+organizations, robots, robot tasks, shared knowledge, learning records,
+verified evidence, model executions and cost records, read from the database
+through `GET /api/admin/data-center?area=platform`. They are counts only. They
+are not a health, skill or performance indicator, are never rounded or derived
+from another figure, and a count that cannot be read is shown as unavailable
+instead of zero. Measured platform health needs an approved monitoring source
+and appears only when one exists.
+
 An unavailable capability must explain its prerequisite. Empty tables are
 not populated with demonstration records, and missing telemetry must not be
 converted into a fabricated system-health percentage.
@@ -133,6 +146,10 @@ discriminant. Uploads use multipart form data rather than inline binary
 JSON. Consumer context and policy-filtered export live under
 `/api/data-center`. These endpoints reuse session authentication, origin
 validation for writes, per-user rate limits, and private/no-store responses.
+`/api/admin/data-center` answers 403 to a caller without an administrator
+session, like every administration API (`tests/e2e/admin-control-panel.spec.ts`);
+the shared handlers answer 401 anonymously, which stays true for
+`/api/data-center`.
 
 The service contracts in `services/data-center` are the integration boundary.
 Consumers should retain `itemId`, `versionId`, version number, checksum, and
