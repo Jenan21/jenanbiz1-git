@@ -2,7 +2,7 @@ import { Prisma } from "@/generated/prisma/client";
 import { db, type DbExecutor } from "@/lib/db";
 import { memberHasPermission } from "@/lib/auth/authorization";
 import { coverageFromColumns, DataCenterError, type DataCenterActor, type DataCenterContextRequest, type DataCenterSemanticAdapter } from "./contracts";
-import { deterministicConfidence, isDataCenterAdmin, requireDataCenterAdmin, sourceScopeWhere } from "./policy";
+import { isDataCenterAdmin, requireDataCenterAdmin, sourceScopeWhere, versionConfidence } from "./policy";
 import { auditDataCenter, createDataCenterItemInTransaction } from "./service";
 import { validateDataCenterGeoJson } from "./imports";
 
@@ -80,10 +80,7 @@ export async function retrieveDataCenterContext(input: DataCenterContextRequest,
     allowExport: v.item.source.allowExport, attribution: v.attribution ?? v.item.source.attribution, attributionRequired: v.item.source.attributionRequired,
     coverage: coverageFromColumns(v),
     effectiveFrom: v.effectiveFrom, effectiveTo: v.effectiveTo,
-    confidence: deterministicConfidence({ evidenceStatus: v.evidenceStatus, origin: v.origin,
-      provenanceCount: Array.isArray(v.provenance) ? v.provenance.length : 0, sourcePublishedAt: v.sourcePublishedAt,
-      freshnessDays: v.item.source.freshnessDays, expiresAt: v.expiresAt, sourceKind: v.item.source.kind,
-      completeness: 4 + (Array.isArray(v.provenance) && v.provenance.length ? 2 : 0) + (v.sourcePublishedAt ? 2 : 0) + (v.effectiveFrom || v.effectiveTo ? 2 : 0), consistency: 0 }),
+    confidence: versionConfidence(v, v.item.source),
     confidenceSnapshot: v.confidence,
   })), total: matches.length, page, limit, truncated: candidates.length > 2000 };
 }

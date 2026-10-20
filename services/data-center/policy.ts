@@ -76,6 +76,14 @@ export function deterministicConfidence(input: {
     factors: { evidence, provenance, freshness, origin, sourceReliability, completeness, consistency }, evaluatedAt: now.toISOString(), ageDays,
     policyVersion: "dc-confidence-v2-seven-factors", expired, explanation: "Heuristic, not a probability or verification: evidence 0–35; provenance 0–15; dated freshness 0–15; non-AI origin 0–5; declared source class 0–10; metadata completeness 0–10; independently assessed consistency 0–10. Unknown dates/consistency score zero. Source class is not independent certification." };
 }
+/** Live heuristic confidence of a stored version, evaluated at `now`. Read paths share this single mapping from stored fields to the score inputs. */
+export function versionConfidence(version: { evidenceStatus: string; origin: string; provenance: unknown; sourcePublishedAt: Date | null; expiresAt: Date | null; effectiveFrom: Date | null; effectiveTo: Date | null },
+  source: { freshnessDays: number; kind: string }, now?: Date) {
+  const provenanceCount = Array.isArray(version.provenance) ? version.provenance.length : 0;
+  return deterministicConfidence({ evidenceStatus: version.evidenceStatus, origin: version.origin, provenanceCount, sourcePublishedAt: version.sourcePublishedAt,
+    freshnessDays: source.freshnessDays, expiresAt: version.expiresAt, sourceKind: source.kind, now,
+    completeness: 4 + (provenanceCount ? 2 : 0) + (version.sourcePublishedAt ? 2 : 0) + (version.effectiveFrom || version.effectiveTo ? 2 : 0), consistency: 0 });
+}
 export function assertEvidence(input: { evidenceStatus: string; origin: string; provenance: unknown[] }, actor: DataCenterActor) {
   if (input.evidenceStatus === "VERIFIED" && (actor.kind === "AI" || input.origin === "AI" || !isDataCenterAdmin(actor) || !input.provenance.length))
     throw new DataCenterError("VERIFICATION_REQUIRES_HUMAN_ADMIN_AND_EVIDENCE", 403);

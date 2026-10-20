@@ -21,6 +21,8 @@ import { createDataCenterItem, createDataCenterSource, createDataCenterVersion, 
 import { exportDataCenter, retrieveDataCenterContext } from "@/services/data-center/retrieval";
 import { grantDataCenterRobotAccess, revokeDataCenterRobotAccess } from "@/services/data-center/robot-grants";
 import { latestDataCenterQuality, recordDataCenterQualityAssessment } from "@/services/data-center/quality";
+import { assessMapBinding, assessMapReferenceUse, MAP_BINDING_CONTRACT, mapBindingSchema, mapReferenceSchema } from "@/services/data-center/map-contract";
+import { resolveDataCenterMapReference } from "@/services/data-center/map-resolver";
 import type { DataCenterActor } from "@/services/data-center/contracts";
 
 const enabled = process.env.DATA_CENTER_DATABASE_TESTS === "1";
@@ -279,6 +281,69 @@ describe.skipIf(!enabled)("Data Center foundation on real PostgreSQL (always rol
       await rejected(tx, () => tx.dataCenterQualityAssessment.update({ where: { id: measured.id }, data: { score: 1 } }), /immutable/i);
       await rejected(tx, () => tx.dataCenterQualityAssessment.delete({ where: { id: measured.id } }), /immutable/i);
       expect(await tx.dataCenterQualityAssessment.count({ where: { versionId: item.version.id } })).toBe(3);
+    });
+  });
+  it("resolves Map references only for published, readable versions and lets a stored snapshot be checked against the Data Center", async () => {
+    await isolated(async (tx, admin) => {
+      const source = await createDataCenterSource({ name: "Atlas", kind: "OFFICIAL", scope: "PLATFORM", owner: "Authority", license: "ODbL-1.0", allowExport: true, ownership: "THIRD_PARTY", licenseClass: "OPEN_LICENSE",
+        usagePolicy: "Share-alike; credit required", attribution: "© Atlas contributors", attributionRequired: true, sourceOrganization: "Atlas Authority", sourceUrl: "https://atlas.example.test", freshnessDays: 365 }, admin);
+      const raw = await createDataCenterItem(dataset(source.id, "Raw atlas", "raw atlas rows"), admin);
+      const box = { west: 34.5, south: 16, east: 55.7, north: 32.2 };
+      const layer = await createDataCenterItem(dataset(source.id, "Atlas layer", "atlas layer rows", { attribution: "© Atlas 2026", coverage: { countryCodes: ["SA"], regionCodes: ["SA-01"], boundingBox: box },
+        sourcePublishedAt: new Date(Date.now() - 10 * 86_400_000).toISOString(), upstreamVersionIds: [raw.version.id] }), admin);
+      await expect(resolveDataCenterMapReference(layer.version.id, admin)).rejects.toMatchObject({ code: "PUBLISHED_VERSION_NOT_FOUND", status: 404 });
+      await publish(layer.id, admin);
+
+      const reference = await resolveDataCenterMapReference(layer.version.id, admin);
+      expect(reference).toMatchObject({
+        dataset: { itemId: layer.id, title: "Atlas layer", layer: "DATA" },
+        version: { versionId: layer.version.id, number: 1, checksum: { algorithm: "SHA-256", value: layer.version.checksum }, upstreamVersionIds: [raw.version.id] },
+        source: { sourceId: source.id, organization: "Atlas Authority", url: "https://atlas.example.test" }, ownership: { ownership: "THIRD_PARTY", owner: "Authority" },
+        rights: { license: "ODbL-1.0", licenseClass: "OPEN_LICENSE", usagePolicy: "Share-alike; credit required", allowRetrieval: true, allowExport: true, attribution: { text: "© Atlas 2026", required: true, level: "VERSION" } },
+        coverage: { crs: "WGS84", countryCodes: ["SA"], regionCodes: ["SA-01"], boundingBox: box }, quality: { status: "UNAVAILABLE" },
+        freshness: { status: "FRESH", freshnessDays: 365 }, publication: { status: "PUBLISHED", publishedVersion: 1 },
+      });
+      expect(reference.publication.publishedAt).toMatch(/Z$/);
+      expect(reference.confidence).toMatchObject({ heuristic: true, policyVersion: "dc-confidence-v2-seven-factors" });
+      expect(mapReferenceSchema.safeParse(reference).success).toBe(true);
+      expect(assessMapReferenceUse(reference, "EXPORT").allowed).toBe(true);
+
+      await recordDataCenterQualityAssessment({ versionId: layer.version.id, status: "MEASURED", score: 0.9, method: "manual-review", methodVersion: "1", measuredAt: new Date(Date.now() - 3_600_000).toISOString(), explanation: "Sampled 200 rows" }, admin);
+      const snapshot = await resolveDataCenterMapReference(layer.version.id, admin);
+      expect(snapshot.quality).toMatchObject({ status: "MEASURED", score: 0.9, method: "manual-review", methodVersion: "1" });
+
+      // A draft edit neither removes the published reference nor makes the draft referenceable.
+      const draft = await createDataCenterVersion({ itemId: layer.id, title: "Atlas layer v2", content: "atlas layer rows v2", evidenceStatus: "ESTIMATED", reason: "Revision" }, admin);
+      await expect(resolveDataCenterMapReference(draft.id, admin)).rejects.toMatchObject({ code: "PUBLISHED_VERSION_NOT_FOUND" });
+      expect((await resolveDataCenterMapReference(layer.version.id, admin)).version.versionId).toBe(layer.version.id);
+
+      const closed = await createDataCenterSource({ name: "Not retrievable", kind: "OFFICIAL", scope: "PLATFORM", owner: "Authority", license: "Internal", allowRetrieval: false }, admin);
+      const closedItem = await createDataCenterItem(dataset(closed.id, "Closed layer", "closed rows"), admin);
+      const scoped = await createDataCenterItem(dataset(source.id, "Finance only", "finance rows", { specialties: ["finance"] }), admin);
+      const hidden = await createDataCenterSource({ name: "Admin only", kind: "MANUAL", scope: "PRIVATE", owner: "Admin", license: "Internal" }, admin);
+      const hiddenItem = await createDataCenterItem(dataset(hidden.id, "Hidden layer", "hidden rows"), admin);
+      for (const entry of [closedItem, scoped, hiddenItem]) await publish(entry.id, admin);
+      expect((await resolveDataCenterMapReference(hiddenItem.version.id, admin)).source.scope).toBe("PRIVATE");
+      await expect(resolveDataCenterMapReference(closedItem.version.id, admin)).rejects.toMatchObject({ code: "PUBLISHED_VERSION_NOT_FOUND" });
+      await expect(resolveDataCenterMapReference(scoped.version.id, admin)).rejects.toMatchObject({ code: "PUBLISHED_VERSION_NOT_FOUND" });
+      const viewer = await tx.user.create({ data: { email: `viewer-${randomUUID()}@example.test`, status: "ACTIVE" } });
+      const member: DataCenterActor = { id: viewer.id, systemRole: "USER", kind: "HUMAN" };
+      await expect(resolveDataCenterMapReference(hiddenItem.version.id, member)).rejects.toMatchObject({ code: "PUBLISHED_VERSION_NOT_FOUND" });
+      expect((await resolveDataCenterMapReference(layer.version.id, member)).version.versionId).toBe(layer.version.id);
+      await expect(resolveDataCenterMapReference(layer.version.id, { id: admin.id, systemRole: "ADMIN", kind: "AI" })).rejects.toMatchObject({ code: "EXPLICIT_ROBOT_GRANT_REQUIRED" });
+      await expect(resolveDataCenterMapReference("missing", admin)).rejects.toMatchObject({ code: "PUBLISHED_VERSION_NOT_FOUND", status: 404 });
+      await expect(resolveDataCenterMapReference("", admin)).rejects.toMatchObject({ code: "PUBLISHED_VERSION_NOT_FOUND" });
+
+      // The Map keeps only its identifiers and this snapshot; the Data Center remains the truth.
+      const binding = mapBindingSchema.parse({ contract: MAP_BINDING_CONTRACT, map: { releaseId: "release-1", layerKey: "atlas", exportsArtifact: true, artifactSha256: "d".repeat(64) }, reference: snapshot });
+      expect(assessMapBinding(binding, await resolveDataCenterMapReference(layer.version.id, admin))).toEqual({ consistent: true, findings: [] });
+      await tx.dataCenterSource.update({ where: { id: source.id }, data: { allowExport: false, attribution: "© Atlas contributors (updated)" } });
+      const after = assessMapBinding(binding, await resolveDataCenterMapReference(layer.version.id, admin));
+      expect(after.consistent).toBe(false);
+      expect(after.findings.map((finding) => finding.code)).toEqual(["EXPORT_NO_LONGER_PERMITTED"]);
+      await transitionDataCenterItem({ itemId: layer.id, status: "ARCHIVED", reason: "Withdrawn by the owner" }, admin);
+      await expect(resolveDataCenterMapReference(layer.version.id, admin)).rejects.toMatchObject({ code: "PUBLISHED_VERSION_NOT_FOUND" });
+      expect(assessMapBinding(binding, null)).toMatchObject({ consistent: false, findings: [{ code: "DATA_CENTER_VERSION_UNAVAILABLE" }] });
     });
   });
 });

@@ -18,16 +18,17 @@ const httpUrl = text(2000).refine((value) => {
 export function resolveSourceOwnership(source: { kind: string; ownership?: typeof ownerships[number] }) {
   return source.ownership ?? (source.kind === "GENERATED" ? "AI_GENERATED" : "THIRD_PARTY");
 }
-const countryCode = z.string().regex(/^[A-Z]{2}$/, "ISO 3166-1 alpha-2 country code in upper case");
-const regionCode = z.string().regex(/^[A-Z]{2}-[A-Z0-9]{1,3}$/, "ISO 3166-2 region code in upper case");
+export const countryCodeSchema = z.string().regex(/^[A-Z]{2}$/, "ISO 3166-1 alpha-2 country code in upper case");
+export const regionCodeSchema = z.string().regex(/^[A-Z]{2}-[A-Z0-9]{1,3}$/, "ISO 3166-2 region code in upper case");
 const longitude = z.number().min(-180).max(180);
 const latitude = z.number().min(-90).max(90);
+export const boundingBoxSchema = z.object({ west: longitude, south: latitude, east: longitude, north: latitude }).strict()
+  .refine((box) => box.west <= box.east && box.south <= box.north, "Bounding box needs west <= east and south <= north");
 // Plain WGS84 metadata. No geometry is stored in the Data Center and antimeridian crossing is not supported in v1.
 export const coverageSchema = z.object({
-  countryCodes: z.array(countryCode).max(250).default([]),
-  regionCodes: z.array(regionCode).max(500).default([]),
-  boundingBox: z.object({ west: longitude, south: latitude, east: longitude, north: latitude }).strict()
-    .refine((box) => box.west <= box.east && box.south <= box.north, "Bounding box needs west <= east and south <= north").optional(),
+  countryCodes: z.array(countryCodeSchema).max(250).default([]),
+  regionCodes: z.array(regionCodeSchema).max(500).default([]),
+  boundingBox: boundingBoxSchema.optional(),
 }).strict()
   .refine((c) => new Set(c.countryCodes).size === c.countryCodes.length && new Set(c.regionCodes).size === c.regionCodes.length, "Coverage codes must be unique")
   .refine((c) => c.regionCodes.every((region) => c.countryCodes.includes(region.slice(0, 2))), "Every region code needs its country in countryCodes");
