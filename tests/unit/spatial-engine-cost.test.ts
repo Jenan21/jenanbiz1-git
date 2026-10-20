@@ -16,16 +16,16 @@ describe("spatial-cost-v1", () => {
   it("prices a typical request from the request alone and explains it line by line", () => {
     const typical = baseRequest({ analyses: ["LOCATION_CONTEXT", "PROXIMITY", "CATCHMENT", "DENSITY"], parameters: { roles: ["poi:hospital", "poi:school", "place:locality"] } });
     expect(estimate(typical)).toEqual({
-      policyId: "spatial-cost-v1", policyVersion: "1.1.0", units: 29.371, budgetUnits: 1000,
+      policyId: "spatial-cost-v1", policyVersion: "1.2.0", units: 31.371, budgetUnits: 1000,
       lines: [
-        { key: "catchment.radii", units: 4 }, { key: "catchment.roles", units: 3 }, { key: "context", units: 3 },
+        { key: "catchment.radii", units: 4 }, { key: "catchment.roles", units: 3 }, { key: "context", units: 3 }, { key: "context.place:locality", units: 2 },
         { key: "density.place:locality", units: 4.157 }, { key: "density.poi:hospital", units: 4.157 }, { key: "density.poi:school", units: 4.157 },
         { key: "proximity.place:locality", units: 2 }, { key: "proximity.place:locality.nearest", units: 0.3 },
         { key: "proximity.poi:hospital", units: 2 }, { key: "proximity.poi:hospital.nearest", units: 0.3 },
         { key: "proximity.poi:school", units: 2 }, { key: "proximity.poi:school.nearest", units: 0.3 },
       ],
     });
-    expect(SPATIAL_COST_POLICY).toEqual({ id: "spatial-cost-v1", version: "1.1.0" });
+    expect(SPATIAL_COST_POLICY).toEqual({ id: "spatial-cost-v1", version: "1.2.0" });
   });
 
   it("returns a valid estimate whose units are the sum of its lines", () => {
@@ -132,6 +132,45 @@ describe("spatial-cost-v1", () => {
     });
   });
 
+  describe("place roles in LOCATION_CONTEXT", () => {
+    const context = (over: Record<string, unknown> = {}, request: Record<string, unknown> = {}) =>
+      baseRequest({ analyses: ["LOCATION_CONTEXT"], parameters: { roles: ["place:locality"], ...over } as never, ...request } as never);
+    const line = (request: unknown, role = "place:locality") => lineMap(request)[`context.${role}`];
+
+    it("prices the nearest-place search of each place role by the rings it may search", () => {
+      expect([line(context({ maxSearchMeters: 500 })), line(context()), line(context({ maxSearchMeters: 10_000 })), line(context({ maxSearchMeters: 50_000 }))]).toEqual([0.5, 2, 2.5, 3.5]);
+      expect(lineMap(context())).toEqual({ context: 3, "context.place:locality": 2 });
+    });
+
+    it("grows with every place role and with every target, and an area counts for more than a point", () => {
+      const roles = ["place:locality", "place:neighbourhood", "place"];
+      expect(total(context({ roles }))).toBeGreaterThan(total(context({ roles: roles.slice(0, 2) })));
+      expect(lineMap(context({ roles }))).toEqual({ context: 3, "context.place": 2, "context.place:locality": 2, "context.place:neighbourhood": 2 });
+      expect(line(context({}, { candidates: [{ id: "a", location: riyadh }, { id: "b", location: riyadh }] }))).toBe(6);
+      expect(line({ ...context(), location: { type: "Polygon", coordinates: [square(46.6, 24.7, 0.01)] } })).toBe(4.02);
+    });
+
+    it("prices only place roles: other feature roles belong to PROXIMITY and constraint roles are not read here", () => {
+      const lines = lineMap(context({ roles: ["place:locality", "poi:hospital", "road:major", "competitor:cafe", "constraint:flood"] }));
+      expect(Object.keys(lines).sort()).toEqual(["context", "context.place:locality"]);
+    });
+
+    it("prices nothing for a role when LOCATION_CONTEXT is not asked for, and does not charge twice when PROXIMITY searches the same role", () => {
+      expect(lineMap(baseRequest({ analyses: ["PROXIMITY"], parameters: { roles: ["place:locality"] } }))).not.toHaveProperty("context.place:locality");
+      const both = lineMap(baseRequest({ analyses: ["LOCATION_CONTEXT", "PROXIMITY"], parameters: { roles: ["place:locality"] } }));
+      expect(both["context.place:locality"]).toBe(2);
+      expect(both["proximity.place:locality"]).toBe(2);
+    });
+
+    it("stays a valid estimate at the largest size of the request", () => {
+      const roles = Array.from({ length: 32 }, (_, index) => `place:kind_${index}`);
+      const result = estimate(baseRequest({ analyses: ["LOCATION_CONTEXT"], parameters: { roles, maxSearchMeters: 50_000 } }), 5000);
+      expect(costEstimateSchema.parse(result)).toEqual(result);
+      expect(result.lines).toHaveLength(33);
+      expect(Math.max(...result.lines.map((entry) => entry.key.length))).toBeLessThanOrEqual(80);
+    });
+  });
+
   it("does not depend on the order in which the request was written", () => {
     const one = baseRequest({ analyses: ["CATCHMENT", "PROXIMITY"], parameters: { roles: ["poi:school", "poi:hospital"], radiiMeters: [3000, 500] } });
     const two = baseRequest({ analyses: ["PROXIMITY", "CATCHMENT"], parameters: { roles: ["poi:hospital", "poi:school"], radiiMeters: [500, 3000] } });
@@ -173,8 +212,8 @@ describe("prepareSpatialRequest", () => {
   });
 
   it("accepts a request exactly at the budget and refuses it one thousandth above", () => {
-    expect(prepareSpatialRequest(typical, { ...options, budgetUnits: 29.371 }).cost.units).toBe(29.371);
-    expect(failure(() => prepareSpatialRequest(typical, { ...options, budgetUnits: 29.37 }))).toMatchObject({ code: "REQUEST_TOO_LARGE" });
+    expect(prepareSpatialRequest(typical, { ...options, budgetUnits: 31.371 }).cost.units).toBe(31.371);
+    expect(failure(() => prepareSpatialRequest(typical, { ...options, budgetUnits: 31.37 }))).toMatchObject({ code: "REQUEST_TOO_LARGE" });
   });
 
   it("accepts the same heavy request when the server allows a larger budget", () => {

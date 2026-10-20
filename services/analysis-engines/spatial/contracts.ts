@@ -26,6 +26,8 @@ export const roleSchema = z.string().regex(ROLE_PATTERN, "A role such as poi:hos
 export const roleNamespace = (role: string) => role.split(":", 1)[0] as string;
 /** Features that are counted, searched and measured: places, points of interest, roads and competitors. */
 export const isFeatureRole = (role: string) => ["place", "poi", "road", "competitor"].includes(roleNamespace(role));
+/** Named places (localities, neighbourhoods): the only roles LOCATION_CONTEXT reads. */
+export const isPlaceRole = (role: string) => roleNamespace(role) === "place";
 export const isConstraintRole = (role: string) => roleNamespace(role) === "constraint";
 export const isPopulationRole = (role: string) => role === "population";
 
