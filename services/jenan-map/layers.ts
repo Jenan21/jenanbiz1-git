@@ -1,0 +1,234 @@
+import { Prisma } from "@/generated/prisma/client";
+import { db, type DbExecutor } from "@/lib/db";
+import { z } from "zod";
+import { MapError } from "./contracts";
+import { layerExportable } from "./backup";
+import { validateProvenance, type OpenProvenance } from "../../scripts/jenan-map/open-data.mjs";
+
+export const layerChangeSchema = z.object({
+  id: z.string().regex(/^[a-z][a-z-]{0,63}$/),
+  enabled: z.boolean(),
+  expectedRevision: z.number().int().nonnegative(),
+  expectedReleaseId: z.string().uuid().nullable().optional(),
+  confirmation: z.literal("CHANGE LAYER"),
+}).strict();
+
+export type StoredMapLayer = {
+  id: string;
+  label: string;
+  enabled: boolean;
+  visibility: "public" | "internal";
+  status: "unavailable" | "ready" | "warning";
+  releaseId: string | null;
+  source: string | null;
+  version: string | null;
+  confidence: number | null;
+  updatedAt: Date | null;
+  revision: number;
+  styleLayerIds: string[];
+  searchCategories: string[];
+  sourceDate: Date | null;
+  license: string | null;
+  provenance?: OpenProvenance | null;
+};
+
+type LayerExecutor = Pick<DbExecutor, "$queryRaw" | "$executeRaw">;
+const styleId = z.string().trim().min(1).max(200);
+export const releaseLayerBindingSchema = z.object({
+  id: z.string().regex(/^[a-z][a-z-]{0,63}$/),
+  styleLayerIds: z.array(styleId).min(1).max(500),
+  searchCategories: z.array(z.string().trim().min(1).max(100)).max(100).default([]),
+  visibility: z.enum(["public", "internal"]).default("public"),
+  confidence: z.number().finite().min(0).max(1).nullable().default(null),
+  provenance: z.unknown().optional().transform((value, ctx) => {
+    if (value === undefined) return undefined;
+    try { return validateProvenance(value); }
+    catch { ctx.addIssue({ code: "custom", message: "Invalid open-source provenance" }); return z.NEVER; }
+  }),
+}).strict();
+export const releaseLayerBindingsSchema = z.array(releaseLayerBindingSchema).min(1).max(100)
+  .refine((bindings) => new Set(bindings.map((binding) => binding.id)).size === bindings.length, "Duplicate layer IDs");
+export type ReleaseLayerBinding = z.infer<typeof releaseLayerBindingSchema>;
+
+export function validateReleaseLayerBindings(input: unknown, actualStyleIds: string[]): ReleaseLayerBinding[] {
+  const parsed = releaseLayerBindingsSchema.safeParse(input);
+  if (!parsed.success) throw new MapError("INVALID_LAYER_BINDING", 400);
+  const ids = new Set<string>();
+  const claimedStyles = new Set<string>();
+  const categories = new Set<string>();
+  const actual = new Set(actualStyleIds);
+  for (const binding of parsed.data) {
+    if (ids.has(binding.id)) throw new MapError("INVALID_LAYER_BINDING", 400);
+    ids.add(binding.id);
+    for (const id of binding.styleLayerIds) {
+      if (!actual.has(id) || claimedStyles.has(id)) throw new MapError("INVALID_LAYER_BINDING", 400);
+      claimedStyles.add(id);
+    }
+    for (const category of binding.searchCategories) {
+      if (categories.has(category)) throw new MapError("INVALID_LAYER_BINDING", 400);
+      categories.add(category);
+    }
+  }
+  return parsed.data;
+}
+
+export async function bindReleaseLayers(executor: LayerExecutor, releaseId: string, input: unknown, actualStyleIds: string[]) {
+  const bindings = validateReleaseLayerBindings(input, actualStyleIds);
+  assertPublicStyleLayerBindings(bindings, actualStyleIds);
+  const catalog = await executor.$queryRaw<{ id: string }[]>(Prisma.sql`SELECT id FROM jenan_map.layer`);
+  const known = new Set(catalog.map((layer) => layer.id));
+  if (bindings.some((binding) => !known.has(binding.id))) throw new MapError("INVALID_LAYER_BINDING", 400);
+  for (const binding of bindings) {
+    await executor.$executeRaw(Prisma.sql`
+      INSERT INTO jenan_map.release_layer ("releaseId", "layerId", visibility, "styleLayerIds", "searchCategories", confidence, provenance)
+      VALUES (${releaseId}::uuid, ${binding.id}, ${binding.visibility},
+        ARRAY[${Prisma.join(binding.styleLayerIds)}]::text[],
+        ${binding.searchCategories.length ? Prisma.sql`ARRAY[${Prisma.join(binding.searchCategories)}]::text[]` : Prisma.sql`ARRAY[]::text[]`}, ${binding.confidence},
+        ${binding.provenance ? JSON.stringify(binding.provenance) : null}::jsonb)`);
+  }
+}
+
+export function assertPublicStyleLayerBindings(bindings: { visibility: string; styleLayerIds: string[] }[], actualStyleIds: string[]) {
+  if (bindings.some((binding) => binding.visibility !== "public")) throw new MapError("INTERNAL_LAYER_NOT_PUBLIC");
+  const claimed = new Set(bindings.flatMap((binding) => binding.styleLayerIds));
+  if (!actualStyleIds.length || actualStyleIds.some((id) => !claimed.has(id))) throw new MapError("UNBOUND_PUBLIC_STYLE_LAYER");
+}
+
+/**
+ * Open (unofficial) coverage lists the reviewed provenance of every dataset the release holds: each public layer binding and each imported
+ * feature layer, and nothing else. A bound layer carries exactly that provenance and is searchable by its own category when the release has
+ * features of that category (tile-only layers such as the base map have none). Returns the problems; an empty list means they agree.
+ */
+export function layerProvenanceProblems(
+  expected: unknown,
+  bindings: ReadonlyArray<{ id: string; provenance?: OpenProvenance | null; searchCategories: string[] }>,
+  featureLayers: ReadonlySet<string>,
+  featureCategories: ReadonlySet<string>,
+) {
+  if (!Array.isArray(expected)) return ["coverage: layers missing"];
+  const problems: string[] = [];
+  const listed = new Map<string, unknown>((expected as Array<{ id: string; provenance: unknown }>).map((layer) => [layer.id, layer.provenance]));
+  const bound = new Set(bindings.map((binding) => binding.id));
+  for (const binding of bindings) {
+    if (!listed.has(binding.id) || !binding.provenance) { problems.push(`${binding.id}: provenance missing`); continue; }
+    const categories = featureCategories.has(binding.id) ? [binding.id] : [];
+    if (binding.searchCategories.length !== categories.length || categories.some((category) => !binding.searchCategories.includes(category))) problems.push(`${binding.id}: search categories`);
+    try {
+      const reviewed = validateProvenance(listed.get(binding.id));
+      if (Object.entries(reviewed).some(([key, value]) => binding.provenance![key as keyof OpenProvenance] !== value)) problems.push(`${binding.id}: provenance differs`);
+    } catch { problems.push(`${binding.id}: reviewed provenance invalid`); }
+  }
+  for (const id of featureLayers) if (!listed.has(id)) problems.push(`${id}: imported layer has no reviewed provenance`);
+  for (const id of listed.keys()) if (!bound.has(id) && !featureLayers.has(id)) problems.push(`${id}: provenance for a layer the release does not contain`);
+  return problems;
+}
+
+function projectedLayers(releaseId: string | null) {
+  return Prisma.sql`SELECT l.id, l.label, COALESCE(b.enabled, false) AS enabled,
+    COALESCE(b.visibility, l.visibility) AS visibility, COALESCE(b.status, 'unavailable') AS status,
+    b."releaseId", CASE WHEN b."releaseId" IS NOT NULL THEN COALESCE(b.provenance->>'source', r.source) END AS source,
+    CASE WHEN b."releaseId" IS NOT NULL THEN r.version END AS version,
+    b.confidence, b."updatedAt", COALESCE(b.revision, l.revision) AS revision,
+    COALESCE(b."styleLayerIds", ARRAY[]::text[]) AS "styleLayerIds",
+    COALESCE(b."searchCategories", ARRAY[]::text[]) AS "searchCategories",
+    COALESCE((b.provenance->>'sourceDate')::timestamptz, r."sourceDate") AS "sourceDate",
+    COALESCE(b.provenance->>'license', r.license) AS license, b.provenance
+    FROM jenan_map.layer l
+    LEFT JOIN jenan_map.release_layer b ON b."layerId" = l.id AND b."releaseId" = ${releaseId}::uuid
+    LEFT JOIN jenan_map.release r ON r.id = b."releaseId"`;
+}
+
+export async function releaseManifestLayers(releaseId: string, executor: LayerExecutor = db) {
+  const rows = await executor.$queryRaw<StoredMapLayer[]>(Prisma.sql`${projectedLayers(releaseId)}
+    WHERE b.visibility = 'public'
+      AND cardinality(b."styleLayerIds") > 0 ORDER BY l.id`);
+  return rows.filter((layer) => layer.visibility === "public" && layer.releaseId === releaseId && layer.styleLayerIds?.length)
+    .map((layer) => {
+      let available = false;
+      try { assertLayerCanEnable(layer, releaseId); available = layer.enabled; } catch { /* Unavailable public bindings must still hide their immutable style IDs. */ }
+      return { ...layer, available };
+    });
+}
+
+export async function releaseMapLayers(releaseId: string, executor: LayerExecutor = db) {
+  return (await releaseManifestLayers(releaseId, executor)).filter((layer) => layer.available);
+}
+
+export function readyLayerSearchFilter(releaseId: string, layerIds?: string[]) {
+  const requested = layerIds === undefined ? Prisma.sql`` : Prisma.sql`
+    AND (lb."layerId" = 'base' ${layerIds.length ? Prisma.sql`OR lb."layerId" IN (${Prisma.join(layerIds)})` : Prisma.sql``})`;
+  return Prisma.sql`EXISTS (SELECT 1 FROM jenan_map.release_layer lb
+    WHERE lb."releaseId" = ${releaseId}::uuid AND lb.visibility = 'public'
+      AND lb.status = 'ready' AND lb.enabled AND cardinality(lb."styleLayerIds") > 0
+      AND f.category = ANY(lb."searchCategories") ${requested})`;
+}
+
+export function assertLayerCanEnable(layer: StoredMapLayer, activeReleaseId: string | null) {
+  if (layer.status !== "ready" || !layer.source || !layer.version ||
+      !activeReleaseId || layer.releaseId !== activeReleaseId || !layer.styleLayerIds?.length) {
+    throw new MapError("LAYER_DATA_UNAVAILABLE");
+  }
+  if (layer.visibility !== "public") throw new MapError("INTERNAL_LAYER_NOT_PUBLIC");
+}
+
+export async function mapLayers() {
+  const [runtime] = await db.$queryRaw<{ publishedReleaseId: string | null }[]>(
+    Prisma.sql`SELECT "publishedReleaseId" FROM jenan_map.runtime WHERE id = 1`);
+  const releaseId = runtime?.publishedReleaseId ?? null;
+  const layers = await db.$queryRaw<StoredMapLayer[]>(Prisma.sql`${projectedLayers(releaseId)} ORDER BY l.id`);
+  // How many features each layer holds, so the catalog offers a data export only where there is data and the licence allows it.
+  const held = new Map<string, number>();
+  if (releaseId) {
+    const counts = await db.$queryRaw<{ layerId: string; n: number }[]>(Prisma.sql`
+      SELECT "layerId", count(*)::int AS n FROM jenan_map.feature WHERE "releaseId" = ${releaseId}::uuid GROUP BY "layerId"`);
+    for (const row of counts) held.set(row.layerId, row.n);
+  }
+  return layers.map((layer) => {
+    const featureCount = held.get(layer.id) ?? 0;
+    return { ...layer, featureCount, exportable: Boolean(layer.releaseId) && featureCount > 0 && layerExportable(layer.provenance) };
+  });
+}
+
+export async function changeMapLayer(input: z.infer<typeof layerChangeSchema>, actorId: string) {
+  try {
+    return await db.$transaction(async (tx) => {
+    const [runtime] = await tx.$queryRaw<{ publishedReleaseId: string | null }[]>(
+      Prisma.sql`SELECT "publishedReleaseId" FROM jenan_map.runtime WHERE id = 1 FOR UPDATE`,
+    );
+    const [layer] = await tx.$queryRaw<StoredMapLayer[]>(Prisma.sql`
+      ${projectedLayers(runtime?.publishedReleaseId ?? null)} WHERE l.id = ${input.id}`);
+    if (!layer) throw new MapError("LAYER_NOT_FOUND", 404);
+    if (layer.releaseId && input.expectedReleaseId !== layer.releaseId) throw new MapError("STALE_PUBLISHED_POINTER");
+    if (input.expectedReleaseId !== undefined && input.expectedReleaseId !== (runtime?.publishedReleaseId ?? null)) throw new MapError("STALE_PUBLISHED_POINTER");
+    if (layer.revision !== input.expectedRevision) throw new MapError("STALE_REVISION");
+    if (input.enabled) assertLayerCanEnable(layer, runtime?.publishedReleaseId ?? null);
+    if (layer.releaseId) {
+      await tx.$executeRaw(Prisma.sql`
+        UPDATE jenan_map.release_layer SET enabled = ${input.enabled}, revision = revision + 1,
+        "updatedAt" = now() WHERE "layerId" = ${input.id} AND "releaseId" = ${layer.releaseId}::uuid`);
+    } else {
+      await tx.$executeRaw(Prisma.sql`
+        UPDATE jenan_map.layer SET enabled = false, revision = revision + 1, "updatedAt" = now() WHERE id = ${input.id}`);
+    }
+    await tx.auditLog.create({
+      data: {
+        actorId,
+        action: "jenan_map.layer.updated",
+        entityType: "JenanMapLayer",
+        entityId: input.id,
+        metadata: { enabled: input.enabled, releaseId: layer.releaseId, result: "success" },
+      },
+    });
+    return { id: input.id, enabled: input.enabled, revision: layer.revision + 1 };
+    }, { isolationLevel: "Serializable" });
+  } catch (error) {
+    if (error instanceof Prisma.PrismaClientKnownRequestError) {
+      const adapter = error.meta?.driverAdapterError as { cause?: { originalCode?: unknown } } | undefined;
+      const code = String(error.meta?.code ?? adapter?.cause?.originalCode ?? "");
+      if (error.code === "P2034" || (error.code === "P2010" && ["40001", "40P01"].includes(code))) {
+        throw new MapError("CONCURRENT_CHANGE_RETRY");
+      }
+    }
+    throw error;
+  }
+}

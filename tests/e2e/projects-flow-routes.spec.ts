@@ -47,7 +47,7 @@ test.describe.serial("Projects full route flow", () => {
         if (definition.route.endsWith("/progress")) {
           await expect(page.locator("[data-testid='analysis-progress'], .pa-center").first()).toBeVisible();
         } else {
-          await expect(page.locator(".an-report, .pa-center").first()).toBeVisible();
+          await expect(page.locator(".rp, .pa-center").first()).toBeVisible();
         }
       } else if (definition.route.startsWith("/projects/feasibility/pro/")) {
         await expect(page.locator(".professional-feasibility")).toHaveAttribute("data-project-route", definition.route);

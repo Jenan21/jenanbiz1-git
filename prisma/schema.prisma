@@ -888,8 +888,28 @@ model User {
   requestedToolApprovals     ToolApproval[]              @relation("ToolApprovalRequester")
   decidedToolApprovals       ToolApproval[]              @relation("ToolApprovalDecider")
   reportDeliveries           ReportDelivery[]
+  savedReports               SavedReport[]
   createdAt                  DateTime                    @default(now())
   updatedAt                  DateTime                    @updatedAt
+}
+
+/// A copy of a finished report kept in the owner's data: the project facts, the location and the figures as they stood
+/// when it was saved, so the copy stays readable even if the project later changes or is removed.
+model SavedReport {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  /// The project the copy came from; a plain id, not a relation, so deleting the project never deletes the copy.
+  projectId String
+  kind      String
+  title     String
+  locale    String   @default("ar")
+  snapshot  Json
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([userId, projectId, kind])
+  @@index([userId, updatedAt])
 }
 
 model Profile {

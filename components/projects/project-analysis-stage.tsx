@@ -34,12 +34,13 @@ export function AnalysisStage({
   ar,
   extra,
   onStart,
-  reportHref = "/projects/analysis/report",
+  reportHref,
   testId,
 }: {
   ar: boolean;
   extra?: ReactNode;
   onStart?: () => void;
+  /** Set only when the user already has a finished report; without it the page offers just «ابدأ التحليل». */
   reportHref?: string;
   testId?: string;
 }) {
@@ -83,13 +84,13 @@ export function AnalysisStage({
               </>
             )}
           </p>
-          <div className="an-actions">
+          <div className={`an-actions${reportHref ? "" : " is-single"}`}>
             {onStart ? (
               <button className="an-start" data-testid="analysis-start" onClick={onStart} type="button"><Icon name="barChart" />{ar ? "ابدأ التحليل" : "Start analysis"}<Icon name="arrow" /></button>
             ) : (
               <Link className="an-start" data-testid="analysis-start" href="/projects/analysis"><Icon name="barChart" />{ar ? "ابدأ التحليل" : "Start analysis"}<Icon name="arrow" /></Link>
             )}
-            <Link className="an-ghost" href={reportHref}><Icon name="fileText" />{ar ? "عرض التقرير" : "View report"}</Link>
+            {reportHref ? <Link className="an-ghost" href={reportHref}><Icon name="fileText" />{ar ? "عرض التقرير" : "View report"}</Link> : null}
           </div>
           {extra}
           <ul className="an-features">

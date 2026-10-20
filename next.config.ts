@@ -12,6 +12,11 @@ const nextConfig: NextConfig = {
   reactStrictMode: true,
   poweredByHeader: false,
   serverExternalPackages: ["@napi-rs/canvas", "pdfjs-dist"],
+  // The report PDF reads the font and the letterhead from `public` at request time; list them so the deployed function carries them.
+  outputFileTracingIncludes: {
+    "/api/projects/[projectId]/analysis-report": ["./public/assets/fonts/Alexandria-VariableFont_wght.ttf", "./public/assets/letterhead/jenan-pro-letterhead.jpg"],
+    "/api/user/reports/[id]/pdf": ["./public/assets/fonts/Alexandria-VariableFont_wght.ttf", "./public/assets/letterhead/jenan-pro-letterhead.jpg"],
+  },
   agentRules: false,
   experimental: {
     authInterrupts: true,
@@ -26,6 +31,10 @@ const nextConfig: NextConfig = {
         headers: [{ key: "Cache-Control", value: "public, max-age=31536000, immutable" }],
       },
       {
+        source: "/assets/analysis/city-lights.v1.svg",
+        headers: [{ key: "Cache-Control", value: "public, max-age=31536000, immutable" }],
+      },
+      {
         source: "/:path*",
         headers: [
           ...securityHeaders,
@@ -35,6 +44,12 @@ const nextConfig: NextConfig = {
             value: [...ENFORCED_CSP_DIRECTIVES, ...(production ? ["upgrade-insecure-requests"] : [])].join("; "),
           },
         ],
+      },
+      {
+        source: "/jenan-map",
+        headers: securityHeaders.filter((header) => header.key === "Permissions-Policy").map((header) => ({
+          ...header, value: header.value.replace("geolocation=()", "geolocation=(self)"),
+        })),
       },
     ];
   },

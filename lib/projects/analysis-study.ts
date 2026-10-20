@@ -2,6 +2,23 @@ import type { Locale } from "@/types/i18n";
 
 export type JsonRecord = Record<string, unknown>;
 export type AnalysisStatus = "PENDING" | "PROCESSING" | "COMPLETED" | "FAILED";
+
+/** The real steps of a run, in order; the server records the one it is working on and the screens only read it. */
+export const ANALYSIS_STAGES = ["LOCATION", "MARKET_DATA", "COMPETITION", "RECOMMENDATIONS", "REPORT"] as const;
+export type AnalysisStage = (typeof ANALYSIS_STAGES)[number];
+
+/** Runs saved before the stages existed recorded a single market step. */
+export function readStage(value: unknown): AnalysisStage | undefined {
+  if (value === "MARKET_INTELLIGENCE") return "MARKET_DATA";
+  return ANALYSIS_STAGES.find((stage) => stage === value);
+}
+
+/** How many stages are finished: those before the current one, or all of them once the run is complete. */
+export function completedStages(stage: AnalysisStage | undefined, status: AnalysisStatus | undefined) {
+  if (status === "COMPLETED") return ANALYSIS_STAGES.length;
+  return stage ? ANALYSIS_STAGES.indexOf(stage) : 0;
+}
+
 export type AnalysisInput = {
   idea: string;
   city: string;
@@ -10,6 +27,7 @@ export type AnalysisInput = {
   latitude?: number;
   longitude?: number;
   expectedCapital?: number;
+  areaSqm?: number;
   projectSize?: string;
   placeLabel?: string;
 };
@@ -28,6 +46,7 @@ export type AnalysisStudy = {
   status: AnalysisStatus;
   input?: AnalysisInput;
   result?: AnalysisResult;
+  stage?: AnalysisStage;
   error?: string;
   updatedAt?: string;
 };
@@ -185,6 +204,7 @@ export function readStudy(value: unknown): AnalysisStudy {
           ...(typeof inputRecord.expectedCapital === "number" && inputRecord.expectedCapital > 0
             ? { expectedCapital: inputRecord.expectedCapital }
             : {}),
+          ...(typeof inputRecord.areaSqm === "number" && inputRecord.areaSqm > 0 ? { areaSqm: inputRecord.areaSqm } : {}),
           ...(typeof inputRecord.projectSize === "string" ? { projectSize: inputRecord.projectSize } : {}),
           ...(typeof inputRecord.placeLabel === "string" ? { placeLabel: inputRecord.placeLabel } : {}),
         } satisfies AnalysisInput)
@@ -232,6 +252,7 @@ export function readStudy(value: unknown): AnalysisStudy {
     status,
     input,
     result,
+    stage: status === "PROCESSING" ? readStage(record?.processingStep) : undefined,
     error: typeof record?.error === "string" ? record.error : undefined,
     updatedAt:
       typeof record?.updatedAt === "string" ? record.updatedAt : undefined,

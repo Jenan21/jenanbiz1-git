@@ -15,13 +15,19 @@ export const SAUDI_CITIES: ReadonlyArray<FlowCity> = [
   { value: "Jazan", label: ["جازان", "Jazan"], latitude: 16.8892, longitude: 42.5511 },
 ];
 
-export const FLOW_SECTORS: ReadonlyArray<{ value: string; label: readonly [string, string] }> = [
-  { value: "Technology", label: ["التقنية والذكاء الاصطناعي", "Technology and AI"] },
-  { value: "Food", label: ["الأغذية والمشروبات", "Food and beverage"] },
-  { value: "Real Estate", label: ["العقار والبناء", "Real estate and construction"] },
-  { value: "Energy", label: ["الطاقة", "Energy"] },
-  { value: "Services", label: ["الخدمات", "Services"] },
+/** `physical` sectors work from a real premises, so only they ask for the floor area. */
+export const FLOW_SECTORS: ReadonlyArray<{ value: string; label: readonly [string, string]; physical: boolean }> = [
+  { value: "Technology", label: ["التقنية والذكاء الاصطناعي", "Technology and AI"], physical: false },
+  { value: "Food", label: ["الأغذية والمشروبات", "Food and beverage"], physical: true },
+  { value: "Real Estate", label: ["العقار والبناء", "Real estate and construction"], physical: true },
+  { value: "Energy", label: ["الطاقة", "Energy"], physical: true },
+  { value: "Services", label: ["الخدمات", "Services"], physical: true },
 ];
+
+/** The project area is asked only for activities that need a physical location. */
+export function sectorNeedsArea(sector: string) {
+  return FLOW_SECTORS.some((item) => item.value === sector && item.physical);
+}
 
 export const FLOW_AUDIENCES: ReadonlyArray<{ value: string; label: readonly [string, string] }> = [
   { value: "CONSUMERS", label: ["الأفراد والمستهلكون", "Consumers"] },

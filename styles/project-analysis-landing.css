@@ -1,0 +1,574 @@
+/*
+ * Project analysis landing: the night map of the city, the title block, the one start button and the callouts around the pin.
+ *
+ * Above 1200x600 the scene is drawn on the 1672x941 reference canvas (one reference pixel is `var(--u)`, see
+ * project-canvas.css); below that it falls back to an ordinary responsive layout. The popups live in
+ * project-analysis-flow.css and the report in project-analysis-report.css.
+ */
+.an-page {
+  --an-cyan: #19f0f6;
+  --an-line: rgba(30, 210, 245, 0.55);
+  --an-glass: rgba(2, 18, 36, 0.78);
+  background: #020b16;
+}
+.an-page .jenan-header {
+  position: relative;
+  z-index: 3;
+}
+
+.an-stage {
+  position: relative;
+  display: grid;
+  flex: 1;
+  grid-template-columns: minmax(330px, 38%) minmax(0, 1fr);
+  min-height: 0;
+  direction: ltr;
+}
+.an-backdrop {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  isolation: isolate;
+  overflow: hidden;
+  background: #03101e;
+  pointer-events: none;
+}
+.an-backdrop__map {
+  width: 100%;
+  height: 100%;
+  background: #03101e;
+}
+.an-backdrop .leaflet-tile-pane {
+  filter: invert(1) grayscale(1) sepia(1) hue-rotate(170deg) saturate(2.4) brightness(1.25) contrast(1.2);
+}
+.an-backdrop .leaflet-control-attribution {
+  color: rgba(157, 185, 198, 0.7);
+  background: rgba(3, 16, 30, 0.6);
+  font-size: 9px;
+}
+.an-backdrop .leaflet-control-attribution a {
+  color: #4ff6ff;
+}
+.an-backdrop::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: 900;
+  background:
+    linear-gradient(90deg, rgba(2, 10, 22, 0.97) 0, rgba(2, 10, 22, 0.95) 30%, rgba(2, 10, 22, 0.8) 38%, rgba(2, 10, 22, 0.2) 46%, rgba(2, 10, 22, 0) 55%, rgba(2, 10, 22, 0) 100%),
+    linear-gradient(180deg, rgba(2, 10, 22, 0.35), rgba(2, 10, 22, 0) 25%, rgba(2, 10, 22, 0) 75%, rgba(2, 10, 22, 0.3));
+}
+.an-canvas {
+  display: contents;
+}
+.an-copy {
+  position: relative;
+  z-index: 2;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: clamp(10px, 2vh, 22px);
+  padding: clamp(14px, 3vh, 36px) clamp(18px, 2.6vw, 44px);
+  direction: rtl;
+  text-align: start;
+}
+[dir="ltr"].an-page .an-copy {
+  direction: ltr;
+}
+.an-crumbs {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--pa-mute);
+  font-size: 0.74rem;
+}
+.an-crumbs a {
+  color: inherit;
+  text-decoration: none;
+}
+.an-crumbs .icon {
+  width: 12px;
+  height: 12px;
+}
+.an-crumbs span {
+  color: #cfe3ec;
+}
+.an-copy h1 {
+  margin: 0;
+  font-size: clamp(2.2rem, 4.3vw, 4rem);
+  font-weight: 800;
+  line-height: 1.15;
+}
+.an-copy h1 b {
+  color: var(--an-cyan);
+  text-shadow: 0 0 26px rgba(25, 240, 246, 0.45);
+}
+.an-copy > p {
+  max-width: 24em;
+  margin: 0;
+  color: #d7e8ef;
+  font-size: clamp(0.9rem, 1.25vw, 1.2rem);
+  line-height: 1.9;
+}
+
+/* The start button is the strongest thing on the page; «عرض التقرير» appears only when there is a report to view. */
+.an-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px;
+}
+.an-start,
+.an-ghost {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  min-height: 48px;
+  padding: 0 22px;
+  border-radius: 10px;
+  font: inherit;
+  font-size: 0.95rem;
+  font-weight: 700;
+  text-decoration: none;
+  cursor: pointer;
+}
+.an-start {
+  min-width: 190px;
+  min-height: 54px;
+  border: 0;
+  color: #02202a;
+  background: linear-gradient(180deg, #5ff8ff, #12c7e6);
+  box-shadow: 0 0 34px rgba(25, 240, 246, 0.6), 0 8px 24px rgba(0, 0, 0, 0.35);
+}
+.an-start:hover {
+  filter: brightness(1.06);
+}
+.an-ghost {
+  border: 1px solid rgba(30, 210, 245, 0.35);
+  color: #cfe3ec;
+  background: transparent;
+  font-weight: 600;
+}
+.an-ghost:hover {
+  border-color: var(--an-line);
+  background: rgba(3, 20, 38, 0.6);
+}
+.an-start:focus-visible,
+.an-ghost:focus-visible {
+  outline: 2px solid #fff;
+  outline-offset: 2px;
+}
+.an-features {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0;
+  margin: clamp(2px, 1vh, 12px) 0 0;
+  padding: 0;
+  list-style: none;
+}
+.an-features li {
+  display: grid;
+  justify-items: center;
+  gap: 6px;
+  width: 25%;
+  min-width: 92px;
+  padding: 0 8px;
+  border-inline-start: 1px solid rgba(80, 160, 200, 0.28);
+  color: #b9d3df;
+  font-size: 0.68rem;
+  text-align: center;
+}
+.an-features li:first-child {
+  border-inline-start: 0;
+}
+.an-features .icon {
+  width: 24px;
+  height: 24px;
+  color: var(--an-cyan);
+}
+
+.an-hub {
+  position: relative;
+  z-index: 1;
+  min-height: 420px;
+  margin-inline-end: clamp(8px, 2vw, 40px);
+}
+.an-hub__lines {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+}
+.an-hub__lines.is-canvas {
+  display: none;
+}
+.an-hub__lines path {
+  fill: none;
+  stroke: rgba(25, 240, 246, 0.6);
+  stroke-dasharray: 1.2 1.6;
+  stroke-width: 0.35;
+  vector-effect: non-scaling-stroke;
+}
+.an-hub__zone {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: clamp(120px, 15vw, 230px);
+  aspect-ratio: 1.3;
+  border: 2px solid var(--an-cyan);
+  background: rgba(25, 240, 246, 0.12);
+  box-shadow: 0 0 40px rgba(25, 240, 246, 0.4), inset 0 0 30px rgba(25, 240, 246, 0.2);
+  transform: translate(-50%, -50%) rotate(-8deg) skewX(-12deg);
+}
+.an-hub__zone::before,
+.an-hub__zone::after {
+  content: "";
+  position: absolute;
+  border: 1px dashed rgba(25, 240, 246, 0.5);
+  border-radius: 50%;
+}
+.an-hub__zone::before {
+  inset: -38%;
+}
+.an-hub__zone::after {
+  inset: -80%;
+  border-style: dotted;
+  opacity: 0.6;
+}
+.an-hub__pin {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  display: grid;
+  place-items: center;
+  width: clamp(40px, 4.6vw, 62px);
+  height: clamp(40px, 4.6vw, 62px);
+  color: #fff;
+  background: radial-gradient(circle, #19d4ff, #0786c4);
+  border-radius: 50% 50% 50% 8%;
+  box-shadow: 0 0 34px rgba(25, 240, 246, 0.85);
+  transform: translate(-50%, -78%) rotate(-45deg);
+}
+.an-hub__pin .icon {
+  width: 52%;
+  height: 52%;
+  transform: rotate(45deg);
+}
+.an-callout {
+  position: absolute;
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 8px;
+  width: clamp(150px, 15.5vw, 230px);
+  padding: 8px 10px;
+  border: 1px solid var(--an-line);
+  border-radius: 10px;
+  background: var(--an-glass);
+  box-shadow: 0 0 18px rgba(10, 160, 220, 0.14);
+  backdrop-filter: blur(6px);
+  direction: rtl;
+}
+[dir="ltr"].an-page .an-callout {
+  direction: ltr;
+}
+.an-callout > span {
+  display: grid;
+  place-items: center;
+  width: 34px;
+  height: 34px;
+  border-radius: 8px;
+  color: var(--an-cyan);
+  background: rgba(10, 90, 130, 0.5);
+}
+.an-callout small {
+  display: block;
+  color: #cfe3ec;
+  font-size: 0.72rem;
+}
+.an-callout b {
+  display: block;
+  color: var(--pa-mute);
+  font-size: 0.7rem;
+  font-weight: 600;
+}
+.an-callout em {
+  display: none;
+}
+.an-callout.is-a { left: 6%; top: 12%; }
+.an-callout.is-b { left: 62%; top: 8%; }
+.an-callout.is-c { left: 0%; top: 41%; }
+.an-callout.is-d { left: 72%; top: 41%; }
+.an-callout.is-e { left: 6%; top: 70%; }
+.an-callout.is-f { left: 60%; top: 71%; }
+
+/* Messages and empty cards shared by the progress route and the report route */
+.pa-center {
+  display: grid;
+  flex: 1;
+  place-items: center;
+  align-content: center;
+  gap: 12px;
+  padding: 24px;
+  color: var(--pa-mute);
+  text-align: center;
+}
+.pa-center .icon {
+  width: 34px;
+  height: 34px;
+  color: var(--pa-cyan);
+}
+.pa-center h1,
+.pa-center h2 {
+  margin: 0;
+  color: var(--pa-ink);
+}
+.pa-center p {
+  max-width: 46ch;
+  margin: 0;
+  line-height: 1.8;
+}
+.pa-center.is-card {
+  align-self: center;
+  justify-self: center;
+  flex: none;
+  width: min(520px, 100%);
+  margin: auto;
+  border: 1px solid var(--pa-line);
+  border-radius: 16px;
+  background: var(--pa-glass);
+}
+.pa-btn {
+  text-decoration: none;
+}
+
+@media (max-width: 980px) {
+  .an-stage {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .an-hub {
+    min-height: 460px;
+    margin: 0;
+  }
+  .an-callout {
+    width: 150px;
+  }
+  .an-callout.is-a { left: 3%; top: 6%; }
+  .an-callout.is-b { left: auto; right: 3%; top: 6%; }
+  .an-callout.is-c { left: 3%; top: 38%; }
+  .an-callout.is-d { left: auto; right: 3%; top: 38%; }
+  .an-callout.is-e { left: 3%; top: 76%; }
+  .an-callout.is-f { left: auto; right: 3%; top: 76%; }
+}
+@media (max-width: 640px) {
+  .an-features li {
+    width: 50%;
+  }
+}
+@media (max-height: 820px) and (min-width: 981px) {
+  .an-copy > p {
+    font-size: 0.86rem;
+    line-height: 1.7;
+  }
+  .an-features {
+    display: none;
+  }
+}
+
+@media screen and (min-width: 1200px) and (min-height: 600px) {
+  /* The scene fills the viewport and the canvas holds every block at reference coordinates. */
+  .an-page:has(> .an-stage) {
+    position: relative;
+    height: 100vh;
+    min-height: 0;
+    overflow: hidden;
+  }
+  .an-stage {
+    position: absolute;
+    inset: 0;
+    display: block;
+  }
+  .an-canvas {
+    position: absolute;
+    top: 0;
+    left: 50%;
+    z-index: 1;
+    display: block;
+    width: calc(1672 * var(--u));
+    height: calc(941 * var(--u));
+    margin-left: calc(-836 * var(--u));
+  }
+  .an-copy {
+    position: static;
+    display: block;
+    padding: 0;
+  }
+  .an-crumbs {
+    position: absolute;
+    top: calc(203 * var(--u));
+    left: calc(55 * var(--u));
+    gap: calc(10 * var(--u));
+    font-size: calc(15 * var(--u));
+    white-space: nowrap;
+  }
+  .an-crumbs .icon {
+    width: calc(14 * var(--u));
+    height: calc(14 * var(--u));
+  }
+  .an-copy h1 {
+    position: absolute;
+    top: calc(262 * var(--u));
+    left: calc(20 * var(--u));
+    width: calc(612 * var(--u));
+    font-size: calc(66 * var(--u));
+    line-height: 1.2;
+    white-space: nowrap;
+  }
+  [dir="ltr"].an-page .an-copy h1 {
+    left: calc(55 * var(--u));
+    font-size: calc(52 * var(--u));
+  }
+  .an-copy > p {
+    position: absolute;
+    top: calc(395 * var(--u));
+    left: calc(47 * var(--u));
+    width: calc(520 * var(--u));
+    max-width: none;
+    font-size: calc(29.4 * var(--u));
+    line-height: calc(46.5 * var(--u));
+  }
+  .an-copy > p > span {
+    display: block;
+  }
+  [dir="ltr"].an-page .an-copy > p {
+    width: calc(560 * var(--u));
+    font-size: calc(23 * var(--u));
+    line-height: calc(40 * var(--u));
+  }
+  .an-actions {
+    position: absolute;
+    top: calc(570 * var(--u));
+    left: calc(58 * var(--u));
+    flex-flow: row-reverse nowrap;
+    gap: calc(21 * var(--u));
+    width: calc(540 * var(--u));
+    direction: ltr;
+  }
+  .an-start,
+  .an-ghost {
+    height: calc(71 * var(--u));
+    min-height: 0;
+    padding: 0 calc(18 * var(--u));
+    border-radius: calc(16 * var(--u));
+    gap: calc(12 * var(--u));
+    font-size: calc(25 * var(--u));
+  }
+  .an-start {
+    flex: 0 0 calc(296 * var(--u));
+    min-width: 0;
+    height: calc(77 * var(--u));
+    font-size: calc(27 * var(--u));
+    box-shadow: 0 0 calc(38 * var(--u)) rgba(25, 240, 246, 0.6), 0 calc(8 * var(--u)) calc(24 * var(--u)) rgba(0, 0, 0, 0.35);
+  }
+  .an-actions.is-single .an-start {
+    flex-basis: calc(330 * var(--u));
+  }
+  .an-ghost {
+    flex: 0 0 calc(222 * var(--u));
+    height: calc(62 * var(--u));
+    font-size: calc(22 * var(--u));
+  }
+  .an-start .icon,
+  .an-ghost .icon {
+    width: calc(28 * var(--u));
+    height: calc(28 * var(--u));
+  }
+  .an-features {
+    position: absolute;
+    top: calc(698 * var(--u));
+    left: calc(55 * var(--u));
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    width: calc(545 * var(--u));
+    margin: 0;
+  }
+  .an-features li {
+    gap: calc(12 * var(--u));
+    width: auto;
+    min-width: 0;
+    padding: 0 calc(8 * var(--u));
+    font-size: calc(17 * var(--u));
+    line-height: 1.35;
+  }
+  .an-features .icon {
+    width: calc(34 * var(--u));
+    height: calc(34 * var(--u));
+  }
+
+  .an-hub {
+    position: absolute;
+    inset: 0;
+    min-height: 0;
+    margin: 0;
+    pointer-events: none;
+  }
+  .an-hub__lines:not(.is-canvas) {
+    display: none;
+  }
+  .an-hub__lines.is-canvas {
+    position: absolute;
+    inset: 0;
+    display: block;
+    width: 100%;
+    height: 100%;
+  }
+  .an-hub__lines.is-canvas path {
+    stroke-dasharray: 7 9;
+    stroke-width: 2;
+    vector-effect: none;
+  }
+  .an-hub__zone {
+    top: calc(485 * var(--u));
+    left: calc(1133 * var(--u));
+    width: calc(250 * var(--u));
+    height: calc(150 * var(--u));
+    aspect-ratio: auto;
+    background: rgba(15, 196, 232, 0.5);
+  }
+  .an-hub__pin {
+    top: calc(450 * var(--u));
+    left: calc(1133 * var(--u));
+    width: calc(64 * var(--u));
+    height: calc(64 * var(--u));
+  }
+  .an-callout {
+    grid-template-columns: calc(52 * var(--u)) minmax(0, 1fr);
+    gap: calc(12 * var(--u));
+    padding: 0 calc(16 * var(--u));
+    border-radius: calc(14 * var(--u));
+  }
+  .an-callout > span {
+    width: calc(52 * var(--u));
+    height: calc(52 * var(--u));
+    border-radius: calc(12 * var(--u));
+  }
+  .an-callout > span .icon {
+    width: calc(28 * var(--u));
+    height: calc(28 * var(--u));
+  }
+  .an-callout small {
+    font-size: calc(17.5 * var(--u));
+    line-height: 1.3;
+  }
+  .an-callout b {
+    font-size: calc(15 * var(--u));
+    line-height: 1.3;
+  }
+  .an-callout.is-a { top: calc(274 * var(--u)); left: calc(701 * var(--u)); width: calc(236 * var(--u)); height: calc(102 * var(--u)); }
+  .an-callout.is-b { top: calc(285 * var(--u)); left: calc(1291 * var(--u)); width: calc(236 * var(--u)); height: calc(104 * var(--u)); }
+  .an-callout.is-c { top: calc(447 * var(--u)); left: calc(663 * var(--u)); width: calc(216 * var(--u)); height: calc(106 * var(--u)); }
+  .an-callout.is-d { top: calc(450 * var(--u)); left: calc(1384 * var(--u)); width: calc(242 * var(--u)); height: calc(107 * var(--u)); }
+  .an-callout.is-e { top: calc(626 * var(--u)); left: calc(702 * var(--u)); width: calc(264 * var(--u)); height: calc(108 * var(--u)); }
+  .an-callout.is-f { top: calc(625 * var(--u)); left: calc(1310 * var(--u)); width: calc(251 * var(--u)); height: calc(108 * var(--u)); }
+}
