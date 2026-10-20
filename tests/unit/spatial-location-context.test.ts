@@ -78,7 +78,7 @@ describe("LOCATION_CONTEXT in Riyadh", () => {
   it("asks the Map only what it needs, in the right order and with the engine's search rings", async () => {
     const { result, port } = run(contextRequest());
     await result;
-    expect(port.callsOf("describeMap")[0]?.request).toEqual({ layers: ["regions", "governorates", "places"] });
+    expect(port.callsOf("describeMap")[0]?.request).toEqual({ layers: ["governorates", "places", "regions"] });
     expect(port.callsOf("locate")[0]?.request).toMatchObject({ releaseId: PUBLISHED_RELEASE_ID, levels: ["regions", "governorates"] });
     expect(port.callsOf("nearest")[0]?.request).toMatchObject({ releaseId: PUBLISHED_RELEASE_ID, layerId: "places", kind: "neighbourhood", rings: [500, 1000, 3000, 5000], limit: 1 });
     expect(port.callsOf("checkGeometries")).toHaveLength(1);
@@ -89,7 +89,7 @@ describe("LOCATION_CONTEXT in Riyadh", () => {
     const output = await result;
     expect(Object.keys(metricsOf(output)).some((key) => key.includes("place"))).toBe(false);
     expect(port.callsOf("nearest")).toEqual([]);
-    expect(port.callsOf("describeMap")[0]?.request).toEqual({ layers: ["regions", "governorates"] });
+    expect(port.callsOf("describeMap")[0]?.request).toEqual({ layers: ["governorates", "regions"] });
     expect(output.limits.costUnits).toBe(3);
   });
 

@@ -6,6 +6,8 @@ import { runSpatialAnalysis, type RunSpatialOptions, type SpatialResult } from "
 import { buildReadOnlyRoleStatements, PostgisMapReader } from "@/services/analysis-engines/spatial/adapters";
 import { findMapIndexProblems, parseMapFeatureRef, parseMapSourceId, sourceIdPattern } from "@/services/analysis-engines/spatial/map-contract";
 import { contextRequest, expectNoVerdictsAndNoPercentages, gapCodes, gapsOf, metricsOf, statuses } from "../unit/support/spatial-run";
+import { baseRequest } from "../unit/support/spatial-request-fixtures";
+import { emptyDiscovery, FakeDataCenterPort } from "../unit/support/spatial-fake-dc-port";
 import { copyDatabase, dropDatabase, dropRole, postgisTestsEnabled, realMapTemplate, scratchName, urlFor, withAdmin } from "./support/spatial-engine-db";
 import { point, rect } from "./support/synthetic-map";
 
@@ -136,6 +138,115 @@ describe.runIf(postgisTestsEnabled && realMapTemplate !== "")("LOCATION_CONTEXT 
       expect(m["context.place:neighbourhood.nearest.feature_ref"]?.value, `${name} place reference`).toBe(`map:${releaseId}:feature:${expected.neighbourhood.id}`);
     } else expect(place, `${name} place`).toMatchObject({ status: "NOT_FOUND_WITHIN_RADIUS", value: null });
   }
+
+  it("accepts Riyadh PROXIMITY and 500 m / 1 km / 3 km / 5 km CATCHMENT against independent SQL, and reports unavailable population honestly", async () => {
+    const longitude = 46.6753;
+    const latitude = 24.7136;
+    const radii = [500, 1000, 3000, 5000];
+    const poiPattern = sourceIdPattern("pois", "hospital");
+    const here = "ST_SetSRID(ST_MakePoint($3::float8, $4::float8), 4326)::geography";
+    const expectedCounts = (await reference.query(
+      `SELECT r.radius_meters, count(f.id)::int AS count
+       FROM unnest($5::int[]) AS r(radius_meters)
+       LEFT JOIN jenan_map.feature f ON f."releaseId" = $1::uuid AND f."layerId" = 'pois'
+         AND f."sourceId" ~ $2 AND ST_DWithin(f.geometry::geography, ${here}, r.radius_meters)
+       GROUP BY r.radius_meters ORDER BY r.radius_meters`,
+      [releaseId, poiPattern, longitude, latitude, radii],
+    )).rows as Array<{ radius_meters: number; count: number }>;
+    const expectedNearest = (await reference.query(
+      `SELECT f.id::text AS id, f.label, ST_Distance(f.geometry::geography, ${here}) AS distance
+       FROM jenan_map.feature f
+       WHERE f."releaseId" = $1::uuid AND f."layerId" = 'pois' AND f."sourceId" ~ $2
+         AND ST_DWithin(f.geometry::geography, ${here}, 5000)
+       ORDER BY distance, f.id LIMIT 1`,
+      [releaseId, poiPattern, longitude, latitude],
+    )).rows[0] as { id: string; label: string; distance: number } | undefined;
+
+    const request = baseRequest({
+      analyses: ["PROXIMITY", "CATCHMENT"], location: point(longitude, latitude),
+      parameters: { roles: ["poi:hospital"], radiiMeters: radii, nearestCount: 3 },
+    });
+    const result = await timed("m4.riyadh.proximity-catchment", () => engine(request));
+    const m = Object.fromEntries(result.results.flatMap((entry) => entry.metrics.map((metric) => [metric.key, metric])));
+    expect(result.status).toBe("COMPLETED_WITH_GAPS");
+    expect(result.dataAvailability).toContainEqual(expect.objectContaining({ role: "poi:hospital", status: "AVAILABLE" }));
+    expect(expectedNearest).toBeDefined();
+    const nearest = expectedNearest as { id: string; label: string; distance: number };
+    expect(nearest.label).toBe("مركز الرثوية الطبي");
+    close(m["proximity.poi:hospital.n1.distance"]?.value, Number(nearest.distance));
+    expect(m["proximity.poi:hospital.n1.name"]?.value).toBe(nearest.label);
+    expect(m["proximity.poi:hospital.n1.feature_ref"]?.value).toBe(`map:${releaseId}:feature:${nearest.id}`);
+    expect(parseMapFeatureRef(String(m["proximity.poi:hospital.n1.feature_ref"]?.value))).toEqual({ releaseId, featureId: nearest.id });
+    expect(["LOW", "MEDIUM"]).toContain(m["proximity.poi:hospital.n1.distance"]?.confidence?.band);
+    expect(m["proximity.poi:hospital.n1.distance"]?.limitations.join(" ")).toMatch(/straight-line|mapped|inventory/i);
+
+    for (const { radius_meters: radius, count } of expectedCounts) {
+      const metric = m[`catchment.r${radius}.count.poi:hospital`];
+      expect(metric, `${radius} m count; available metrics: ${Object.keys(m).join(", ")}`).toBeDefined();
+      if (count === 0) expect(metric).toMatchObject({ status: "NOT_FOUND_WITHIN_RADIUS", value: null });
+      else expect(metric).toMatchObject({ status: "COMPUTED", value: count });
+    }
+    expect(m["catchment.r500.count.poi:hospital"]?.value).not.toBe(0);
+
+    const poiInput = result.inputs.find((input) => input.id === `map:${releaseId}:pois`);
+    if (poiInput === undefined) throw new Error("The real POI Map input was not included in the result.");
+    expect(poiInput).toMatchObject({
+      kind: "MAP_LAYER", governance: "MAP_REGISTERED", ref: { system: "JENAN_MAP", id: `${releaseId}/pois` },
+      source: { name: expect.any(String), organization: expect.any(String), url: expect.stringMatching(/^https?:\/\//) },
+      quality: { status: "UNAVAILABLE" }, completeness: "UNKNOWN", allowExport: false, licenseClass: null,
+    });
+    expect(poiInput.ref.label).toMatch(/Map release /);
+    expect(poiInput.freshness.sourcePublishedAt).toEqual(expect.any(String));
+    expect(poiInput.attribution).toMatchObject({ required: true, text: expect.any(String) });
+    expect(poiInput.limitations.join(" ")).toMatch(/completeness|checksum|freshness/i);
+    expect(result.attribution.map((entry) => entry.text).join(" ")).toMatch(/OpenStreetMap contributors/);
+
+    const outside = await timed("m4.outside-coverage", () => engine(baseRequest({
+      analyses: ["PROXIMITY", "CATCHMENT"], location: point(31.2357, 30.0444),
+      parameters: { roles: ["poi:hospital"], radiiMeters: radii, nearestCount: 1 },
+    })));
+    const outsideMetrics = outside.results.flatMap((entry) => entry.metrics);
+    expect(outsideMetrics.length).toBeGreaterThan(0);
+    expect(outsideMetrics.every((metric) => metric.status === "NO_COVERAGE" && metric.value === null)).toBe(true);
+    expect(outside.dataAvailability).toContainEqual(expect.objectContaining({ role: "poi:hospital", status: "NO_COVERAGE" }));
+    expect(gapCodes(outside)).toContain("NO_COVERAGE");
+
+    const populationReader = new PostgisMapReader({ connectionString: readOnlyUrl });
+    let mapHasPopulationFeatures = false;
+    try {
+      mapHasPopulationFeatures = (await populationReader.describeMap({ layers: ["population"] })).layers.find((layer) => layer.id === "population")?.hasFeatures ?? false;
+    } finally {
+      await populationReader.close();
+    }
+    expect(mapHasPopulationFeatures).toBe(false);
+
+    const noPopulationData = new FakeDataCenterPort({ discover: () => emptyDiscovery("NOT_AVAILABLE") });
+    const population = await timed("m4.riyadh.population-unavailable", () => engine(baseRequest({
+      analyses: ["CATCHMENT"], location: point(longitude, latitude),
+      parameters: { roles: ["poi:hospital", "population"], radiiMeters: radii },
+      data: { roles: { population: { source: "DATA_CENTER", typeKey: "geojson" } } },
+    }), { dataCenterPort: noPopulationData }));
+    expect(population.dataAvailability).toContainEqual(expect.objectContaining({ role: "population", status: "NOT_AVAILABLE" }));
+    expect(metricsOf(population)).toMatchObject({
+      "catchment.r500.population": { status: "NOT_AVAILABLE", value: null },
+      "catchment.r1000.population": { status: "NOT_AVAILABLE", value: null },
+      "catchment.r3000.population": { status: "NOT_AVAILABLE", value: null },
+      "catchment.r5000.population": { status: "NOT_AVAILABLE", value: null },
+    });
+    expect(gapCodes(population)).toContain("DATASET_NOT_AVAILABLE");
+    expectNoVerdictsAndNoPercentages(population);
+    examples.m4Riyadh = {
+      proximity: {
+        name: m["proximity.poi:hospital.n1.name"]?.value,
+        distanceMeters: m["proximity.poi:hospital.n1.distance"]?.value,
+        featureRef: m["proximity.poi:hospital.n1.feature_ref"]?.value,
+        confidence: m["proximity.poi:hospital.n1.distance"]?.confidence?.band,
+      },
+      catchmentCounts: Object.fromEntries(expectedCounts.map(({ radius_meters: radius, count }) => [radius, { referenceCount: count, engine: m[`catchment.r${radius}.count.poi:hospital`]?.status }])),
+      outsideCoverage: "NO_COVERAGE",
+      population: "NOT_AVAILABLE",
+    };
+  }, 120_000);
 
   // ---------------------------------------------------------------------------------------------------------------- Riyadh
   it("describes Riyadh as the published release does: region, governorate, nearest neighbourhood, with their sources and limits", async () => {

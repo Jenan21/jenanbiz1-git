@@ -150,6 +150,72 @@ SELECT 'match' AS "part", r."id" AS "id", r."label" AS "label", r."sourceId" AS 
 UNION ALL
 SELECT 'unrecognized', NULL, NULL, NULL, s."nearest", s."count", 0 FROM stray s
 ORDER BY "part", "rank"`,
+
+  /** $1 release, $2 layer, $3 GeoJSON target, $4 radii, $5 recognized-kind pattern, $6 requested-kind pattern. */
+  countFeatures: `WITH target AS (
+  SELECT ST_SetSRID(ST_GeomFromGeoJSON($3::text), 4326)::geography AS geog
+), radii AS (
+  SELECT unnest($4::float8[]) AS radius
+)
+SELECT r.radius AS "radiusMeters",
+  count(f."id") FILTER (WHERE f."sourceId" ~ $6::text)::int AS "count",
+  count(f."id") FILTER (WHERE f."sourceId" IS NULL OR f."sourceId" !~ $5::text)::int AS "unrecognized"
+FROM radii r
+CROSS JOIN target t
+LEFT JOIN "jenan_map"."feature" f ON f."releaseId" = $1::uuid AND f."layerId" = $2::text
+  AND ST_DWithin(f."geometry"::geography, t.geog, r.radius)
+GROUP BY r.radius
+ORDER BY r.radius`,
+
+  /** $1 a bounded GeoJSON feature array, $2 target, $3 radii, $4 max search, $5 nearest limit, $6 population calculation enabled. */
+  measureDataset: `WITH raw AS (
+  SELECT (item.ordinality - 1)::int AS "index", item.feature
+  FROM jsonb_array_elements($1::jsonb) WITH ORDINALITY AS item(feature, ordinality)
+), features AS MATERIALIZED (
+  SELECT r."index", r.feature,
+    ST_SetSRID(ST_GeomFromGeoJSON(r.feature->'geometry'), 4326) AS geom
+  FROM raw r
+), validity AS MATERIALIZED (
+  SELECT count(*) > 0 AND bool_and(ST_IsValid(f.geom)) AS valid
+  FROM features f
+), target AS MATERIALIZED (
+  SELECT ST_SetSRID(ST_GeomFromGeoJSON($2::text), 4326) AS geom
+), distances AS MATERIALIZED (
+  SELECT f."index", f.feature, ST_Distance(f.geom::geography, t.geom::geography) AS distance
+  FROM features f
+  CROSS JOIN target t
+  CROSS JOIN validity v
+  WHERE v.valid AND ST_DWithin(f.geom::geography, t.geom::geography, $4::float8)
+), ranked AS (
+  SELECT d.*, row_number() OVER (ORDER BY d.distance, d."index") AS rank
+  FROM distances d
+), radii AS (
+  SELECT unnest($3::float8[]) AS radius
+), catchments AS (
+  SELECT r.radius,
+    CASE WHEN (SELECT valid FROM validity) THEN (
+      SELECT count(*)::int FROM features f CROSS JOIN target t
+      WHERE ST_DWithin(f.geom::geography, t.geom::geography, r.radius)
+    ) ELSE 0 END AS feature_count,
+    CASE WHEN $6::boolean AND (SELECT valid FROM validity) THEN (
+      SELECT sum(((f.feature->'properties'->>'population')::float8)
+        * ST_Area(ST_CollectionExtract(ST_Intersection(
+            f.geom, ST_Buffer(t.geom::geography, r.radius)::geometry
+          ), 3)::geography)
+        / NULLIF(ST_Area(f.geom::geography), 0))
+      FROM features f CROSS JOIN target t
+    ) END AS population_estimate
+  FROM radii r
+)
+SELECT v.valid,
+  COALESCE((SELECT jsonb_agg(jsonb_build_object(
+    'index', ranked."index", 'id', nullif(ranked.feature->>'id', ''),
+    'name', nullif(ranked.feature->'properties'->>'name', ''), 'distanceMeters', ranked.distance
+  ) ORDER BY ranked.distance, ranked."index") FROM ranked WHERE ranked.rank <= $5::int), '[]'::jsonb) AS nearest,
+  COALESCE((SELECT jsonb_agg(jsonb_build_object(
+    'radiusMeters', c.radius, 'count', c.feature_count, 'populationEstimate', c.population_estimate
+  ) ORDER BY c.radius) FROM catchments c), '[]'::jsonb) AS radii
+FROM validity v`,
 } as const;
 
 export type QueryName = keyof typeof QUERIES;

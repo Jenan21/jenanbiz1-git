@@ -16,6 +16,7 @@ const withoutQuotedNames = (sql: string) => withoutLiterals(sql).replace(/"(?:[^
 
 const expectedParameters: Record<QueryName, number> = {
   postgisPresent: 0, postgisVersions: 0, catalog: 2, role: 2, runtime: 0, release: 1, boundary: 1, layers: 2, geometryChecks: 1, locateCoverage: 2, locateUnits: 4, nearest: 7,
+  countFeatures: 6, measureDataset: 6,
 };
 
 describe("the adapter's SQL", () => {
@@ -51,10 +52,11 @@ describe("the adapter's SQL", () => {
     const catalogTables = [...bare.matchAll(/\bpg_catalog\.(\w+)/g)].map((match) => match[1]);
     for (const table of catalogTables) expect(["pg_class", "pg_namespace", "pg_attribute", "pg_roles"], `catalog table ${table}`).toContain(table);
     // Every relation after FROM or JOIN is a Map table, a catalog table, a CTE of the same statement, unnest(...) or a sub-select.
-    const ctes = new Set([...bare.matchAll(/(?:\bWITH|,)\s*(\w+)\s+AS\s*\(/g)].map((match) => match[1]));
+    const ctes = new Set([...bare.matchAll(/(?:\bWITH|,)\s*(\w+)\s+AS\s+(?:MATERIALIZED\s+)?\(/gi)].map((match) => match[1]));
     for (const match of bare.matchAll(/\b(?:FROM|JOIN)\s+((?:"[^"]+"\.)?(?:"[^"]+"|\w+(?:\.\w+)?))/g)) {
       const relation = (match[1] as string).replace(/\s+/g, "");
-      const allowed = relation.startsWith('"jenan_map".') || relation.startsWith("pg_catalog.") || ctes.has(relation) || relation === "unnest" || relation === "LATERAL";
+      const allowed = relation.startsWith('"jenan_map".') || relation.startsWith("pg_catalog.") || ctes.has(relation)
+        || ["unnest", "jsonb_array_elements", "LATERAL"].includes(relation);
       expect(allowed, `relation ${relation}`).toBe(true);
     }
   });
@@ -90,6 +92,11 @@ describe("the adapter's SQL", () => {
     expect(QUERIES.nearest).toContain('ORDER BY n."distance", n."id" COLLATE "C"');
     expect(QUERIES.nearest).toContain('OVER (ORDER BY m."distance", m."id" COLLATE "C")');
     expect(QUERIES.nearest.trimEnd().endsWith('ORDER BY "part", "rank"')).toBe(true);
+  });
+
+  it("does not measure invalid Data Center geometries after the validity check fails", () => {
+    expect(QUERIES.measureDataset).toContain("CASE WHEN (SELECT valid FROM validity) THEN");
+    expect(QUERIES.measureDataset).toMatch(/CASE WHEN \$6::boolean AND \(SELECT valid FROM validity\) THEN/);
   });
 });
 

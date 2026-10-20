@@ -8,7 +8,7 @@ import {
 } from "../map-contract";
 import { MapReadError } from "../map-read-error";
 import type {
-  GeometryCheck, MapAdminUnit, MapDescribeRequest, MapLocateRequest, MapLocateResult, MapNearestFeature, MapNearestRequest, MapNearestResult, SpatialMapPort,
+  DatasetMeasureRequest, DatasetMeasureResult, GeometryCheck, MapAdminUnit, MapCountRequest, MapCountResult, MapDescribeRequest, MapLocateRequest, MapLocateResult, MapNearestFeature, MapNearestRequest, MapNearestResult, SpatialMapPort,
 } from "../map-port";
 import type { SpatialBackendCapabilities } from "../ports";
 import { openReadOnlySession, type ReadOnlySession, type ReadOnlySessionConfig, type SessionPool } from "./read-only-session";
@@ -42,6 +42,12 @@ const nearestRow = z.discriminatedUnion("part", [
   z.object({ part: z.literal("match"), id: z.string().regex(/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/), label: z.string(), sourceId: z.string(), distance: z.number() }),
   z.object({ part: z.literal("unrecognized"), count: z.number().int().min(0), distance: z.number().nullable() }),
 ]);
+const countRow = z.object({ radiusMeters: z.number().positive(), count: z.number().int().nonnegative(), unrecognized: z.number().int().nonnegative() });
+const datasetMeasureRow = z.object({
+  valid: z.boolean(),
+  nearest: z.array(z.object({ index: z.number().int().nonnegative(), id: z.string().nullable(), name: z.string().nullable(), distanceMeters: z.number().nonnegative() }).strict()),
+  radii: z.array(z.object({ radiusMeters: z.number().positive(), count: z.number().int().nonnegative(), populationEstimate: z.number().nonnegative().nullable() }).strict()),
+}).strict();
 
 /** A row that is not what the contract says is a changed Map, not a bad request: the read fails closed instead of coercing it. */
 function parseRows<Schema extends z.ZodType>(schema: Schema, rows: readonly unknown[]): Array<z.output<Schema>> {
@@ -186,6 +192,37 @@ export class PostgisMapReader implements SpatialMapPort {
         }
       }
       return { searchedMeters: searched, ringMeters: matches.length > 0 ? searched : null, matches, unrecognized: { count: 0, nearestMeters: null } };
+    });
+  }
+
+  async countFeatures(request: MapCountRequest): Promise<MapCountResult> {
+    if (!isMapTileLayer(request.layerId)) throw new RangeError(`Layer ${request.layerId} does not encode kinds in sourceId`);
+    const recognized = sourceIdPattern(request.layerId);
+    const wanted = request.kind === null ? recognized : sourceIdPattern(request.layerId, request.kind);
+    const geojson = JSON.stringify(request.location);
+    const rows = await this.session.run(async (query) => parseRows(countRow, await query(QUERIES.countFeatures, [
+      request.releaseId, request.layerId, geojson, [...request.radiiMeters], recognized, wanted,
+    ])));
+    if (rows.length !== request.radiiMeters.length) throw new MapReadError("UNKNOWN");
+    return { radii: rows.map((row) => ({ ...row, radiusMeters: roundTo(row.radiusMeters, 1) })) };
+  }
+
+  async measureDataset(request: DatasetMeasureRequest): Promise<DatasetMeasureResult> {
+    const features = JSON.stringify(request.features);
+    const location = JSON.stringify(request.location);
+    return this.session.run(async (query) => {
+      const row = parseRows(datasetMeasureRow, await query(QUERIES.measureDataset, [
+        features, location, [...request.radiiMeters], request.maxSearchMeters, request.nearestCount, request.includePopulation,
+      ]))[0];
+      if (row === undefined || row.nearest.length > request.nearestCount || row.radii.length !== request.radiiMeters.length) throw new MapReadError("UNKNOWN");
+      return {
+        valid: row.valid,
+        nearest: row.nearest.map((feature) => ({ ...feature, distanceMeters: roundTo(feature.distanceMeters, 1) })),
+        radii: row.radii.map((entry) => ({
+          ...entry, radiusMeters: roundTo(entry.radiusMeters, 1),
+          populationEstimate: entry.populationEstimate === null ? null : roundTo(entry.populationEstimate, 1),
+        })),
+      };
     });
   }
 

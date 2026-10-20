@@ -1,21 +1,25 @@
 import {
   computeDeterminism, deriveAttribution, deriveInputGaps, deriveRights, deriveRunStatus, EngineError, createGap, normalizeGaps, compareText,
-  type DataAvailability, type EngineEnvironment, type Gap,
+  type DataAvailability, type EngineEnvironment, type EngineInput, type Gap,
 } from "../shared";
+import { DataCenterProviderError, type SpatialDataCenterPort } from "./data-center-port";
 import { PRIMARY_TARGET_ID, SPATIAL_ENGINE_KEY, SPATIAL_ENGINE_VERSION, SPATIAL_REQUEST_CONTRACT, SPATIAL_RESULT_CONTRACT, SPATIAL_SUPPORTED_ANALYSES, spatialExclusions } from "./constants";
 import { spatialConfidencePolicy } from "./confidence";
-import { isPlaceRole, spatialResultSchema, type SpatialNormalizedRequest, type SpatialResult } from "./contracts";
+import { compareAnalysisResults, isFeatureRole, isPlaceRole, isPopulationRole, spatialResultSchema, type SpatialNormalizedRequest, type SpatialResult } from "./contracts";
 import { spatialGapCatalog } from "./gaps";
 import { computeLocationContext, type ContextTarget, type TargetContext } from "./location-context";
 import { mapAdminLayers, mapLayerForRole, type MapDescription } from "./map-contract";
 import type { GeometryCheck, SpatialMapPort } from "./map-port";
 import { MapReadError } from "./map-read-error";
-import { BOUNDARY_ROLE, resolveMapState, type LayerState, type LocationContextMapState } from "./map-state";
+import { BOUNDARY_ROLE, resolveFeatureMapState, resolveMapState, type FeatureMapRequest, type LayerState, type LocationContextMapState } from "./map-state";
+import { dataSourceRequestsOf, resolveSpatialDataSources } from "./data-sources";
+import { targetGeography } from "./dataset-features";
+import { resolveFeatureSources, runFeatureAnalyses } from "./feature-analysis";
 import { prepareSpatialRequest } from "./prepare";
 import type { SpatialBackendCapabilities } from "./ports";
 
 /**
- * Runs the Spatial Engine for the analyses this version implements (LOCATION_CONTEXT). The engine reads the Map through a port and writes
+ * Runs the Spatial Engine for the analyses this version implements. The engine reads the Map through a port and writes
  * nothing; the clock and the run id are injected, so a run can be replayed exactly. Whatever the engine returns has been checked against
  * its own result contract, and a result that breaks it is never returned.
  */
@@ -30,6 +34,8 @@ export interface RunSpatialOptions {
   allowEvaluatedAtOverride?: boolean;
   /** Refuse to run when the connected role could write to the Map. On by default in production. */
   requireReadOnlyRole?: boolean;
+  /** The actor-scoped Data Center adapter; absent configuration yields per-role unavailable outcomes, never a Map fallback. */
+  dataCenterPort?: SpatialDataCenterPort;
 }
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -43,16 +49,68 @@ const reasonOf = (error: unknown) => (error instanceof MapReadError ? error.kind
  * be a release id. A pin for a role this analysis does not read (a point of interest, a road) is not used and not resolved, as for a role
  * with no pin: the Data Center datasets those roles select are read by the analyses that measure them.
  */
-function readPins(request: SpatialNormalizedRequest, placeRoles: readonly string[]): Map<string, string | null> {
+function readPins(request: SpatialNormalizedRequest, placeRoles: readonly string[], measuredRoles: ReadonlySet<string>): Map<string, string | null> {
   const pins = new Map<string, string | null>();
   for (const [role, selection] of Object.entries(request.data.roles)) {
-    if (!placeRoles.includes(role)) continue; // LOCATION_CONTEXT reads place roles only
-    if (selection.source === "DATA_CENTER") throw new EngineError("INVALID_INPUT", { reason: "data_center_pin_for_map_role", role: clip(role, 80) });
+    const contextPlace = placeRoles.includes(role);
+    if (!contextPlace && !measuredRoles.has(role)) continue;
+    if (selection.source === "DATA_CENTER") {
+      if (contextPlace) throw new EngineError("INVALID_INPUT", { reason: "data_center_pin_for_map_role", role: clip(role, 80) });
+      continue;
+    }
     if (selection.layerKey !== mapLayerForRole(role)) throw new EngineError("INVALID_INPUT", { reason: "map_pin_layer_mismatch", role: clip(role, 80) });
     if (selection.releaseId !== undefined && !UUID.test(selection.releaseId)) throw new EngineError("INVALID_INPUT", { reason: "map_pin_release_invalid", role: clip(role, 80) });
     pins.set(role, selection.releaseId ?? null);
   }
   return pins;
+}
+
+function unavailableDataCenter(): SpatialDataCenterPort {
+  const unavailable = async (): Promise<never> => { throw new DataCenterProviderError("UNAVAILABLE"); };
+  return { discover: unavailable, readContent: unavailable, resolveMapReference: unavailable };
+}
+
+function uniqueInputs(...groups: readonly EngineInput[][]): EngineInput[] {
+  const inputs = new Map<string, EngineInput>();
+  for (const group of groups) for (const input of group) {
+    const prior = inputs.get(input.id);
+    inputs.set(input.id, prior === undefined ? input : { ...prior, roles: [...new Set([...prior.roles, ...input.roles])].sort(compareText) });
+  }
+  return [...inputs.values()].sort((first, second) => compareText(first.id, second.id));
+}
+
+function mergeAvailability(groups: readonly DataAvailability[][]): DataAvailability[] {
+  const byRole = new Map<string, DataAvailability>();
+  for (const group of groups) for (const entry of group) {
+    const prior = byRole.get(entry.role);
+    if (prior === undefined) { byRole.set(entry.role, entry); continue; }
+    const statuses = [prior.status, entry.status];
+    const status: DataAvailability["status"] = statuses.includes("AVAILABLE") ? "AVAILABLE"
+      : statuses.includes("NO_COVERAGE") ? "NO_COVERAGE" : statuses.includes("EXPIRED") ? "EXPIRED" : "NOT_AVAILABLE";
+    byRole.set(entry.role, { role: entry.role, status, inputIds: [...new Set([...prior.inputIds, ...entry.inputIds])].sort(compareText) });
+  }
+  return [...byRole.values()].sort((first, second) => compareText(first.role, second.role));
+}
+
+function featureMapRequests(request: SpatialNormalizedRequest, roles: readonly string[], pins: ReadonlyMap<string, string | null>): FeatureMapRequest[] {
+  return roles.flatMap((role) => {
+    const selection = request.data.roles[role];
+    if (selection?.source === "DATA_CENTER") return [];
+    const layerKey = selection?.source === "MAP" ? selection.layerKey : mapLayerForRole(role);
+    if (layerKey === null || layerKey === undefined) return [];
+    return [{ role, layerKey, releaseId: selection?.source === "MAP" ? selection.releaseId ?? null : pins.get(role) ?? null }];
+  }).sort((first, second) => compareText(first.role, second.role));
+}
+
+function selectionsForRoles(request: SpatialNormalizedRequest, roles: ReadonlySet<string>) {
+  return Object.fromEntries(Object.entries(request.data.roles).filter(([role]) => roles.has(role)));
+}
+
+function metricRoles(request: SpatialNormalizedRequest): string[] {
+  if (!request.analyses.some((analysis) => analysis === "PROXIMITY" || analysis === "CATCHMENT")) return [];
+  const roles = request.parameters.roles.filter(isFeatureRole);
+  if (request.analyses.includes("CATCHMENT")) roles.push(...request.parameters.roles.filter(isPopulationRole));
+  return [...new Set(roles)].sort(compareText);
 }
 
 async function probe(port: SpatialMapPort, requireReadOnlyRole: boolean): Promise<SpatialBackendCapabilities> {
@@ -92,37 +150,91 @@ export async function runSpatialAnalysis(port: SpatialMapPort, input: unknown, o
   const { normalized, evaluatedAt } = prepared;
   const unsupported = normalized.analyses.find((analysis) => !(SPATIAL_SUPPORTED_ANALYSES as readonly string[]).includes(analysis));
   if (unsupported !== undefined) throw new EngineError("INVALID_INPUT", { reason: "analysis_not_supported", analysis: unsupported });
-  const placeRoles = normalized.parameters.roles.filter(isPlaceRole);
-  const pins = readPins(normalized, placeRoles);
+  const wantsContext = normalized.analyses.includes("LOCATION_CONTEXT");
+  const placeRoles = wantsContext ? normalized.parameters.roles.filter(isPlaceRole) : [];
+  const measuredRoles = metricRoles(normalized);
+  const featureRoleCount = normalized.parameters.roles.filter(isFeatureRole).length;
+  const populationRoleCount = normalized.parameters.roles.filter(isPopulationRole).length;
+  const proximityMetricCount = normalized.analyses.includes("PROXIMITY")
+    ? featureRoleCount * normalized.parameters.nearestCount * 3 : 0;
+  const catchmentMetricCount = normalized.analyses.includes("CATCHMENT")
+    ? (featureRoleCount + populationRoleCount) * normalized.parameters.radiiMeters.length : 0;
+  const requestedMetricCount = Math.max(proximityMetricCount, catchmentMetricCount);
+  if (requestedMetricCount > 500) throw new EngineError("REQUEST_TOO_LARGE", { reason: "result_metric_limit", maximum: 500, requested: requestedMetricCount });
+  const pins = readPins(normalized, placeRoles, new Set(measuredRoles));
 
   const capabilities = await probe(port, options.requireReadOnlyRole ?? options.environment === "production");
   const targets: ContextTarget[] = [{ id: PRIMARY_TARGET_ID, location: normalized.location }, ...normalized.candidates.map((candidate) => ({ id: candidate.id, location: candidate.location }))];
   await checkTargets(port, targets);
 
-  // What the Map offers: the published release for the boundary, the administrative levels and unpinned places, and each pinned release for its places.
+  const mapRequests = featureMapRequests(normalized, measuredRoles, pins);
+  const describedLayers = [
+    ...(wantsContext ? [...mapAdminLayers, ...(placeRoles.length > 0 ? ["places"] : [])] : []),
+    ...mapRequests.filter((request) => request.releaseId === null).map((request) => request.layerKey),
+  ];
   let published: MapDescription;
   const pinned = new Map<string, MapDescription>();
   try {
-    published = await port.describeMap({ layers: [...mapAdminLayers, ...(placeRoles.length > 0 ? ["places"] : [])] });
-    for (const releaseId of new Set([...pins.values()].filter((id): id is string => id !== null))) pinned.set(releaseId, await port.describeMap({ releaseId, layers: ["places"] }));
+    published = await port.describeMap({ layers: [...new Set(describedLayers)].sort(compareText) });
+    const layersByRelease = new Map<string, string[]>();
+    for (const { layerKey, releaseId } of mapRequests) if (releaseId !== null && releaseId !== published.release?.id) {
+      layersByRelease.set(releaseId, [...(layersByRelease.get(releaseId) ?? []), layerKey]);
+    }
+    for (const role of placeRoles) {
+      const releaseId = pins.get(role);
+      if (releaseId !== undefined && releaseId !== null && releaseId !== published.release?.id) {
+        layersByRelease.set(releaseId, [...(layersByRelease.get(releaseId) ?? []), "places"]);
+      }
+    }
+    for (const [releaseId, layers] of [...layersByRelease.entries()].sort(([first], [second]) => compareText(first, second))) {
+      pinned.set(releaseId, await port.describeMap({ releaseId, layers: [...new Set(layers)].sort(compareText) }));
+    }
   } catch (error) {
     throw backendUnavailable(reasonOf(error));
   }
-  const resolved = resolveMapState({ published, pinned, placeRoles: placeRoles.map((role) => ({ role, releaseId: pins.get(role) ?? null })), policy: prepared.mapLayerPolicy, evaluatedAt });
+  const resolved = resolveMapState({
+    published, pinned, placeRoles: placeRoles.map((role) => ({ role, releaseId: pins.get(role) ?? null })),
+    policy: prepared.mapLayerPolicy, evaluatedAt, includeContext: wantsContext,
+  });
+  const resolvedMapFeatures = resolveFeatureMapState({ published, pinned, requests: mapRequests, policy: prepared.mapLayerPolicy, evaluatedAt });
+
+  const dcRoleSet = new Set(measuredRoles);
+  const selections = selectionsForRoles(normalized, dcRoleSet);
+  const discoveryRequests = dataSourceRequestsOf(selections, {
+    geography: measuredRoles.length === 0 ? undefined : targetGeography(targets.map((target) => target.location), Math.max(normalized.parameters.maxSearchMeters, ...normalized.parameters.radiiMeters)),
+  });
+  const dataCenter = await resolveSpatialDataSources({
+    requests: discoveryRequests, port: options.dataCenterPort ?? unavailableDataCenter(), evaluatedAt,
+  });
+  const featureSources = resolveFeatureSources(resolvedMapFeatures.sources, dataCenter.sources, measuredRoles);
 
   const contexts: Array<{ target: ContextTarget; context: TargetContext }> = [];
-  for (const target of targets) contexts.push({ target, context: await computeLocationContext(port, resolved.state, target, { maxSearchMeters: normalized.parameters.maxSearchMeters, evaluatedAt }) });
-  const results = contexts.map(({ target, context }) => ({ analysis: "LOCATION_CONTEXT" as const, target: target.id, metrics: context.metrics }));
+  if (wantsContext) for (const target of targets) {
+    contexts.push({ target, context: await computeLocationContext(port, resolved.state, target, { maxSearchMeters: normalized.parameters.maxSearchMeters, evaluatedAt }) });
+  }
+  const contextResults = contexts.map(({ target, context }) => ({ analysis: "LOCATION_CONTEXT" as const, target: target.id, metrics: context.metrics }));
+  const featureResults = await runFeatureAnalyses({
+    port, targets, sources: featureSources, analyses: normalized.analyses, parameters: normalized.parameters, evaluatedAt,
+  });
+  const results = [...contextResults, ...featureResults.results].sort(compareAnalysisResults);
 
   // ------------------------------------------------------------------------------------------------------------------ gaps
-  const { inputs } = resolved;
+  const inputs = uniqueInputs(resolved.inputs, resolvedMapFeatures.inputs, dataCenter.inputs);
   const unofficial = resolved.state.boundaryFacts === null || !resolved.state.boundaryFacts.official;
-  const gaps: Gap[] = [...resolved.gaps, ...inputs.flatMap((entry) => deriveInputGaps(entry)), ...contexts.flatMap(({ context }) => context.gaps)];
-  if (unofficial) for (const entry of inputs.filter((candidate) => candidate.roles.some((role) => role.startsWith("admin:")))) gaps.push(createGap(spatialGapCatalog, "BOUNDARY_UNOFFICIAL", { dataset: entry.ref.label }, { inputId: entry.id }));
+  const gaps: Gap[] = [
+    ...resolved.gaps, ...resolvedMapFeatures.gaps, ...dataCenter.gaps, ...featureResults.gaps,
+    ...inputs.flatMap((entry) => deriveInputGaps(entry)), ...contexts.flatMap(({ context }) => context.gaps),
+  ];
+  if (wantsContext && unofficial) for (const entry of inputs.filter((candidate) => candidate.roles.some((role) => role.startsWith("admin:")))) {
+    gaps.push(createGap(spatialGapCatalog, "BOUNDARY_UNOFFICIAL", { dataset: entry.ref.label }, { inputId: entry.id }));
+  }
   if (results.some((entry) => entry.metrics.some((metric) => metric.valueKind === "DISTANCE"))) gaps.push(createGap(spatialGapCatalog, "NETWORK_ANALYSIS_NOT_SUPPORTED"));
   const normalizedGaps = normalizeGaps(gaps);
 
-  const dataAvailability = availabilityOf(resolved.state, contexts.map(({ context }) => context.coverage));
+  const dataAvailability = mergeAvailability([
+    ...(wantsContext ? [availabilityOf(resolved.state, contexts.map(({ context }) => context.coverage))] : []),
+    featureResults.dataAvailability,
+  ]);
   const finishedAt = options.clock();
   const result = {
     contract: SPATIAL_RESULT_CONTRACT,

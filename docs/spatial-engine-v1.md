@@ -25,6 +25,10 @@ The engine never says a location is good or bad and never says what to do. It st
 the limits of the data behind them. Interpretation belongs to the later engines and the final
 decision to the Risk & Decision Engine.
 
+The v1 scope lists all six analyses; the implementation currently exposes `LOCATION_CONTEXT`,
+`PROXIMITY` and `CATCHMENT`. `DENSITY`, `CONSTRAINT_SCREENING` and `SITE_COMPARISON` remain
+unavailable until M6 and are refused rather than returned as empty results.
+
 ### Engine capability and production data
 
 Two different questions are kept apart. **Capability** is whether the engine's code, contracts,
@@ -184,14 +188,14 @@ which added the `nearestCount` component to `PROXIMITY` (`proximity.<role>.neare
 (M2), which prices the nearest-place search of each place role in `LOCATION_CONTEXT`
 (`context.<role>`).
 
-Resolving a Data Center selection has no cost component yet: no implemented analysis reads Data
-Center data (M3 builds the data source; `PROXIMITY` and `CATCHMENT` read it in M4), so a
-selection costs nothing until an analysis uses it. M4 prices what each analysis reads, the size of
-the dataset included, and the dataset caps below bound it in the meantime.
+Resolving a Data Center selection has no separate cost component: the requested analysis prices
+the work, and `PROXIMITY` and `CATCHMENT` account for their bounded reads above. Dataset feature
+and request limits bound the work; exceeding the result metric ceiling is rejected before any
+backend is read.
 
 ## Gaps
 
-The shared gaps plus nineteen of its own, all bilingual and worded as facts:
+The shared gaps plus twenty-one of its own, all bilingual and worded as facts:
 
 | Code | Severity | Says |
 | --- | --- | --- |
@@ -230,7 +234,7 @@ versions of PostGIS, GEOS and PROJ it reports, whether the Map's tables can be r
 whether its role could write (`roleCanWrite`) and any difference between the Map's tables and the
 engine's read contract (`contractProblems`). It never touches the `jenan_map` schema.
 
-`SpatialMapPort` (`map-port.ts`) extends it with four typed questions and nothing else: it has
+`SpatialMapPort` (`map-port.ts`) extends it with six typed questions and nothing else: it has
 no method that accepts SQL, a table name or a column name.
 
 | Method | Answers |
@@ -239,6 +243,8 @@ no method that accepts SQL, a table name or a column name.
 | `checkGeometries(locations)` | Whether each location is a valid geometry, with PostGIS's reason when it is not |
 | `locate({ releaseId, location, levels })` | Where the location lies against the national boundary (full, partial with the covered share, none) and the administrative polygons of each level that intersect it |
 | `nearest({ releaseId, layerId, location, kind, rings, limit })` | The nearest features of a kind, searched ring by ring, and the features nearby whose kind cannot be read |
+| `countFeatures({ releaseId, layerId, location, kind, radiiMeters })` | Mapped and unrecognized feature counts for each requested radius |
+| `measureDataset({ features, location, radiiMeters, maxSearchMeters, nearestCount, includePopulation })` | Validates and measures a bounded Data Center feature set: nearest features, catchment counts and, when enabled, area-weighted population |
 
 ## LOCATION_CONTEXT (M2)
 
@@ -265,7 +271,7 @@ and carries a `spatial-confidence-v1` breakdown when it has a value.
 | `context.<place role>.nearest.distance`, `.name`, `.feature_ref` | metres, text, text | The nearest mapped place of the kind (`place:<kind>`), searched in rings of 500 m, 1, 3, 5, 10, 25 and 50 km up to `maxSearchMeters` (default 5 km). The role `place` accepts any recognized kind and adds `.kind`. `.feature_ref` is the place's reference (below) |
 
 Roles that are not places are ignored by `LOCATION_CONTEXT`, whether they select a Map layer or a
-Data Center dataset: the analyses that measure them (`PROXIMITY`, `CATCHMENT`) read them from M4.
+Data Center dataset: `PROXIMITY` and `CATCHMENT` resolve their selected sources in M4.
 A Data Center selection for a *place* role is refused, not ignored (see Whole-run refusals): the
 places of `LOCATION_CONTEXT` come from the Map, and a dataset that was asked for is never
 silently replaced by Map data. The representative point of an area
@@ -407,8 +413,8 @@ matter. On PostgreSQL before 15 the operator should also revoke `CREATE` on sche
 ## The Data Center provider (M3)
 
 M3 builds the engine's data source: how a dataset is found in the Data Center and read, exactly
-and deterministically, under the Data Center's own access policy. No analysis reads Data Center
-data yet (that is `PROXIMITY` and `CATCHMENT` in M4); M3 delivers the machinery they will use.
+and deterministically, under the Data Center's own access policy. M4 uses this machinery for
+`PROXIMITY` and `CATCHMENT`.
 
 ### What was added to the Data Center, and where
 
@@ -488,7 +494,7 @@ the distance searched).
 4. `require: "GEOJSON"` refuses a dataset that is not spatial (`CONTENT_NOT_SPATIAL`).
 
 There is no fallback to another version, ever. Topological validity (self-intersections and the
-like) is not decided here: PostGIS decides it when the features reach it (M4).
+like) is decided by PostGIS before any M4 measurement; invalid geometries are not repaired.
 
 ### The port and the provider
 
@@ -556,15 +562,42 @@ Center's usage record needs (version, SHA-256, consumer `analysis-engine:spatial
 It is **prepared, not written**: the permanent record belongs with the run record (M5), in the
 same step, so a failed run leaves no usage behind.
 
+## PROXIMITY and CATCHMENT (M4)
+
+Each requested analysis runs independently for the main location and every candidate. The result
+contains only analyses that were requested. A role uses the Map by default or exactly the data
+source it selected; an unavailable Data Center version is never replaced silently by Map data.
+Selections for roles not read by the requested analyses are neither resolved nor listed as inputs.
+
+`PROXIMITY` reports a bounded set of nearest features per feature role, searched through the
+configured distance rings. It reports straight-line geodesic distance, a name and, for Map
+features, a release-scoped feature reference. An unreadable Map source id can make a result
+`NOT_COMPUTABLE`; the engine does not guess the feature kind.
+When the target is outside a source's declared coverage, proximity metrics report `NO_COVERAGE`
+even if a spatial query happens to return a nearby feature.
+
+`CATCHMENT` counts mapped features by role and radius. These describe the selected dataset, not
+a complete real-world inventory. A zero in data whose completeness is unknown or sample-based is
+not reported as a factual zero; an out-of-coverage count is `NO_COVERAGE`, not zero. A population
+role is only measured from a selected Data Center dataset whose features are polygons with a
+non-negative integer `population` property. The
+estimate weights each polygon's population by the share of its area intersecting the radius,
+which assumes population is distributed uniformly within each polygon. Such a result is always
+`ESTIMATED`, carries that limitation, and includes `POPULATION_AREA_WEIGHTED_ESTIMATE`; unsupported
+population schemas produce no estimate.
+
+Data Center geometries are checked by PostGIS before measurement. Invalid geometry yields no
+distance, count or population measurement. Each analysis-target result is limited to 500 metrics;
+the engine rejects a request that would exceed the ceiling before reading a backend and never
+truncates requested results.
+
 ### Decision for the owner: selections that the current analysis cannot read
 
-`LOCATION_CONTEXT` reads places from the Map only. A Data Center selection for a *place* role is
-therefore refused (`data_center_pin_for_map_role`) rather than silently replaced by Map data. A
-selection for a role no requested analysis reads (a point of interest, a road) is neither resolved
-nor listed, exactly as a Map pin for such a role always was; it appears in the normalized request
-and is hashed with it. `PROXIMITY` and `CATCHMENT` resolve those selections in M4. The alternative
-is a general information gap for any unread role or selection; it was not added because the engine
-already says nothing about unread roles without a pin.
+`LOCATION_CONTEXT` reads places from the Map only. When it is requested, a Data Center selection
+for a *place* role is therefore refused (`data_center_pin_for_map_role`) rather than silently
+replaced by Map data. `PROXIMITY` and `CATCHMENT` resolve the selected feature and population
+sources. A selection for a role no requested analysis reads is neither resolved nor listed; it
+remains part of the normalized request and its hash.
 
 ## Tests
 
@@ -577,6 +610,9 @@ already says nothing about unread roles without a pin.
   the provider with the Data Center's three services replaced (requests, one answer for every
   refusal, outcome per error, zero database access), the request contract and normalization of
   Data Center selections, and the Map binding reconciliation with a fake port.
+  M4 adds Map and Data Center feature routing, no-fallback behavior, proximity and catchment
+  metrics, population-estimate labeling, coverage and result-ceiling checks, plus invalid-geometry
+  guards for the fixed PostGIS statements.
 - **Data Center integration** (opt-in, real migrated PostgreSQL, every test in a transaction
   that is always rolled back): `DATA_CENTER_DATABASE_TESTS=1` and a `DATABASE_URL` that points at
   a database migrated from scratch.
@@ -604,8 +640,9 @@ already says nothing about unread roles without a pin.
     the read-only role, fifteen write routes refused, the snapshot, time limits, PostGIS or the
     Map missing, contract drift, unreachable server, and eight changed `sourceId` formats.
   - `spatial-engine-synthetic.integration.test.ts`: a Map built through the Map's release state
-    machine with hand-worked geometry, in development and production, over Map runtime states, and
-    proving that a run changes nothing even over a role that could write.
+    machine with hand-worked geometry, in development and production, over Map runtime states,
+    M4 Map counts and Data Center measurements (including invalid geometry), and proving that a
+    run changes nothing even over a role that could write.
   - `spatial-engine-real-saudi.integration.test.ts`: production mode on a copy of the real
     release; the engine compared with independently written SQL on real points; the contract and
     `sourceId` conformance of the real data; a real `sourceId` corrupted on the copy.
@@ -625,13 +662,13 @@ nearest-place search ranks them all); the statement timeout fails it safe.
   the real release). The Map's schema must not change for the engine, so this is a
   recommendation to the Map.
 - The freshness periods are engine defaults, not Map declarations.
-- Before M4 the number of metrics per result entry must be bounded for requests with many roles
-  and many nearest features (the schema allows 500).
+- M4 rejects requests that would exceed 500 metrics in any analysis-target result entry; it does
+  not truncate results.
 - The cost weights remain provisional until M7.
 - A Data Center dataset's completeness is `UNKNOWN`: the Data Center does not record it, so a
   count from it is never presented as an inventory.
-- A Data Center content is validated structurally (WGS84, ranges, closed rings, limits); the
-  topological validity of its geometry is decided by PostGIS in M4.
+- Data Center content is validated structurally (WGS84, ranges, closed rings, limits); topological
+  validity is decided by PostGIS before M4 measurement.
 - An exact Data Center version is used as given and is not narrowed by place; its declared coverage
   is stated in its input, and M4 compares it with the target and reports `NO_COVERAGE` where it
   does not apply.
@@ -649,7 +686,7 @@ nearest-place search ranks them all); the statement timeout fails it safe.
 | M1 | Shared core, contracts, states, gaps, confidence policy, canonical hashing, cost estimator, request normalization, Map layer policy, geometry pre-checks, port seam, unit tests | Done |
 | M2 | Read-only Map adapter over PostGIS, a Map read contract test, `LOCATION_CONTEXT` | Done |
 | M3 | Data Center discovery and content read functions (on the engines branch only), the provider, deterministic version selection, request selections, Map reference reconciliation, prepared usage | Done |
-| M4 | `PROXIMITY` and `CATCHMENT` | Planned |
+| M4 | `PROXIMITY` and `CATCHMENT` | Done |
 | M5 | `AnalysisEngineRun` models and additive migration, audit, admin acceptance route (no UI) | Planned |
 | M6 | `DENSITY`, `CONSTRAINT_SCREENING`, `SITE_COMPARISON` | Planned |
 | M7 | Real-data performance, documentation, closure gate | Planned |

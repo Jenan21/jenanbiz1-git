@@ -63,9 +63,36 @@ export interface MapNearestResult {
   unrecognized: { count: number; nearestMeters: number | null };
 }
 
+export interface MapCountRequest {
+  releaseId: string;
+  layerId: string;
+  location: SpatialLocation;
+  kind: string | null;
+  radiiMeters: readonly number[];
+}
+export interface MapCountResult {
+  radii: Array<{ radiusMeters: number; count: number; unrecognized: number }>;
+}
+
+export interface DatasetMeasureRequest {
+  features: readonly unknown[];
+  location: SpatialLocation;
+  radiiMeters: readonly number[];
+  maxSearchMeters: number;
+  nearestCount: number;
+  includePopulation: boolean;
+}
+export interface DatasetMeasureResult {
+  valid: boolean;
+  nearest: Array<{ index: number; id: string | null; name: string | null; distanceMeters: number }>;
+  radii: Array<{ radiusMeters: number; count: number; populationEstimate: number | null }>;
+}
+
 export interface SpatialMapPort extends SpatialDataPort {
   describeMap(request: MapDescribeRequest): Promise<MapDescription>;
   checkGeometries(locations: readonly SpatialLocation[]): Promise<GeometryCheck[]>;
   locate(request: MapLocateRequest): Promise<MapLocateResult>;
   nearest(request: MapNearestRequest): Promise<MapNearestResult>;
+  countFeatures(request: MapCountRequest): Promise<MapCountResult>;
+  measureDataset(request: DatasetMeasureRequest): Promise<DatasetMeasureResult>;
 }

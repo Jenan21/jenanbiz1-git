@@ -64,6 +64,61 @@ describe.runIf(postgisTestsEnabled)("LOCATION_CONTEXT over a real PostGIS: the s
     readOnlyUrl = urlFor(database, { user: role, password: secret });
   }, 180_000);
 
+  describe("M4 feature measurements over a real PostGIS", () => {
+    it("counts only the requested Map kind within each radius", async () => {
+      const reader = new PostgisMapReader({ connectionString: adminUrl });
+      try {
+        const result = await reader.countFeatures({
+          releaseId: publishedId, layerId: "places", location: point(42, 22), kind: "neighbourhood", radiiMeters: [100, 5000],
+        });
+        expect(result.radii).toEqual([
+          { radiusMeters: 100, count: 1, unrecognized: 0 },
+          { radiusMeters: 5000, count: 1, unrecognized: 0 },
+        ]);
+      } finally {
+        await reader.close();
+      }
+    });
+
+    it("measures Data Center feature proximity and area-weighted population using PostGIS", async () => {
+      const reader = new PostgisMapReader({ connectionString: adminUrl });
+      try {
+        const result = await reader.measureDataset({
+          features: [{
+            type: "Feature", id: "population-zone", properties: { name: "Population zone", population: 1000 },
+            geometry: rect(42.4, 22.4, 42.6, 22.6),
+          }],
+          location: point(42.5, 22.5), radiiMeters: [500], maxSearchMeters: 5000, nearestCount: 2, includePopulation: true,
+        });
+        expect(result.valid).toBe(true);
+        expect(result.nearest[0]).toMatchObject({ id: "population-zone", name: "Population zone", distanceMeters: 0 });
+        expect(result.radii[0]?.count).toBe(1);
+        expect(result.radii[0]?.populationEstimate).toBeGreaterThan(0);
+        expect(result.radii[0]?.populationEstimate).toBeLessThan(1000);
+      } finally {
+        await reader.close();
+      }
+    });
+
+    it("returns invalid geometry without evaluating distance or population operations", async () => {
+      const reader = new PostgisMapReader({ connectionString: adminUrl });
+      try {
+        const result = await reader.measureDataset({
+          features: [{
+            type: "Feature", properties: { population: 1000 },
+            geometry: { type: "Polygon", coordinates: [[[42.4, 22.4], [42.6, 22.6], [42.6, 22.4], [42.4, 22.6], [42.4, 22.4]]] },
+          }],
+          location: point(42.5, 22.5), radiiMeters: [500], maxSearchMeters: 5000, nearestCount: 2, includePopulation: true,
+        });
+        expect(result).toEqual({
+          valid: false, nearest: [], radii: [{ radiusMeters: 500, count: 0, populationEstimate: null }],
+        });
+      } finally {
+        await reader.close();
+      }
+    });
+  });
+
   describe("administrative context, worked out by hand", () => {
     it("places a point in the interior of one region and one governorate, and measures the geodesic distance to their edges", async () => {
       const result = await analyse(point(42.5, 22.5));

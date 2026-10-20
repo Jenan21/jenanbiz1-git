@@ -120,6 +120,22 @@ const spatialOwnGapCatalog = defineGapCatalog({
     },
     remedy: { ar: "إن كان المطلوب مجموعة أخرى فحدّد إصدارها صراحةً.", en: "If another dataset is intended, pin its version explicitly." },
   },
+  POPULATION_DATA_SCHEMA_UNSUPPORTED: {
+    severity: "BLOCKING",
+    message: {
+      ar: "لا يطابق إصدار «{dataset}» مخطط السكان المطلوب: مضلعات ذات خاصية population كعدد صحيح غير سالب؛ لم يُحسب تقدير السكان.",
+      en: "“{dataset}” does not match the required population schema: polygons with a non-negative integer population property; no population estimate was calculated.",
+    },
+    remedy: { ar: "انشر مناطق سكانية بمضلعات صالحة وخاصية population موثقة.", en: "Publish valid population polygons with a documented population property." },
+  },
+  POPULATION_AREA_WEIGHTED_ESTIMATE: {
+    severity: "WARNING",
+    message: {
+      ar: "تقدير السكان ضمن النطاق يوزّع سكان كل مضلع بنسبة مساحة التقاطع، بافتراض تجانس التوزيع داخل المضلع.",
+      en: "The population estimate apportions each polygon's population by its intersected area and assumes an even distribution within that polygon.",
+    },
+    remedy: { ar: "تحقق من المنهج ومصدر البيانات قبل مقارنة التقديرات.", en: "Review the method and source before comparing estimates." },
+  },
   MAP_DATA_CENTER_BINDING_REFUSED: {
     severity: "WARNING",
     message: {

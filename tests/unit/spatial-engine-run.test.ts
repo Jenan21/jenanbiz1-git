@@ -14,7 +14,7 @@ const withPlacesBinding = (binding: { enabled: boolean; status: "ready" | "unava
 
 describe("the engine's run: what it refuses before it reads anything", () => {
   it("accepts only the analyses this version implements and refuses the others by name, touching nothing", async () => {
-    for (const analyses of [["PROXIMITY"], ["LOCATION_CONTEXT", "DENSITY"], ["SITE_COMPARISON", "LOCATION_CONTEXT"]]) {
+    for (const analyses of [["DENSITY"], ["LOCATION_CONTEXT", "DENSITY"], ["SITE_COMPARISON", "LOCATION_CONTEXT"]]) {
       const { port, result } = run(baseRequest({ analyses: analyses as never, parameters: { roles: ["poi:hospital"] }, candidates: analyses.includes("SITE_COMPARISON") ? [{ id: "a", location: riyadh }] : undefined } as never));
       const error = await failureOf(result);
       expect(error).toMatchObject({ code: "INVALID_INPUT", status: 400, details: { reason: "analysis_not_supported" } });
@@ -135,11 +135,11 @@ describe("the engine's run: the spatial backend", () => {
     expect(statuses(output, "site-a")["context.region"]).toBe("NOT_COMPUTABLE");
   });
 
-  it("only ever asks the five questions the port offers, each read-only", async () => {
+  it("uses only the read-only questions the port offers", async () => {
     const { port, result } = run(contextRequest({ candidates: [{ id: "site-a", location: riyadh }] }));
     await result;
     expect(new Set(port.calls.map((call) => call.method))).toEqual(new Set(["capabilities", "checkGeometries", "describeMap", "locate", "nearest"]));
-    expect(Object.getOwnPropertyNames(FakeMapPort.prototype).filter((name) => !["constructor", "answer", "callsOf"].includes(name)).sort()).toEqual(["capabilities", "checkGeometries", "describeMap", "locate", "nearest"]);
+    expect(Object.getOwnPropertyNames(FakeMapPort.prototype).filter((name) => !["constructor", "answer", "callsOf"].includes(name)).sort()).toEqual(["capabilities", "checkGeometries", "countFeatures", "describeMap", "locate", "measureDataset", "nearest"]);
   });
 });
 
@@ -276,7 +276,7 @@ describe("the engine's run: pinned Map releases", () => {
   it("reads a pinned release for the role's places, labels it unregistered, and keeps it apart from the published release", async () => {
     const { port, result } = run(pinTo(OTHER_RELEASE), behaviour());
     const output = await result;
-    expect(port.callsOf("describeMap").map((call) => call.request)).toEqual([{ layers: ["regions", "governorates", "places"] }, { releaseId: OTHER_RELEASE, layers: ["places"] }]);
+    expect(port.callsOf("describeMap").map((call) => call.request)).toEqual([{ layers: ["governorates", "places", "regions"] }, { releaseId: OTHER_RELEASE, layers: ["places"] }]);
     expect(port.callsOf("nearest")[0]?.request).toMatchObject({ releaseId: OTHER_RELEASE });
     expect(output.inputs.map((input) => input.id.split(":").slice(1).join(":"))).toEqual(
       [`${RELEASE_ID}:boundary`, `${RELEASE_ID}:governorates`, `${OTHER_RELEASE}:places`, `${RELEASE_ID}:regions`].sort(),
@@ -346,7 +346,7 @@ describe("the engine's run: the result it returns", () => {
       engine: {
         key: "spatial", version: SPATIAL_ENGINE_VERSION, environment: "test",
         runtime: { backend: "POSTGIS", placement: "DEDICATED_CONNECTION", postgis: "3.5.2", geos: "3.9.0-CAPI-1.16.2", proj: "7.2.1" },
-        capabilities: { analyses: ["LOCATION_CONTEXT"], excluded: [...spatialExclusions] },
+        capabilities: { analyses: ["LOCATION_CONTEXT", "PROXIMITY", "CATCHMENT"], excluded: [...spatialExclusions] },
       },
       request: { mapLayerPolicy: "ALLOW_UNREGISTERED", normalized: { analyses: ["LOCATION_CONTEXT"], parameters: { roles: ["place:neighbourhood"], maxSearchMeters: 5000 } } },
       limits: { costUnits: 5, budgetUnits: 1000 },

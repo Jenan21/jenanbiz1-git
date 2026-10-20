@@ -1,7 +1,7 @@
 import type { SpatialLocation } from "@/services/analysis-engines/spatial/contracts";
 import type { MapDescription } from "@/services/analysis-engines/spatial/map-contract";
 import type {
-  GeometryCheck, MapDescribeRequest, MapLocateRequest, MapLocateResult, MapNearestRequest, MapNearestResult, SpatialMapPort,
+  DatasetMeasureRequest, DatasetMeasureResult, GeometryCheck, MapCountRequest, MapCountResult, MapDescribeRequest, MapLocateRequest, MapLocateResult, MapNearestRequest, MapNearestResult, SpatialMapPort,
 } from "@/services/analysis-engines/spatial/map-port";
 import type { SpatialBackendCapabilities } from "@/services/analysis-engines/spatial/ports";
 import { realDescription, RELEASE_ID } from "./spatial-map-fixtures";
@@ -46,6 +46,8 @@ export interface FakeBehaviour {
   checkGeometries?: Reply<readonly SpatialLocation[], GeometryCheck[]>;
   locate?: Reply<MapLocateRequest, MapLocateResult>;
   nearest?: Reply<MapNearestRequest, MapNearestResult>;
+  countFeatures?: Reply<MapCountRequest, MapCountResult>;
+  measureDataset?: Reply<DatasetMeasureRequest, DatasetMeasureResult>;
 }
 
 /** A Map port that answers from a script and records every request, so analyses can be tested without a database. */
@@ -77,6 +79,16 @@ export class FakeMapPort implements SpatialMapPort {
     });
   }
   async nearest(request: MapNearestRequest) { return this.answer("nearest", request, this.behaviour.nearest, () => nearestPlace()); }
+  async countFeatures(request: MapCountRequest) {
+    return this.answer("countFeatures", request, this.behaviour.countFeatures, (asked) => ({
+      radii: asked.radiiMeters.map((radiusMeters) => ({ radiusMeters, count: 0, unrecognized: 0 })),
+    }));
+  }
+  async measureDataset(request: DatasetMeasureRequest) {
+    return this.answer("measureDataset", request, this.behaviour.measureDataset, (asked) => ({
+      valid: true, nearest: [], radii: asked.radiiMeters.map((radiusMeters) => ({ radiusMeters, count: 0, populationEstimate: null })),
+    }));
+  }
 }
 
 export const PUBLISHED_RELEASE_ID = RELEASE_ID;
