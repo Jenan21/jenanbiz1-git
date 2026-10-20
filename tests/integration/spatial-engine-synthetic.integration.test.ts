@@ -274,6 +274,7 @@ describe.runIf(postgisTestsEnabled)("LOCATION_CONTEXT over a real PostGIS: the s
           expect(Object.values(statuses(production)).every((value) => value === "NOT_AVAILABLE")).toBe(true);
           expect(gapsOf(production, "MAP_NOT_PUBLISHED")[0]?.message.en).toContain(`(state: ${release === null ? "disabled" : status})`);
           expect(production.inputs).toEqual([]);
+          expect(production.rights).toEqual({ allowExport: false, denials: [{ reason: "NO_INPUTS" }] });
         }
         await withClient(adminUrl, (client) => setRuntime(client, "maintenance", publishedId));
         const development = await analyse(point(42.5, 22.5), []);

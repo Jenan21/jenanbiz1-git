@@ -191,6 +191,8 @@ describe.runIf(postgisTestsEnabled && realMapTemplate !== "")("LOCATION_CONTEXT 
     expectAgrees(name, result, expected);
     for (const metric of Object.values(metricsOf(result)).filter((entry) => entry.key !== "context.within_boundary")) expect(metric.value, metric.key).toBeNull();
     expect(result.dataAvailability.filter((entry) => entry.status === "NO_COVERAGE").map((entry) => entry.role)).toEqual(["admin:governorate", "admin:region", "place:neighbourhood"]);
+    expect(result.rights.allowExport).toBe(false);
+    expect(result.rights.denials.length).toBeGreaterThan(0);
     if (name === "Dubai") examples.dubai = summary(result);
   });
 

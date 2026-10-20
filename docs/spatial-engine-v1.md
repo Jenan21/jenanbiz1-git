@@ -110,6 +110,12 @@ envelope rules and the Spatial rules (engine key and contracts, production polic
 requested analyses and targets, analyses within the engine version's declared capabilities,
 order).
 
+Rights follow from the inputs and fail closed. A result that has no input at all (the Map has
+nothing published, or in production every layer is unregistered and excluded) is not exportable:
+`rights` is `{ allowExport: false, denials: [{ reason: "NO_INPUTS" }] }`. The absence of inputs is
+never a permission. A target outside the Map's coverage keeps the inputs the run read, so the
+denials are theirs.
+
 ## Confidence `spatial-confidence-v1`
 
 An explainable heuristic quality indicator for the data a measurement rests on. It is not a

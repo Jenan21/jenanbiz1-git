@@ -1,8 +1,8 @@
 import { describe, expect, it } from "vitest";
 import {
   assertEnvelope, computeDeterminism, computeInputsHash, computeOutputHash, computeRequestHash, createGap, deriveAttribution, deriveRights, deriveRunStatus, engineInputSchema,
-  engineMetricSchema, envelopeViolationCodes, EngineError, findEnvelopeViolations, findInputViolations, findMetricViolations, normalizeGaps, sharedGapCatalog,
-  type EngineInput, type EngineMetric, type EnvelopeViolationCode, type GapCatalog, type MetricStatus,
+  engineMetricSchema, envelopeViolationCodes, EngineError, findEnvelopeViolations, findInputViolations, findMetricViolations, normalizeGaps, rightsSchema, sharedGapCatalog,
+  type EngineInput, type EngineMetric, type EnvelopeViolationCode, type GapCatalog, type MetricStatus, type Rights,
 } from "@/services/analysis-engines/shared";
 import { digest, makeBreakdown, makeEngineRunInput, makeEnvelope, makeInput, makeMetric, makeUnregisteredSampleInput, reseal, type TestEnvelope } from "./support/analysis-engine-fixtures";
 
@@ -113,20 +113,41 @@ describe("metric invariants", () => {
 });
 
 describe("derivations", () => {
-  const denials = (inputs: EngineInput[]) => deriveRights(inputs).denials.map((denial) => `${denial.inputId}:${denial.reason}`);
+  const describeDenial = (denial: Rights["denials"][number]) => ("inputId" in denial ? `${denial.inputId}:${denial.reason}` : denial.reason);
+  const denials = (inputs: EngineInput[]) => deriveRights(inputs).denials.map(describeDenial);
 
   it("allows export only when every input allows it, declares a license class and is not restricted", () => {
     expect(deriveRights([makeInput()])).toEqual({ allowExport: true, denials: [] });
-    expect(deriveRights([])).toEqual({ allowExport: true, denials: [] });
     expect(denials([makeInput({ allowExport: false })])).toEqual(["dc:version-1:EXPORT_NOT_ALLOWED"]);
     expect(denials([makeInput({ licenseClass: null })])).toEqual(["dc:version-1:LICENSE_CLASS_UNDECLARED"]);
     expect(denials([makeInput({ licenseClass: "RESTRICTED", allowExport: false })])).toEqual(["dc:version-1:EXPORT_NOT_ALLOWED", "dc:version-1:LICENSE_CLASS_RESTRICTED"]);
   });
 
+  it("denies export when there is no input at all: the absence of inputs is never a permission", () => {
+    const rights = deriveRights([]);
+    expect(rights).toEqual({ allowExport: false, denials: [{ reason: "NO_INPUTS" }] });
+    expect(rightsSchema.parse(rights)).toEqual(rights);
+    expect(deriveRights([])).toEqual(rights);
+    // One exportable input restores the permission, so the denial comes from the missing input and from nothing else.
+    expect(deriveRights([makeInput()]).allowExport).toBe(true);
+  });
+
+  it("keeps the denial of an empty result alone, and never beside a permission", () => {
+    const accepted = (value: unknown) => rightsSchema.safeParse(value).success;
+    expect(accepted({ allowExport: false, denials: [{ reason: "NO_INPUTS" }] })).toBe(true);
+    expect(accepted({ allowExport: false, denials: [{ inputId: "dc:a", reason: "EXPORT_NOT_ALLOWED" }] })).toBe(true);
+    expect(accepted({ allowExport: true, denials: [{ reason: "NO_INPUTS" }] })).toBe(false);
+    expect(accepted({ allowExport: false, denials: [{ reason: "NO_INPUTS" }, { inputId: "dc:a", reason: "EXPORT_NOT_ALLOWED" }] })).toBe(false);
+    expect(accepted({ allowExport: false, denials: [{ reason: "NO_INPUTS" }, { reason: "NO_INPUTS" }] })).toBe(false);
+    expect(accepted({ allowExport: false, denials: [{ reason: "NO_INPUTS", inputId: "dc:a" }] })).toBe(false);
+    expect(accepted({ allowExport: false, denials: [{ inputId: "dc:a" }] })).toBe(false);
+    expect(accepted({ allowExport: false, denials: [{ reason: "EXPORT_NOT_ALLOWED" }] })).toBe(false);
+  });
+
   it("denies the whole result when any one input denies it, and names every denial in a stable order", () => {
     const rights = deriveRights([makeInput({ id: "dc:b" }), makeUnregisteredSampleInput({ id: "dc:a" })]);
     expect(rights.allowExport).toBe(false);
-    expect(rights.denials.map((denial) => denial.inputId)).toEqual(["dc:a", "dc:a"]);
+    expect(rights.denials.map((denial) => ("inputId" in denial ? denial.inputId : null))).toEqual(["dc:a", "dc:a"]);
   });
 
   it("does not ask an engine output for a license class of its own", () => {
@@ -220,6 +241,34 @@ describe("envelope validator", () => {
     const notFound = makeMetric({ key: "catchment.r500.count.poi:hospital", valueKind: "COUNT", unit: "count", status: "NOT_FOUND_WITHIN_RADIUS", platformState: "UNAVAILABLE", value: null, confidence: null, inputRefs: [sample.id] });
     expect(findEnvelopeViolations(sampleEnvelope(notFound, true))).toEqual([]);
     expect(codes(sampleEnvelope(notFound, false))).toEqual(["COUNT_NOT_INVENTORY_UNGUARDED"]);
+  });
+
+  describe("a result with no input", () => {
+    const unavailable = makeMetric({ status: "NOT_AVAILABLE", platformState: "UNAVAILABLE", value: null, confidence: null, inputRefs: [] });
+    const withoutInputs = (rights?: Rights) => {
+      const envelope = makeEnvelope({ inputs: [], metrics: [unavailable] });
+      if (rights !== undefined) envelope.rights = rights;
+      return reseal(envelope);
+    };
+
+    it("is denied export, and is a valid result", () => {
+      const envelope = withoutInputs();
+      expect(envelope.inputs).toEqual([]);
+      expect(envelope.rights).toEqual({ allowExport: false, denials: [{ reason: "NO_INPUTS" }] });
+      expect(findEnvelopeViolations(envelope)).toEqual([]);
+    });
+
+    it("cannot claim the right to export, whichever way the claim is written", () => {
+      expect(codes(withoutInputs({ allowExport: true, denials: [] }))).toEqual(["RIGHTS_MISMATCH"]);
+      expect(codes(withoutInputs({ allowExport: false, denials: [] }))).toEqual(["RIGHTS_MISMATCH"]);
+      expect(codes(withoutInputs({ allowExport: false, denials: [{ inputId: "dc:version-1", reason: "EXPORT_NOT_ALLOWED" }] }))).toEqual(["RIGHTS_MISMATCH"]);
+    });
+
+    it("cannot carry the denial of an empty result once it has an input", () => {
+      const envelope = makeEnvelope();
+      envelope.rights = { allowExport: false, denials: [{ reason: "NO_INPUTS" }] };
+      expect(codes(reseal(envelope))).toEqual(["RIGHTS_MISMATCH"]);
+    });
   });
 
   const cases: Array<[EnvelopeViolationCode, () => TestEnvelope, { catalog?: GapCatalog }?]> = [

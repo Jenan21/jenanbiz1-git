@@ -200,6 +200,68 @@ describe("the engine's run: the Map-layer policy", () => {
   });
 });
 
+describe("the engine's run: export is never allowed by the absence of inputs", () => {
+  const noInputs = { allowExport: false, denials: [{ reason: "NO_INPUTS" }] };
+  const unreviewed = (): MapDescription => {
+    const description = realDescription();
+    return { ...description, boundary: { ...realBoundary(), provenance: null }, layers: description.layers.map((layer) => ({ ...layer, provenance: null })) };
+  };
+  const notPublished = (state: "disabled" | "maintenance" | "none"): MapDescription => (state === "none"
+    ? { runtime: { status: "enabled", publishedReleaseId: null }, release: null, boundary: null, layers: [] }
+    : { runtime: { status: state, publishedReleaseId: null }, release: null, boundary: null, layers: [] });
+
+  it.each(["disabled", "maintenance", "none"] as const)("denies export when the Map has nothing published (%s)", async (state) => {
+    const output = await resultOf(contextRequest(), { describeMap: notPublished(state) });
+    expect(output.inputs).toEqual([]);
+    expect(output.rights).toEqual(noInputs);
+    expect(gapsOf(output, "MAP_NOT_PUBLISHED")).toHaveLength(1);
+    expect(output.attribution).toEqual([]);
+  });
+
+  it("denies export when no input is usable: in production, a Map whose layers are all unregistered gives the run nothing to stand on", async () => {
+    const output = await resultOf(contextRequest(), { describeMap: unreviewed() }, { environment: "production" });
+    expect(output.inputs).toEqual([]);
+    expect(output.rights).toEqual(noInputs);
+    expect(gapCodes(output)).toEqual(expect.arrayContaining(["UNREGISTERED_LAYERS_EXCLUDED", "DATASET_NOT_AVAILABLE"]));
+    expect(Object.values(statuses(output)).every((status) => status === "NOT_AVAILABLE")).toBe(true);
+  });
+
+  it("denies export when the target is outside the Map's coverage, because of the inputs it did use and not because there are none", async () => {
+    const output = await resultOf(contextRequest(), { locate: outsideLocate() });
+    expect(output.inputs.length).toBeGreaterThan(0);
+    expect(statuses(output)["context.within_boundary"]).toBe("COMPUTED");
+    expect(output.dataAvailability.filter((entry) => entry.status === "NO_COVERAGE").length).toBeGreaterThan(0);
+    expect(output.rights.allowExport).toBe(false);
+    expect(output.rights.denials.length).toBeGreaterThan(0);
+    expect(output.rights.denials.every((denial) => "inputId" in denial)).toBe(true);
+  });
+
+  it("denies export when the target is outside the coverage and the Map is not published either", async () => {
+    const output = await resultOf(contextRequest(), { describeMap: notPublished("disabled"), locate: outsideLocate() });
+    expect(output.rights).toEqual(noInputs);
+  });
+
+  it("gives every result a right to export that follows from its inputs, so a run is never exportable on an empty list", async () => {
+    const situations: Array<[string, FakeBehaviour, { environment: "test" | "production" }?]> = [
+      ["interior", {}], ["outside", { locate: outsideLocate() }], ["not published", { describeMap: notPublished("disabled") }],
+      ["nothing registered", { describeMap: unreviewed() }, { environment: "production" }], ["no place found", { nearest: nearestPlace({ matches: [], ringMeters: null }) }],
+    ];
+    for (const [label, behaviour, options] of situations) {
+      const output = await resultOf(contextRequest(), behaviour, options);
+      expect(output.rights.allowExport, label).toBe(false);
+      expect(output.rights.denials.length, label).toBeGreaterThan(0);
+      expect(output.rights.denials.some((denial) => denial.reason === "NO_INPUTS"), label).toBe(output.inputs.length === 0);
+    }
+  });
+
+  it("is accepted by the shared run record when it has no input, so the run can still be stored and replayed", async () => {
+    const output = await resultOf(contextRequest(), { describeMap: notPublished("disabled") });
+    const record = buildRunRecord(output, { actor: { kind: "SYSTEM", id: null }, createdAt: CLOCK });
+    expect(runRecordSchema.parse(record)).toEqual(record);
+    expect(record.inputs).toEqual([]);
+  });
+});
+
 describe("the engine's run: pinned Map releases", () => {
   const pinnedDescription = (): MapDescription => ({
     runtime: realDescription().runtime, release: { ...publishedRelease, id: OTHER_RELEASE, version: "candidate-1", status: "Ready", publishedAt: null }, boundary: realBoundary(),

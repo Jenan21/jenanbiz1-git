@@ -115,9 +115,12 @@ completeness (`INVENTORY`, `SAMPLE`, `UNKNOWN`), evidence status, quality, fresh
 and limitations. Ownership, license and usage policy stay separate fields; nothing is inferred
 from another.
 
-Export is allowed only when every input allows it, declares a license class and is not
-restricted; an undeclared license class fails closed, as in the Data Center Map contract.
-Attribution is the grouped, sorted set of the attribution texts of the inputs.
+Export is allowed only when the result has at least one input and every input allows it,
+declares a license class and is not restricted; an undeclared license class fails closed, as in
+the Data Center Map contract. A result with no input at all (the Map has nothing published, no
+layer is usable, or every layer was excluded) is denied with the single reason `NO_INPUTS`: the
+absence of inputs is never a permission. Attribution is the grouped, sorted set of the
+attribution texts of the inputs.
 
 ### The envelope validator
 

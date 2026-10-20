@@ -209,10 +209,16 @@ export const attributionEntrySchema = z.object({ text: longTextSchema, required:
 export type AttributionEntry = z.infer<typeof attributionEntrySchema>;
 
 export const exportDenialReasons = ["EXPORT_NOT_ALLOWED", "LICENSE_CLASS_UNDECLARED", "LICENSE_CLASS_RESTRICTED"] as const;
+/** The denial of a result that has no input at all: nothing grants a right to export, and the absence of inputs is never a permission. */
+export const NO_INPUTS_DENIAL = "NO_INPUTS" as const;
+const inputDenialSchema = z.object({ inputId: identifierSchema, reason: z.enum(exportDenialReasons) }).strict();
+type InputDenial = z.infer<typeof inputDenialSchema>;
 export const rightsSchema = z.object({
   allowExport: z.boolean(),
-  denials: z.array(z.object({ inputId: identifierSchema, reason: z.enum(exportDenialReasons) }).strict()).max(600),
-}).strict().refine((rights) => rights.allowExport === (rights.denials.length === 0), "allowExport is false exactly when there are denials");
+  denials: z.array(z.union([inputDenialSchema, z.object({ reason: z.literal(NO_INPUTS_DENIAL) }).strict()])).max(600),
+}).strict()
+  .refine((rights) => rights.allowExport === (rights.denials.length === 0), "allowExport is false exactly when there are denials")
+  .refine((rights) => !rights.denials.some((denial) => denial.reason === NO_INPUTS_DENIAL) || rights.denials.length === 1, "A result without inputs is denied for that reason alone");
 export type Rights = z.infer<typeof rightsSchema>;
 
 export const determinismSchema = z.object({ requestHash: sha256Schema, inputsHash: sha256Schema, outputHash: sha256Schema }).strict();
@@ -230,9 +236,13 @@ export const engineIdentityShape = {
 };
 
 // --------------------------------------------------------------------------------------------------------------- derivations
-/** Export is allowed only when every input allows it, has a declared license class, and is not restricted (undeclared fails closed). */
+/**
+ * Export is allowed only when the result has at least one input and every input allows it, has a declared license class, and is not
+ * restricted (undeclared fails closed). A result with no input is denied: "every input allows it" must never hold vacuously.
+ */
 export function deriveRights(inputs: readonly EngineInput[]): Rights {
-  const denials: Rights["denials"] = [];
+  if (inputs.length === 0) return { allowExport: false, denials: [{ reason: NO_INPUTS_DENIAL }] };
+  const denials: InputDenial[] = [];
   for (const input of inputs) {
     if (!input.allowExport) denials.push({ inputId: input.id, reason: "EXPORT_NOT_ALLOWED" });
     if (input.licenseClass === "RESTRICTED") denials.push({ inputId: input.id, reason: "LICENSE_CLASS_RESTRICTED" });
