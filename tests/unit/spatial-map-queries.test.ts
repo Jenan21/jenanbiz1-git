@@ -85,7 +85,11 @@ describe("the adapter's SQL", () => {
     expect(QUERIES.locateUnits).toContain('::geography, r."target"::geography');
     expect(QUERIES.locateUnits).toContain('ST_Covers(f."geometry"');
     expect(QUERIES.locateCoverage).toContain('ST_Covers(b."geometry"');
-    for (const name of ["catalog", "layers", "locateUnits"] as const) expect(QUERIES[name]).toContain('COLLATE "C"');
+    for (const name of ["catalog", "layers", "locateUnits", "nearest"] as const) expect(QUERIES[name]).toContain('COLLATE "C"');
+    // Features at the very same distance are taken in a fixed order, whatever the database's locale: the id compared bytewise, then the rank.
+    expect(QUERIES.nearest).toContain('ORDER BY n."distance", n."id" COLLATE "C"');
+    expect(QUERIES.nearest).toContain('OVER (ORDER BY m."distance", m."id" COLLATE "C")');
+    expect(QUERIES.nearest.trimEnd().endsWith('ORDER BY "part", "rank"')).toBe(true);
   });
 });
 

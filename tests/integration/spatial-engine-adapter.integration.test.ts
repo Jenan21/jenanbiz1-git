@@ -393,6 +393,27 @@ describe.runIf(postgisTestsEnabled)("PostGIS Map adapter: a changed sourceId for
     const result = await reader(adminUrl).nearest({ releaseId: releases.get("farther") as string, layerId: "places", location: point(42.0, 22.0), kind: null, rings: [500], limit: 5 });
     expect(result.matches.map((match) => match.kind)).toEqual(["neighbourhood"]);
   });
+
+  it("gives each match the id of its own feature, and takes features at the very same distance in a fixed order: the id, compared bytewise", async () => {
+    // Three neighbourhoods with one name at one position, inserted in an order that is not the id order.
+    const ids = ["ffffffff-0000-4000-8000-000000000001", "00000000-0000-4000-8000-0000000000aa", "7a7a7a7a-0000-4000-8000-000000000005"];
+    const tied = await withClient(adminUrl, (client) => seedRelease(client, {
+      ...standardRelease("drift-tie", "Ready"),
+      features: ids.map((id, index) => ({ id, layerId: "places", label: "Hayy Twin", sourceId: placeId("neighbourhood", 41 + index), geometry: point(42.0, 22.0) })),
+    }));
+    const ask = (limit: number) => reader(adminUrl).nearest({ releaseId: tied, layerId: "places", location: target, kind: "neighbourhood", rings: [3000], limit });
+    const all = await ask(3);
+    expect(all.matches.map((match) => match.id)).toEqual([...ids].sort());
+    expect(all.matches.map((match) => match.label)).toEqual(["Hayy Twin", "Hayy Twin", "Hayy Twin"]);
+    expect(new Set(all.matches.map((match) => match.distanceMeters)).size).toBe(1);
+    // The one nearest feature is always the first of them, and asking again gives the same answer.
+    expect((await ask(1)).matches.map((match) => match.id)).toEqual(["00000000-0000-4000-8000-0000000000aa"]);
+    expect(await ask(3)).toEqual(all);
+    // Every id is the id of a feature of that release, with that name and position.
+    const stored = await withClient(adminUrl, async (client) => (await client.query(`SELECT id::text AS id, label, ST_X(geometry) AS lon, ST_Y(geometry) AS lat FROM jenan_map.feature WHERE "releaseId" = $1::uuid AND "layerId" = 'places' ORDER BY id`, [tied])).rows);
+    expect(stored.map((row) => row.id)).toEqual([...ids].sort());
+    expect(stored.every((row) => row.label === "Hayy Twin" && row.lon === 42 && row.lat === 22)).toBe(true);
+  });
 });
 
 /** The role and runtime states the engine will meet in production. */

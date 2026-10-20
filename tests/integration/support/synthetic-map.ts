@@ -18,7 +18,7 @@ export const rect = (west: number, south: number, east: number, north: number): 
 });
 export const point = (longitude: number, latitude: number) => ({ type: "Point" as const, coordinates: [longitude, latitude] as [number, number] });
 
-export interface SeedFeature { layerId: string; label: string; sourceId: string | null; geometry: unknown }
+export interface SeedFeature { layerId: string; label: string; sourceId: string | null; geometry: unknown; /** The feature's id; random when omitted. */ id?: string }
 export interface SeedBinding { layerId: string; provenance: unknown; status?: "ready" | "unavailable" | "warning"; enabled?: boolean }
 export interface SeedRelease {
   version: string;
@@ -81,7 +81,7 @@ export async function seedRelease(client: Client, spec: SeedRelease): Promise<st
     await client.query(
       `INSERT INTO jenan_map.feature (id, "releaseId", label, category, geometry, search, "sourceId", "layerId", aliases)
        VALUES ($1, $2, $3, $4, ST_SetSRID(ST_GeomFromGeoJSON($5), 4326), to_tsvector('simple', $3), $6, $4, '{}')`,
-      [randomUUID(), id, feature.label, feature.layerId, JSON.stringify(feature.geometry), feature.sourceId],
+      [feature.id ?? randomUUID(), id, feature.label, feature.layerId, JSON.stringify(feature.geometry), feature.sourceId],
     );
   }
   for (const binding of spec.bindings) {

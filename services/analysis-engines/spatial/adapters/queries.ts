@@ -119,9 +119,11 @@ ORDER BY r."level" COLLATE "C", r."rank"`,
   // ------------------------------------------------------------------------------------------------------------------- nearest
   /**
    * $1 release id, $2 layer id, $3 GeoJSON of the target, $4 ring in metres, $5 pattern every recognized source id of the layer matches,
-   * $6 pattern of the wanted kind, $7 rows to keep. Rows of the part "match" are the nearest features of the wanted kind within the ring; the
-   * single row of the part "unrecognized" counts the features in the ring whose source id the strict pattern does not recognize, and gives
-   * the distance of the nearest one. A feature whose kind cannot be read is never matched and never skipped silently.
+   * $6 pattern of the wanted kind, $7 rows to keep. Rows of the part "match" are the nearest features of the wanted kind within the ring, in
+   * a total order (distance, then the id compared bytewise) so that features at the very same distance are always taken in the same order,
+   * whatever the database's locale; the single row of the part "unrecognized" counts the features in the ring whose source id the strict
+   * pattern does not recognize, and gives the distance of the nearest one. A feature whose kind cannot be read is never matched and never
+   * skipped silently.
    */
   nearest: `WITH target AS (
   SELECT ST_SetSRID(ST_GeomFromGeoJSON($3::text), 4326)::geography AS geog
@@ -134,17 +136,20 @@ ORDER BY r."level" COLLATE "C", r."rank"`,
   SELECT n."id", n."label", n."sourceId", n."distance"
   FROM near n
   WHERE n."sourceId" ~ $6::text
-  ORDER BY n."distance", n."id"
+  ORDER BY n."distance", n."id" COLLATE "C"
   LIMIT $7::int
+), ranked AS (
+  SELECT m."id", m."label", m."sourceId", m."distance", row_number() OVER (ORDER BY m."distance", m."id" COLLATE "C") AS "rank"
+  FROM matched m
 ), stray AS (
   SELECT count(*)::int AS "count", min(n."distance") AS "nearest"
   FROM near n
   WHERE n."sourceId" IS NULL OR n."sourceId" !~ $5::text
 )
-SELECT 'match' AS "part", m."id" AS "id", m."label" AS "label", m."sourceId" AS "sourceId", m."distance" AS "distance", NULL::int AS "count" FROM matched m
+SELECT 'match' AS "part", r."id" AS "id", r."label" AS "label", r."sourceId" AS "sourceId", r."distance" AS "distance", NULL::int AS "count", r."rank"::int AS "rank" FROM ranked r
 UNION ALL
-SELECT 'unrecognized', NULL, NULL, NULL, s."nearest", s."count" FROM stray s
-ORDER BY "part", "distance", "id"`,
+SELECT 'unrecognized', NULL, NULL, NULL, s."nearest", s."count", 0 FROM stray s
+ORDER BY "part", "rank"`,
 } as const;
 
 export type QueryName = keyof typeof QUERIES;
