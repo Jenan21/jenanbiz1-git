@@ -4,7 +4,7 @@ const mocks = vi.hoisted(() => {
     $executeRaw: vi.fn(), auditLog: { create: vi.fn() },
     dataCenterSource: { findUnique: vi.fn() },
     dataCenterType: { findUnique: vi.fn() },
-    dataCenterItem: { create: vi.fn(), findUnique: vi.fn(), update: vi.fn() },
+    dataCenterItem: { create: vi.fn(), findUnique: vi.fn(), update: vi.fn(), updateMany: vi.fn() },
     dataCenterVersion: { create: vi.fn(), findUniqueOrThrow: vi.fn() },
     dataCenterEvent: { create: vi.fn() }, dataCenterReview: { create: vi.fn() },
     dataCenterConflict: { count: vi.fn(), create: vi.fn(), findUnique: vi.fn(), update: vi.fn() },
@@ -56,7 +56,7 @@ describe("Data Center transactional workflows (mocked executor)", () => {
     mocks.tx.dataCenterItem.findUnique.mockResolvedValue({ ...item, status: "PUBLISHED" });
     const result = await createDataCenterVersion({ title: "Revised", content: "revision", evidenceStatus: "ESTIMATED", itemId: "i", reason: "New source information" }, admin);
     expect(result.number).toBe(2);
-    expect(mocks.tx.dataCenterItem.update).toHaveBeenCalledWith({ where: { id: "i" }, data: { currentVersion: 2, title: "Revised", status: "DRAFT" } });
+    expect(mocks.tx.dataCenterItem.update).toHaveBeenCalledWith({ where: { id: "i" }, data: { currentVersion: 2, title: "Revised", status: "DRAFT", revision: { increment: 1 } } });
     expect(mocks.tx.$executeRaw).toHaveBeenCalledOnce();
   });
   it("allows reviewed estimates to publish; does not require VERIFIED", async () => {
@@ -88,5 +88,7 @@ describe("Data Center transactional workflows (mocked executor)", () => {
     await resolveDataCenterConflict({ conflictId: "c", resolution: "KEEP_BOTH", notes: "Different methodologies; retain both labelled estimates" }, admin);
     expect(mocks.tx.dataCenterConflict.update).toHaveBeenCalledWith(expect.objectContaining({ data: expect.objectContaining({ resolution: "KEEP_BOTH", resolvedById: "admin" }) }));
     expect(mocks.tx.dataCenterVersion.create).not.toHaveBeenCalled();
+    expect(mocks.tx.dataCenterItem.update).not.toHaveBeenCalled();
+    expect(mocks.tx.dataCenterItem.updateMany).toHaveBeenCalledWith({ where: { id: { in: ["i", "other"] } }, data: { revision: { increment: 1 } } });
   });
 });
