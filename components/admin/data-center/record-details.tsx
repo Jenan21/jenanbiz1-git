@@ -28,6 +28,8 @@ const fieldLabels: Record<string, string> = {
   effectiveFrom: "بداية السريان", effectiveTo: "نهاية السريان", publishedVersion: "الإصدار المنشور",
   classificationRegistry: "سجل التصنيف", types: "الأنواع", categories: "الفئات", departments: "الأقسام",
   total: "العدد الكلي", rows: "السجلات", limit: "حد العرض",
+  ownership: "ملكية البيانات", licenseClass: "تصنيف الترخيص المعلن", usagePolicy: "سياسة الاستخدام",
+  attribution: "نص الإسناد", attributionRequired: "الإسناد إلزامي",
 };
 
 export function RecordDetails({ record }: { record: DataCenterRecord }) {

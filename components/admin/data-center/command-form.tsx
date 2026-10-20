@@ -20,6 +20,12 @@ export const DATA_CENTER_COMMANDS: Record<string, CommandDefinition> = {
     input("organizationId", "معرّف المؤسسة — مطلوب لنطاق المؤسسة فقط", { optional: true }),
     input("owner", "مالك المحتوى"), input("license", "الترخيص وحقوق الاستخدام"),
     input("sourceOrganization", "الجهة الناشرة للمصدر", { optional: true }),
+    input("sourceUrl", "رابط المصدر (http أو https)", { kind: "url", optional: true }),
+    input("ownership", "ملكية البيانات — تُحدد تلقائياً إن تُركت فارغة", { options: ["", "THIRD_PARTY", "PLATFORM_OWNED", "USER_OWNED", "AI_GENERATED"], optional: true }),
+    input("licenseClass", "تصنيف الترخيص المعلن (لا يُستنتج من الملكية)", { options: ["", "OPEN_LICENSE", "LICENSED", "JENAN_OWNED", "RESTRICTED"], optional: true }),
+    input("usagePolicy", "سياسة الاستخدام — الافتراضي: استخدام داخلي وإعادة التوزيع بإذن صريح", { kind: "textarea", optional: true }),
+    input("attribution", "نص الإسناد الواجب عرضه مع البيانات", { kind: "textarea", optional: true }),
+    input("attributionRequired", "الإسناد إلزامي", { options: ["false", "true"] }),
     input("freshnessDays", "مدة صلاحية المصدر (أيام)", { kind: "number", defaultValue: "90" }),
     input("allowExport", "السماح بالتصدير", { options: ["false", "true"] }),
     input("allowRetrieval", "السماح بالاسترجاع", { options: ["true", "false"] }),
@@ -104,7 +110,7 @@ export function commandPayload(form: FormData, definition: CommandDefinition, fi
   for (const field of definition.fields) {
     const value = String(form.get(field.name) ?? "").trim();
     if (!value && field.optional) continue;
-    if (["allowExport", "allowRetrieval", "requiresIndependentReview"].includes(field.name)) payload[field.name] = value === "true";
+    if (["allowExport", "allowRetrieval", "requiresIndependentReview", "attributionRequired"].includes(field.name)) payload[field.name] = value === "true";
     else if (field.kind === "number") payload[field.name] = Number(value);
     else if (field.kind === "datetime-local") payload[field.name] = new Date(value).toISOString();
     else if (["specialties", "missionContexts"].includes(field.name)) payload[field.name] = value.split(/[,،]/).map((part) => part.trim()).filter(Boolean);
@@ -136,7 +142,7 @@ export function CommandForm({ definition, fixed, busy, onSubmit, sources = [], t
         const choices = field.name === "sourceId" ? sources : field.name === "typeKey" ? types : [];
         return <label className={field.kind === "textarea" ? styles.wide : undefined} key={field.name}>
           {field.label}{field.optional ? " (اختياري)" : ""}
-          {field.options ? <select name={field.name} required={!field.optional} defaultValue={field.defaultValue}>{field.options.map((value) => <option key={value} value={value}>{value === "true" ? "نعم" : value === "false" ? "لا" : value}</option>)}</select>
+          {field.options ? <select name={field.name} required={!field.optional} defaultValue={field.defaultValue}>{field.options.map((value) => <option key={value} value={value}>{value === "true" ? "نعم" : value === "false" ? "لا" : value === "" ? "غير محدد" : value}</option>)}</select>
             : choices.length ? <><input name={field.name} required list={`dc-${field.name}-options`} placeholder="اختر اقتراحاً أو أدخل المعرّف المسجل" maxLength={128} onChange={(event) => {
               if (field.name !== "typeKey") return;
               const selectedType = types.find((record) => String(record.key) === event.target.value);

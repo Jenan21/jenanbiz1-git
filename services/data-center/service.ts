@@ -1,7 +1,7 @@
 import { createHash } from "node:crypto";
 import { Prisma, type DataCenterLifecycle } from "@/generated/prisma/client";
 import { db, type DbExecutor } from "@/lib/db";
-import { commandSchema, DataCenterError, itemSchema, sourceSchema, versionSchema, type CreateItemInput, type CreateSourceInput, type DataCenterActor, type DataCenterCommand } from "./contracts";
+import { commandSchema, DataCenterError, DEFAULT_USAGE_POLICY, itemSchema, resolveSourceOwnership, sourceSchema, versionSchema, type CreateItemInput, type CreateSourceInput, type DataCenterActor, type DataCenterCommand } from "./contracts";
 import { assertEvidence, assertSourceAccess, deterministicConfidence, requireDataCenterAdmin, requireDataCenterPrincipal, sourceScopeWhere } from "./policy";
 
 export async function auditDataCenter(tx: DbExecutor, actor: DataCenterActor, action: string, entityId: string, metadata: Prisma.InputJsonValue = {}) {
@@ -26,8 +26,8 @@ export async function createDataCenterSource(input: CreateSourceInput, actor: Da
     await assertSourceAccess({ ...data, ownerId: actor.id } as Parameters<typeof assertSourceAccess>[0], actor, true);
   }
   return db.$transaction(async (tx) => {
-    const source = await tx.dataCenterSource.create({ data: { ...data, ownerId: actor.id } });
-    await auditDataCenter(tx, actor, "source.created", source.id, { scope: source.scope });
+    const source = await tx.dataCenterSource.create({ data: { ...data, ownership: resolveSourceOwnership(data), usagePolicy: data.usagePolicy ?? DEFAULT_USAGE_POLICY, ownerId: actor.id } });
+    await auditDataCenter(tx, actor, "source.created", source.id, { scope: source.scope, ownership: source.ownership, licenseClass: source.licenseClass });
     return source;
   });
 }

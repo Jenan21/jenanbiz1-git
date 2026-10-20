@@ -4307,6 +4307,22 @@ enum DataCenterEvidence {
   CONFLICTED
 }
 
+// Who owns the data. Independent from the license text and from LicenseClass.
+enum DataCenterOwnership {
+  PLATFORM_OWNED
+  USER_OWNED
+  THIRD_PARTY
+  AI_GENERATED
+}
+
+// Declared usage-rights posture, aligned with the Jenan PRO Map classes. Never inferred from ownership or license text.
+enum DataCenterLicenseClass {
+  JENAN_OWNED
+  OPEN_LICENSE
+  LICENSED
+  RESTRICTED
+}
+
 model DataCenterType {
   key                    String          @id
   label                  String
@@ -4335,6 +4351,12 @@ model DataCenterSource {
   allowRetrieval    Boolean         @default(true)
   freshnessDays     Int              @default(90)
   sourceOrganization String?
+  sourceUrl         String?
+  ownership         DataCenterOwnership @default(THIRD_PARTY)
+  licenseClass      DataCenterLicenseClass?
+  usagePolicy       String              @default("Internal use; redistribution requires explicit permission")
+  attribution       String?
+  attributionRequired Boolean           @default(false)
   createdAt         DateTime        @default(now())
   items             DataCenterItem[]
   imports           DataCenterImport[]
@@ -4481,7 +4503,8 @@ model DataCenterImport {
 model DataCenterAcademyRelease {
   id                String             @id @default(cuid())
   versionId         String
-  parentRevision    Int                @default(0)
+  // Reserved: no v1 code reads or writes it. NULL means "not set"; do not give it business meaning without a design decision.
+  parentRevision    Int?
   version           DataCenterVersion  @relation(fields: [versionId], references: [id], onDelete: Restrict, onUpdate: NoAction)
   targetKind        String
   targetId          String

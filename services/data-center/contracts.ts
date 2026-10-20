@@ -3,16 +3,33 @@ import { z } from "zod";
 export const layers = ["DATA", "KNOWLEDGE", "INTELLIGENCE", "CONTEXT"] as const;
 export const evidenceStates = ["VERIFIED", "ESTIMATED", "DERIVED", "UNVERIFIED", "CONFLICTED"] as const;
 export const lifecycleStates = ["DRAFT", "IN_REVIEW", "APPROVED", "PUBLISHED", "REJECTED", "ARCHIVED"] as const;
+// Ownership says who owns the data; the license text and the declared license class describe usage rights and are never inferred from it.
+export const ownerships = ["PLATFORM_OWNED", "USER_OWNED", "THIRD_PARTY", "AI_GENERATED"] as const;
+export const licenseClasses = ["JENAN_OWNED", "OPEN_LICENSE", "LICENSED", "RESTRICTED"] as const;
+export const DEFAULT_USAGE_POLICY = "Internal use; redistribution requires explicit permission";
 const text = (max: number) => z.string().trim().min(1).max(max);
 const id = text(128);
 const tags = z.array(text(80)).max(30).default([]);
+const httpUrl = text(2000).refine((value) => {
+  try { const url = new URL(value); return (url.protocol === "https:" || url.protocol === "http:") && !url.username && !url.password; } catch { return false; }
+}, "Only http(s) URLs without embedded credentials are accepted");
+export function resolveSourceOwnership(source: { kind: string; ownership?: typeof ownerships[number] }) {
+  return source.ownership ?? (source.kind === "GENERATED" ? "AI_GENERATED" : "THIRD_PARTY");
+}
 export const sourceSchema = z.object({
   name: text(240), kind: z.enum(["MANUAL", "FILE", "OFFICIAL", "ACADEMY", "GENERATED", "API"]),
   scope: z.enum(["PLATFORM", "ORGANIZATION", "PRIVATE"]), organizationId: id.optional(),
   owner: text(240), license: text(500), allowExport: z.boolean().default(false),
   allowRetrieval: z.boolean().default(true), freshnessDays: z.number().int().min(1).max(3650).default(90),
-  sourceOrganization: text(240).optional(),
-}).strict().refine((v) => v.scope === "ORGANIZATION" ? !!v.organizationId : !v.organizationId, "Organization scope requires organizationId exclusively");
+  sourceOrganization: text(240).optional(), sourceUrl: httpUrl.optional(),
+  ownership: z.enum(ownerships).optional(), licenseClass: z.enum(licenseClasses).optional(),
+  usagePolicy: text(2000).optional(), attribution: text(1000).optional(), attributionRequired: z.boolean().default(false),
+}).strict()
+  .refine((v) => v.scope === "ORGANIZATION" ? !!v.organizationId : !v.organizationId, "Organization scope requires organizationId exclusively")
+  .refine((v) => (v.kind === "GENERATED") === (resolveSourceOwnership(v) === "AI_GENERATED"), "AI_GENERATED ownership and GENERATED kind must go together")
+  .refine((v) => !v.attributionRequired || !!v.attribution, "Attribution text is required when attribution is mandatory")
+  .refine((v) => v.licenseClass !== "JENAN_OWNED" || resolveSourceOwnership(v) === "PLATFORM_OWNED", "JENAN_OWNED requires platform ownership")
+  .refine((v) => v.licenseClass !== "RESTRICTED" || !v.allowExport, "RESTRICTED sources cannot allow export");
 export const itemSchema = z.object({
   sourceId: id, title: text(240), typeKey: text(80), layer: z.enum(layers),
   content: text(200_000), evidenceStatus: z.enum(evidenceStates).default("UNVERIFIED"),
