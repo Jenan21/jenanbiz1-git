@@ -416,6 +416,22 @@ describe("PostGIS Map reader: nearest", () => {
     expect(await kindOf(make({ nearest: new Error("Connection terminated unexpectedly") }).reader.nearest(request()))).toBe("UNREACHABLE");
   });
 
+  it("returns the id of each feature exactly as the Map holds it, and refuses a match whose id is not a canonical Map id, because the id is what names the place", async () => {
+    const { reader } = make(ringsAnswering([match("neighbourhood", 7, 100, { id: "abcdef01-0000-4000-8000-0000000000ab" })]));
+    expect((await reader.nearest(request())).matches[0]?.id).toBe("abcdef01-0000-4000-8000-0000000000ab");
+    for (const id of ["ABCDEF01-0000-4000-8000-0000000000AB", "10000000-0000-4000-8000-00000000000", "10000000000040008000000000000007", "", " 10000000-0000-4000-8000-000000000007", null, 7]) {
+      const { reader: refusing } = make(ringsAnswering([match("neighbourhood", 7, 100, { id })]));
+      expect(await kindOf(refusing.nearest(request())), JSON.stringify(id)).toBe("SCHEMA_MISMATCH");
+    }
+  });
+
+  it("keeps the order the database gave to features at the very same distance, so the nearest of two that tie is always the same one", async () => {
+    const tied = [match("neighbourhood", 3, 250), match("neighbourhood", 5, 250), match("neighbourhood", 9, 250)];
+    const { reader } = make(ringsAnswering(tied));
+    const ids = (await reader.nearest(request({ limit: 3 }))).matches.map((entry) => entry.id.slice(-2));
+    expect(ids).toEqual(["03", "05", "09"]);
+  });
+
   it("searches no ring at all when given none", async () => {
     const { reader, pool } = make();
     expect(await reader.nearest(request({ rings: [] }))).toEqual({ searchedMeters: 0, ringMeters: null, matches: [], unrecognized: { count: 0, nearestMeters: null } });

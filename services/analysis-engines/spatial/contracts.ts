@@ -13,6 +13,8 @@ import {
 } from "./constants";
 import { spatialGapCatalog } from "./gaps";
 import { approxAreaKm2, countVertices, crossesAntimeridian, ringIsClosed, ringsOf, type AreaGeometry } from "./geometry-precheck";
+import { parseMapFeatureRef } from "./map-contract";
+import { isMapInputOfRelease } from "./map-inputs";
 import { mapLayerPolicies } from "./policy";
 
 // ------------------------------------------------------------------------------------------------------------------- roles
@@ -178,6 +180,9 @@ export const resultOrderKey = (entry: { analysis: typeof spatialAnalyses[number]
 export const compareAnalysisResults = (first: { analysis: typeof spatialAnalyses[number]; target: string }, second: { analysis: typeof spatialAnalyses[number]; target: string }) =>
   compareText(resultOrderKey(first), resultOrderKey(second));
 
+/** The metric keys that carry the reference of a Map feature end like this (`context.place:neighbourhood.nearest.feature_ref`). */
+const FEATURE_REF_KEY_SUFFIX = ".feature_ref";
+
 /** Every way a Spatial result can contradict its contract: the shared envelope rules plus the rules of this engine. */
 export function findSpatialResultViolations(result: SpatialResult): Array<EnvelopeViolation | { code: "SPATIAL_RULE"; path: string; detail: string }> {
   const violations: Array<EnvelopeViolation | { code: "SPATIAL_RULE"; path: string; detail: string }> = [...findEnvelopeViolations(result, { catalog: spatialGapCatalog })];
@@ -196,6 +201,14 @@ export function findSpatialResultViolations(result: SpatialResult): Array<Envelo
     seen.add(key);
     if (!requested.has(entry.analysis)) rule(`results[${index}]`, `${entry.analysis} was not requested`);
     if (!targets.has(entry.target)) rule(`results[${index}]`, `Unknown target ${entry.target}`);
+    // A figure that names a Map feature names it by reference, and the reference belongs to a release the figure rests on.
+    entry.metrics.forEach((metric, metricIndex) => {
+      if (!metric.key.endsWith(FEATURE_REF_KEY_SUFFIX) || metric.value === null) return;
+      const parsed = typeof metric.value === "string" ? parseMapFeatureRef(metric.value) : null;
+      const path = `results[${index}].metrics[${metricIndex}]`;
+      if (parsed === null) rule(path, "A feature reference reads map:<releaseId>:feature:<featureId>");
+      else if (!metric.inputRefs.some((inputId) => isMapInputOfRelease(inputId, parsed.releaseId))) rule(path, "A feature reference belongs to the Map release of the dataset the figure rests on");
+    });
   });
   const order = result.results.map(resultOrderKey);
   if (order.join("|") !== [...order].sort(compareText).join("|")) rule("results", "Results must be ordered by analysis, then the main location, then candidates by id");

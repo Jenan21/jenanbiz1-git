@@ -4,7 +4,7 @@ import { Client } from "pg";
 import { EngineError } from "@/services/analysis-engines/shared";
 import { runSpatialAnalysis, type RunSpatialOptions, type SpatialResult } from "@/services/analysis-engines/spatial";
 import { buildReadOnlyRoleStatements, PostgisMapReader } from "@/services/analysis-engines/spatial/adapters";
-import { findMapIndexProblems, parseMapSourceId, sourceIdPattern } from "@/services/analysis-engines/spatial/map-contract";
+import { findMapIndexProblems, parseMapFeatureRef, parseMapSourceId, sourceIdPattern } from "@/services/analysis-engines/spatial/map-contract";
 import { contextRequest, expectNoVerdictsAndNoPercentages, gapCodes, gapsOf, metricsOf, statuses } from "../unit/support/spatial-run";
 import { copyDatabase, dropDatabase, dropRole, postgisTestsEnabled, realMapTemplate, scratchName, urlFor, withAdmin } from "./support/spatial-engine-db";
 import { point, rect } from "./support/synthetic-map";
@@ -95,7 +95,7 @@ describe.runIf(postgisTestsEnabled && realMapTemplate !== "")("LOCATION_CONTEXT 
     covered: boolean;
     regions: Array<{ label: string; edge: number }>;
     governorates: Array<{ label: string; edge: number }>;
-    neighbourhood: { label: string; distance: number } | null;
+    neighbourhood: { id: string; label: string; distance: number } | null;
   }
   async function referenceAt(longitude: number, latitude: number): Promise<Reference> {
     const here = `ST_SetSRID(ST_MakePoint($2::float8, $3::float8), 4326)`;
@@ -105,10 +105,10 @@ describe.runIf(postgisTestsEnabled && realMapTemplate !== "")("LOCATION_CONTEXT 
        WHERE f."releaseId" = $1::uuid AND f."layerId" = '${layer}' AND ST_Covers(f.geometry, ${here}) ORDER BY f.label COLLATE "C"`, [releaseId, longitude, latitude],
     )).rows.map((row: { label: string; edge: number }) => ({ label: row.label, edge: Number(row.edge) }));
     const near = (await reference.query(
-      `SELECT f.label, ST_Distance(f.geometry::geography, ${here}::geography) AS distance FROM jenan_map.feature f
+      `SELECT f.id::text AS id, f.label, ST_Distance(f.geometry::geography, ${here}::geography) AS distance FROM jenan_map.feature f
        WHERE f."releaseId" = $1::uuid AND f."layerId" = 'places' AND f."sourceId" LIKE 'places:neighbourhood:%' ORDER BY distance, f.id LIMIT 1`, [releaseId, longitude, latitude],
-    )).rows[0] as { label: string; distance: number } | undefined;
-    return { covered, regions: await level("regions"), governorates: await level("governorates"), neighbourhood: near ? { label: near.label, distance: Number(near.distance) } : null };
+    )).rows[0] as { id: string; label: string; distance: number } | undefined;
+    return { covered, regions: await level("regions"), governorates: await level("governorates"), neighbourhood: near ? { id: near.id, label: near.label, distance: Number(near.distance) } : null };
   }
   const close = (actual: unknown, expected: number) => { expect(typeof actual).toBe("number"); expect(Math.abs((actual as number) - expected)).toBeLessThanOrEqual(0.06); };
 
@@ -133,6 +133,7 @@ describe.runIf(postgisTestsEnabled && realMapTemplate !== "")("LOCATION_CONTEXT 
       expect(place, `${name} place`).toMatchObject({ status: "COMPUTED" });
       close(place?.value, expected.neighbourhood.distance);
       expect(m["context.place:neighbourhood.nearest.name"]?.value, `${name} place name`).toBe(expected.neighbourhood.label);
+      expect(m["context.place:neighbourhood.nearest.feature_ref"]?.value, `${name} place reference`).toBe(`map:${releaseId}:feature:${expected.neighbourhood.id}`);
     } else expect(place, `${name} place`).toMatchObject({ status: "NOT_FOUND_WITHIN_RADIUS", value: null });
   }
 
@@ -268,6 +269,41 @@ describe.runIf(postgisTestsEnabled && realMapTemplate !== "")("LOCATION_CONTEXT 
     expect(listed).toHaveLength(10);
     expect(gapsOf(large, "RESULT_TRUNCATED")).toHaveLength(1);
     examples.largeBoxGovernorates = listed;
+  });
+
+  // ----------------------------------------------------------------------------------------------------------------- nothing found
+  it("tells apart real neighbourhoods that share a name: each reference resolves to its own feature in the published release", async () => {
+    // The real Map holds many neighbourhoods called «الورود». Ask at the position of several of them, far apart from one another.
+    const twins = (await reference.query(
+      `SELECT f.id::text AS id, ST_X(f.geometry) AS lon, ST_Y(f.geometry) AS lat FROM jenan_map.feature f
+       WHERE f."releaseId" = $1::uuid AND f."layerId" = 'places' AND f."sourceId" LIKE 'places:neighbourhood:%' AND f.label = 'الورود' ORDER BY f.id`, [releaseId],
+    )).rows as Array<{ id: string; lon: number; lat: number }>;
+    expect(twins.length, "the real Map holds several neighbourhoods with the same name").toBeGreaterThanOrEqual(2);
+    const chosen: typeof twins = [];
+    for (const candidate of twins) {
+      if (chosen.every((other) => Math.hypot(other.lon - candidate.lon, other.lat - candidate.lat) > 1)) chosen.push(candidate);
+      if (chosen.length === 3) break;
+    }
+    expect(chosen.length, "at least two of them lie more than a degree apart").toBeGreaterThanOrEqual(2);
+
+    const answers: Array<{ name: unknown; reference: unknown; distance: unknown }> = [];
+    for (const twin of chosen) {
+      const expected = await referenceAt(twin.lon, twin.lat);
+      const m = metricsOf(await engine(contextRequest({ location: point(twin.lon, twin.lat) }, ["place:neighbourhood"])));
+      expect(m["context.place:neighbourhood.nearest.feature_ref"]?.value, `the neighbourhood at ${twin.lon},${twin.lat}`).toBe(`map:${releaseId}:feature:${expected.neighbourhood?.id}`);
+      answers.push({ name: m["context.place:neighbourhood.nearest.name"]?.value, reference: m["context.place:neighbourhood.nearest.feature_ref"]?.value, distance: m["context.place:neighbourhood.nearest.distance"]?.value });
+    }
+    // Everything an answer says by name is the same, and the references are not: they are different places.
+    expect(answers.every((answer) => answer.name === "الورود")).toBe(true);
+    expect(new Set(answers.map((answer) => answer.reference)).size).toBe(answers.length);
+    // Each reference points at a real feature of this release, with that very name.
+    for (const answer of answers) {
+      const parsed = parseMapFeatureRef(answer.reference as string);
+      expect(parsed?.releaseId).toBe(releaseId);
+      const row = (await reference.query(`SELECT label, "layerId", "releaseId"::text AS release FROM jenan_map.feature WHERE id = $1::uuid`, [parsed?.featureId])).rows[0];
+      expect(row).toMatchObject({ label: "الورود", layerId: "places", release: releaseId });
+    }
+    examples.sameNameNeighbourhoods = answers;
   });
 
   // ----------------------------------------------------------------------------------------------------------------- nothing found

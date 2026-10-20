@@ -226,12 +226,34 @@ and carries a `spatial-confidence-v1` breakdown when it has a value.
 | `context.<level>.boundary_distance` | metres | Geodesic distance from the target to the edge of that polygon |
 | `context.<level>.contains_target` | boolean | Areas only: the polygon contains the whole area |
 | `context.<level>.intersecting_units` | text | Labels joined with ` \| `, only when two or more polygons intersect the target |
-| `context.<place role>.nearest.distance`, `.name` | metres, text | The nearest mapped place of the kind (`place:<kind>`), searched in rings of 500 m, 1, 3, 5, 10, 25 and 50 km up to `maxSearchMeters` (default 5 km). The role `place` accepts any recognized kind and adds `.kind` |
+| `context.<place role>.nearest.distance`, `.name`, `.feature_ref` | metres, text, text | The nearest mapped place of the kind (`place:<kind>`), searched in rings of 500 m, 1, 3, 5, 10, 25 and 50 km up to `maxSearchMeters` (default 5 km). The role `place` accepts any recognized kind and adds `.kind`. `.feature_ref` is the place's reference (below) |
 
 Roles that are not places are ignored by `LOCATION_CONTEXT`. The representative point of an area
 is PostGIS's point on its surface and is stated in the limitations with six decimals. Containment
 is planar on the stored WGS84 geometry, as the Map's own lookups are, and an edge counts as
 covered. Distances are geodesic (geography, metres) and are rounded to 0.1 m.
+
+### Naming a place: the feature reference
+
+A name does not identify a place: the real Map holds 34 neighbourhoods called «الورود». Every
+nearest place therefore carries a stable reference, and consumers must identify it by the
+reference and never by the name:
+
+`map:<releaseId>:feature:<featureId>`
+
+Both parts are the Map's own UUIDs in their canonical lower-case form (the feature's `id` and the
+`id` of the release the figure was read from, which is the pinned release when a role is pinned).
+The reference is scoped by the release, whose features are not changed once it is published, so it
+keeps pointing at the same feature. It carries no source id, no tile address and no label, and
+nothing else about the Map's internals is exposed. It has the same status, evidence and confidence
+as the name, and it is valueless (never invented) exactly when the name is.
+
+The contract enforces it: a metric whose key ends in `.feature_ref` must hold a well-formed
+reference whose release is one of the Map releases the metric rests on (`inputRefs`), otherwise the
+result is not valid. A nearest feature whose id is not a canonical Map id is a changed Map and
+makes the answer `NOT_COMPUTABLE` instead of being named anyway. Features at exactly the same
+distance are taken in a fixed order (the id, compared bytewise, independent of the database
+locale), so the nearest of several that tie is always the same one.
 
 ### Statuses
 

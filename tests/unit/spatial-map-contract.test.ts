@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
-  assessMapRegistration, findMapContractProblems, findMapIndexProblems, interpretMapBoundary, isMapTileLayer, isOfficialBoundary, mapFreshness, mapFreshnessDays, mapLayerForRole, mapLayerLabel,
-  MAP_CONTRACT_TABLES, MAP_FRESHNESS_DAYS, MAP_READ_CONTRACT, mapCoverageSchema, mapProvenanceSchema, MAX_SOURCE_ID_LENGTH, parseMapSourceId, sourceIdPattern, type CatalogColumn,
+  assessMapRegistration, buildMapFeatureRef, findMapContractProblems, findMapIndexProblems, interpretMapBoundary, isMapTileLayer, isOfficialBoundary, mapFreshness, mapFreshnessDays, mapLayerForRole, mapLayerLabel,
+  MAP_CONTRACT_TABLES, MAP_FRESHNESS_DAYS, MAP_READ_CONTRACT, mapCoverageSchema, mapProvenanceSchema, MAX_SOURCE_ID_LENGTH, parseMapFeatureRef, parseMapSourceId, sourceIdPattern, type CatalogColumn,
   type MapLayerFacts, type UnregisteredReason,
 } from "@/services/analysis-engines/spatial/map-contract";
 import {
@@ -57,6 +57,39 @@ describe("source id of a feature (the Map's encoding of its kind)", () => {
   it("refuses to build a pattern from a kind or a layer that could change its meaning", () => {
     for (const kind of ["Locality", "a;b", "a.b", "", "1a", "a|b", "a b", "a".repeat(41), ".*"]) expect(() => sourceIdPattern("places", kind), kind).toThrow(RangeError);
     expect(() => sourceIdPattern("regions" as never)).toThrow(RangeError);
+  });
+});
+
+describe("reference of a feature (a name is not an identity)", () => {
+  const release = "b3c4b6ff-7cee-4b42-95d3-c3683cf88a34";
+  const feature = "579dc30f-2d09-4994-a33e-bdf671781853";
+  const ref = `map:${release}:feature:${feature}`;
+
+  it("is scoped by the release: map:<releaseId>:feature:<featureId>, and reads back to the same two ids", () => {
+    expect(buildMapFeatureRef(release, feature)).toBe(ref);
+    expect(parseMapFeatureRef(ref)).toEqual({ releaseId: release, featureId: feature });
+    expect(buildMapFeatureRef(feature, release)).not.toBe(ref);
+  });
+
+  it("is built only from canonical Map ids, and never from a guess", () => {
+    for (const bad of ["", "x", feature.toUpperCase(), feature.slice(1), `${feature}0`, ` ${feature}`, `${feature}\n`, `${feature}:feature:${feature}`, "places:neighbourhood:12/2578/1757/7", "الورود", "00000000-0000-0000-0000-00000000000g"]) {
+      expect(buildMapFeatureRef(release, bad), `feature ${JSON.stringify(bad)}`).toBeNull();
+      expect(buildMapFeatureRef(bad, feature), `release ${JSON.stringify(bad)}`).toBeNull();
+    }
+  });
+
+  it.each([
+    ["an empty string", ""], ["no prefix", `${release}:feature:${feature}`], ["another prefix", `jenan:${release}:feature:${feature}`], ["a layer in place of the word feature", `map:${release}:places:${feature}`],
+    ["an upper-case release", `map:${release.toUpperCase()}:feature:${feature}`], ["an upper-case feature", `map:${release}:feature:${feature.toUpperCase()}`], ["a missing feature", `map:${release}:feature:`],
+    ["a missing release", `map::feature:${feature}`], ["a trailing newline", `${ref}\n`], ["a trailing space", `${ref} `], ["a leading space", ` ${ref}`], ["a suffix", `${ref}:x`],
+    ["a source id", "places:neighbourhood:12/2578/1757/7"], ["a name", "الورود"], ["an input id", `map:${release}:places`],
+  ])("does not read %s", (_name, value) => {
+    expect(parseMapFeatureRef(value)).toBeNull();
+  });
+
+  it("exposes nothing but the two ids: no source id, tile address or label", () => {
+    expect(ref).toMatch(/^map:[0-9a-f-]{36}:feature:[0-9a-f-]{36}$/);
+    expect(ref).not.toMatch(/places|neighbourhood|\//);
   });
 });
 

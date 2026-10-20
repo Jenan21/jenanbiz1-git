@@ -3,7 +3,7 @@ import { buildConfidenceBreakdown, buildRunRecord, createGap, deriveInputGaps, r
 import { scoreSpatialConfidence } from "@/services/analysis-engines/spatial/confidence";
 import { compareAnalysisResults, findSpatialResultViolations, resultOrderKey, spatialResultSchema, type SpatialResult } from "@/services/analysis-engines/spatial/contracts";
 import { spatialGapCatalog } from "@/services/analysis-engines/spatial/gaps";
-import { evaluatedAt, makeUnregisteredSampleInput } from "./support/analysis-engine-fixtures";
+import { evaluatedAt, makeInput, makeUnregisteredSampleInput } from "./support/analysis-engine-fixtures";
 import { baseRequest, cleanDataset, makeSpatialResult, resealSpatial, riyadh } from "./support/spatial-engine-fixtures";
 
 const rules = (result: SpatialResult) => findSpatialResultViolations(result).filter((violation) => violation.code === "SPATIAL_RULE").map((violation) => violation.detail);
@@ -177,6 +177,61 @@ describe("sample data never reads as an inventory", () => {
     expect(metric.interpretation).toBe("MAPPED_FEATURES_ONLY");
     expect(metric.platformState).toBe("COMPUTED");
     expect(deriveInputGaps(sample).map((gap) => gap.code)).toContain("COMPLETENESS_SAMPLE");
+  });
+});
+
+describe("references to Map features inside a result", () => {
+  const releaseId = "b3c4b6ff-7cee-4b42-95d3-c3683cf88a34";
+  const otherRelease = "0f3b2c1a-5d4e-4f60-8a9b-1c2d3e4f5a6b";
+  const featureId = "579dc30f-2d09-4994-a33e-bdf671781853";
+  const layer: EngineInput = makeInput({
+    id: `map:${releaseId}:pois`, roles: ["poi:hospital"], kind: "MAP_LAYER", governance: "MAP_REGISTERED",
+    ref: { system: "JENAN_MAP", id: `${releaseId}/pois`, version: null, label: "Points of interest" }, checksum: null,
+    freshness: { status: "FRESH", sourcePublishedAt: evaluatedAt, freshnessDays: 365, expiresAt: null },
+  });
+  const outcome = scoreSpatialConfidence({ datasets: [cleanDataset(layer)], requestedRoles: 1, availableRoles: 1, valueKind: "TEXT", estimated: false, fallbackApplied: false, evaluatedAt });
+  if (outcome.kind !== "SCORED") throw new Error("expected a score");
+  const reference = (over: Partial<EngineMetric> = {}): EngineMetric => ({
+    key: "proximity.poi:hospital.n1.feature_ref", label: { ar: "مرجع أقرب مستشفى", en: "Reference of the nearest hospital" }, status: "COMPUTED", platformState: "COMPUTED", valueKind: "TEXT", unit: "none",
+    value: `map:${releaseId}:feature:${featureId}`, interpretation: "MAPPED_FEATURES_ONLY", inputRefs: [layer.id], confidence: outcome.breakdown, limitations: [], ...over,
+  });
+  const build = (metric: EngineMetric) => makeSpatialResult({ inputs: [layer], metrics: [metric], extraGaps: outcome.gaps });
+  const READS = "A feature reference reads map:<releaseId>:feature:<featureId>";
+  const BELONGS = "A feature reference belongs to the Map release of the dataset the figure rests on";
+
+  it("accepts a reference to a feature of the release the figure rests on", () => {
+    const result = build(reference());
+    expect(findSpatialResultViolations(result)).toEqual([]);
+    expect(spatialResultSchema.safeParse(result).success).toBe(true);
+  });
+
+  it.each([
+    ["a name", "الورود"], ["a source id", "places:neighbourhood:12/2578/1757/7"], ["a bare feature id", featureId], ["an input id", `map:${releaseId}:pois`],
+    ["an upper-case id", `map:${releaseId}:feature:${featureId.toUpperCase()}`], ["a reference with a suffix", `map:${releaseId}:feature:${featureId}:x`], ["a number", 42], ["a boolean", true],
+  ])("rejects a reference that is %s", (_name, value) => {
+    expect(rules(build(reference({ value })))).toEqual([READS]);
+  });
+
+  it("rejects a reference to a release the figure does not rest on, even when the reference is well formed", () => {
+    expect(rules(build(reference({ value: `map:${otherRelease}:feature:${featureId}` })))).toEqual([BELONGS]);
+    expect(rules(build(reference({ inputRefs: [] })))).toEqual([BELONGS]);
+  });
+
+  it("applies to every figure whose key ends in .feature_ref, in whichever analysis", () => {
+    for (const key of ["context.place:neighbourhood.nearest.feature_ref", "catchment.r500.nearest.feature_ref", "proximity.poi:hospital.n2.feature_ref"]) {
+      expect(findSpatialResultViolations(build(reference({ key }))), key).toEqual([]);
+      expect(rules(build(reference({ key, value: "الورود" }))), key).toEqual([READS]);
+    }
+  });
+
+  it("says nothing about a figure that has no value, and leaves a missing reference to the rules every missing figure follows", () => {
+    const missing = reference({ status: "NOT_FOUND_WITHIN_RADIUS", platformState: "UNAVAILABLE", value: null, confidence: null });
+    expect(findSpatialResultViolations(build(missing))).toEqual([]);
+  });
+
+  it("leaves figures whose key does not end in .feature_ref alone, whatever their value", () => {
+    const name = reference({ key: "proximity.poi:hospital.n1.name", value: "الورود" });
+    expect(rules(build(name))).toEqual([]);
   });
 });
 

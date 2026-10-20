@@ -9,7 +9,7 @@ import {
 import { ADMIN_EDGE_NEAR_METERS, MAX_ADMIN_UNITS_PER_LEVEL, SEARCH_LADDER_METERS } from "./constants";
 import type { SpatialLocation } from "./contracts";
 import { spatialGapCatalog } from "./gaps";
-import { mapAdminLayers, type MapAdminLayer } from "./map-contract";
+import { mapAdminLayers, buildMapFeatureRef, type MapAdminLayer } from "./map-contract";
 import type { MapAdminUnit, MapLocateResult, MapNearestResult, SpatialMapPort } from "./map-port";
 import { MapReadError, type MapReadErrorKind } from "./map-read-error";
 import type { LocationContextMapState } from "./map-state";
@@ -275,8 +275,9 @@ class LocationContextRun {
     const what = kind === null ? { ar: "مكان مسمّى", en: "mapped place" } : { ar: `مكان مسمّى من نوع «${kind}»`, en: `mapped place of kind “${kind}”` };
     const distance = seed(`${base}.distance`, `المسافة إلى أقرب ${what.ar}`, `Distance to the nearest ${what.en}`, "DISTANCE", "m");
     const name = seed(`${base}.name`, `اسم أقرب ${what.ar}`, `Name of the nearest ${what.en}`, "TEXT");
+    const featureRef = seed(`${base}.feature_ref`, `مرجع أقرب ${what.ar} (ثابت ومحدد بإصدار الخريطة)`, `Reference of the nearest ${what.en}, scoped to the Map release`, "TEXT");
     const kindSeed = seed(`${base}.kind`, "نوع أقرب مكان مسمّى", "Kind of the nearest mapped place", "CATEGORICAL");
-    const everyFigure = kind === null ? [distance, name, kindSeed] : [distance, name];
+    const everyFigure = kind === null ? [distance, name, featureRef, kindSeed] : [distance, name, featureRef];
     if (!layer.available) return this.pushAll(everyFigure, "NOT_AVAILABLE", [], []);
 
     const { input } = layer;
@@ -307,7 +308,10 @@ class LocationContextRun {
       const limitations = [`Nothing mapped of this kind was found within ${found.searchedMeters} m.`, ...(this.coverage.status === "UNDECLARED" ? ["The extent covered by the data is not declared."] : [])];
       return this.pushAll(everyFigure, "NOT_FOUND_WITHIN_RADIUS", refs, limitations);
     }
-    const seeds: ValuedSeed[] = [{ ...distance, value: best.distanceMeters, limitations: [DISTANCE_LIMITATION] }, { ...name, value: clip(best.label, 1000) }];
+    // The reference is part of the answer: a feature that cannot be named stably is not an answer, so a port that returns an id that is not a Map UUID is a changed Map.
+    const featureReference = buildMapFeatureRef(layer.releaseId, best.id);
+    if (featureReference === null) return this.backendFailed(everyFigure, refs, "SCHEMA_MISMATCH", subject);
+    const seeds: ValuedSeed[] = [{ ...distance, value: best.distanceMeters, limitations: [DISTANCE_LIMITATION] }, { ...name, value: clip(best.label, 1000) }, { ...featureRef, value: featureReference }];
     if (kind === null) seeds.push({ ...kindSeed, value: best.kind });
     this.emit(group, seeds);
   }

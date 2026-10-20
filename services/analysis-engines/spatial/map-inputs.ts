@@ -9,6 +9,8 @@ import { mapFreshness, mapFreshnessDays, mapLayerLabel, type MapBoundaryFacts, t
  * source the Map does not describe is said not to be described.
  */
 export const mapInputId = (releaseId: string, layerKey: string) => `map:${releaseId}:${layerKey}`;
+/** Whether an input is a layer (or the boundary) of that Map release. */
+export const isMapInputOfRelease = (inputId: string, releaseId: string) => inputId.startsWith(`map:${releaseId}:`);
 
 const clip = (value: string, max: number) => (value.length <= max ? value : `${value.slice(0, max - 1)}…`);
 const sortedUnique = (values: readonly string[]) => [...new Set(values)].sort(compareText);

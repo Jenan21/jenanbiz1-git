@@ -2,6 +2,7 @@ import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { buildRunRecord, runRecordSchema, type EngineError } from "@/services/analysis-engines/shared";
 import { runSpatialAnalysis, type RunSpatialOptions, type SpatialResult } from "@/services/analysis-engines/spatial";
 import { buildReadOnlyRoleStatements, PostgisMapReader } from "@/services/analysis-engines/spatial/adapters";
+import { parseMapFeatureRef } from "@/services/analysis-engines/spatial/map-contract";
 import { contextRequest, expectNoVerdictsAndNoPercentages, failureOf, gapCodes, gapsOf, metricsOf, statuses } from "../unit/support/spatial-run";
 import {
   createMapDatabase, dropDatabase, dropRole, postgisTestsEnabled, scratchName, urlFor, withAdmin, withClient,
@@ -199,6 +200,71 @@ describe.runIf(postgisTestsEnabled)("LOCATION_CONTEXT over a real PostGIS: the s
       const m = metricsOf(await analyse(point(47.0, 21.02), ["place:locality", "place:neighbourhood"]));
       expect(m["context.place:locality.nearest.name"]?.value).toBe("Qarya Gamma");
       expect(m["context.place:neighbourhood.nearest.distance"]?.status).toBe("NOT_FOUND_WITHIN_RADIUS");
+    });
+  });
+
+  describe("two places that share a name are told apart by their reference", () => {
+    const featureOf = (id: string) => withClient(adminUrl, async (client) => (await client.query(
+      `SELECT label, "layerId", "releaseId"::text AS release, ST_X(geometry) AS lon, ST_Y(geometry) AS lat FROM jenan_map.feature WHERE id = $1::uuid`, [id],
+    )).rows[0] as { label: string; layerId: string; release: string; lon: number; lat: number } | undefined);
+    const KEY = "context.place:neighbourhood.nearest.feature_ref";
+
+    it("names the nearest place of the published release by the id of its own feature, scoped to that release", async () => {
+      const result = await analyse(point(42.0, 22.01), ["place:neighbourhood"]);
+      const reference = metricsOf(result)[KEY]?.value as string;
+      const parsed = parseMapFeatureRef(reference);
+      expect(parsed?.releaseId).toBe(publishedId);
+      expect(await featureOf(parsed?.featureId as string)).toMatchObject({ label: "Hayy Alpha", layerId: "places", release: publishedId, lon: 42, lat: 22 });
+      expect(result.inputs.some((input) => input.id === `map:${publishedId}:places`)).toBe(true);
+    });
+
+    it("gives two neighbourhoods with one name, one kind and the same distance two references, each resolving to its own feature", async () => {
+      // A release holding two neighbourhoods with the very same name, as the real Map does, read as a pinned release in development.
+      const twinsId = await withClient(adminUrl, (client) => seedRelease(client, {
+        ...standardRelease("synthetic-twins", "Ready"),
+        features: [...standardFeatures().filter((entry) => entry.layerId !== "places"),
+          { layerId: "places", label: "Hayy Twin", sourceId: placeId("neighbourhood", 11), geometry: point(41.0, 21.0) },
+          { layerId: "places", label: "Hayy Twin", sourceId: placeId("neighbourhood", 12), geometry: point(48.0, 28.0) }],
+      }));
+      const data = { roles: { "place:neighbourhood": { source: "MAP", layerKey: "places", releaseId: twinsId } } };
+      const west = await analyse(point(41.0, 21.01), ["place:neighbourhood"], { data });
+      const east = await analyse(point(48.0, 28.01), ["place:neighbourhood"], { data });
+      const [a, b] = [metricsOf(west), metricsOf(east)];
+      // By name the two answers are the same answer ...
+      expect(a["context.place:neighbourhood.nearest.name"]?.value).toBe("Hayy Twin");
+      expect(b["context.place:neighbourhood.nearest.name"]?.value).toBe("Hayy Twin");
+      within(a["context.place:neighbourhood.nearest.distance"]?.value, haversine([41.0, 21.01], [41.0, 21.0]), 0.005);
+      within(b["context.place:neighbourhood.nearest.distance"]?.value, haversine([48.0, 28.01], [48.0, 28.0]), 0.005);
+      // ... by reference they are not, and each reference leads to its own feature.
+      const [westRef, eastRef] = [parseMapFeatureRef(a[KEY]?.value as string), parseMapFeatureRef(b[KEY]?.value as string)];
+      expect(westRef?.releaseId).toBe(twinsId);
+      expect(eastRef?.releaseId).toBe(twinsId);
+      expect(westRef?.featureId).not.toBe(eastRef?.featureId);
+      expect(await featureOf(westRef?.featureId as string)).toMatchObject({ label: "Hayy Twin", release: twinsId, lon: 41, lat: 21 });
+      expect(await featureOf(eastRef?.featureId as string)).toMatchObject({ label: "Hayy Twin", release: twinsId, lon: 48, lat: 28 });
+      expect(west.determinism.outputHash).not.toBe(east.determinism.outputHash);
+    });
+
+    it("tells them apart inside one run too, for a main location and a candidate", async () => {
+      const twinsId = await withClient(adminUrl, (client) => seedRelease(client, {
+        ...standardRelease("synthetic-twins-2", "Ready"),
+        features: [...standardFeatures().filter((entry) => entry.layerId !== "places"),
+          { layerId: "places", label: "Hayy Twin", sourceId: placeId("neighbourhood", 21), geometry: point(41.0, 21.0) },
+          { layerId: "places", label: "Hayy Twin", sourceId: placeId("neighbourhood", 22), geometry: point(48.0, 28.0) }],
+      }));
+      const data = { roles: { "place:neighbourhood": { source: "MAP", layerKey: "places", releaseId: twinsId } } };
+      const result = await engine(contextRequest({ location: point(41.0, 21.01), data, candidates: [{ id: "site-east", location: point(48.0, 28.01) }] }, ["place:neighbourhood"]));
+      const primary = metricsOf(result, "primary");
+      const candidate = metricsOf(result, "site-east");
+      expect(primary["context.place:neighbourhood.nearest.name"]?.value).toBe(candidate["context.place:neighbourhood.nearest.name"]?.value);
+      expect(primary[KEY]?.value).not.toBe(candidate[KEY]?.value);
+      expect(await featureOf(parseMapFeatureRef(primary[KEY]?.value as string)?.featureId as string)).toMatchObject({ lon: 41, lat: 21 });
+      expect(await featureOf(parseMapFeatureRef(candidate[KEY]?.value as string)?.featureId as string)).toMatchObject({ lon: 48, lat: 28 });
+    });
+
+    it("gives no reference where it gives no place", async () => {
+      const result = await analyse(point(42.0, 22.01), ["place:locality"], { parameters: { roles: ["place:locality"], maxSearchMeters: 1000 } });
+      expect(metricsOf(result)["context.place:locality.nearest.feature_ref"]).toMatchObject({ status: "NOT_FOUND_WITHIN_RADIUS", value: null, confidence: null });
     });
   });
 

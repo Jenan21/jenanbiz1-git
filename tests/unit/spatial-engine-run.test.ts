@@ -283,6 +283,10 @@ describe("the engine's run: pinned Map releases", () => {
     expect(output.inputs.find((input) => input.id.includes(OTHER_RELEASE))?.governance).toBe("MAP_UNREGISTERED");
     expect(gapCodes(output)).toContain("MAP_LAYER_UNREGISTERED");
     expect(metricsOf(output)["context.region"]?.inputRefs.every((id) => !id.includes(OTHER_RELEASE))).toBe(true);
+    // The place the figures name belongs to the release they were read from, not to the published one.
+    const reference = metricsOf(output)["context.place:neighbourhood.nearest.feature_ref"];
+    expect(reference?.value).toBe(`map:${OTHER_RELEASE}:feature:579dc30f-2d09-4994-a33e-bdf671781853`);
+    expect(reference?.inputRefs).toContain(`map:${OTHER_RELEASE}:places`);
   });
 
   it("excludes a pinned unpublished release in production", async () => {
@@ -376,7 +380,7 @@ describe("the engine's run: the result it returns", () => {
     expect(record).toMatchObject({ engineKey: "spatial", engineVersion: SPATIAL_ENGINE_VERSION, status: "COMPLETED_WITH_GAPS", outputHash: output.determinism.outputHash });
     expect(record.inputs).toHaveLength(4);
     expect(record.inputs.every((row) => row.refSystem === "JENAN_MAP" && row.snapshot.licenseClass === null)).toBe(true);
-    expect(record.confidence?.metricCount).toBe(8);
+    expect(record.confidence?.metricCount).toBe(9);
   });
 
   it("fails closed, as a defect, instead of returning a result that breaks its own contract", async () => {

@@ -17,8 +17,8 @@ describe("LOCATION_CONTEXT in Riyadh", () => {
     const { result, port } = run(contextRequest());
     const output = await result;
     expect(Object.keys(metricsOf(output))).toEqual([
-      "context.country", "context.governorate", "context.governorate.boundary_distance", "context.place:neighbourhood.nearest.distance", "context.place:neighbourhood.nearest.name",
-      "context.region", "context.region.boundary_distance", "context.within_boundary",
+      "context.country", "context.governorate", "context.governorate.boundary_distance", "context.place:neighbourhood.nearest.distance", "context.place:neighbourhood.nearest.feature_ref",
+      "context.place:neighbourhood.nearest.name", "context.region", "context.region.boundary_distance", "context.within_boundary",
     ]);
     const m = metricsOf(output);
     expect(m["context.within_boundary"]).toMatchObject({ status: "COMPUTED", value: true, valueKind: "BOOLEAN" });
@@ -29,6 +29,7 @@ describe("LOCATION_CONTEXT in Riyadh", () => {
     expect(m["context.governorate.boundary_distance"]).toMatchObject({ status: "COMPUTED", value: 6059.5, unit: "m" });
     expect(m["context.place:neighbourhood.nearest.distance"]).toMatchObject({ status: "COMPUTED", value: 1236.2, unit: "m" });
     expect(m["context.place:neighbourhood.nearest.name"]).toMatchObject({ status: "COMPUTED", value: "الورود", valueKind: "TEXT" });
+    expect(m["context.place:neighbourhood.nearest.feature_ref"]).toMatchObject({ status: "COMPUTED", value: `map:${PUBLISHED_RELEASE_ID}:feature:579dc30f-2d09-4994-a33e-bdf671781853`, valueKind: "TEXT", unit: "none" });
     for (const metric of Object.values(m)) {
       expect(metric.interpretation).toBe("MAPPED_FEATURES_ONLY");
       expect(metric.platformState).toBe("COMPUTED");
@@ -98,6 +99,7 @@ describe("LOCATION_CONTEXT in Riyadh", () => {
     expect(port.callsOf("nearest")[0]?.request).toMatchObject({ kind: null });
     expect(m["context.place.nearest.kind"]).toMatchObject({ status: "COMPUTED", value: "neighbourhood", valueKind: "CATEGORICAL" });
     expect(m["context.place.nearest.name"]?.value).toBe("الورود");
+    expect(m["context.place.nearest.feature_ref"]).toMatchObject({ status: "COMPUTED", value: `map:${PUBLISHED_RELEASE_ID}:feature:579dc30f-2d09-4994-a33e-bdf671781853` });
   });
 
   it("ignores roles that are not places: LOCATION_CONTEXT reads places only", async () => {
@@ -121,7 +123,7 @@ describe("LOCATION_CONTEXT outside the Map's coverage", () => {
     const output = await result;
     const m = metricsOf(output);
     expect(m["context.within_boundary"]).toMatchObject({ status: "COMPUTED", value: false });
-    for (const key of ["context.country", "context.region", "context.region.boundary_distance", "context.governorate", "context.governorate.boundary_distance", "context.place:neighbourhood.nearest.distance", "context.place:neighbourhood.nearest.name"]) {
+    for (const key of ["context.country", "context.region", "context.region.boundary_distance", "context.governorate", "context.governorate.boundary_distance", "context.place:neighbourhood.nearest.distance", "context.place:neighbourhood.nearest.name", "context.place:neighbourhood.nearest.feature_ref"]) {
       expect(m[key], key).toMatchObject({ status: "NO_COVERAGE", platformState: "UNAVAILABLE", value: null, confidence: null });
     }
     expect(port.callsOf("nearest")).toEqual([]);
@@ -255,7 +257,7 @@ describe("LOCATION_CONTEXT for an area", () => {
 
 describe("LOCATION_CONTEXT places", () => {
   const place = (distance: number) => nearestPlace({ matches: [{ ...nearestPlace().matches[0]!, distanceMeters: distance }] });
-  const placeKeys = ["context.place:neighbourhood.nearest.distance", "context.place:neighbourhood.nearest.name"];
+  const placeKeys = ["context.place:neighbourhood.nearest.distance", "context.place:neighbourhood.nearest.name", "context.place:neighbourhood.nearest.feature_ref"];
 
   it("reports that nothing was found within the searched distance without turning that into a zero or a verdict", async () => {
     const output = await resultOf(contextRequest(), { nearest: nothingNearby(5000) });
@@ -305,6 +307,96 @@ describe("LOCATION_CONTEXT places", () => {
     expect(metricsOf(output)[placeKeys[0] as string]).toMatchObject({ status: "NOT_AVAILABLE", value: null, inputRefs: [] });
     expect(gapsOf(output, "DATASET_NOT_AVAILABLE")[0]?.message.en).toContain("place:neighbourhood");
     expect(output.dataAvailability.find((entry) => entry.role === "place:neighbourhood")).toEqual({ role: "place:neighbourhood", status: "NOT_AVAILABLE", inputIds: [] });
+  });
+});
+
+describe("LOCATION_CONTEXT names the nearest place by reference, never by name", () => {
+  const TWIN_A = "579dc30f-2d09-4994-a33e-bdf671781853";
+  const TWIN_B = "3b1f6a9e-7c52-4d0e-9a4b-2f8d5c6e1a07";
+  const KEY = "context.place:neighbourhood.nearest.feature_ref";
+  const refOf = (id: string, release = PUBLISHED_RELEASE_ID) => `map:${release}:feature:${id}`;
+  /** The nearest neighbourhood is called «الورود» and lies 1,236.2 m away, whichever feature it is. */
+  const twin = (id: string) => nearestPlace({ matches: [{ ...nearestPlace().matches[0]!, id }] });
+  const east = { type: "Point" as const, coordinates: [46.9, 24.8] as [number, number] };
+
+  it("gives it a reference scoped to the release it was read from, with the same status, evidence and confidence as its name", async () => {
+    const m = metricsOf(await resultOf(contextRequest()));
+    expect(m[KEY]).toMatchObject({ status: "COMPUTED", platformState: "COMPUTED", value: refOf(TWIN_A), valueKind: "TEXT", unit: "none", interpretation: "MAPPED_FEATURES_ONLY" });
+    expect(m[KEY]?.inputRefs).toEqual(m["context.place:neighbourhood.nearest.name"]?.inputRefs);
+    expect(m[KEY]?.confidence).toEqual(m["context.place:neighbourhood.nearest.name"]?.confidence);
+    expect(m[KEY]?.inputRefs.some((id) => id === `map:${PUBLISHED_RELEASE_ID}:places`)).toBe(true);
+  });
+
+  it("tells two places that share a name, a kind and a distance apart: the name is the same, the reference is not", async () => {
+    const first = await resultOf(contextRequest(), { nearest: twin(TWIN_A) });
+    const second = await resultOf(contextRequest(), { nearest: twin(TWIN_B) });
+    const [a, b] = [metricsOf(first), metricsOf(second)];
+    expect(a["context.place:neighbourhood.nearest.name"]?.value).toBe("الورود");
+    expect(b["context.place:neighbourhood.nearest.name"]?.value).toBe("الورود");
+    expect(a["context.place:neighbourhood.nearest.distance"]?.value).toBe(b["context.place:neighbourhood.nearest.distance"]?.value);
+    expect(a[KEY]?.value).toBe(refOf(TWIN_A));
+    expect(b[KEY]?.value).toBe(refOf(TWIN_B));
+    expect(a[KEY]?.value).not.toBe(b[KEY]?.value);
+    expect(first.determinism.requestHash).toBe(second.determinism.requestHash);
+    expect(first.determinism.inputsHash).toBe(second.determinism.inputsHash);
+    expect(first.determinism.outputHash, "the two answers are different answers").not.toBe(second.determinism.outputHash);
+  });
+
+  it("tells apart, within one run, the nearest places of two locations that share a name", async () => {
+    const request = contextRequest({ candidates: [{ id: "site-a", location: east }] });
+    const nearest = (asked: { location: { coordinates: unknown } }) => twin(JSON.stringify(asked.location.coordinates) === JSON.stringify(east.coordinates) ? TWIN_B : TWIN_A);
+    const output = await resultOf(request, { nearest: (asked) => nearest(asked as never) });
+    const primary = metricsOf(output, "primary");
+    const candidate = metricsOf(output, "site-a");
+    expect(primary["context.place:neighbourhood.nearest.name"]?.value).toBe(candidate["context.place:neighbourhood.nearest.name"]?.value);
+    expect([primary[KEY]?.value, candidate[KEY]?.value]).toEqual([refOf(TWIN_A), refOf(TWIN_B)]);
+  });
+
+  it("names the nearest place of every requested place role, for the role `place` as well, and the references differ role by role", async () => {
+    const byKind = (asked: { kind: string | null }) => nearestPlace({
+      matches: [{ ...nearestPlace().matches[0]!, id: asked.kind === "locality" ? TWIN_B : TWIN_A, kind: asked.kind ?? "neighbourhood" }],
+    });
+    const output = await resultOf(contextRequest({}, ["place:neighbourhood", "place:locality", "place"]), { nearest: (asked) => byKind(asked as never) });
+    const m = metricsOf(output);
+    expect(m["context.place:neighbourhood.nearest.feature_ref"]?.value).toBe(refOf(TWIN_A));
+    expect(m["context.place:locality.nearest.feature_ref"]?.value).toBe(refOf(TWIN_B));
+    expect(m["context.place.nearest.feature_ref"]?.value).toBe(refOf(TWIN_A));
+  });
+
+  it("carries no source id, no tile address and no label in the reference, and exposes no source id anywhere in the result", async () => {
+    const output = await resultOf(contextRequest());
+    const reference = metricsOf(output)[KEY]?.value as string;
+    expect(reference).toMatch(/^map:[0-9a-f-]{36}:feature:[0-9a-f-]{36}$/);
+    const text = JSON.stringify(output);
+    expect(text).not.toContain("12/2578/1757");
+    expect(text).not.toContain("sourceId");
+    expect(text).not.toContain("places:neighbourhood:");
+  });
+
+  it("gives no reference when it gives no place, and says why exactly as for the name", async () => {
+    const situations: Array<[string, Parameters<typeof resultOf>[1], string]> = [
+      ["nothing found", { nearest: nothingNearby(5000) }, "NOT_FOUND_WITHIN_RADIUS"],
+      ["a feature of unknown kind nearby", { nearest: nearestPlace({ unrecognized: { count: 1, nearestMeters: 10 } }) }, "NOT_COMPUTABLE"],
+      ["the backend failing", { nearest: new MapReadError("TIMEOUT") }, "NOT_COMPUTABLE"],
+    ];
+    for (const [label, behaviour, status] of situations) {
+      const m = metricsOf(await resultOf(contextRequest(), behaviour));
+      expect(m[KEY], label).toMatchObject({ status, value: null, confidence: null });
+      expect(m[KEY]?.status, label).toBe(m["context.place:neighbourhood.nearest.name"]?.status);
+    }
+    const outside = metricsOf(await resultOf(contextRequest({ location: dubai }), { locate: outsideLocate() }));
+    expect(outside[KEY]).toMatchObject({ status: "NO_COVERAGE", value: null, confidence: null });
+  });
+
+  it("refuses to name a feature whose id is not a Map id, and says the Map is not what the engine expects, instead of naming it anyway", async () => {
+    for (const id of ["not-a-uuid", TWIN_A.toUpperCase(), "", `${TWIN_A}0`]) {
+      const output = await resultOf(contextRequest(), { nearest: twin(id) });
+      const m = metricsOf(output);
+      for (const key of ["context.place:neighbourhood.nearest.distance", "context.place:neighbourhood.nearest.name", KEY]) expect(m[key], `${JSON.stringify(id)} ${key}`).toMatchObject({ status: "NOT_COMPUTABLE", value: null, confidence: null });
+      expect(m[KEY]?.limitations).toContain("The spatial backend failed (SCHEMA_MISMATCH), so this figure was not computed.");
+      expect(gapsOf(output, "BACKEND_UNAVAILABLE")).toHaveLength(1);
+      expect(m["context.region"]?.status).toBe("COMPUTED");
+    }
   });
 });
 

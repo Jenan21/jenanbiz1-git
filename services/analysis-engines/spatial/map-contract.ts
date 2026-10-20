@@ -64,6 +64,28 @@ export function parseMapSourceId(layerId: string, sourceId: string | null | unde
   return { ok: true, layer: layerId, kind: match[2] as string, tile: { z: Number(match[3]), x: Number(match[4]), y: Number(match[5]) }, ordinal: Number(match[6]) };
 }
 
+// ------------------------------------------------------------------------------------------------------------------ feature ref
+/**
+ * A name does not identify a place (the real Map holds 34 neighbourhoods called «الورود»), so a nearest feature is named by a reference
+ * and never by its name: `map:<releaseId>:feature:<featureId>`. Both parts are the Map's own UUIDs in their canonical lower-case form.
+ * The reference is scoped by the release, whose features are not changed once it is published, so it keeps pointing at the same
+ * feature. It carries no source id, no tile address and no label.
+ */
+const UUID_LOWER = "[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}";
+const FEATURE_REF = new RegExp(`^map:(${UUID_LOWER}):feature:(${UUID_LOWER})$`);
+export interface MapFeatureRef { releaseId: string; featureId: string }
+
+/** The reference of a feature of a release, or null when either id is not a canonical Map UUID (nothing is built from a guess). */
+export function buildMapFeatureRef(releaseId: string, featureId: string): string | null {
+  const ref = `map:${releaseId}:feature:${featureId}`;
+  return FEATURE_REF.test(ref) ? ref : null;
+}
+
+export function parseMapFeatureRef(ref: string): MapFeatureRef | null {
+  const match = FEATURE_REF.exec(ref);
+  return match === null ? null : { releaseId: match[1] as string, featureId: match[2] as string };
+}
+
 // ------------------------------------------------------------------------------------------------------------- provenance
 const requiredText = (max: number) => z.string().trim().min(1).max(max);
 const instant = z.string().refine((value) => /^\d{4}-\d{2}-\d{2}T/.test(value) && Number.isFinite(Date.parse(value)), "An ISO 8601 instant");

@@ -38,7 +38,8 @@ const unitRow = z.object({
   level: z.string(), id: uuid, label: z.string(), coversAnchor: z.boolean(), coversTarget: z.boolean(), edgeDistanceMeters: z.number().nullable(), rank: z.number().int(),
 });
 const nearestRow = z.discriminatedUnion("part", [
-  z.object({ part: z.literal("match"), id: z.string(), label: z.string(), sourceId: z.string(), distance: z.number() }),
+  // A feature's id becomes part of the reference the result carries, so it must be the canonical form PostgreSQL prints for a uuid.
+  z.object({ part: z.literal("match"), id: z.string().regex(/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/), label: z.string(), sourceId: z.string(), distance: z.number() }),
   z.object({ part: z.literal("unrecognized"), count: z.number().int().min(0), distance: z.number().nullable() }),
 ]);
 
