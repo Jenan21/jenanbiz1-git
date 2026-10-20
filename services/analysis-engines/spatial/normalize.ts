@@ -27,8 +27,10 @@ export interface NormalizationResult {
 
 const FUTURE_TOLERANCE_MS = 60_000;
 
+/** Error details travel to callers, and part of them (a key of the request) is chosen by the caller, so they are kept short. */
+const MAX_DETAIL_LENGTH = 300;
 function invalid(first: string, issues = 1): never {
-  throw new EngineError("INVALID_INPUT", { issues, first });
+  throw new EngineError("INVALID_INPUT", { issues, first: first.slice(0, MAX_DETAIL_LENGTH) });
 }
 
 /**

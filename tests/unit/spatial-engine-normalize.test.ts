@@ -163,4 +163,10 @@ describe("invalid input", () => {
     const error = failure(() => normalize(baseRequest({ analyses: ["CATCHMENT"], parameters: {} })));
     expect(String(error?.details.first)).toContain("parameters.roles");
   });
+
+  it("keeps the details short even when the offending key was chosen by the caller", () => {
+    const error = failure(() => normalize(baseRequest({ data: { roles: { [`poi:${"x".repeat(5000)}`]: { source: "DATA_CENTER", versionId: "v1" } } } })));
+    expect(error).toMatchObject({ code: "INVALID_INPUT" });
+    expect(String(error?.details.first).length).toBeLessThanOrEqual(300);
+  });
 });

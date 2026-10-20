@@ -68,6 +68,12 @@ describe("rules of the Spatial Engine", () => {
     expect(findSpatialResultViolations(resealSpatial(result))).toEqual([]);
   });
 
+  it("allows only the Spatial analyses this engine version declares, so a result cannot claim an analysis it does not support", () => {
+    const result = makeSpatialResult();
+    result.engine.capabilities.analyses = ["LOCATION_CONTEXT"];
+    expect(rules(resealSpatial(result))).toEqual(["PROXIMITY was requested but this engine version does not support it"]);
+  });
+
   it.each([
     ["a duplicate result", (result: SpatialResult) => { result.results = [result.results[0]!, result.results[0]!]; }, "Duplicate result for PROXIMITY/primary"],
     ["an analysis that was not requested", (result: SpatialResult) => { result.results[0]!.analysis = "CATCHMENT"; }, "CATCHMENT was not requested"],

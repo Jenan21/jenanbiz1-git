@@ -183,6 +183,8 @@ export function findSpatialResultViolations(result: SpatialResult): Array<Envelo
   if (result.engine.key !== SPATIAL_ENGINE_KEY) rule("engine.key", `The engine key is ${SPATIAL_ENGINE_KEY}`);
   if (result.engine.contracts.request !== SPATIAL_REQUEST_CONTRACT || result.engine.contracts.result !== SPATIAL_RESULT_CONTRACT) rule("engine.contracts", "The engine must name the Spatial request and result contracts");
   if (result.engine.environment === "production" && result.request.mapLayerPolicy !== "REGISTERED_ONLY") rule("request.mapLayerPolicy", "Production reads registered Map layers only");
+  const supported = new Set<string>(result.engine.capabilities.analyses);
+  for (const analysis of result.request.normalized.analyses) if (!supported.has(analysis)) rule("engine.capabilities", `${analysis} was requested but this engine version does not support it`);
   const targets = new Set([PRIMARY_TARGET_ID, ...result.request.normalized.candidates.map((candidate) => candidate.id)]);
   const requested = new Set<string>(result.request.normalized.analyses);
   const seen = new Set<string>();

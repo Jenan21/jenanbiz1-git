@@ -107,7 +107,8 @@ availability per role; results per analysis and target (metrics only); normalize
 attribution; rights; the three hashes; limits; timing. Results are ordered by analysis (engine
 order), then the main location, then candidates by id. A parsed result has passed the shared
 envelope rules and the Spatial rules (engine key and contracts, production policy, unique and
-requested analyses and targets, order).
+requested analyses and targets, analyses within the engine version's declared capabilities,
+order).
 
 ## Confidence `spatial-confidence-v1`
 
