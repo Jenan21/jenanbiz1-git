@@ -6,8 +6,9 @@ import { verdictArabic, verdictEnglish } from "./support/analysis-engine-fixture
 describe("spatial gap catalog", () => {
   it("adds the spatial gaps to the shared catalog without redefining any code", () => {
     expect(Object.keys(spatialOwnGapCatalog).sort()).toEqual([
-      "ADMIN_AMBIGUOUS_ON_BOUNDARY", "ADMIN_NEAR_BOUNDARY", "ADMIN_TARGET_SPANS_UNITS", "ADMIN_UNIT_NOT_FOUND", "BOUNDARY_UNOFFICIAL", "DATASET_GEOMETRY_INVALID", "MAP_NOT_PUBLISHED",
-      "MAP_SOURCE_ID_UNRECOGNIZED", "NETWORK_ANALYSIS_NOT_SUPPORTED", "ROAD_LABEL_POINTS_ONLY",
+      "ADMIN_AMBIGUOUS_ON_BOUNDARY", "ADMIN_NEAR_BOUNDARY", "ADMIN_TARGET_SPANS_UNITS", "ADMIN_UNIT_NOT_FOUND", "BOUNDARY_UNOFFICIAL", "DATASET_GEOMETRY_INVALID",
+      "DATA_CENTER_COMPETING_DATASETS", "DATA_CENTER_CONTENT_INVALID", "DATA_CENTER_INTEGRITY_FAILED", "DATA_CENTER_NOT_IN_FORCE", "DATA_CENTER_PIN_CHANGED", "DATA_CENTER_TOO_MANY_CANDIDATES",
+      "DATA_CENTER_VERSION_NOT_SPATIAL", "MAP_NOT_PUBLISHED", "MAP_SOURCE_ID_UNRECOGNIZED", "NETWORK_ANALYSIS_NOT_SUPPORTED", "ROAD_LABEL_POINTS_ONLY",
     ]);
     expect(Object.keys(spatialGapCatalog).sort()).toEqual([...Object.keys(sharedGapCatalog), ...Object.keys(spatialOwnGapCatalog)].sort());
     expect(Object.isFrozen(spatialGapCatalog)).toBe(true);
@@ -31,6 +32,21 @@ describe("spatial gap catalog", () => {
     expect(spatialGapCatalog.ROAD_LABEL_POINTS_ONLY.severity).toBe("WARNING");
     expect(spatialGapCatalog.NETWORK_ANALYSIS_NOT_SUPPORTED.severity).toBe("INFO");
     for (const code of ["ADMIN_AMBIGUOUS_ON_BOUNDARY", "ADMIN_NEAR_BOUNDARY", "ADMIN_TARGET_SPANS_UNITS", "ADMIN_UNIT_NOT_FOUND", "MAP_SOURCE_ID_UNRECOGNIZED"] as const) expect(spatialGapCatalog[code].severity).toBe("WARNING");
+    // A Data Center dataset that cannot be used blocks the role; a choice made among equals is only reported.
+    for (const code of ["DATA_CENTER_NOT_IN_FORCE", "DATA_CENTER_CONTENT_INVALID", "DATA_CENTER_INTEGRITY_FAILED", "DATA_CENTER_PIN_CHANGED", "DATA_CENTER_VERSION_NOT_SPATIAL", "DATA_CENTER_TOO_MANY_CANDIDATES"] as const) expect(spatialGapCatalog[code].severity, code).toBe("BLOCKING");
+    expect(spatialGapCatalog.DATA_CENTER_COMPETING_DATASETS.severity).toBe("INFO");
+  });
+
+  it("explains each Data Center finding with its own names, in both languages, and promises nothing it did not do", () => {
+    const invalid = createGap(spatialGapCatalog, "DATA_CENTER_CONTENT_INVALID", { dataset: "Hospitals", code: "INVALID_GEOJSON_COORDINATES" });
+    expect(invalid.message.en).toBe("The content of Data Center version “Hospitals” is not valid WGS84 GeoJSON (code: INVALID_GEOJSON_COORDINATES); it was not used and nothing was repaired.");
+    expect(invalid.message.ar).toContain("INVALID_GEOJSON_COORDINATES");
+    expect(createGap(spatialGapCatalog, "DATA_CENTER_INTEGRITY_FAILED", { role: "poi:hospital" }).message.en).toContain("checksum does not match the stored content");
+    expect(createGap(spatialGapCatalog, "DATA_CENTER_PIN_CHANGED", { role: "poi:hospital" }).message.en).toContain("was not replaced by another version");
+    expect(createGap(spatialGapCatalog, "DATA_CENTER_NOT_IN_FORCE", { typeKey: "geojson", asOf: "2026-01-01T00:00:00.000Z", role: "poi:hospital" }).message.en).toContain("none was in force as of 2026-01-01T00:00:00.000Z");
+    const competing = createGap(spatialGapCatalog, "DATA_CENTER_COMPETING_DATASETS", { count: 2, typeKey: "geojson", dataset: "Hospitals 2026", policy: "dc-version-selection-v1" });
+    expect(competing.message.en).toContain("2 other Data Center dataset(s)");
+    expect(competing.message.en).toContain("selected by the selection policy dc-version-selection-v1");
   });
 
   it("makes an unofficial boundary a limitation that must be shown with the value, not a footnote", () => {
@@ -63,7 +79,7 @@ describe("spatial gap catalog", () => {
   });
 
   it("can render every code with the parameters its text names", () => {
-    const parameters = { dataset: "D", role: "r", limit: 1, backend: "b", from: "f", to: "t", assumption: "a", unit: "U", units: "A | B", distance: 1.5, count: 2, state: "enabled" };
+    const parameters = { dataset: "D", role: "r", limit: 1, backend: "b", from: "f", to: "t", assumption: "a", unit: "U", units: "A | B", distance: 1.5, count: 2, state: "enabled", typeKey: "geojson", asOf: "2026-01-01T00:00:00.000Z", code: "INVALID_GEOJSON", policy: "dc-version-selection-v1" };
     for (const code of Object.keys(spatialGapCatalog) as Array<keyof typeof spatialGapCatalog>) {
       const gap = createGap(spatialGapCatalog, code, parameters);
       expect(gap.message.en).not.toMatch(/\{[A-Za-z]+\}/);

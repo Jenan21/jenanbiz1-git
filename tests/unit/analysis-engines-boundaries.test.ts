@@ -16,7 +16,8 @@ const sources = listFiles(root).map((file) => ({ file, path: relative(root, file
 const isAdapter = (path: string) => path.split("/").includes("adapters");
 
 const allowedPackages = new Set(["zod", "node:crypto"]);
-const allowedAbsolute = new Set(["@/services/data-center/contracts"]);
+// The Data Center's pure vocabulary and its pure Map contract: no database, no network. Everything else of the Data Center reaches the engine only through an adapter.
+const allowedAbsolute = new Set(["@/services/data-center/contracts", "@/services/data-center/map-contract"]);
 const specifiersOf = (text: string) => [...text.matchAll(/^\s*(?:import|export)\b[^;]*?\bfrom\s+["']([^"']+)["']/gm)].map((match) => match[1] as string);
 
 describe("analysis engine boundaries", () => {

@@ -64,6 +64,62 @@ const spatialOwnGapCatalog = defineGapCatalog({
     },
     remedy: { ar: "انشر إصدارًا مراجَعًا من الخريطة وفعّل الخريطة.", en: "Publish a reviewed Map release and enable the Map." },
   },
+  DATA_CENTER_NOT_IN_FORCE: {
+    severity: "BLOCKING",
+    message: {
+      ar: "توجد في مركز البيانات مجموعات بيانات من النوع «{typeKey}» لكن لم يكن أيٌّ منها ساريًا بتاريخ {asOf}؛ لذلك لا تتوفر بيانات للدور «{role}».",
+      en: "Data Center datasets of type “{typeKey}” exist, but none was in force as of {asOf}, so no data is available for role “{role}”.",
+    },
+    remedy: { ar: "اختر تاريخًا تسري فيه البيانات، أو حدّد الإصدار المطلوب صراحةً.", en: "Choose a date on which the data was in force, or pin the version explicitly." },
+  },
+  DATA_CENTER_CONTENT_INVALID: {
+    severity: "BLOCKING",
+    message: {
+      ar: "محتوى إصدار مركز البيانات «{dataset}» ليس GeoJSON صالحًا بنظام WGS84 (الرمز: {code})؛ لم يُستخدم ولم يُصلح شيء منه.",
+      en: "The content of Data Center version “{dataset}” is not valid WGS84 GeoJSON (code: {code}); it was not used and nothing was repaired.",
+    },
+    remedy: { ar: "انشر إصدارًا مصحّحًا من البيانات في مركز البيانات.", en: "Publish a corrected version of the data in the Data Center." },
+  },
+  DATA_CENTER_INTEGRITY_FAILED: {
+    severity: "BLOCKING",
+    message: {
+      ar: "فشل التحقق من سلامة إصدار مركز البيانات للدور «{role}»: البصمة المخزّنة لا تطابق المحتوى المخزّن؛ لم تُستخدم البيانات.",
+      en: "The integrity check of the Data Center version for role “{role}” failed: the stored checksum does not match the stored content, so the data was not used.",
+    },
+    remedy: { ar: "أبلغ مسؤول مركز البيانات؛ يجب فحص الإصدار واستعادته من نسخة سليمة.", en: "Report it to the Data Center administrator; the version must be examined and restored from a sound copy." },
+  },
+  DATA_CENTER_PIN_CHANGED: {
+    severity: "BLOCKING",
+    message: {
+      ar: "محتوى إصدار مركز البيانات للدور «{role}» لا يطابق البصمة المتوقعة؛ لم يُستبدل بإصدار آخر ولم تُستخدم البيانات.",
+      en: "The content of the Data Center version for role “{role}” does not match the expected checksum; it was not replaced by another version and the data was not used.",
+    },
+    remedy: { ar: "أعد تحديد الإصدار أو تأكد من أن البيانات لم تتغير.", en: "Pin the version again or confirm that the data has not changed." },
+  },
+  DATA_CENTER_VERSION_NOT_SPATIAL: {
+    severity: "BLOCKING",
+    message: {
+      ar: "إصدار مركز البيانات المحدّد للدور «{role}» ليس من نوع البيانات المكانية (GeoJSON)؛ لا يمكن استخدامه في القياس.",
+      en: "The Data Center version selected for role “{role}” is not spatial (GeoJSON) data and cannot be used for measurement.",
+    },
+    remedy: { ar: "حدّد مجموعة بيانات مكانية لهذا الدور.", en: "Select a spatial dataset for this role." },
+  },
+  DATA_CENTER_TOO_MANY_CANDIDATES: {
+    severity: "BLOCKING",
+    message: {
+      ar: "عدد مجموعات البيانات من النوع «{typeKey}» كبير جدًا للدور «{role}»؛ لم يُختر أيٌّ منها حتى لا يعتمد الاختيار على جزء من النتائج.",
+      en: "Too many Data Center datasets of type “{typeKey}” match for role “{role}”; none was selected so that the choice never rests on part of the matches.",
+    },
+    remedy: { ar: "ضيّق الطلب بنوع أدق أو بنطاق جغرافي أو حدّد الإصدار صراحةً.", en: "Narrow the request with a more specific type or geography, or pin the version." },
+  },
+  DATA_CENTER_COMPETING_DATASETS: {
+    severity: "INFO",
+    message: {
+      ar: "وُجد {count} من مجموعات البيانات الأخرى من النوع «{typeKey}» سارية بالتاريخ نفسه؛ اختيرت «{dataset}» بحسب سياسة الاختيار {policy}.",
+      en: "{count} other Data Center dataset(s) of type “{typeKey}” were in force at the same date; “{dataset}” was selected by the selection policy {policy}.",
+    },
+    remedy: { ar: "إن كان المطلوب مجموعة أخرى فحدّد إصدارها صراحةً.", en: "If another dataset is intended, pin its version explicitly." },
+  },
   ROAD_LABEL_POINTS_ONLY: {
     severity: "WARNING",
     message: { ar: "طبقة الطرق «{dataset}» تحتوي نقاط تسمية فقط وليست شبكة طرق؛ المسافات إليها تقريبية ولا تمثل مسافة الطريق.", en: "The road layer “{dataset}” contains label points only, not a road network; distances to it are approximate and are not road distances." },
