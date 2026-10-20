@@ -8,15 +8,18 @@ import { countVertices, type AreaGeometry } from "./geometry-precheck";
  * The weights below are provisional; they are calibrated against measured runs on real data before the engine is closed, and any
  * change of weights is a new policy version.
  *
+ *   1.0.0  first weights (milestone M1)
+ *   1.1.0  PROXIMITY also prices the number of nearest features requested, which sets the size of the query and of the result
+ *
  *   target factor   point 1 · area 2 + vertices / 500  (every selected analysis runs for the main location and every candidate)
  *   LOCATION_CONTEXT      3 per target factor
- *   PROXIMITY             0.5 per search ring (up to maxSearchMeters) for each feature role
+ *   PROXIMITY             for each feature role: 0.5 per search ring (up to maxSearchMeters) + 0.1 per requested nearest feature
  *   CATCHMENT             1 per feature role, 1 per radius (+1 when the radius is above 10 km), +2 per radius with a population role
  *   DENSITY               4 + min(40, grid cells / 2000) for each feature role
  *   CONSTRAINT_SCREENING  1.5 for each constraint role
  *   SITE_COMPARISON       0.2 per target
  */
-export const SPATIAL_COST_POLICY = { id: "spatial-cost-v1", version: "1.0.0" } as const;
+export const SPATIAL_COST_POLICY = { id: "spatial-cost-v1", version: "1.1.0" } as const;
 
 const targetFactor = (location: SpatialNormalizedRequest["location"]) => (location.type === "Point" ? 1 : 2 + countVertices(location as AreaGeometry) / 500);
 
@@ -24,7 +27,7 @@ export function estimateSpatialCost(request: SpatialNormalizedRequest, budgetUni
   if (!Number.isFinite(budgetUnits) || budgetUnits <= 0 || budgetUnits > MAX_BUDGET_UNITS) throw new RangeError(`budgetUnits must be above 0 and at most ${MAX_BUDGET_UNITS}`);
   const locations = [request.location, ...request.candidates.map((candidate) => candidate.location)];
   const factor = locations.reduce((sum, location) => sum + targetFactor(location), 0);
-  const { radiiMeters, roles, maxSearchMeters, grid } = request.parameters;
+  const { radiiMeters, roles, nearestCount, maxSearchMeters, grid } = request.parameters;
   const featureRoles = roles.filter(isFeatureRole);
   const analyses = new Set(request.analyses);
   const lines: CostLine[] = [];
@@ -32,7 +35,10 @@ export function estimateSpatialCost(request: SpatialNormalizedRequest, budgetUni
   if (analyses.has("LOCATION_CONTEXT")) lines.push({ key: "context", units: 3 * factor });
   if (analyses.has("PROXIMITY")) {
     const rings = Math.max(1, SEARCH_LADDER_METERS.filter((meters) => meters <= maxSearchMeters).length);
-    for (const role of featureRoles) lines.push({ key: `proximity.${role}`, units: 0.5 * rings * factor });
+    for (const role of featureRoles) {
+      lines.push({ key: `proximity.${role}`, units: 0.5 * rings * factor });
+      lines.push({ key: `proximity.${role}.nearest`, units: 0.1 * nearestCount * factor });
+    }
   }
   if (analyses.has("CATCHMENT")) {
     lines.push({ key: "catchment.roles", units: featureRoles.length * factor });

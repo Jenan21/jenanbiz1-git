@@ -146,7 +146,7 @@ the main location and each candidate: a point weighs 1, an area `2 + positions /
 | Analysis | Units |
 | --- | --- |
 | `LOCATION_CONTEXT` | 3 per target weight |
-| `PROXIMITY` | 0.5 per search ring (up to `maxSearchMeters`) for each feature role |
+| `PROXIMITY` | For each feature role: 0.5 per search ring (up to `maxSearchMeters`) plus 0.1 per requested nearest feature (`nearestCount`, which sets the size of the query and of the result) |
 | `CATCHMENT` | 1 per feature role, 1 per radius (+1 above 10 km), +2 per radius with a population role |
 | `DENSITY` | 4 + min(40, grid cells / 2000) for each feature role |
 | `CONSTRAINT_SCREENING` | 1.5 per constraint role |
@@ -154,7 +154,8 @@ the main location and each candidate: a point weighs 1, an area `2 + positions /
 
 The default budget is 1,000 units and the maximum is 5,000; both are chosen by the server. The
 weights are provisional and are calibrated against measured runs on real data before the engine
-is closed; a change of weights is a new cost policy version.
+is closed; a change of weights is a new cost policy version. Versions: `1.0.0` (M1) and `1.1.0`,
+which added the `nearestCount` component to `PROXIMITY` (`proximity.<role>.nearest`).
 
 ## Gaps
 
