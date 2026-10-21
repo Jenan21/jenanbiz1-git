@@ -13,10 +13,11 @@ defers final Sonar acceptance and final tags until all seven technical baselines
    M4 CLOSED at `d2ef88e`; M5 accepted; Final Technical SHA
    `c54d647838c1ce10730277f3977abc4980c3715d`;
    **TECHNICALLY COMPLETE — PENDING FINAL SONAR**, frozen)
-3. Competitor Analysis Engine ([M0 architecture proposal](competitor-analysis-engine-v1.md);
-   owner M0 decisions incorporated: separate entities/locations/source records,
-   explainable relationship taxonomy and descriptive spatial/concentration facts;
-   revised contracts awaiting review; M1 NOT STARTED)
+3. Competitor Analysis Engine ([contracts and M1 checkpoint](competitor-analysis-engine-v1.md);
+   M0 APPROVED at `88858341da8c016617cb380775e5aef12a0b244b`;
+   M1 implements pure entity/location/source contracts, deterministic supported matching,
+   separate count semantics and independent confidence; M2 NOT STARTED;
+   real-competitor acceptance BLOCKED / NOT VERIFIED)
 4. Opportunity & Gap Engine
 5. Financial Feasibility Engine
 6. Operational Feasibility Engine
@@ -49,10 +50,13 @@ and is never modified by the engines. The engines are aggregated on their own li
   repository findings remain unchanged. Status: **TECHNICALLY COMPLETE — PENDING
   FINAL SONAR**, not FINAL CLOSED. Real-demand acceptance remains BLOCKED / NOT VERIFIED.
   Freeze the engine; stop for explicit approval before any necessary shared modification.
-- The owner authorized Competitor Architecture & Implementation Plan / M0 only,
-  then explicitly approved a Market-to-integration merge commit without squash and
-  a `jenan-engines/competitor-analysis` planning branch. No main merge, final tag,
-  Sonar attempt or Competitor implementation is authorized.
+- The owner authorized Competitor Architecture & Implementation Plan / M0,
+  explicitly approved a Market-to-integration merge without squash and the isolated
+  `jenan-engines/competitor-analysis` branch, then APPROVED revised M0 at
+  `88858341da8c016617cb380775e5aef12a0b244b` and authorized **M1 only**.
+  M1 adds no actual Data Center integration, persistence, Map/UI/Projects connection,
+  or direct Spatial/Market dependency. M2 and later phases require separate approval.
+  No main merge, final tag or Sonar attempt is authorized.
 
 - Spatial: **TECHNICALLY COMPLETE — PENDING FINAL SONAR**, not `FINAL CLOSED`.
 - Final Technical Engine SHA (M7):

@@ -2,11 +2,13 @@
 
 ## M0 status, authority and frozen baselines
 
-**M0 DECISIONS INCORPORATED — REVISED CONTRACTS AWAITING OWNER REVIEW. M1 NOT STARTED.**
+**M0 APPROVED at `88858341da8c016617cb380775e5aef12a0b244b`.
+M1 IMPLEMENTED — CHECKPOINT FOR OWNER REVIEW. M2 NOT STARTED.**
 
 The subsequent owner decisions replace establishment-only counting: model a unified
 Competitor Entity separately from locations/branches and original source records.
-The five-stage split is approved in principle, not authorization to implement M1.
+The owner subsequently approved that M0 and explicitly authorized M1 only.
+The five-stage split is not authorization to start M2 or later phases.
 
 The owner authorized architecture/planning only on 2026-10-21 and separately approved
 a nonsquashed integration merge followed by this planning branch:
@@ -25,8 +27,9 @@ a nonsquashed integration merge followed by this planning branch:
 - Integration basic regression: 193/193 existing tests PASS; merge tree equals the
   accepted Market branch tree, with Map/Data Center/Spatial/schema unchanged.
 
-This document creates no runtime module, dataset, registry entry, migration, endpoint,
-UI, database write, external collection or new engine execution.
+M0 itself was documentation-only. M1 now adds pure contracts/helpers and synthetic
+tests described in section 11; it creates no dataset, registry entry, migration,
+endpoint, UI, database write, external collection or live integration.
 
 ## 1. Exact purpose and non-goals
 
@@ -256,7 +259,7 @@ a total while leaving independent per-source observations usable and clearly lab
 Quality of competitive evidence, **not strength, popularity, market share or success**.
 Reuse Shared explainable policy machinery, not either frozen engine's policy.
 
-Revised proposed 100-point factors (numerical policy still requires review before M1):
+Owner-approved M0 100-point factors, implemented independently in M1:
 source quality 15; identity certainty 15; category/activity match certainty 15;
 geographic coverage 10; temporal relevance/freshness 10; completeness 15;
 measurement method 10; provenance/rights 10.
@@ -349,6 +352,193 @@ separate from activity; descriptive concentration/distribution and conditional s
 candidate facts in v1; Data Center exact versions; independent eight-factor confidence;
 zero only with proved coverage; five phases approved in principle; Sonar deferred.
 
-The revised Input/Output, Entity/Location model, matching taxonomy, confidence policy,
-roles/typeKeys and current evidence/gaps above are submitted for review.
-No implementation starts until the owner reviews these revised contracts and authorizes M1.
+The owner approved the revised contracts and proof limits at the M0 SHA above.
+M1 implements only the foundation below. **M2 NOT STARTED.**
+
+## 11. JENAN COMPETITOR ANALYSIS ENGINE — M1 CHECKPOINT REPORT
+
+### Scope and final contracts
+
+M1 is a pure TypeScript foundation, not a production source reader or complete
+analytics runner. No adapters, endpoints, stores, migrations or external calls.
+Engine version: `1.0.0-m1`. Independent contracts:
+
+- `jenan.competitor-analysis.request/v1`, `jenan.competitor-analysis.result/v1`.
+- `jenan.competitor-analysis.entity/v1`, `...location/v1`, `...match/v1`,
+  `...metric/v1`, and typed `...identity-link/v1`.
+- Bounded M1 evidence/coverage contracts `...evidence/v1` and `...coverage/v1`.
+
+The request declares versioned administrative geography, activity taxonomy/code,
+nullable segment, exact `asOf`, entity definition, inclusion relationships, activity
+filter, explicit entity/location counting units, analyses and Data Center role selectors.
+Selectors describe exact version/checksum pins or typeKey/asOf; they perform no read.
+Trusted context supplies the evaluation instant externally; no actor/authorization
+override, runtime clock or arbitrary formula is accepted. The normalized request hash
+includes that explicit evaluation instant. Only `IDENTITY_MATCHING` and the `COUNTS`
+semantic guard are enabled at M1; later analysis identifiers are reserved but rejected
+explicitly by M1 normalization. No M3 distribution, spatial, historical or comparison
+runner is implemented.
+
+M1 requires canonical UTC millisecond timestamps (`...ss.SSSZ`): noncanonical/higher
+precision is rejected, never silently rounded. Validity intervals are half-open.
+The request uses an explicit snapshot, not an inferred observation interval.
+Non-null segment membership is NOT_COMPUTABLE until a documented segment contract
+is available; no broad-activity or administrative-radius substitution.
+
+The result extends the unchanged Shared envelope with normalized evidence, coverage,
+source-record references, reproducible matches and typed metrics. Quantity units retain
+UNIQUE_COMPETITOR_ENTITIES versus COMPETITOR_LOCATIONS. Geography, classification,
+date, method and inventory universe must agree with request/coverage. Validation
+re-evaluates M1 decisions/count semantics and confidence, not just JSON shape/hashes.
+A caller cannot rehash an invented count, classification or widened rights into validity.
+The existing Shared envelope and pure Run/Input record mapping remain compatible;
+no database save or replay is implemented.
+
+### Identity and matching
+
+- Canonical entity/location ids are namespaced and distinct. Source identity is
+  `(inputId, sourceNamespace, sourceRecordId)`, with exact version/hash/rights in the
+  Shared descriptor. Identical original ids in different namespaces remain separate.
+  Multiple original records may evidence one canonical location.
+- Only declared authoritative identifiers or explicit source links establish RESOLVED
+  identity. Exact repeated rows collapse; conflicting rows for one canonical id fail.
+  No name/address/phone similarity, brand/franchise equivalence, random id, speculative
+  merge or one-business-per-listing rule exists.
+- Grouping preserves link states/evidence. Conflicting resolved source bindings and
+  multiple location ids for one established entity branch fail explicitly.
+  Unknown entity links remain null/ambiguous; established locations remain independently
+  usable when the unique-business total is blocked.
+- Typed link contracts describe SAME_ENTITY / SAME_LOCATION / LOCATION_OF_ENTITY;
+  ambiguous/conflicted links carry no canonical identity. M1 groups declared canonical
+  bindings. Loading source link datasets/policies belongs to M2, not unsupervised
+  entity resolution in M1.
+- DIRECT / INDIRECT / POTENTIAL / NOT_COMPARABLE need an applicable versioned rule,
+  matching taxonomy, explicit same-need/substitution/potential/exclusion criterion
+  and dated source evidence. DIRECT/INDIRECT additionally require a specific activity,
+  never a broad category.
+- Missing/conflicting rules give UNKNOWN with INSUFFICIENT/AMBIGUOUS evidence. Every
+  decision carries scope/asOf, rule refs, reason, evidence, confidence or an explicit
+  unscorable state, and limitations. DIRECT does not certify ACTIVE operation or strength.
+
+### Count semantics and gaps
+
+The M1 count helper is an inclusion/identity/coverage guard for later M3 analytics:
+
+- One entity with 15 branches gives **1 unique competitor / 15 locations**.
+  Fifteen original records for one established branch give **1 location**, not 15.
+- Exact scoped totals, including zero, need a complete attested location inventory,
+  explicit matching enumeration, eligible sources/methods and resolved identities
+  appropriate to the unit. Unknown matching/activity is not silently excluded.
+- Partial/sample/unknown inventory never supplies a whole-market total. A valid
+  positive subset is labeled separately (`observedSubset` / `OBSERVED_SUBSET`);
+  scoped total stays null. No positive observations in incomplete data give
+  NO_COVERAGE, not zero.
+- Missing scope evidence: NOT_AVAILABLE. Incompatible geography/activity/time/entity
+  definition: NO_COVERAGE. Unresolved/incompatible identity, method, membership or
+  inclusion decisions: NOT_COMPUTABLE.
+- Shared-compatible results always include the requested scoped-total slot.
+  PARTIAL subset metrics accompany, never replace, that unavailable/null total.
+  Missing/partial slots require subject-specific gaps.
+- The combined catalog reuses Shared gaps and adds
+  COMPETITOR_IDENTITY_UNRESOLVED, COMPETITOR_MATCH_UNKNOWN,
+  COMPETITOR_COVERAGE_INCOMPLETE. Unavailable totals have no invented confidence.
+
+### Independent confidence and rights
+
+`competitor-confidence-v1@1.0.0`, POINTS_100, EXPLAINABLE_HEURISTIC,
+`isProbability=false`. Deterministic factor points:
+
+| Factor | Max | Documented award |
+| --- | ---: | --- |
+| sourceQuality | 15 | floor(measured quality × 15); absent/future measurement 0 |
+| identityCertainty | 15 | resolved 15; separate-unverified 5; ambiguous/conflicted 0 |
+| activityMatch | 15 | supported 15; ambiguous 5; insufficient 0 |
+| geographicCoverage | 10 | complete 10; partial 5; unknown 0; none ineligible |
+| freshness | 10 | fresh within interval 10; stale/elapsed 3; unknown 0 |
+| completeness | 15 | inventory 15; sample 5; unknown 0 |
+| measurementMethod | 10 | documented/versioned 10; limited 5; unsupported ineligible |
+| rightsProvenance | 10 | documented rights with license class 10; undeclared class 5 |
+
+Use the weakest necessary input per factor, stable input-id ordering for ties and
+Shared thresholds HIGH>=80 / MEDIUM>=60 / LOW>=35.
+Partial/sample/unknown inventory, uncertain identity/matching, stale/unknown freshness
+and unverified evidence/undeclared license cap at LOW; absent/future-dated quality
+measurement caps at MEDIUM.
+Required derived operands constrain both same-policy factor points and band;
+INSUFFICIENT or foreign-policy operands cannot silently be upgraded.
+
+Unsupported methods, missing provenance/usage, expired/future source evidence,
+CONFLICTED/ESTIMATED source evidence, expired usage decisions or denied/unverified
+analysis usage are unscorable; no full or partial count is derived from them.
+Source usage decisions are explicit trusted descriptors, not live authorization in M1;
+M2 must obtain them through Data Center policy. Export permission is not analysis
+permission. Restricted export can coexist with permitted analysis.
+Shared rights intersection and attribution remain exact; output export never becomes
+more permissive than inputs. Checksums are retained, not claimed verified against live
+content at M1. Confidence describes evidence, never strength or success probability.
+
+### Limits and static boundaries
+
+- At most 32 input versions/selections, 2,000 source-record descriptors, 2,000 canonical
+  entities, 2,000 canonical locations and 100 rules per M1 evidence bundle.
+  These bounded foundation contracts stay below the proposed 10,000 total-row ceiling;
+  no per-version record count exceeds 2,000.
+- At most 500 metrics across the complete result, 7 sections, and the unchanged
+  **2 MiB canonical JSON** ceiling for request/evidence/complete result.
+  No silent truncation, overflow fallback, pagination or budget increase.
+- AST tests permit only own pure modules, Shared Core and zod. They actively reject
+  Spatial/Market/Projects/Map/Data Center service imports, database/filesystem/network/
+  AI dependencies, dynamic/type-import escapes, writes, hidden clocks/randomness,
+  environment reads and logging. No adapter directory exists.
+- No revenue/profit/share estimate, success probability, strength percentage,
+  recommendation, scraping or unapproved geography calculation.
+
+### Validation, changed files and backward compatibility
+
+Every test dataset is **Fixtures / Synthetic**, not real competitor acceptance.
+New foundation/confidence/output/static tests run with all current Shared/Spatial/
+Market unit regressions. TypeScript, zero-warning scoped ESLint, existing Map asset
+check and production Webpack build pass; build completes **161 static-generation tasks**.
+Final combined unit gate: **1,575/1,575 PASS across 45 files in 61.07 seconds**:
+Competitor M1 **129**, frozen Market **338**, Shared/Spatial **1,108**.
+The M1 tests include existing Shared Run/Input record conversion without a database.
+This is test-suite duration, not a production throughput or SLA measurement.
+Final production build compiles in 79 seconds, performs its own TypeScript check,
+and completes 161 static-generation tasks. The final delivery report records the
+implementation SHA and verified Local/Remote/Desktop equality.
+`git diff --check` is required before commit.
+No PostgreSQL/Data Center/PostGIS integration test is claimed at M1: there is
+no new adapter/schema; actual integration begins at M2. No visual/responsive QA is
+applicable because no UI changes.
+
+Production additions under `services/analysis-engines/competitor-analysis/`:
+`model.ts`, `request.ts`, `identity.ts`, `matching.ts`, `confidence.ts`, `counts.ts`,
+`contracts.ts`, `index.ts`.
+Tests: `tests/unit/competitor-analysis-foundation.test.ts`,
+`tests/unit/competitor-analysis-confidence-contracts.test.ts`,
+`tests/unit/competitor-analysis-boundaries.test.ts`,
+`tests/unit/support/competitor-analysis-fixtures.ts`.
+Documentation: this file and `docs/analysis-engines.md`.
+No dependency manifest or existing engine/global boundary test was modified.
+
+Backward compatibility is additive: Shared Core, frozen Spatial/Market runtime,
+Data Center, Map, schema, Auth/RBAC and Projects remain unchanged.
+
+**REAL-DATA COMPETITOR ACCEPTANCE = BLOCKED / NOT VERIFIED.**
+M1 proves synthetic mechanics only. It does not inspect production inventory or
+establish that competitor data are absent. Actual identities, counts, matching,
+activity and coverage remain NOT VERIFIED.
+
+| Boundary / later phase | Status |
+| --- | --- |
+| Map changed | NO |
+| Data Center frozen baseline changed | NO |
+| Spatial changed | NO |
+| Market changed | NO |
+| Shared Core changed | NO |
+| M2 started | NO |
+| Main merge | NO |
+| Final tag | NOT CREATED |
+| Sonar | DEFERRED / PENDING until all seven technical engines are complete |
+
+**Stop after this M1 checkpoint for owner review.**
