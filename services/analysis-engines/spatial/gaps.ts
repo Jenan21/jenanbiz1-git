@@ -2,6 +2,21 @@ import { combineGapCatalogs, defineGapCatalog, sharedGapCatalog } from "../share
 
 /** Gaps that only the Spatial Engine can report, on top of the shared ones. */
 const spatialOwnGapCatalog = defineGapCatalog({
+  DENSITY_POINTS_REQUIRED: {
+    severity: "WARNING",
+    message: { ar: "يتطلب تحليل الشبكة والتجمعات بيانات نقطية؛ لم تُحوّل الخطوط أو المضلعات إلى نقاط.", en: "Grid and cluster analysis requires point features; lines and polygons were not converted to points." },
+    remedy: { ar: "استخدم مصدرًا نقطيًا مناسبًا.", en: "Use an appropriate point dataset." },
+  },
+  SPATIAL_MEASUREMENT_UNSUPPORTED: {
+    severity: "WARNING",
+    message: { ar: "لا تكفي التغطية أو الهندسة لإثبات القياس «{metric}»؛ لم يُستبدل بصفر.", en: "Coverage or geometry cannot support measurement “{metric}”; it was not replaced with zero." },
+    remedy: { ar: "راجع التغطية واكتمال البيانات ونوع الهندسة.", en: "Review coverage, inventory completeness and geometry type." },
+  },
+  SITE_METRIC_NOT_COMPARABLE: {
+    severity: "WARNING",
+    message: { ar: "المقياس «{metric}» غير قابل للمقارنة بين جميع المواقع بنفس البيانات؛ لا ترتيب له.", en: "Metric “{metric}” cannot be compared across all targets on the same data; no ranking is given." },
+    remedy: { ar: "وفّر بيانات قابلة للمقارنة لكل موقع.", en: "Provide comparable data for every target." },
+  },
   DATASET_GEOMETRY_INVALID: {
     severity: "BLOCKING",
     message: { ar: "هندسة البيانات «{dataset}» غير صالحة؛ لا يمكن استخدامها في القياس.", en: "The geometry of “{dataset}” is invalid and cannot be used for measurement." },

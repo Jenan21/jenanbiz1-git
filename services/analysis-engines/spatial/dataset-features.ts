@@ -10,7 +10,7 @@ import { boundingBoxOf, type BoundingBox } from "./geometry-precheck";
  * measurement over the dataset. Topological validity (self-intersection and the like) is decided by PostGIS when the features reach it.
  */
 export const MAX_DATASET_FEATURES = 10_000;
-export const datasetContentProblems = ["NO_FEATURES", "TOO_MANY_FEATURES", "FEATURE_WITHOUT_GEOMETRY", "GEOMETRY_COLLECTION_NOT_SUPPORTED"] as const;
+export const datasetContentProblems = ["NO_FEATURES", "TOO_MANY_FEATURES", "FEATURE_WITHOUT_GEOMETRY", "GEOMETRY_COLLECTION_NOT_SUPPORTED", "GEOMETRY_CRS_NOT_SUPPORTED"] as const;
 export type DatasetContentProblem = typeof datasetContentProblems[number];
 
 export interface SpatialDatasetFeature {
@@ -36,6 +36,7 @@ export function checkDatasetFeatures(features: readonly DataCenterGeoFeature[]):
   for (let index = 0; index < features.length; index += 1) {
     const feature = features[index] as DataCenterGeoFeature;
     if (feature.geometry === null) return { ok: false, code: "FEATURE_WITHOUT_GEOMETRY", index };
+    if ("crs" in feature || "crs" in feature.geometry) return { ok: false, code: "GEOMETRY_CRS_NOT_SUPPORTED", index };
     if (feature.geometry.type === "GeometryCollection") return { ok: false, code: "GEOMETRY_COLLECTION_NOT_SUPPORTED", index };
     checked.push({ index, id: featureId(feature), properties: feature.properties, geometry: feature.geometry });
   }

@@ -189,10 +189,8 @@ describe("prepareSpatialRequest", () => {
   const options = { environment: "test" as const, now: clock };
   const typical = baseRequest({ analyses: ["LOCATION_CONTEXT", "PROXIMITY", "CATCHMENT", "DENSITY"], parameters: { roles: ["poi:hospital", "poi:school", "place:locality"] } });
   const heavy = baseRequest({
-    analyses: ["LOCATION_CONTEXT", "PROXIMITY", "CATCHMENT", "DENSITY", "SITE_COMPARISON"],
-    location: { type: "Polygon", coordinates: [circleRing(46.67, 24.71, 0.05, 2000)] },
-    candidates: Array.from({ length: 20 }, (_, index) => ({ id: `site-${index}`, location: { type: "Polygon" as const, coordinates: [circleRing(46.5 + index * 0.01, 24.6, 0.004, 100)] } })),
-    parameters: { roles: Array.from({ length: 10 }, (_, index) => `poi:kind_${index}`) },
+    analyses: ["DENSITY"],
+    parameters: { roles: Array.from({ length: 32 }, (_, index) => `poi:kind_${index}`), radiiMeters: [50_000], grid: { cellMeters: 100 } },
   });
   const failure = (action: () => unknown) => { try { action(); } catch (error) { return error as EngineError; } return null; };
 

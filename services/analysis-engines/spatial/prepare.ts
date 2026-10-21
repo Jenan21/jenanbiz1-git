@@ -1,6 +1,7 @@
 import { assertWithinBudget, type CostEstimate } from "../shared/cost";
 import { estimateSpatialCost } from "./cost";
 import { normalizeSpatialRequest, type NormalizationResult, type NormalizeOptions } from "./normalize";
+import { assertSpatialMetricBudget } from "./metric-budget";
 
 export interface PreparedSpatialRequest extends NormalizationResult { cost: CostEstimate }
 
@@ -10,6 +11,7 @@ export interface PreparedSpatialRequest extends NormalizationResult { cost: Cost
  */
 export function prepareSpatialRequest(input: unknown, options: NormalizeOptions & { budgetUnits?: number }): PreparedSpatialRequest {
   const normalization = normalizeSpatialRequest(input, options);
+  assertSpatialMetricBudget(normalization.normalized);
   const cost = estimateSpatialCost(normalization.normalized, options.budgetUnits);
   assertWithinBudget(cost);
   return { ...normalization, cost };

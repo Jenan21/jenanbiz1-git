@@ -16,7 +16,7 @@ const withoutQuotedNames = (sql: string) => withoutLiterals(sql).replace(/"(?:[^
 
 const expectedParameters: Record<QueryName, number> = {
   postgisPresent: 0, postgisVersions: 0, catalog: 2, role: 2, runtime: 0, release: 1, boundary: 1, layers: 2, geometryChecks: 1, locateCoverage: 2, locateUnits: 4, nearest: 7,
-  countFeatures: 6, measureDataset: 6,
+  countFeatures: 6, measureDataset: 6, measureSpatial: 12,
 };
 
 describe("the adapter's SQL", () => {

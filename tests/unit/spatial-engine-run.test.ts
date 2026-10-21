@@ -13,13 +13,10 @@ const withPlacesBinding = (binding: { enabled: boolean; status: "ready" | "unava
   realDescription({ layers: realDescription().layers.map((entry) => (entry.id === "places" ? { ...entry, binding } : entry)) });
 
 describe("the engine's run: what it refuses before it reads anything", () => {
-  it("accepts only the analyses this version implements and refuses the others by name, touching nothing", async () => {
-    for (const analyses of [["DENSITY"], ["LOCATION_CONTEXT", "DENSITY"], ["SITE_COMPARISON", "LOCATION_CONTEXT"]]) {
-      const { port, result } = run(baseRequest({ analyses: analyses as never, parameters: { roles: ["poi:hospital"] }, candidates: analyses.includes("SITE_COMPARISON") ? [{ id: "a", location: riyadh }] : undefined } as never));
-      const error = await failureOf(result);
-      expect(error).toMatchObject({ code: "INVALID_INPUT", status: 400, details: { reason: "analysis_not_supported" } });
-      expect(port.calls).toEqual([]);
-    }
+  it("rejects analyses outside the six implemented contracts before any read", async () => {
+    const { port, result } = run({ ...baseRequest(), analyses: ["ROUTING"] });
+    expect(await failureOf(result)).toMatchObject({ code: "INVALID_INPUT", status: 400 });
+    expect(port.calls).toEqual([]);
   });
 
   it("refuses an invalid request with the contract's own error, before any query", async () => {
@@ -139,7 +136,7 @@ describe("the engine's run: the spatial backend", () => {
     const { port, result } = run(contextRequest({ candidates: [{ id: "site-a", location: riyadh }] }));
     await result;
     expect(new Set(port.calls.map((call) => call.method))).toEqual(new Set(["capabilities", "checkGeometries", "describeMap", "locate", "nearest"]));
-    expect(Object.getOwnPropertyNames(FakeMapPort.prototype).filter((name) => !["constructor", "answer", "callsOf"].includes(name)).sort()).toEqual(["capabilities", "checkGeometries", "countFeatures", "describeMap", "locate", "measureDataset", "nearest"]);
+    expect(Object.getOwnPropertyNames(FakeMapPort.prototype).filter((name) => !["constructor", "answer", "callsOf"].includes(name)).sort()).toEqual(["capabilities", "checkGeometries", "countFeatures", "describeMap", "locate", "measureDataset", "measureSpatial", "nearest"]);
   });
 });
 
@@ -346,7 +343,7 @@ describe("the engine's run: the result it returns", () => {
       engine: {
         key: "spatial", version: SPATIAL_ENGINE_VERSION, environment: "test",
         runtime: { backend: "POSTGIS", placement: "DEDICATED_CONNECTION", postgis: "3.5.2", geos: "3.9.0-CAPI-1.16.2", proj: "7.2.1" },
-        capabilities: { analyses: ["LOCATION_CONTEXT", "PROXIMITY", "CATCHMENT"], excluded: [...spatialExclusions] },
+        capabilities: { analyses: ["LOCATION_CONTEXT", "PROXIMITY", "CATCHMENT", "DENSITY", "CONSTRAINT_SCREENING", "SITE_COMPARISON"], excluded: [...spatialExclusions] },
       },
       request: { mapLayerPolicy: "ALLOW_UNREGISTERED", normalized: { analyses: ["LOCATION_CONTEXT"], parameters: { roles: ["place:neighbourhood"], maxSearchMeters: 5000 } } },
       limits: { costUnits: 5, budgetUnits: 1000 },

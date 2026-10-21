@@ -248,6 +248,83 @@ describe.runIf(postgisTestsEnabled && realMapTemplate !== "")("LOCATION_CONTEXT 
     };
   }, 120_000);
 
+  it("M6 real-data acceptance: Riyadh density, factual comparison and unavailable constraints without synthetic inputs", async () => {
+    const locations = [
+      { id: "primary", longitude: 46.6753, latitude: 24.7136 },
+      { id: "riyadh-east", longitude: 46.69, latitude: 24.72 },
+      { id: "riyadh-west", longitude: 46.66, latitude: 24.70 },
+    ];
+    const radii = [500, 1000, 3000, 5000];
+    const request = baseRequest({
+      analyses: ["DENSITY", "CONSTRAINT_SCREENING", "SITE_COMPARISON"],
+      location: point(locations[0]!.longitude, locations[0]!.latitude),
+      candidates: locations.slice(1).map((entry) => ({ id: entry.id, location: point(entry.longitude, entry.latitude) })),
+      parameters: { roles: ["poi:hospital", "constraint:protected_area"], radiiMeters: radii },
+      data: { roles: { "poi:hospital": { source: "MAP", layerKey: "pois", releaseId } } },
+    });
+    const result = await timed("m6.riyadh.three-site-density-constraints-comparison", () => engine(request));
+    const counts: Record<string, unknown> = {};
+    for (const location of locations) {
+      const expected = (await reference.query(
+        `SELECT r.radius, count(f.id)::int AS count,
+          ST_Area(ST_Buffer(ST_SetSRID(ST_MakePoint($2, $3),4326)::geography,r.radius)::geography)/1000000 AS area
+         FROM unnest($4::float8[]) AS r(radius)
+         LEFT JOIN jenan_map.feature f ON f."releaseId"=$1::uuid AND f."layerId"='pois'
+           AND f."sourceId" LIKE 'pois:hospital:%'
+           AND ST_DWithin(f.geometry::geography,ST_SetSRID(ST_MakePoint($2,$3),4326)::geography,r.radius)
+         GROUP BY r.radius ORDER BY r.radius`, [releaseId, location.longitude, location.latitude, radii],
+      )).rows as Array<{ radius: number; count: number; area: number }>;
+      const metrics = result.results.find((entry) => entry.analysis === "DENSITY" && entry.target === location.id)!.metrics;
+      for (const row of expected) {
+        const count = metrics.find((metric) => metric.key === `density.poi:hospital.r${row.radius}.count`)!;
+        const density = metrics.find((metric) => metric.key === `density.poi:hospital.r${row.radius}.per_km2`)!;
+        if (row.count === 0) {
+          expect(count).toMatchObject({ value: null, status: "NOT_COMPUTABLE" });
+          expect(density.value).toBeNull();
+        } else {
+          expect(count).toMatchObject({ value: row.count, status: "PARTIAL" });
+          expect(density.value).toBeCloseTo(row.count / row.area, 6);
+          expect(count.confidence?.band).toBe("LOW");
+          expect(density.confidence?.band).toBe("LOW");
+        }
+      }
+      counts[location.id] = expected.map(({ radius, count }) => ({ radius, observedCount: count }));
+      const constraints = result.results.find((entry) => entry.analysis === "CONSTRAINT_SCREENING" && entry.target === location.id)!.metrics;
+      expect(constraints.every((metric) => metric.value === null && metric.status === "NOT_AVAILABLE")).toBe(true);
+    }
+    const clusterReference = (await reference.query(
+      `WITH points AS (
+        SELECT f.id,ST_Transform(f.geometry,32638) AS geom FROM jenan_map.feature f
+        WHERE f."releaseId"=$1::uuid AND f."layerId"='pois' AND f."sourceId" LIKE 'pois:hospital:%'
+          AND ST_DWithin(f.geometry::geography,ST_SetSRID(ST_MakePoint(46.6753,24.7136),4326)::geography,5000)
+      ), memberships AS (
+        SELECT ST_ClusterDBSCAN(p.geom,500,5) OVER (ORDER BY p.id) AS cluster_id FROM points p
+      ), sizes AS (
+        SELECT cluster_id,count(*)::int AS n FROM memberships WHERE cluster_id IS NOT NULL GROUP BY cluster_id
+      )
+      SELECT (SELECT count(*)::int FROM sizes) AS clusters,COALESCE((SELECT max(n) FROM sizes),0) AS largest,
+        (SELECT count(*)::int FROM memberships WHERE cluster_id IS NULL) AS noise`, [releaseId],
+    )).rows[0] as { clusters: number; largest: number; noise: number };
+    const primary = result.results.find((entry) => entry.analysis === "DENSITY" && entry.target === "primary")!.metrics;
+    for (const [suffix, expected] of [["count", clusterReference.clusters], ["largest", clusterReference.largest], ["noise", clusterReference.noise]] as const) {
+      expect(primary.find((metric) => metric.key === `density.poi:hospital.cluster.${suffix}`)?.value).toBe(expected === 0 ? null : expected);
+    }
+    const replay = await timed("m6.riyadh.identical-request-repeat", () => engine(request));
+    expect(replay.determinism).toEqual(result.determinism);
+    expect(result.results.flatMap((entry) => entry.metrics).length).toBeLessThanOrEqual(500);
+    expect(result.inputs.some((input) => input.ref.system === "JENAN_MAP" && input.ref.id.includes(releaseId))).toBe(true);
+    expect(result.attribution.map((entry) => entry.text).join(" ")).toMatch(/OpenStreetMap contributors/);
+    expect(gapCodes(result)).toContain("DATASET_NOT_AVAILABLE");
+    expectNoVerdictsAndNoPercentages(result);
+    examples.m6Riyadh = {
+      releaseId, counts, clusterReference,
+      metrics: Object.fromEntries(result.results.map((entry) => [`${entry.analysis}/${entry.target}`,
+        entry.metrics.map((metric) => ({ key: metric.key, state: metric.status, value: metric.value, confidence: metric.confidence?.band ?? null }))])),
+      realDataGaps: ["No governed constraint input is supplied by the current Map contract; real constraint geometry acceptance remains unavailable.",
+        "No actual population dataset supplied; no real population estimate claimed."],
+    };
+  }, 120_000);
+
   // ---------------------------------------------------------------------------------------------------------------- Riyadh
   it("describes Riyadh as the published release does: region, governorate, nearest neighbourhood, with their sources and limits", async () => {
     const result = await timed("riyadh.cold", () => engine(contextRequest({ location: point(46.6753, 24.7136) }, ["place:neighbourhood"])));

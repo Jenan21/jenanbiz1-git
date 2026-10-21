@@ -88,6 +88,32 @@ export interface DatasetMeasureResult {
   radii: Array<{ radiusMeters: number; count: number; populationEstimate: number | null }>;
 }
 
+export interface SpatialMeasureRequest {
+  source: { kind: "MAP"; releaseId: string; layerId: string; featureKind: string | null } | { kind: "DATA_CENTER"; features: readonly unknown[] };
+  location: SpatialLocation;
+  analysis: "DENSITY" | "CONSTRAINT_SCREENING";
+  radiiMeters: readonly number[];
+  maxSearchMeters: number;
+  grid: { cellMeters: number };
+  cluster: { epsMeters: number; minPoints: number };
+}
+export interface SpatialMeasureResult {
+  valid: boolean;
+  truncated: boolean;
+  unrecognized: number;
+  radii: Array<{ radiusMeters: number; count: number; areaKm2: number }>;
+  pointsOnly: boolean;
+  occupiedCells: number;
+  maxCellCount: number;
+  clusterCount: number;
+  largestCluster: number;
+  noiseCount: number;
+  intersects: number;
+  covers: number;
+  overlapKm2: number;
+  nearestMeters: number | null;
+}
+
 export interface SpatialMapPort extends SpatialDataPort {
   describeMap(request: MapDescribeRequest): Promise<MapDescription>;
   checkGeometries(locations: readonly SpatialLocation[]): Promise<GeometryCheck[]>;
@@ -95,4 +121,5 @@ export interface SpatialMapPort extends SpatialDataPort {
   nearest(request: MapNearestRequest): Promise<MapNearestResult>;
   countFeatures(request: MapCountRequest): Promise<MapCountResult>;
   measureDataset(request: DatasetMeasureRequest): Promise<DatasetMeasureResult>;
+  measureSpatial(request: SpatialMeasureRequest): Promise<SpatialMeasureResult>;
 }

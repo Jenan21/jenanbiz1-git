@@ -168,6 +168,39 @@ describe.skipIf(!enabled)("the Spatial Engine's Data Center provider on real Pos
     });
   });
 
+  it("persists and historically replays M6 density, constraints and comparison against the exact shared Data Center input", async () => {
+    await isolated(async (tx, admin) => {
+      const source = await platformSource(admin);
+      const item = await dataset(tx, admin, source.id, { coverage: { countryCodes: ["SA"], regionCodes: [], boundingBox: riyadhBox } });
+      const runId = `spatial-m6-${randomUUID()}`;
+      const roleNames = ["poi:clinic", "constraint:zone"];
+      const request = baseRequest({
+        analyses: ["DENSITY", "CONSTRAINT_SCREENING", "SITE_COMPARISON"],
+        parameters: { roles: roleNames, radiiMeters: [500] },
+        candidates: [{ id: "site-b", location: { type: "Point", coordinates: [46.68, 24.71] } }],
+        data: { roles: Object.fromEntries(roleNames.map((role) => [role, { source: "DATA_CENTER" as const, versionId: item.version.id }])) },
+      });
+      const map = () => new FakeMapPort({ measureSpatial: ({ radiiMeters }) => ({
+        valid: true, truncated: false, unrecognized: 0, pointsOnly: true,
+        radii: radiiMeters.map((radiusMeters) => ({ radiusMeters, count: 2, areaKm2: 0.78 })),
+        occupiedCells: 1, maxCellCount: 2, clusterCount: 1, largestCluster: 2, noiseCount: 0,
+        intersects: 1, covers: 1, overlapKm2: 0, nearestMeters: 0,
+      }) });
+      const result = await runSpatialAnalysisPersisted(map(), request, {
+        environment: "test", clock: () => NOW, newRunId: () => runId, dataCenterPort: providerFor(admin),
+        actor: { kind: "USER", id: admin.id }, dataCenterActor: admin,
+      });
+      expect(result.results.some((entry) => entry.analysis === "SITE_COMPARISON" && entry.metrics.some((metric) => metric.value !== null))).toBe(true);
+      const input = await tx.analysisEngineRunInput.findFirstOrThrow({ where: { runId, dataCenterVersionId: item.version.id } });
+      expect(input).toMatchObject({ contentHash: item.version.checksum, roles: roleNames.sort() });
+      expect(input.usageIntent).toMatchObject({ versionId: item.version.id, checksum: item.version.checksum });
+      await createDataCenterVersion({ itemId: item.id, title: "New M6 source", content: geojson("new", "newer"), evidenceStatus: "ESTIMATED", reason: "Supersede for M6 replay test" }, admin);
+      await publish(item.id, admin);
+      const replay = await replaySpatialAnalysis(map(), runId, admin, { clock: () => NOW, newRunId: () => `replay-${randomUUID()}` });
+      expect(replay.determinism).toEqual(result.determinism);
+    });
+  });
+
   it("persists an exact run and replays its superseded Data Center version without discovery fallback", async () => {
     await isolated(async (tx, admin) => {
       const source = await platformSource(admin);

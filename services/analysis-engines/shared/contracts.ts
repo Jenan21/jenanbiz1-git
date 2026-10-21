@@ -143,9 +143,9 @@ export function deriveInputGaps(input: EngineInput): Gap[] {
  * Later engines extend these vocabularies in their own commit, with tests (for example currency amounts or ratios for the
  * financial engine); an existing member never changes meaning.
  */
-export const valueKinds = ["DISTANCE", "AREA", "COUNT", "DENSITY", "POPULATION", "CATEGORICAL", "BOOLEAN", "TEXT"] as const;
+export const valueKinds = ["DISTANCE", "AREA", "COUNT", "DENSITY", "POPULATION", "RATIO", "ORDINAL", "CATEGORICAL", "BOOLEAN", "TEXT"] as const;
 export type ValueKind = typeof valueKinds[number];
-export const metricUnits = ["m", "km", "km2", "count", "per_km2", "people", "none"] as const;
+export const metricUnits = ["m", "km", "km2", "count", "per_km2", "people", "ratio", "none"] as const;
 export type MetricUnit = typeof metricUnits[number];
 /**
  * What a value means. MAPPED_FEATURES_ONLY: it describes the features present in the data used, not the real world.
@@ -154,10 +154,10 @@ export type MetricUnit = typeof metricUnits[number];
 export const interpretations = ["MAPPED_FEATURES_ONLY", "MEASURED_GEOMETRY", "ESTIMATE"] as const;
 export type Interpretation = typeof interpretations[number];
 const unitsByKind: Record<ValueKind, readonly MetricUnit[]> = {
-  DISTANCE: ["m", "km"], AREA: ["km2"], COUNT: ["count"], DENSITY: ["per_km2"], POPULATION: ["people"], CATEGORICAL: ["none"], BOOLEAN: ["none"], TEXT: ["none"],
+  DISTANCE: ["m", "km"], AREA: ["km2"], COUNT: ["count"], DENSITY: ["per_km2"], POPULATION: ["people"], RATIO: ["ratio"], ORDINAL: ["none"], CATEGORICAL: ["none"], BOOLEAN: ["none"], TEXT: ["none"],
 };
-const numericKinds: readonly ValueKind[] = ["DISTANCE", "AREA", "COUNT", "DENSITY", "POPULATION"];
-const integerKinds: readonly ValueKind[] = ["COUNT", "POPULATION"];
+const numericKinds: readonly ValueKind[] = ["DISTANCE", "AREA", "COUNT", "DENSITY", "POPULATION", "RATIO", "ORDINAL"];
+const integerKinds: readonly ValueKind[] = ["COUNT", "POPULATION", "ORDINAL"];
 
 const engineMetricObject = z.object({
   key: metricKeySchema,
@@ -171,6 +171,7 @@ const engineMetricObject = z.object({
   inputRefs: z.array(identifierSchema).max(32),
   confidence: confidenceBreakdownSchema.nullable(),
   limitations: z.array(shortTextSchema).max(10),
+  method: shortTextSchema.optional(),
 }).strict();
 export type EngineMetric = z.infer<typeof engineMetricObject>;
 

@@ -202,6 +202,7 @@ const FEATURE_REF_KEY_SUFFIX = ".feature_ref";
 export function findSpatialResultViolations(result: SpatialResult): Array<EnvelopeViolation | { code: "SPATIAL_RULE"; path: string; detail: string }> {
   const violations: Array<EnvelopeViolation | { code: "SPATIAL_RULE"; path: string; detail: string }> = [...findEnvelopeViolations(result, { catalog: spatialGapCatalog })];
   const rule = (path: string, detail: string) => violations.push({ code: "SPATIAL_RULE", path, detail });
+  if (result.results.reduce((total, entry) => total + entry.metrics.length, 0) > 500) rule("results", "The whole run has at most 500 metrics");
   if (result.engine.key !== SPATIAL_ENGINE_KEY) rule("engine.key", `The engine key is ${SPATIAL_ENGINE_KEY}`);
   if (result.engine.contracts.request !== SPATIAL_REQUEST_CONTRACT || result.engine.contracts.result !== SPATIAL_RESULT_CONTRACT) rule("engine.contracts", "The engine must name the Spatial request and result contracts");
   if (result.engine.environment === "production" && result.request.mapLayerPolicy !== "REGISTERED_ONLY") rule("request.mapLayerPolicy", "Production reads registered Map layers only");

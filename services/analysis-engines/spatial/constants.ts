@@ -3,7 +3,7 @@
  * known before any data is read.
  */
 export const SPATIAL_ENGINE_KEY = "spatial";
-export const SPATIAL_ENGINE_VERSION = "1.0.0-m4";
+export const SPATIAL_ENGINE_VERSION = "1.0.0-m6";
 export const SPATIAL_REQUEST_CONTRACT = "jenan.spatial-analysis.request/v1";
 export const SPATIAL_RESULT_CONTRACT = "jenan.spatial-analysis.result/v1";
 
@@ -14,7 +14,7 @@ export const SPATIAL_RESULT_CONTRACT = "jenan.spatial-analysis.result/v1";
 export const spatialAnalyses = ["LOCATION_CONTEXT", "PROXIMITY", "CATCHMENT", "DENSITY", "CONSTRAINT_SCREENING", "SITE_COMPARISON"] as const;
 export type SpatialAnalysis = typeof spatialAnalyses[number];
 /** The analyses this version of the engine implements. A request for any other analysis is refused instead of being answered with silence. */
-export const SPATIAL_SUPPORTED_ANALYSES = ["LOCATION_CONTEXT", "PROXIMITY", "CATCHMENT"] as const satisfies readonly SpatialAnalysis[];
+export const SPATIAL_SUPPORTED_ANALYSES = spatialAnalyses;
 
 /** Left out of v1 on purpose; the result lists them so nobody mistakes a straight-line distance for a travel distance. */
 export const spatialExclusions = ["ROUTE_TRAVEL_TIME", "DRIVING_DISTANCE", "TERRAIN", "GEOCODING", "AI_RECOMMENDATION", "BUSINESS_RECOMMENDATION"] as const;

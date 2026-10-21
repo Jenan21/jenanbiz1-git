@@ -63,7 +63,7 @@ ORDER BY t."layerId" COLLATE "C"`,
 
   // ------------------------------------------------------------------------------------------------------------------- geometry
   /** $1 GeoJSON texts. */
-  geometryChecks: `SELECT t."ordinal"::int AS "ordinal", ST_IsValid(g."geom") AS "valid", ST_IsValidReason(g."geom") AS "reason"
+  geometryChecks: `  SELECT t."ordinal"::int AS "ordinal", ST_IsValid(g."geom") AND NOT ST_IsEmpty(g."geom") AND ST_SRID(g."geom") = 4326 AS "valid", ST_IsValidReason(g."geom") AS "reason"
 FROM unnest($1::text[]) WITH ORDINALITY AS t("geojson", "ordinal")
 CROSS JOIN LATERAL (SELECT ST_SetSRID(ST_GeomFromGeoJSON(t."geojson"), 4326) AS "geom") g
 ORDER BY t."ordinal"`,
@@ -215,6 +215,75 @@ SELECT v.valid,
   COALESCE((SELECT jsonb_agg(jsonb_build_object(
     'radiusMeters', c.radius, 'count', c.feature_count, 'populationEstimate', c.population_estimate
   ) ORDER BY c.radius) FROM catchments c), '[]'::jsonb) AS radii
+FROM validity v`,
+
+  /** Bounded analytical read: $1 features, $2 target, $3 radii, $4 search, $5 release, $6 layer, $7 recognized,
+   * $8 wanted, $9 density enabled, $10 cell metres, $11 epsilon metres, $12 minimum points. */
+  measureSpatial: `WITH target AS MATERIALIZED (
+  SELECT ST_SetSRID(ST_GeomFromGeoJSON($2::text), 4326) AS geom
+), settings AS MATERIALIZED (
+  SELECT t.geom, ST_Buffer(t.geom::geography, greatest($4::float8, (SELECT max(r) FROM unnest($3::float8[]) AS r)))::geometry AS search,
+    '+proj=aeqd +datum=WGS84 +units=m +lat_0=' || ST_Y(ST_PointOnSurface(t.geom))::text
+      || ' +lon_0=' || ST_X(ST_PointOnSurface(t.geom))::text AS projection
+  FROM target t
+), raw AS MATERIALIZED (
+  SELECT (j.ordinality - 1)::text AS id, ST_GeomFromGeoJSON(j.feature->'geometry') AS geom, true AS recognized
+  FROM jsonb_array_elements($1::jsonb) WITH ORDINALITY AS j(feature, ordinality)
+  UNION ALL
+  SELECT f."id"::text AS id, f."geometry" AS geom, COALESCE(f."sourceId" ~ $7::text, false) AS recognized
+  FROM "jenan_map"."feature" f CROSS JOIN settings s
+  WHERE f."releaseId" = $5::uuid AND f."layerId" = $6::text AND f."geometry" && ST_Envelope(s.search)
+    AND (f."sourceId" ~ $8::text OR f."sourceId" IS NULL OR f."sourceId" !~ $7::text)
+  LIMIT 10001
+), validity AS MATERIALIZED (
+  SELECT count(*) <= 10000 AS bounded,
+    COALESCE(bool_and(r.geom IS NOT NULL AND ST_IsValid(r.geom) AND NOT ST_IsEmpty(r.geom) AND ST_SRID(r.geom) = 4326
+      AND ST_XMin(r.geom) >= -180 AND ST_XMax(r.geom) <= 180 AND ST_YMin(r.geom) >= -90 AND ST_YMax(r.geom) <= 90), true) AS valid
+  FROM raw r
+), usable AS MATERIALIZED (
+  SELECT r.id, r.geom, r.recognized FROM raw r CROSS JOIN validity v WHERE v.valid AND v.bounded
+), near AS MATERIALIZED (
+  SELECT u.id, u.geom, u.recognized, ST_Distance(u.geom::geography, s.geom::geography) AS distance
+  FROM usable u CROSS JOIN settings s
+  WHERE ST_DWithin(u.geom::geography, s.geom::geography, greatest($4::float8, (SELECT max(r) FROM unnest($3::float8[]) AS r)))
+), density_points AS MATERIALIZED (
+  SELECT n.id, ST_Transform(n.geom, s.projection) AS geom
+  FROM near n CROSS JOIN settings s
+  WHERE $9::boolean AND n.recognized AND ST_GeometryType(n.geom) = 'ST_Point'
+    AND n.distance <= (SELECT max(r) FROM unnest($3::float8[]) AS r)
+), clustered AS MATERIALIZED (
+  SELECT p.id, p.geom, ST_ClusterDBSCAN(p.geom, $11::float8, $12::int) OVER (ORDER BY p.id COLLATE "C") AS cluster_id
+  FROM density_points p
+), cells AS (
+  SELECT floor(ST_X(p.geom) / $10::float8) AS x, floor(ST_Y(p.geom) / $10::float8) AS y, count(*)::int AS amount
+  FROM density_points p GROUP BY x, y
+), clusters AS (
+  SELECT c.cluster_id, count(*)::int AS amount FROM clustered c WHERE c.cluster_id IS NOT NULL GROUP BY c.cluster_id
+), radii AS (
+  SELECT r AS radius, ST_Buffer(s.geom::geography, r)::geometry AS geom
+  FROM unnest($3::float8[]) AS r CROSS JOIN settings s
+), intersection_union AS (
+  SELECT CASE WHEN NOT $9::boolean AND ST_Dimension(s.geom) = 2 THEN
+    (SELECT ST_UnaryUnion(ST_Collect(ST_CollectionExtract(ST_Intersection(n.geom, s.geom), 3))) FROM near n
+     WHERE n.recognized AND ST_Intersects(n.geom, s.geom))
+  END AS geom FROM settings s
+)
+SELECT v.valid AND v.bounded AS valid, NOT v.bounded AS truncated,
+  (SELECT count(*)::int FROM near n WHERE NOT n.recognized) AS unrecognized,
+  COALESCE((SELECT jsonb_agg(jsonb_build_object('radiusMeters', r.radius,
+    'count', (SELECT count(*)::int FROM near n WHERE n.recognized AND n.distance <= r.radius),
+    'areaKm2', ST_Area(r.geom::geography) / 1000000) ORDER BY r.radius) FROM radii r), '[]'::jsonb) AS radii,
+  NOT EXISTS (SELECT 1 FROM near n WHERE n.recognized AND n.distance <= (SELECT max(r) FROM unnest($3::float8[]) AS r)
+    AND ST_GeometryType(n.geom) <> 'ST_Point') AS "pointsOnly",
+  (SELECT count(*)::int FROM cells) AS "occupiedCells",
+  COALESCE((SELECT max(c.amount) FROM cells c), 0) AS "maxCellCount",
+  (SELECT count(*)::int FROM clusters) AS "clusterCount",
+  COALESCE((SELECT max(c.amount) FROM clusters c), 0) AS "largestCluster",
+  (SELECT count(*)::int FROM clustered c WHERE c.cluster_id IS NULL) AS "noiseCount",
+  (SELECT count(*)::int FROM near n CROSS JOIN target t WHERE n.recognized AND ST_Intersects(n.geom, t.geom)) AS intersects,
+  (SELECT count(*)::int FROM near n CROSS JOIN target t WHERE n.recognized AND ST_Covers(n.geom, t.geom)) AS covers,
+  COALESCE((SELECT ST_Area(o.geom::geography) / 1000000 FROM intersection_union o), 0) AS "overlapKm2",
+  (SELECT min(n.distance) FROM near n WHERE n.recognized AND n.distance <= $4::float8) AS "nearestMeters"
 FROM validity v`,
 } as const;
 

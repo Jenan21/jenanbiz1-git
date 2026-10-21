@@ -8,8 +8,8 @@ describe("spatial gap catalog", () => {
     expect(Object.keys(spatialOwnGapCatalog).sort()).toEqual([
       "ADMIN_AMBIGUOUS_ON_BOUNDARY", "ADMIN_NEAR_BOUNDARY", "ADMIN_TARGET_SPANS_UNITS", "ADMIN_UNIT_NOT_FOUND", "BOUNDARY_UNOFFICIAL", "DATASET_GEOMETRY_INVALID",
       "DATA_CENTER_COMPETING_DATASETS", "DATA_CENTER_CONTENT_INVALID", "DATA_CENTER_INTEGRITY_FAILED", "DATA_CENTER_NOT_IN_FORCE", "DATA_CENTER_PIN_CHANGED", "DATA_CENTER_TOO_MANY_CANDIDATES",
-      "DATA_CENTER_VERSION_NOT_SPATIAL", "MAP_DATA_CENTER_BINDING_CHANGED", "MAP_DATA_CENTER_BINDING_REFUSED", "MAP_NOT_PUBLISHED", "MAP_SOURCE_ID_UNRECOGNIZED",
-      "NETWORK_ANALYSIS_NOT_SUPPORTED", "POPULATION_AREA_WEIGHTED_ESTIMATE", "POPULATION_DATA_SCHEMA_UNSUPPORTED", "ROAD_LABEL_POINTS_ONLY",
+      "DATA_CENTER_VERSION_NOT_SPATIAL", "DENSITY_POINTS_REQUIRED", "MAP_DATA_CENTER_BINDING_CHANGED", "MAP_DATA_CENTER_BINDING_REFUSED", "MAP_NOT_PUBLISHED", "MAP_SOURCE_ID_UNRECOGNIZED",
+      "NETWORK_ANALYSIS_NOT_SUPPORTED", "POPULATION_AREA_WEIGHTED_ESTIMATE", "POPULATION_DATA_SCHEMA_UNSUPPORTED", "ROAD_LABEL_POINTS_ONLY", "SITE_METRIC_NOT_COMPARABLE", "SPATIAL_MEASUREMENT_UNSUPPORTED",
     ]);
     expect(Object.keys(spatialGapCatalog).sort()).toEqual([...Object.keys(sharedGapCatalog), ...Object.keys(spatialOwnGapCatalog)].sort());
     expect(Object.isFrozen(spatialGapCatalog)).toBe(true);
@@ -87,7 +87,7 @@ describe("spatial gap catalog", () => {
   });
 
   it("can render every code with the parameters its text names", () => {
-    const parameters = { dataset: "D", role: "r", limit: 1, backend: "b", from: "f", to: "t", assumption: "a", unit: "U", units: "A | B", distance: 1.5, count: 2, state: "enabled", typeKey: "geojson", asOf: "2026-01-01T00:00:00.000Z", code: "INVALID_GEOJSON", policy: "dc-version-selection-v1", reason: "INCONSISTENT", changes: "LICENSE_CHANGED" };
+    const parameters = { dataset: "D", role: "r", metric: "density.r500.count", limit: 1, backend: "b", from: "f", to: "t", assumption: "a", unit: "U", units: "A | B", distance: 1.5, count: 2, state: "enabled", typeKey: "geojson", asOf: "2026-01-01T00:00:00.000Z", code: "INVALID_GEOJSON", policy: "dc-version-selection-v1", reason: "INCONSISTENT", changes: "LICENSE_CHANGED" };
     for (const code of Object.keys(spatialGapCatalog) as Array<keyof typeof spatialGapCatalog>) {
       const gap = createGap(spatialGapCatalog, code, parameters);
       expect(gap.message.en).not.toMatch(/\{[A-Za-z]+\}/);

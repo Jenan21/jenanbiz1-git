@@ -3,23 +3,23 @@ import type { DataAvailability, EngineInput, EngineMetric } from "../shared/cont
 import { createGap, normalizeGaps, type Gap } from "../shared/gaps";
 import { platformStateFor, type MetricStatus } from "../shared/states";
 import type { ResolvedDataSource } from "./data-sources";
-import { scoreSpatialConfidence, metricStatusForBlocks, type CoverageAssessment } from "./confidence";
+import { scoreSpatialConfidence, metricStatusForBlocks } from "./confidence";
 import { buildMapFeatureRef } from "./map-contract";
 import { MapReadError } from "./map-read-error";
 import type { FeatureMapSourceState } from "./map-state";
 import { isFeatureRole, isPopulationRole, type SpatialLocation, type SpatialParameters } from "./contracts";
 import { SEARCH_LADDER_METERS } from "./constants";
-import { boundingBoxOf } from "./geometry-precheck";
+import { coverageFor } from "./coverage";
 import type { SpatialMapPort, DatasetMeasureResult, MapNearestResult } from "./map-port";
 import type { ContextTarget } from "./location-context";
 import { spatialGapCatalog } from "./gaps";
 import type { SpatialDatasetFeature } from "./dataset-features";
 
-type AvailableSource =
+export type AvailableSource =
   | { role: string; kind: "MAP"; input: EngineInput; releaseId: string; layerKey: string }
   | { role: string; kind: "DATA_CENTER"; input: EngineInput; features: readonly SpatialDatasetFeature[] };
 type MissingSource = { role: string; kind: "MISSING"; status: MetricStatus; input: EngineInput | null; referenceKind: "MAP" | "DATA_CENTER" | null };
-type FeatureSource = AvailableSource | MissingSource;
+export type FeatureSource = AvailableSource | MissingSource;
 type TargetMetrics = { analysis: "PROXIMITY" | "CATCHMENT"; target: string; metrics: EngineMetric[] };
 
 const GEOMETRY = { fit: "SUITABLE", positionalAccuracy: "UNDECLARED", valid: true } as const;
@@ -32,16 +32,6 @@ const roleTitle = (role: string) => role.replace(":", " ");
 const radiusLabel = (radius: number) => `${radius} m`;
 const clip = (value: string, max: number) => (value.length <= max ? value : `${value.slice(0, max - 1)}…`);
 
-function coverageFor(input: EngineInput, location: SpatialLocation): CoverageAssessment {
-  const extent = input.coverage?.boundingBox;
-  if (extent === undefined || extent === null) return { status: "UNDECLARED" };
-  const target = boundingBoxOf(location);
-  const intersects = target.west <= extent.east && target.east >= extent.west && target.south <= extent.north && target.north >= extent.south;
-  if (!intersects) return { status: "NONE" };
-  const contains = extent.west <= target.west && extent.east >= target.east && extent.south <= target.south && extent.north >= target.north;
-  return { status: contains ? "FULL" : "UNDECLARED" };
-}
-
 function sourceFromDataCenter(source: ResolvedDataSource): FeatureSource {
   if (source.status === "RESOLVED") return { role: source.role, kind: "DATA_CENTER", input: source.input, features: source.features };
   const status: MetricStatus = source.status === "NO_COVERAGE" ? "NO_COVERAGE"
@@ -49,7 +39,7 @@ function sourceFromDataCenter(source: ResolvedDataSource): FeatureSource {
   return { role: source.role, kind: "MISSING", status, input: null, referenceKind: "DATA_CENTER" };
 }
 
-function dataCenterFeature(source: AvailableSource & { kind: "DATA_CENTER" }) {
+export function dataCenterFeature(source: AvailableSource & { kind: "DATA_CENTER" }) {
   return source.features.map((feature) => ({
     type: "Feature",
     ...(feature.id === null ? {} : { id: feature.id }),
@@ -151,6 +141,11 @@ function mapSource(input: EngineInput, source: FeatureMapSourceState): FeatureSo
 
 function missingSource(role: string, status: MetricStatus = "NOT_AVAILABLE", referenceKind: MissingSource["referenceKind"] = null, input: EngineInput | null = null): FeatureSource {
   return { role, kind: "MISSING", status, input, referenceKind };
+}
+
+function sourceAtTarget(source: FeatureSource, target: ContextTarget): FeatureSource {
+  if (source.kind === "MISSING" || coverageFor(source.input, target.location).status !== "NONE") return source;
+  return missingSource(source.role, "NO_COVERAGE", source.kind, source.input);
 }
 
 function availabilityFor(sources: readonly FeatureSource[], targets: readonly ContextTarget[]): DataAvailability[] {
@@ -371,7 +366,7 @@ export async function runFeatureAnalyses(args: {
   const gaps: Gap[] = [];
   const featureRoles = args.parameters.roles.filter(isFeatureRole);
   const requestedRoles = featureRoles.length + (args.parameters.roles.some(isPopulationRole) ? 1 : 0);
-  const availableRoles = args.sources.filter((source) => source.kind !== "MISSING").length;
+  const availableRoles = args.sources.filter((source) => source.kind !== "MISSING" && (isFeatureRole(source.role) || isPopulationRole(source.role))).length;
   const selectedSources = new Map(args.sources.map((source) => [source.role, source]));
   const dataCenters = new Map(args.sources.filter((source): source is AvailableSource & { kind: "DATA_CENTER" } => source.kind === "DATA_CENTER").map((source) => [source.role, source]));
   const populationSchemas = new Map<string, boolean>();
@@ -396,10 +391,15 @@ export async function runFeatureAnalyses(args: {
     return request;
   };
   for (const target of args.targets) {
+    if (args.analyses.includes("PROXIMITY") || args.analyses.includes("CATCHMENT")) {
+      for (const source of args.sources) if (source.kind !== "MISSING" && coverageFor(source.input, target.location).status === "NONE") {
+        gaps.push(coverageGap(source.input, `${target.id}/${source.role}`));
+      }
+    }
     if (args.analyses.includes("PROXIMITY")) {
       const metrics: EngineMetric[] = [];
       for (const role of featureRoles) {
-        const source = selectedSources.get(role) ?? missingSource(role);
+        const source = sourceAtTarget(selectedSources.get(role) ?? missingSource(role), target);
         let nearest: MapNearestResult | DatasetMeasureResult | null = null;
         let failureStatus: MetricStatus | undefined;
         if (source.kind === "MAP") {
@@ -437,7 +437,7 @@ export async function runFeatureAnalyses(args: {
     if (args.analyses.includes("CATCHMENT")) {
       const metrics: EngineMetric[] = [];
       for (const role of featureRoles) {
-        const source = selectedSources.get(role) ?? missingSource(role);
+        const source = sourceAtTarget(selectedSources.get(role) ?? missingSource(role), target);
         let measurement: DatasetMeasureResult | null = null;
         let mapCounts: Array<{ radiusMeters: number; count: number; unrecognized: number }> | null = null;
         let failureStatus: MetricStatus | undefined;
@@ -471,7 +471,7 @@ export async function runFeatureAnalyses(args: {
       }
       const populationSource = args.parameters.roles.find(isPopulationRole);
       if (populationSource !== undefined) {
-        const source = selectedSources.get(populationSource) ?? missingSource(populationSource);
+        const source = sourceAtTarget(selectedSources.get(populationSource) ?? missingSource(populationSource), target);
         let measurement: DatasetMeasureResult | null = null;
         let failureStatus: MetricStatus | undefined;
         if (source.kind === "DATA_CENTER") {

@@ -5,7 +5,7 @@ import {
 import { DataCenterProviderError, type SpatialDataCenterPort } from "./data-center-port";
 import { PRIMARY_TARGET_ID, SPATIAL_ENGINE_KEY, SPATIAL_ENGINE_VERSION, SPATIAL_REQUEST_CONTRACT, SPATIAL_RESULT_CONTRACT, SPATIAL_SUPPORTED_ANALYSES, spatialExclusions } from "./constants";
 import { spatialConfidencePolicy } from "./confidence";
-import { compareAnalysisResults, isFeatureRole, isPlaceRole, isPopulationRole, spatialResultSchema, type SpatialNormalizedRequest, type SpatialResult } from "./contracts";
+import { compareAnalysisResults, isConstraintRole, isFeatureRole, isPlaceRole, isPopulationRole, spatialResultSchema, type SpatialNormalizedRequest, type SpatialResult } from "./contracts";
 import { spatialGapCatalog } from "./gaps";
 import { computeLocationContext, type ContextTarget, type TargetContext } from "./location-context";
 import { mapAdminLayers, mapLayerForRole, type MapDescription } from "./map-contract";
@@ -17,6 +17,9 @@ import { targetGeography } from "./dataset-features";
 import { resolveFeatureSources, runFeatureAnalyses } from "./feature-analysis";
 import { prepareSpatialRequest } from "./prepare";
 import type { SpatialBackendCapabilities } from "./ports";
+import { runAdvancedAnalyses } from "./advanced-analysis";
+import { compareSites } from "./site-comparison";
+import { coverageFor } from "./coverage";
 
 /**
  * Runs the Spatial Engine for the analyses this version implements. The engine reads the Map through a port and writes
@@ -114,10 +117,10 @@ function selectionsForRoles(request: SpatialNormalizedRequest, roles: ReadonlySe
   return Object.fromEntries(Object.entries(request.data.roles).filter(([role]) => roles.has(role)));
 }
 
-function metricRoles(request: SpatialNormalizedRequest): string[] {
-  if (!request.analyses.some((analysis) => analysis === "PROXIMITY" || analysis === "CATCHMENT")) return [];
-  const roles = request.parameters.roles.filter(isFeatureRole);
+export function measuredSpatialRoles(request: SpatialNormalizedRequest): string[] {
+  const roles = request.analyses.some((analysis) => ["PROXIMITY", "CATCHMENT", "DENSITY"].includes(analysis)) ? request.parameters.roles.filter(isFeatureRole) : [];
   if (request.analyses.includes("CATCHMENT")) roles.push(...request.parameters.roles.filter(isPopulationRole));
+  if (request.analyses.includes("CONSTRAINT_SCREENING")) roles.push(...request.parameters.roles.filter(isConstraintRole));
   return [...new Set(roles)].sort(compareText);
 }
 
@@ -160,15 +163,7 @@ export async function runSpatialAnalysis(port: SpatialMapPort, input: unknown, o
   if (unsupported !== undefined) throw new EngineError("INVALID_INPUT", { reason: "analysis_not_supported", analysis: unsupported });
   const wantsContext = normalized.analyses.includes("LOCATION_CONTEXT");
   const placeRoles = wantsContext ? normalized.parameters.roles.filter(isPlaceRole) : [];
-  const measuredRoles = metricRoles(normalized);
-  const featureRoleCount = normalized.parameters.roles.filter(isFeatureRole).length;
-  const populationRoleCount = normalized.parameters.roles.filter(isPopulationRole).length;
-  const proximityMetricCount = normalized.analyses.includes("PROXIMITY")
-    ? featureRoleCount * normalized.parameters.nearestCount * 3 : 0;
-  const catchmentMetricCount = normalized.analyses.includes("CATCHMENT")
-    ? (featureRoleCount + populationRoleCount) * normalized.parameters.radiiMeters.length : 0;
-  const requestedMetricCount = Math.max(proximityMetricCount, catchmentMetricCount);
-  if (requestedMetricCount > 500) throw new EngineError("REQUEST_TOO_LARGE", { reason: "result_metric_limit", maximum: 500, requested: requestedMetricCount });
+  const measuredRoles = measuredSpatialRoles(normalized);
   const pins = readPins(normalized, placeRoles, new Set(measuredRoles));
   if (options.replay) for (const role of [...new Set([...placeRoles, ...measuredRoles])]) {
     if (pins.get(role) == null && options.replay.mapReleaseByRole[role] !== undefined) pins.set(role, options.replay.mapReleaseByRole[role] as string);
@@ -181,7 +176,7 @@ export async function runSpatialAnalysis(port: SpatialMapPort, input: unknown, o
   const mapRequests = featureMapRequests(normalized, measuredRoles, pins);
   const describedLayers = [
     ...(wantsContext ? [...mapAdminLayers, ...(placeRoles.length > 0 ? ["places"] : [])] : []),
-    ...mapRequests.filter((request) => request.releaseId === null).map((request) => request.layerKey),
+    ...mapRequests.map((request) => request.layerKey),
   ];
   let published: MapDescription;
   const pinned = new Map<string, MapDescription>();
@@ -231,14 +226,30 @@ export async function runSpatialAnalysis(port: SpatialMapPort, input: unknown, o
   const featureResults = await runFeatureAnalyses({
     port, targets, sources: featureSources, analyses: normalized.analyses, parameters: normalized.parameters, evaluatedAt,
   });
-  const results = [...contextResults, ...featureResults.results].sort(compareAnalysisResults);
+  const advanced = await runAdvancedAnalyses({ port, targets, sources: featureSources, analyses: normalized.analyses, parameters: normalized.parameters, evaluatedAt });
+  const baseResults = [...contextResults, ...featureResults.results, ...advanced.results];
+  const inputs = uniqueInputs(resolved.inputs, resolvedMapFeatures.inputs, dataCenter.inputs);
+  const comparison = normalized.analyses.includes("SITE_COMPARISON") ? compareSites(baseResults, targets.map((target) => target.id), (targetId, metric) => {
+    const target = targets.find((entry) => entry.id === targetId);
+    const radiusMatch = /\.r([0-9]+)\./.exec(metric.key);
+    const radius = radiusMatch ? Number(radiusMatch[1]) : metric.key.includes(".grid.") || metric.key.includes(".cluster.")
+      ? Math.max(...normalized.parameters.radiiMeters) : metric.valueKind === "DISTANCE" && !metric.key.startsWith("context.")
+        ? normalized.parameters.maxSearchMeters : 0;
+    return target !== undefined && metric.inputRefs.length > 0 && metric.inputRefs.every((id) => {
+      const input = inputs.find((entry) => entry.id === id);
+      return input !== undefined && coverageFor(input, target.location, radius).status === "FULL";
+    });
+  }) : { results: [], gaps: [] };
+  const results = [...baseResults, ...comparison.results].sort(compareAnalysisResults);
 
   // ------------------------------------------------------------------------------------------------------------------ gaps
-  const inputs = uniqueInputs(resolved.inputs, resolvedMapFeatures.inputs, dataCenter.inputs);
   const unofficial = resolved.state.boundaryFacts === null || !resolved.state.boundaryFacts.official;
   const gaps: Gap[] = [
-    ...resolved.gaps, ...resolvedMapFeatures.gaps, ...dataCenter.gaps, ...featureResults.gaps,
+    ...resolved.gaps, ...resolvedMapFeatures.gaps, ...dataCenter.gaps, ...featureResults.gaps, ...advanced.gaps, ...comparison.gaps,
     ...inputs.flatMap((entry) => deriveInputGaps(entry)), ...contexts.flatMap(({ context }) => context.gaps),
+    ...inputs.filter((entry) => entry.completeness !== "INVENTORY" && results.some((result) => result.metrics.some((metric) =>
+      (metric.valueKind === "COUNT" || metric.valueKind === "DENSITY") && metric.inputRefs.includes(entry.id))))
+      .map((entry) => createGap(spatialGapCatalog, "COUNT_IS_NOT_AN_INVENTORY", {}, { inputId: entry.id })),
   ];
   if (wantsContext && unofficial) for (const entry of inputs.filter((candidate) => candidate.roles.some((role) => role.startsWith("admin:")))) {
     gaps.push(createGap(spatialGapCatalog, "BOUNDARY_UNOFFICIAL", { dataset: entry.ref.label }, { inputId: entry.id }));

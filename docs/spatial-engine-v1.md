@@ -15,7 +15,7 @@ Six analyses, all expressed as documented spatial facts and measurements:
 | `CATCHMENT` | Counts per role within each radius; population when a population dataset exists |
 | `DENSITY` | Feature density, clusters and grid counts |
 | `CONSTRAINT_SCREENING` | Whether the location touches constraint areas (for example protected areas) |
-| `SITE_COMPARISON` | The same measurements side by side for the main location and its candidates, with no ranking |
+| `SITE_COMPARISON` | Common-source measurements, min-max normalization and descriptive numeric ordering; no preference or business verdict |
 
 Left out of v1 on purpose, and listed in every result under `capabilities.excluded`: route and
 travel time, driving distance, terrain, geocoding, AI recommendations, and financial or
@@ -25,9 +25,8 @@ The engine never says a location is good or bad and never says what to do. It st
 the limits of the data behind them. Interpretation belongs to the later engines and the final
 decision to the Risk & Decision Engine.
 
-The v1 scope lists all six analyses; the implementation currently exposes `LOCATION_CONTEXT`,
-`PROXIMITY` and `CATCHMENT`. `DENSITY`, `CONSTRAINT_SCREENING` and `SITE_COMPARISON` remain
-unavailable until M6 and are refused rather than returned as empty results.
+M6 implements all six analyses. Availability remains a per-source, per-target decision:
+implementing an analysis does not create the production data it needs.
 
 ### Engine capability and production data
 
@@ -109,8 +108,10 @@ same hash. It cannot be later than the evaluation instant (with the same minute 
 tolerance): a selection "as of" a time that has not come selects nothing that was in force. A
 replay that pins an earlier evaluation instant holds the selection to that instant.
 
-`prepareSpatialRequest` normalizes, estimates the cost and refuses a request above the server
-budget (`REQUEST_TOO_LARGE`).
+`prepareSpatialRequest` normalizes, bounds the total output across all analyses and targets
+(including comparison derivatives) to 500 metrics, estimates cost and refuses an oversized
+request before any backend read (`REQUEST_TOO_LARGE`). A server budget increase never bypasses
+the metric ceiling.
 
 ### Map layer policy
 
@@ -587,7 +588,7 @@ which assumes population is distributed uniformly within each polygon. Such a re
 population schemas produce no estimate.
 
 Data Center geometries are checked by PostGIS before measurement. Invalid geometry yields no
-distance, count or population measurement. Each analysis-target result is limited to 500 metrics;
+distance, count or population measurement. Since M6 the entire run is limited to 500 metrics;
 the engine rejects a request that would exceed the ceiling before reading a backend and never
 truncates requested results.
 
@@ -656,24 +657,102 @@ machine was loaded were up to ten times slower, so these figures are a baseline 
 performance gate, not a promise. The heaviest case is an area that holds many places (the
 nearest-place search ranks them all); the statement timeout fails it safe.
 
+## DENSITY, CONSTRAINT_SCREENING and SITE_COMPARISON (M6)
+
+These capabilities remain inside the engine and its read-only PostGIS adapter. No Map or
+Data Center table, migration or service is changed. M5 persistence captures their source versions,
+hashes, per-role selection and usage in the same append-only history. Historical replay uses
+the same measured-role selection for all analyses, including constraint roles; no current-version
+discovery or fallback is added.
+
+### Density
+
+For each feature role and radius, `density.<role>.r<metres>.count` is the observed number of
+features within geodesic distance of the target, and `.per_km2` divides that count by the
+geodesic area of the buffered target. For an area target this is its buffer, not just a circle
+around a centroid. Radii retain their common request values across sites.
+
+At the largest radius, `.grid.occupied_cells` and `.grid.max_cell_count` summarize a square
+grid of point observations. `.cluster.count`, `.cluster.largest` and `.cluster.noise` summarize
+`ST_ClusterDBSCAN` using the requested epsilon and minimum point count. Both methods operate
+in a target-centred WGS84 azimuthal equidistant metre projection. Cell keys are
+`floor(x / cellMeters), floor(y / cellMeters)` with the target anchor at the origin. DBSCAN's
+window order is the immutable feature identifier (Data Center content index when no Map id is
+involved), compared bytewise. This is local clustering, not a nationwide market inventory.
+The output is bounded summaries, not cell geometries or cluster membership exports.
+
+Lines, polygons and multipoints can be counted by radius, but are never silently converted to
+representative points for grid/cluster analysis: those metrics are `NOT_COMPUTABLE` with
+`DENSITY_POINTS_REQUIRED`. The SQL rejects invalid, empty, out-of-range or wrong-SRID features
+before measurement. It reads at most 10,001 candidate features; more than 10,000 refuses the
+analysis with `RESULT_TRUNCATED`, rather than clustering or reporting a partial sample as a
+successful calculation. Existing statement timeouts still apply.
+
+### Constraint screening
+
+Constraint roles select Data Center geometry; the frozen Map contract has no constraint layer.
+For each role the engine emits intersection count (`ST_Intersects`), target containment count
+(`ST_Covers`), overlap area, bounded nearest distance and counts within every requested radius
+(`ST_DWithin`). Overlap is the geodesic area of the **union** of polygon intersections, avoiding
+double counting overlapping constraints. Area overlap is unavailable for point targets;
+nearest distance is straight-line and bounded by `maxSearchMeters`.
+
+These are spatial facts only, never legal conclusions or an assurance that a site is clear.
+Without a usable source, metrics are null `NOT_AVAILABLE`; out-of-extent targets are null
+`NO_COVERAGE`, and expensive measurement is skipped. Current Map sample data is not a source of
+legal constraint polygons.
+
+### Coverage, zeros, confidence and comparison
+
+Exact pins are checked for each target before measurement. Each radius is also checked against
+the declared bounding box; an extent that does not establish full search coverage cannot prove
+a zero. A zero for count/density/grid/cluster/constraint absence is returned only for a declared
+`INVENTORY` that covers the relevant search. Otherwise zero becomes null `NOT_COMPUTABLE` with
+an explicit gap. Positive observations from `SAMPLE`/`UNKNOWN` or incomplete search coverage
+are `PARTIAL`. Data Center completeness remains `UNKNOWN`; the engine never invents inventory
+metadata. Positive constraint distance zero means an observed contact, not absence.
+
+Every valued M6 metric uses `spatial-confidence-v1` and retains input references, limitations,
+a method identifier and the normal input-level source/version/hash/rights/export/attribution
+envelope. M6 observed constraint measurements also retain the non-inventory confidence cap;
+successful geometry arithmetic never upgrades sample completeness.
+
+Comparison permits the existing maximum of **20 candidates plus the primary target**. It
+resolves a role's source once, then applies identical radii and parameters to every target.
+For each numerical base metric it emits `comparison.<base-key>.normalized` (unitless `RATIO`,
+min-max in [0, 1], equal values map to 0.5) and `.rank` (`ORDINAL`, descending numerical order,
+ties broken by target id). These additive shared metric kinds are not business scores. There
+is no combined rank, recommendation, preferred site or success probability.
+
+A comparison is refused for that entire metric group if any site has no value, a different
+input/method/unit, or lacks established coverage for the relevant search. It emits null
+`NOT_COMPUTABLE` derivatives and `SITE_METRIC_NOT_COMPARABLE`; it does not silently drop an
+unavailable site. Comparison confidence is the weakest contributing confidence band and score,
+never a bonus for normalization. Each site's underlying results and target-scoped gaps remain
+available in the same run.
+
+No new migrations or external services are required. Tests distinguish synthetic geometry on
+real PostGIS, real migrated PostgreSQL persistence/replay, and actual Saudi Map acceptance.
+Missing real constraint/population data remains an acceptance gap, not a synthetic success.
+
 ## Known limits
 
 - The Map has no index on `layerId`; the layer checks scan the release's features (about 80 ms on
   the real release). The Map's schema must not change for the engine, so this is a
   recommendation to the Map.
 - The freshness periods are engine defaults, not Map declarations.
-- M4 rejects requests that would exceed 500 metrics in any analysis-target result entry; it does
-  not truncate results.
+- M6 rejects requests whose conservative total output bound exceeds 500 metrics across all
+  targets, analyses and comparison derivatives; it does not truncate results.
 - The cost weights remain provisional until M7.
 - A Data Center dataset's completeness is `UNKNOWN`: the Data Center does not record it, so a
   count from it is never presented as an inventory.
 - Data Center content is validated structurally (WGS84, ranges, closed rings, limits); topological
   validity is decided by PostGIS before M4 measurement.
-- An exact Data Center version is used as given and is not narrowed by place; its declared coverage
-  is stated in its input, and M4 compares it with the target and reports `NO_COVERAGE` where it
-  does not apply.
-- Only the published version of a Data Center item is served, so `asOf` cannot reach a version
-  that has since been superseded; it only narrows what is served today.
+- An exact Data Center version is never replaced by a geographic alternative; M6 checks its
+  declared extent against each target before measurement and checks search coverage before
+  stating a confirmed zero or ranking comparable metrics.
+- Ordinary Data Center discovery serves published versions only. M5's separately authorized
+  internal historical reader can replay an exact saved superseded version, never a fallback.
 - The Map records no binding to a Data Center version yet, so the reconciliation is a tested
   capability that the engine run does not call.
 - CodeQL runs only for pull requests into `main`; its trigger needs to include
@@ -687,8 +766,8 @@ nearest-place search ranks them all); the statement timeout fails it safe.
 | M2 | Read-only Map adapter over PostGIS, a Map read contract test, `LOCATION_CONTEXT` | Done |
 | M3 | Data Center discovery and content read functions (on the engines branch only), the provider, deterministic version selection, request selections, Map reference reconciliation, prepared usage | Done |
 | M4 | `PROXIMITY` and `CATCHMENT` | Done |
-| M5 | `AnalysisEngineRun` models and additive migration, audit, admin acceptance route (no UI) | Planned |
-| M6 | `DENSITY`, `CONSTRAINT_SCREENING`, `SITE_COMPARISON` | Planned |
+| M5 | Append-only run/input/usage persistence and authorized exact historical replay, no public history discovery | Closed at `f09aedc` |
+| M6 | `DENSITY`, `CONSTRAINT_SCREENING`, `SITE_COMPARISON` | Implemented; checkpoint review, not final engine closure |
 | M7 | Real-data performance, documentation, closure gate | Planned |
 
 ### Closure gate

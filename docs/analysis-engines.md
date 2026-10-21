@@ -229,3 +229,9 @@ A later engine extends the shared vocabularies in its own commit, with tests (fo
 value kind and unit for currency amounts, or ratios). An existing member never changes meaning.
 Each engine publishes its own gap catalog (combined with the shared one, a duplicate code is
 refused), its own confidence policy, and its own cost policy.
+
+Spatial M6 adds optional metric `method`, numerical `RATIO` (`ratio` unit) for normalized
+observations and integer `ORDINAL` (`none` unit) for descriptive numerical ordering. Existing
+metrics omit the optional field unchanged. Neither kind is a feasibility or success score.
+The full Spatial request, including every target and comparison derivative, is bounded to
+500 metrics before any backend read. See [Spatial M6](spatial-engine-v1.md#density-constraint_screening-and-site_comparison-m6).

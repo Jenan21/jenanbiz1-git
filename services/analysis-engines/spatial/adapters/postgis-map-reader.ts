@@ -9,6 +9,7 @@ import {
 import { MapReadError } from "../map-read-error";
 import type {
   DatasetMeasureRequest, DatasetMeasureResult, GeometryCheck, MapAdminUnit, MapCountRequest, MapCountResult, MapDescribeRequest, MapLocateRequest, MapLocateResult, MapNearestFeature, MapNearestRequest, MapNearestResult, SpatialMapPort,
+  SpatialMeasureRequest, SpatialMeasureResult,
 } from "../map-port";
 import type { SpatialBackendCapabilities } from "../ports";
 import { openReadOnlySession, type ReadOnlySession, type ReadOnlySessionConfig, type SessionPool } from "./read-only-session";
@@ -47,6 +48,13 @@ const datasetMeasureRow = z.object({
   valid: z.boolean(),
   nearest: z.array(z.object({ index: z.number().int().nonnegative(), id: z.string().nullable(), name: z.string().nullable(), distanceMeters: z.number().nonnegative() }).strict()),
   radii: z.array(z.object({ radiusMeters: z.number().positive(), count: z.number().int().nonnegative(), populationEstimate: z.number().nonnegative().nullable() }).strict()),
+}).strict();
+const spatialMeasureRow = z.object({
+  valid: z.boolean(), truncated: z.boolean(), unrecognized: z.number().int().nonnegative(),
+  radii: z.array(z.object({ radiusMeters: z.number().positive(), count: z.number().int().nonnegative(), areaKm2: z.number().positive() }).strict()),
+  pointsOnly: z.boolean(), occupiedCells: z.number().int().nonnegative(), maxCellCount: z.number().int().nonnegative(),
+  clusterCount: z.number().int().nonnegative(), largestCluster: z.number().int().nonnegative(), noiseCount: z.number().int().nonnegative(),
+  intersects: z.number().int().nonnegative(), covers: z.number().int().nonnegative(), overlapKm2: z.number().nonnegative(), nearestMeters: z.number().nonnegative().nullable(),
 }).strict();
 
 /** A row that is not what the contract says is a changed Map, not a bad request: the read fails closed instead of coercing it. */
@@ -223,6 +231,24 @@ export class PostgisMapReader implements SpatialMapPort {
           populationEstimate: entry.populationEstimate === null ? null : roundTo(entry.populationEstimate, 1),
         })),
       };
+    });
+  }
+
+  async measureSpatial(request: SpatialMeasureRequest): Promise<SpatialMeasureResult> {
+    const source = request.source;
+    if (source.kind === "MAP" && !isMapTileLayer(source.layerId)) throw new MapReadError("SCHEMA_MISMATCH");
+    const recognized = source.kind === "MAP" && isMapTileLayer(source.layerId) ? sourceIdPattern(source.layerId) : "";
+    const wanted = source.kind === "MAP" && isMapTileLayer(source.layerId)
+      ? sourceIdPattern(source.layerId, source.featureKind ?? undefined) : "";
+    return this.session.run(async (query) => {
+      const row = parseRows(spatialMeasureRow, await query(QUERIES.measureSpatial, [
+        JSON.stringify(source.kind === "DATA_CENTER" ? source.features : []), JSON.stringify(request.location),
+        [...request.radiiMeters], request.maxSearchMeters, source.kind === "MAP" ? source.releaseId : null,
+        source.kind === "MAP" ? source.layerId : null, recognized, wanted, request.analysis === "DENSITY",
+        request.grid.cellMeters, request.cluster.epsMeters, request.cluster.minPoints,
+      ]))[0];
+      if (row === undefined || row.radii.length !== request.radiiMeters.length) throw new MapReadError("SCHEMA_MISMATCH");
+      return row;
     });
   }
 

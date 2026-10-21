@@ -4,10 +4,10 @@ import { mapReferenceSchema } from "@/services/data-center/map-contract";
 import { dataCenterSelectionTraceSchema, type DataCenterSelectionTrace } from "../../shared/contracts";
 import type { RunRecord } from "../../shared/run-record";
 import type { SpatialMapPort } from "../map-port";
-import { isFeatureRole, isPopulationRole, spatialResultSchema, type SpatialNormalizedRequest, type SpatialResult } from "../contracts";
+import { spatialResultSchema, type SpatialNormalizedRequest, type SpatialResult } from "../contracts";
 import type { DataCenterDiscovery, DataCenterSelection, SpatialDataCenterPort } from "../data-center-port";
 import { dataSourceRequestsOf } from "../data-sources";
-import { runSpatialAnalysis } from "../engine";
+import { measuredSpatialRoles, runSpatialAnalysis } from "../engine";
 import { HistoricalVersionIntegrityError, HistoricalVersionUnavailable, readHistoricalDataCenterVersion } from "./historical-data-center";
 import { readAnalysisEngineRunForReplay } from "./run-persistence";
 
@@ -84,13 +84,7 @@ function mapPins(record: RunRecord, result: SpatialResult): { mapReleaseId: stri
 }
 
 function replayQueue(request: SpatialNormalizedRequest, record: RunRecord, provenance: ReadonlyMap<string, unknown>) {
-  const performsFeatureAnalysis = request.analyses.some((analysis) => analysis === "PROXIMITY" || analysis === "CATCHMENT");
-  const roles = performsFeatureAnalysis
-    ? [...new Set([
-      ...request.parameters.roles.filter(isFeatureRole),
-      ...(request.analyses.includes("CATCHMENT") ? request.parameters.roles.filter(isPopulationRole) : []),
-    ])].sort()
-    : [];
+  const roles = measuredSpatialRoles(request);
   const selections = Object.fromEntries(Object.entries(request.data.roles).filter(([role, selection]) => roles.includes(role) && selection.source === "DATA_CENTER"));
   const requests = dataSourceRequestsOf(selections);
   const inputsByRole = new Map<string, {

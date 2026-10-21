@@ -2,6 +2,7 @@ import type { SpatialLocation } from "@/services/analysis-engines/spatial/contra
 import type { MapDescription } from "@/services/analysis-engines/spatial/map-contract";
 import type {
   DatasetMeasureRequest, DatasetMeasureResult, GeometryCheck, MapCountRequest, MapCountResult, MapDescribeRequest, MapLocateRequest, MapLocateResult, MapNearestRequest, MapNearestResult, SpatialMapPort,
+  SpatialMeasureRequest, SpatialMeasureResult,
 } from "@/services/analysis-engines/spatial/map-port";
 import type { SpatialBackendCapabilities } from "@/services/analysis-engines/spatial/ports";
 import { realDescription, RELEASE_ID } from "./spatial-map-fixtures";
@@ -48,6 +49,7 @@ export interface FakeBehaviour {
   nearest?: Reply<MapNearestRequest, MapNearestResult>;
   countFeatures?: Reply<MapCountRequest, MapCountResult>;
   measureDataset?: Reply<DatasetMeasureRequest, DatasetMeasureResult>;
+  measureSpatial?: Reply<SpatialMeasureRequest, SpatialMeasureResult>;
 }
 
 /** A Map port that answers from a script and records every request, so analyses can be tested without a database. */
@@ -87,6 +89,14 @@ export class FakeMapPort implements SpatialMapPort {
   async measureDataset(request: DatasetMeasureRequest) {
     return this.answer("measureDataset", request, this.behaviour.measureDataset, (asked) => ({
       valid: true, nearest: [], radii: asked.radiiMeters.map((radiusMeters) => ({ radiusMeters, count: 0, populationEstimate: null })),
+    }));
+  }
+  async measureSpatial(request: SpatialMeasureRequest) {
+    return this.answer("measureSpatial", request, this.behaviour.measureSpatial, (asked) => ({
+      valid: true, truncated: false, unrecognized: 0, pointsOnly: true,
+      radii: asked.radiiMeters.map((radiusMeters) => ({ radiusMeters, count: 0, areaKm2: Math.PI * (radiusMeters / 1000) ** 2 })),
+      occupiedCells: 0, maxCellCount: 0, clusterCount: 0, largestCluster: 0, noiseCount: 0,
+      intersects: 0, covers: 0, overlapKm2: 0, nearestMeters: null,
     }));
   }
 }

@@ -2,6 +2,7 @@ import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { buildRunRecord, runRecordSchema, type EngineError } from "@/services/analysis-engines/shared";
 import { runSpatialAnalysis, type RunSpatialOptions, type SpatialResult } from "@/services/analysis-engines/spatial";
 import { buildReadOnlyRoleStatements, PostgisMapReader } from "@/services/analysis-engines/spatial/adapters";
+import type { SpatialMeasureRequest } from "@/services/analysis-engines/spatial/map-port";
 import { parseMapFeatureRef } from "@/services/analysis-engines/spatial/map-contract";
 import { contextRequest, expectNoVerdictsAndNoPercentages, failureOf, gapCodes, gapsOf, metricsOf, statuses } from "../unit/support/spatial-run";
 import {
@@ -80,6 +81,102 @@ describe.runIf(postgisTestsEnabled)("LOCATION_CONTEXT over a real PostGIS: the s
       }
     });
 
+    describe("M6 PostGIS analytics on explicitly synthetic geometry", () => {
+      const feature = (geometry: unknown) => ({ type: "Feature", properties: {}, geometry });
+      const measure = async (features: unknown[], over: Partial<SpatialMeasureRequest> = {}) => {
+        const reader = new PostgisMapReader({ connectionString: readOnlyUrl });
+        try {
+          return await reader.measureSpatial({
+            source: { kind: "DATA_CENTER", features }, location: point(42.5, 22.5), analysis: "DENSITY",
+            radiiMeters: [500, 3000], maxSearchMeters: 5000,
+            grid: { cellMeters: 500 }, cluster: { epsMeters: 200, minPoints: 3 }, ...over,
+          });
+        } finally { await reader.close(); }
+      };
+      it("counts by geodesic radius and computes DBSCAN/grid summaries with reproducible ordering", async () => {
+        const features = [0, 0.001, 0.002, 0.02].map((offset) => feature(point(42.5 + offset, 22.5)));
+        const result = await measure(features);
+        expect(result).toMatchObject({ valid: true, truncated: false, pointsOnly: true, clusterCount: 1, largestCluster: 3, noiseCount: 1 });
+        expect(result.radii.map((row) => row.count)).toEqual([3, 4]);
+        expect(result.radii[0]!.areaKm2).toBeGreaterThan(0.77);
+        expect(result.radii[0]!.areaKm2).toBeLessThan(0.80);
+        expect(result.occupiedCells).toBeGreaterThanOrEqual(2);
+        expect(result.maxCellCount).toBeGreaterThanOrEqual(2);
+        expect(await measure(features)).toEqual(result);
+      });
+      it("honours epsilon and minimum points without inventing a cluster for isolated points", async () => {
+        const features = [0, 0.001, 0.002].map((offset) => feature(point(42.5 + offset, 22.5)));
+        const result = await measure(features, { cluster: { epsMeters: 50, minPoints: 2 } });
+        expect(result).toMatchObject({ clusterCount: 0, largestCluster: 0, noiseCount: 3 });
+      });
+      it("changes occupied grid cells with the cell size while preserving the observed count", async () => {
+        const features = [0, 0.002, 0.004].map((offset) => feature(point(42.5 + offset, 22.5)));
+        const small = await measure(features, { grid: { cellMeters: 100 } });
+        const large = await measure(features, { grid: { cellMeters: 5000 } });
+        expect(small.occupiedCells).toBeGreaterThan(large.occupiedCells);
+        expect(small.radii).toEqual(large.radii);
+      });
+      it("matches Map kind counts independently of the Data Center feature-array path", async () => {
+        const reader = new PostgisMapReader({ connectionString: readOnlyUrl });
+        try {
+          const request = { releaseId: publishedId, layerId: "places", kind: "neighbourhood", location: point(42, 22), radiiMeters: [100, 5000] };
+          const expected = await reader.countFeatures(request);
+          const actual = await reader.measureSpatial({
+            source: { kind: "MAP", releaseId: publishedId, layerId: "places", featureKind: "neighbourhood" },
+            location: request.location, radiiMeters: request.radiiMeters, analysis: "DENSITY",
+            maxSearchMeters: 5000, grid: { cellMeters: 500 }, cluster: { epsMeters: 500, minPoints: 2 },
+          });
+          expect(actual.radii.map(({ count }) => count)).toEqual(expected.radii.map(({ count }) => count));
+        } finally { await reader.close(); }
+      });
+      it("measures partial polygon overlap once even when constraint polygons overlap each other", async () => {
+        const location = rect(42.5, 22.5, 42.51, 22.51);
+        const geometry = rect(42.49, 22.49, 42.505, 22.52);
+        const result = await measure([feature(geometry), feature(geometry)], { location, analysis: "CONSTRAINT_SCREENING" });
+        expect(result).toMatchObject({ valid: true, intersects: 2, covers: 0, nearestMeters: 0 });
+        const expected = await withClient(adminUrl, async (client) => (await client.query(
+          "SELECT ST_Area(ST_Intersection(ST_GeomFromGeoJSON($1),ST_GeomFromGeoJSON($2))::geography)/1000000 AS area",
+          [JSON.stringify(location), JSON.stringify(geometry)],
+        )).rows[0].area as number);
+        expect(result.overlapKm2).toBeCloseTo(expected, 7);
+        expect(result.overlapKm2).toBeGreaterThan(0);
+      });
+      it("distinguishes proximity from intersection and containment", async () => {
+        const result = await measure([feature(rect(42.501, 22.499, 42.502, 22.501))], {
+          analysis: "CONSTRAINT_SCREENING", radiiMeters: [100, 500],
+        });
+        expect(result).toMatchObject({ valid: true, intersects: 0, covers: 0 });
+        expect(result.nearestMeters).toBeGreaterThan(100);
+        expect(result.nearestMeters).toBeLessThan(110);
+        expect(result.radii.map((row) => row.count)).toEqual([0, 1]);
+      });
+      it("includes a point exactly on a constraint boundary using covers/intersects", async () => {
+        const result = await measure([feature(rect(42.5, 22.5, 42.51, 22.51))], { analysis: "CONSTRAINT_SCREENING" });
+        expect(result).toMatchObject({ intersects: 1, covers: 1, nearestMeters: 0 });
+      });
+      it("does not silently turn line or polygon features into cluster points", async () => {
+        const result = await measure([feature(rect(42.499, 22.499, 42.501, 22.501))]);
+        expect(result).toMatchObject({ valid: true, pointsOnly: false });
+        expect(result.radii[0]!.count).toBe(1);
+      });
+      it.each([
+        { type: "Polygon", coordinates: [[[42.4, 22.4], [42.6, 22.6], [42.6, 22.4], [42.4, 22.6], [42.4, 22.4]]] },
+        { type: "Polygon", coordinates: [] },
+        { type: "Point", coordinates: [190, 95] },
+        { type: "Point", coordinates: [42.5, 22.5], crs: { type: "name", properties: { name: "EPSG:3857" } } },
+        { type: "MultiPolygon", coordinates: [rect(42.4, 22.4, 42.6, 22.6).coordinates, rect(42.5, 22.5, 42.7, 22.7).coordinates] },
+      ])("refuses invalid, empty or out-of-range dataset geometry before measurement: %j", async (geometry) => {
+        const result = await measure([feature(geometry)], { analysis: "CONSTRAINT_SCREENING" });
+        expect(result.valid).toBe(false);
+        expect(result.nearestMeters).toBeNull();
+        expect(result.intersects).toBe(0);
+      });
+      it("bounds cluster work to 10,000 features and refuses, rather than returning a truncated result", async () => {
+        const result = await measure(Array.from({ length: 10_001 }, () => feature(point(42.5, 22.5))));
+        expect(result).toMatchObject({ valid: false, truncated: true, clusterCount: 0 });
+      });
+    });
+
     it("measures Data Center feature proximity and area-weighted population using PostGIS", async () => {
       const reader = new PostgisMapReader({ connectionString: adminUrl });
       try {
@@ -95,6 +192,11 @@ describe.runIf(postgisTestsEnabled)("LOCATION_CONTEXT over a real PostGIS: the s
         expect(result.radii[0]?.count).toBe(1);
         expect(result.radii[0]?.populationEstimate).toBeGreaterThan(0);
         expect(result.radii[0]?.populationEstimate).toBeLessThan(1000);
+        const polygonArea = await withClient(adminUrl, async (client) => (await client.query(
+          "SELECT ST_Area(ST_GeomFromGeoJSON($1)::geography) AS area", [JSON.stringify(rect(42.4, 22.4, 42.6, 22.6))],
+        )).rows[0].area as number);
+        const expectedUniformPopulation = 1000 * Math.PI * 500 ** 2 / polygonArea;
+        expect(Math.abs(result.radii[0]!.populationEstimate! - expectedUniformPopulation)).toBeLessThan(0.1);
       } finally {
         await reader.close();
       }
