@@ -4,7 +4,7 @@ import { identifierSchema, shortTextSchema } from "../shared/primitives";
 import { competitorIdentityLinkSchema } from "./identity";
 import { competitorCoverageSchema } from "./counts";
 import {
-  competitorEntitySchema, competitorLocationSchema, competitorSourceRecordSchema, definitionRefSchema,
+  attributeBasisSchema, competitorEntitySchema, competitorLocationSchema, competitorSourceRecordSchema, definitionRefSchema,
   evidenceSchema, matchingRuleSchema, scopeSchema, validitySchema,
 } from "./model";
 
@@ -31,11 +31,14 @@ const attributeSchema = z.object({
   value: z.union([z.number().finite(), shortTextSchema]).nullable(),
   evidenceClass: z.enum(["OBSERVED", "CONTEXTUAL"]), evidence: evidenceSchema,
   validity: validitySchema, limitations: z.array(shortTextSchema).max(10),
+  comparisonBasis: attributeBasisSchema.optional(),
 }).strict();
 const dimensionSchema = z.discriminatedUnion("kind", [
   z.object({ kind: z.literal("GEOGRAPHY"), definition: scopeSchema.shape.geography }).strict(),
   z.object({ kind: z.literal("ACTIVITY"), definition: scopeSchema.shape.activity }).strict(),
   z.object({ kind: z.literal("ENTITY_DEFINITION"), definition: definitionRefSchema }).strict(),
+  z.object({ kind: z.literal("ATTRIBUTE"), definition: definitionRefSchema }).strict(),
+  z.object({ kind: z.literal("UNIT"), definition: definitionRefSchema }).strict(),
 ]);
 export const competitorDatasetSchema = z.discriminatedUnion("role", [
   z.object({ ...common, contract: z.literal("jenan.competitor.entities/v1"), role: z.literal("competitor.entities"), rows: z.array(competitorEntitySchema).max(2_000) }).strict(),

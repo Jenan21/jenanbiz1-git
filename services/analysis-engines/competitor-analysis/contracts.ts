@@ -11,6 +11,16 @@ import { EngineError } from "../shared/errors";
 import { competitorRequestSchema, normalizeCompetitorRequest } from "./request";
 
 const ownGaps = defineGapCatalog({
+  COMPETITOR_ANALYTICS_UNAVAILABLE: {
+    severity: "BLOCKING",
+    message: { ar: "لا تتوفر مدخلات متوافقة لحساب هذا القياس.", en: "Compatible evidence is unavailable for this calculation." },
+    remedy: { ar: "وفر المدخلات والعقود والتغطية اللازمة دون استنتاج بدائل.", en: "Supply the required inputs, contracts and coverage without inferred substitutes." },
+  },
+  COMPETITOR_IDENTITY_INVENTORY: {
+    severity: "INFO",
+    message: { ar: "تعرض هويات ومطابقات موثقة فقط دون حكم على جدوى المشروع.", en: "Documented identities and matches only; no project feasibility conclusion." },
+    remedy: { ar: "راجع أدلة الهوية والمطابقة وحدود التغطية.", en: "Review identity/matching evidence and coverage limitations." },
+  },
   COMPETITOR_SOURCE_UNAVAILABLE: {
     severity: "BLOCKING",
     message: { ar: "لا يتوفر إصدار مصرح صالح للدور المطلوب؛ النتيجة غير معروفة.", en: "No usable authorized version is available for the required role; the result is unknown." },
@@ -89,6 +99,7 @@ export function findCompetitorResultProblems(raw: unknown): string[] {
   if (!parsed.success) return parsed.error.issues.map((issue) => `${issue.path.join(".")}: ${issue.message}`);
   const result = parsed.data; const problems = findEnvelopeViolations(result, { catalog: competitorGapCatalog }).map((issue) => `${issue.code}: ${issue.detail}`);
   const normalized = normalizeCompetitorRequest(result.request.normalized, result.evaluatedAt).normalized;
+  if (normalized.analyses.some((analysis) => !["COUNTS", "IDENTITY_MATCHING"].includes(analysis))) problems.push("The M1 result version cannot claim M3 analytics; use the M3 result contract validator");
   if (canonicalize(normalized) !== canonicalize(result.request.normalized) || result.request.evaluatedAt !== result.evaluatedAt) problems.push("Request/evaluation time is not normalized");
   if (normalizeCompetitorRequest(normalized, result.evaluatedAt).requestHash !== computeRequestHash(result.request)) problems.push("Request hash must include the explicit evaluation instant");
   const evidence = normalizeCompetitorEvidence(result.evidence);

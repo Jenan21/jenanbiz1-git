@@ -18,6 +18,12 @@ export const relationshipClasses = ["DIRECT", "INDIRECT", "POTENTIAL", "NOT_COMP
 export const identityStates = ["RESOLVED", "SEPARATE_UNVERIFIED", "AMBIGUOUS", "CONFLICTED"] as const;
 export const countingUnits = ["UNIQUE_COMPETITOR_ENTITIES", "COMPETITOR_LOCATIONS"] as const;
 export const definitionRefSchema = z.object({ id: identifierSchema, version: identifierSchema }).strict();
+export const attributeBasisSchema = z.object({
+  product: definitionRefSchema, quantityBasis: definitionRefSchema,
+  currency: identifierSchema.nullable(), taxBasis: definitionRefSchema, deliveryBasis: definitionRefSchema,
+  observationWindow: z.object({ start: competitorTimestampSchema, end: competitorTimestampSchema }).strict()
+    .refine((window) => window.start < window.end, "Observation window must be nonempty"),
+}).strict();
 export const canonicalIdentitySchema = identifierSchema.refine((id) => id.includes(":"), "Canonical identity ids must declare a namespace");
 export const scopeSchema = z.object({
   geography: quantityDimensionsSchema.shape.geography,

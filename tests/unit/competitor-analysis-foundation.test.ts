@@ -200,13 +200,13 @@ describe("Competitor M1 deterministic normalization and request limits", () => {
     const second = competitorRequest(); second.countingUnits = ["UNIQUE_COMPETITOR_ENTITIES"];
     expect(normalizeCompetitorRequest(first, competitorInstant).requestHash).not.toBe(normalizeCompetitorRequest(second, competitorInstant).requestHash);
   });
-  it("rejects noncanonical precision and reserved future analyses instead of silently enabling M3", () => {
+  it("rejects noncanonical precision and explicitly enables the owner-approved M3 analyses", () => {
     const request = competitorRequest(); request.scope.asOf = "2026-10-22T12:00:00Z";
     expect(() => normalizeCompetitorRequest(request, competitorInstant)).toThrow();
     request.scope.asOf = "2026-10-22T12:00:00.0001Z";
     expect(() => normalizeCompetitorRequest(request, competitorInstant)).toThrow();
     request.scope.asOf = competitorInstant; request.analyses = ["DISTRIBUTION"];
-    expect(() => normalizeCompetitorRequest(request, competitorInstant)).toThrow(EngineError);
+    expect(normalizeCompetitorRequest(request, competitorInstant).normalized.analyses).toEqual(["DISTRIBUTION"]);
   });
   it.each([
     { relationships: ["DIRECT", "DIRECT"] }, { countingUnits: [] }, { scope: { ...competitorScope, radius: 1000 } },

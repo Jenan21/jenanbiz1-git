@@ -4,12 +4,14 @@
 
 **M0 APPROVED at `88858341da8c016617cb380775e5aef12a0b244b`.
 M1 CLOSED at `bde54c6d53a4062bb1edf7223d83328e98f34c6b`.
-M2 IMPLEMENTED — CHECKPOINT FOR OWNER REVIEW. M3 NOT STARTED.**
+M2 CLOSED at `f8d974c206e25af32bc18472d94ad32eefbcb8c4`.
+M3 IMPLEMENTED — CHECKPOINT FOR OWNER REVIEW. M4 NOT STARTED.**
 
 The subsequent owner decisions replace establishment-only counting: model a unified
 Competitor Entity separately from locations/branches and original source records.
 The owner subsequently approved M0, accepted and closed M1 at the SHA above,
-and explicitly authorized M2 only. The five-stage split does not authorize M3.
+and explicitly authorized M2. After accepting and closing M2 at the SHA above,
+the owner authorized M3 only. The five-stage split does not authorize M4.
 
 The owner authorized architecture/planning only on 2026-10-21 and separately approved
 a nonsquashed integration merge followed by this planning branch:
@@ -721,4 +723,148 @@ this checkpoint and `docs/analysis-engines.md`.
 | Final tag | NOT CREATED |
 | Sonar | DEFERRED / PENDING until all seven technical engines are complete |
 
-**Stop after M2 for owner review; M3 requires explicit authorization.**
+The preceding table records the M2 checkpoint boundary, not the current M3 state.
+The owner subsequently accepted and CLOSED M2 at
+`f8d974c206e25af32bc18472d94ad32eefbcb8c4` and explicitly authorized M3 only.
+
+## 13. M3 checkpoint — deterministic descriptive competitor analytics
+
+**M3 TECHNICALLY COMPLETE — CHECKPOINT FOR OWNER REVIEW. M4 NOT STARTED.**
+
+### Contracts and execution
+
+`analytics.ts` implements bounded pure calculations; `engine.ts` composes the accepted
+M2 port, captured typed preparations and a strictly validated Shared-compatible result.
+The narrow existing Data Center adapter adds `runCompetitorDataCenterAnalysis`; no
+new provider capability, data store, registry, endpoint, UI or database write is added.
+
+Request/result contract identifiers remain `jenan.competitor-analysis.request/v1` and
+`jenan.competitor-analysis.result/v1`. M3 results carry engine version `1.0.0-m3`
+and use `competitorAnalyticsResultSchema` / `assertCompetitorAnalyticsResult`.
+The accepted `1.0.0-m1` result schema and validator are retained; an M1 result cannot
+masquerade as a result for newly enabled M3 analyses.
+
+Optional request parameters explicitly declare observed attribute selectors and their
+comparison basis, independently pinned earlier historical sources, or candidate
+geographies. IDs/pins are deduplicated and canonicalized; unused parameters, excessive
+combined selections, future baselines and attribute windows after the requested
+snapshot are rejected before source I/O.
+
+### Implemented facts and guarded calculations
+
+- **Counts:** unique resolved competitor entities and established locations/branches
+  remain distinct. One verified entity with 15 branches yields one unique competitor
+  and 15 locations. Included/excluded inventory entries retain classification and
+  identity reasons. Ambiguous entity identity cannot establish a unique-business total.
+- **Matching breakdown:** DIRECT, INDIRECT, POTENTIAL, NOT_COMPARABLE and UNKNOWN
+  retain the accepted explicit-rule/evidence semantics. Requested relationship
+  subsets are reported separately. An entity may occur in more than one relationship
+  subset; overlapping business counts are not added as a disjoint partition.
+- **Distribution:** entity-associated included locations divided by an explicit total
+  or observed-subset denominator. Resolved identity, current validity and a positive
+  denominator are required. This is a location distribution, never sales share,
+  market share, competitor strength, saturation or an investment recommendation.
+- **Observed dimensions:** documented numeric attributes by subject and exact
+  ATTRIBUTE/UNIT dictionary references, with observed/missing sample sizes, individual
+  facts and min/max/median. Product, quantity basis, currency, tax, delivery basis and
+  observation window must agree exactly. No conversions, duplicate-subject selection,
+  contextual-to-observed promotion or imputation. Incomplete samples stay PARTIAL;
+  their confidence is conservatively capped LOW.
+- **Historical count changes:** comparable complete snapshots support `current - base`,
+  `(current - base) / base * 100`, and `current / base * 100`. Identity/inventory
+  definitions, scope, classification rules and documented source/method policy must
+  remain comparable. Negative changes are valid; a zero base permits absolute change
+  but leaves percentage/index null. Missing/incompatible snapshots remain gaps.
+  This checkpoint implements historical **count** comparisons; observed attribute
+  comparison is current-snapshot side-by-side/sample statistics, not an invented
+  historical attribute series or historical replay.
+- **Conditional spatial facts:** no approved proximity/area/spatial-facts contract is
+  supplied at this checkpoint. Density, proximity and candidate-location count requests
+  therefore return explicit NOT_COMPUTABLE/null gaps. No geometry, radius, catchment,
+  implicit candidate coverage, direct Spatial import or Map access is fabricated.
+- **Coverage:** verified complete empty coverage can establish zero; absent/partial
+  coverage cannot. Exact totals remain null when unprovable; observed subsets are
+  labeled separately. Inactive, expired, future, ambiguous and out-of-scope evidence
+  is not silently included. Missing values are null, not zero.
+
+### Confidence, provenance, rights and reproducibility
+
+`competitor-confidence-v1` still measures evidence quality, never business success or
+competitor strength. Derived confidence does not exceed required input quality;
+incomplete samples receive the additional cap above. Every metric retains the relevant
+exact source/version/checksum, source records, subject references and versioned method.
+Current metrics reference current inputs; historical comparisons include both snapshots.
+Final retrieval/export/attribution restrictions cannot be widened by a calculation.
+
+Request, input and output hashes are canonical and deterministic, including unordered
+snapshot arrays. Run IDs and operational timing do not change semantic hashes.
+Strict result validation recomputes inventory, evidence, metrics, confidence, rights,
+gaps and hashes; rehashed arithmetic/source/identity/rights tampering is rejected.
+This validates captured snapshot coherence and deterministic arithmetic, **not** fresh
+authorization or cryptographic proof of arbitrary offline source claims. Live execution
+still obtains authorized exact bytes/checksums through the accepted M2 provider.
+
+Combined current/historical selections are bounded at 32 including required implicit
+roles; combined parsed rows at 10,000; output metrics at 500; canonical result at 2 MiB.
+Existing per-source/content/evidence/cost limits remain enforced. Excess work/output is
+rejected, never silently truncated or replaced with fallback data.
+Pure Shared `buildRunRecord` compatibility is tested without introducing persistence.
+
+### Saved final validation
+
+| Gate | Result |
+| --- | --- |
+| Full unit regression: Competitor, Market, Shared, Spatial, Data Center | 1,812 PASS; 3 pre-existing browser-only skips; 59 passing files + 1 skipped; 141.44 s |
+| New M3 unit cases | 63 PASS |
+| Full isolated PostgreSQL/Data Center/PostGIS regression | 352/352 PASS across 13 files; 388.01 s |
+| Separate committed Market acceptance regression | 5/5 PASS; 22.48 s |
+| Combined database gates | 357/357 PASS across 14 files |
+| Final-code focused Competitor PostgreSQL rerun | 16/16 PASS; 36.22 s |
+| Fresh disposable databases | All 78 migrations applied; each owned scratch database dropped |
+| TypeScript | PASS |
+| Scoped ESLint | PASS; zero warnings |
+| Production Webpack build | PASS; type checking enabled; 161/161 static-generation tasks |
+| Map asset preparation | PASS; no tracked Map change |
+| `git diff --check` | PASS |
+
+M3 tests cover counts/branches/ambiguous identities, taxonomy subsets, documented
+distribution denominators, observed dimension comparability and missingness, historical
+guards/zero bases, weakest-input confidence, provenance/rights, canonical hashes,
+rehashed result tampering, output limits, unchanged Shared record contracts and static
+no-network/no-AI/no-Map/no-Spatial/no-Market/no-Projects/no-write boundaries.
+Six new PostgreSQL cases extend the ten accepted M2 integration cases, including
+hidden/private non-disclosure, exact malformed-source rejection without fallback,
+four-source counts, eight-version historical comparisons, observed attributes and
+conditional spatial gaps. Existing authorization/checksum/revocation cases still pass.
+
+Measured full-regression synthetic M3 execution: **1,715.75 ms** for four exact sources
+and 15 locations on this shared Windows/PostgreSQL host. Four interleaved pure runs
+produce identical hashes without mutating inputs. This is a technical observation,
+not a production SLA, comprehensive load acceptance or evidence of real competitor data;
+M5 remains responsible for final performance/load acceptance.
+
+### Real data, changed surfaces and stop
+
+**REAL-DATA COMPETITOR ACCEPTANCE = BLOCKED / NOT VERIFIED.**
+All technical datasets, including PostgreSQL datasets, are **Fixtures / Synthetic**.
+No authorized populated production Data Center connection was supplied or used.
+Lack of production visibility does not prove absence of competitor or Market data.
+
+New runtime files: `analytics.ts`, `engine.ts`. Focused additive changes:
+`model.ts`, `request.ts`, `datasets.ts`, `data-sources.ts`, `contracts.ts`, `index.ts`,
+and `adapters/data-center-provider.ts`. Tests add `competitor-analysis-analytics.test.ts`
+and extend existing foundation/PostgreSQL cases. Documentation updates only this
+checkpoint and `docs/analysis-engines.md`.
+
+| Frozen boundary / later phase | Status |
+| --- | --- |
+| Map / Data Center frozen baseline / Spatial / Market / Shared Core changed | NO |
+| Schema / migrations / separate Competitor Data Store | NO |
+| Persistence / historical replay / API / UI / Projects integration | NOT STARTED |
+| M4 started | NO |
+| Main merge | NO |
+| Final tag | NOT CREATED |
+| CodeQL | Not run at M3; final technical scan belongs to M5 |
+| Sonar | DEFERRED / PENDING until all seven technical engines are complete |
+
+**Stop at this M3 checkpoint for owner review. Do not start M4 automatically.**

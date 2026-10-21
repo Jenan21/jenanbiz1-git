@@ -19,14 +19,18 @@ import { db } from "@/lib/db";
 import { type DataCenterActor } from "@/services/data-center/contracts";
 import { createDataCenterItem, createDataCenterSource, createDataCenterVersion, registerDataCenterType, reviewDataCenterItem, transitionDataCenterItem } from "@/services/data-center/service";
 import { grantDataCenterRobotAccess, revokeDataCenterRobotAccess } from "@/services/data-center/robot-grants";
-import { createCompetitorDataCenterProvider, prepareCompetitorDataCenterInputs } from "@/services/analysis-engines/competitor-analysis/adapters/data-center-provider";
-import { assessCompetitorCount, typeKeyByCompetitorRole, type CompetitorDatasetRole } from "@/services/analysis-engines/competitor-analysis";
+import { createCompetitorDataCenterProvider, prepareCompetitorDataCenterInputs, runCompetitorDataCenterAnalysis } from "@/services/analysis-engines/competitor-analysis/adapters/data-center-provider";
+import { assertCompetitorAnalyticsResult, assessCompetitorCount, typeKeyByCompetitorRole, type CompetitorDatasetRole } from "@/services/analysis-engines/competitor-analysis";
 import { competitorDataset } from "../unit/support/competitor-data-fixtures";
 import { competitorInstant, competitorRequest } from "../unit/support/competitor-analysis-fixtures";
 
 const enabled = process.env.DATA_CENTER_DATABASE_TESTS === "1";
 const rollback = new Error("ROLLBACK_COMPETITOR_M2_SYNTHETIC_FIXTURES");
 const trusted = () => ({ evaluatedAt: new Date(Math.max(Date.now(), Date.parse(competitorInstant))).toISOString() });
+const execution = () => {
+  const context = trusted(); return { ...context, runId: `competitor:m3-${randomUUID()}`, environment: "test" as const,
+    timing: { startedAt: context.evaluatedAt, finishedAt: context.evaluatedAt, durationMs: 0 } };
+};
 async function isolated(run: (tx: DbExecutor, actor: DataCenterActor) => Promise<void>) {
   const actual = context.actual as typeof db;
   try { await actual.$transaction(async (tx) => {
@@ -94,6 +98,98 @@ describe.skipIf(!enabled)("Competitor M2 real PostgreSQL / synthetic Data Center
       console.log(`COMPETITOR_M2_PG_PREPARATION=${JSON.stringify({ size: 15, sources: 4, elapsedMs, synthetic: true })}`);
     });
   });
+    describe.skipIf(!enabled)("Competitor M3 PostgreSQL descriptive execution (synthetic data only)", () => {
+      it("runs exact source validation before entity/location analytics, shares and hashes, with zero writes", async () => {
+        await isolated(async (tx, actor) => {
+          const { req } = await bundle(actor, 15); req.analyses = ["COUNTS", "DISTRIBUTION"];
+          const context = execution(); const before = await counts(tx); const start = performance.now();
+          const result = await runCompetitorDataCenterAnalysis(req, actor, context);
+          const elapsedMs = performance.now() - start;
+          const metrics = result.results.flatMap((section) => section.metrics);
+          expect(metrics.find((metric) => metric.operation === "COUNT" && metric.countingUnit === "UNIQUE_COMPETITOR_ENTITIES")?.value).toBe(1);
+          expect(metrics.find((metric) => metric.operation === "COUNT" && metric.countingUnit === "COMPETITOR_LOCATIONS")?.value).toBe(15);
+          expect(metrics.find((metric) => metric.distribution)?.distribution).toEqual({ denominator: 15, share: 1, population: "SCOPED_COMPETITOR_LOCATIONS" });
+          expect(() => assertCompetitorAnalyticsResult(result)).not.toThrow();
+          const second = await runCompetitorDataCenterAnalysis(req, actor, { ...context, runId: `competitor:repeat-${randomUUID()}` });
+          expect(second.determinism).toEqual(result.determinism); expect(await counts(tx)).toEqual(before);
+          console.log(`COMPETITOR_M3_PG_ANALYTICS=${JSON.stringify({ elapsedMs, locations: 15, sources: 4, synthetic: true })}`);
+        });
+      });
+      it("has identical missing/private metric outcomes without an existence leak", async () => {
+        await isolated(async (tx, admin) => {
+          const { req, items } = await bundle(admin);
+          await tx.dataCenterSource.update({ where: { id: items[1]!.sourceId }, data: { scope: "PRIVATE" } });
+          const user = await tx.user.create({ data: { email: `m3-private-${randomUUID()}@example.test`, status: "ACTIVE" } });
+          const actor: DataCenterActor = { id: user.id, kind: "HUMAN", systemRole: "USER" };
+          const context = execution();
+          const hidden = await runCompetitorDataCenterAnalysis(req, actor, context);
+          req.data.roles["competitor.locations"] = [{ versionId: "missing-competitor-m3" }];
+          const missing = await runCompetitorDataCenterAnalysis(req, actor, context);
+          expect(hidden.results).toEqual(missing.results);
+          expect(hidden.preparation.current.evidence).toBeNull(); expect(missing.preparation.current.evidence).toBeNull();
+        });
+      });
+      it("keeps uncovered and malformed exact PostgreSQL versions null without fallback or writes", async () => {
+        await isolated(async (tx, actor) => {
+          const { req, s } = await bundle(actor);
+          const invalid = await dataset(actor, s.id, "competitor.locations", 1, { content: '{"inventedStrength":87}' });
+          req.data.roles["competitor.locations"] = [{ versionId: invalid.version.id }];
+          const before = await counts(tx); const result = await runCompetitorDataCenterAnalysis(req, actor, execution());
+          expect(result.results.flatMap((section) => section.metrics).every((metric) => metric.value === null)).toBe(true);
+          expect(await counts(tx)).toEqual(before);
+        });
+      });
+      it("returns explicit conditional spatial gaps without Map or Spatial capabilities", async () => {
+        await isolated(async (tx, actor) => {
+          const { req } = await bundle(actor); req.analyses = ["PROXIMITY_DENSITY", "CANDIDATE_COMPARISON"];
+          const before = await counts(tx); const result = await runCompetitorDataCenterAnalysis(req, actor, execution());
+          expect(result.results.flatMap((section) => section.metrics)).toHaveLength(3);
+          expect(result.results.flatMap((section) => section.metrics).every((metric) => metric.status === "NOT_COMPUTABLE" && metric.value === null)).toBe(true);
+          expect(await counts(tx)).toEqual(before);
+        });
+      });
+      it("computes comparable historical counts from eight exact published versions without storing or replaying a run", async () => {
+        await isolated(async (tx, actor) => {
+          const { req, s } = await bundle(actor, 15); req.analyses = ["COUNTS", "HISTORICAL_CHANGE"];
+          const asOf = "2026-10-15T12:00:00.000Z"; req.parameters = { historical: { asOf, roles: {} } };
+          for (const role of ["competitor.entities", "competitor.locations", "competitor.matching-rules", "competitor.dimensions"] as const) {
+            const content = competitorDataset(role, 10); content.sourceId = s.id;
+            if (content.role === "competitor.locations") content.inventory.scope.asOf = asOf;
+            const item = await dataset(actor, s.id, role, 10, { content: JSON.stringify(content) });
+            req.parameters.historical!.roles[role] = [{ versionId: item.version.id, expectedChecksum: item.version.checksum }];
+          }
+          const before = await counts(tx); const result = await runCompetitorDataCenterAnalysis(req, actor, execution());
+          const changes = result.results.flatMap((section) => section.metrics).filter((metric) => metric.analysis === "HISTORICAL_CHANGE" && metric.countingUnit === "COMPETITOR_LOCATIONS");
+          expect(Object.fromEntries(changes.map((metric) => [metric.operation, metric.value]))).toEqual({ ABSOLUTE_CHANGE: 5, PERCENT_CHANGE: 50, INDEX: 150 });
+          expect(result.inputs).toHaveLength(8); expect(await counts(tx)).toEqual(before);
+        });
+      });
+      it("compares compatible observed dimensions with exact definitions, units, sample missingness and no writes", async () => {
+        await isolated(async (tx, actor) => {
+          const { req, s } = await bundle(actor, 4); req.analyses = ["DIMENSION_COMPARISON"];
+          const content = competitorDataset("competitor.attributes", 4); content.sourceId = s.id;
+          if (content.role !== "competitor.attributes") throw new Error("Fixture role");
+          const basis = {
+            product: { id: "observed-seating", version: "1" }, quantityBasis: { id: "per-location", version: "1" },
+            currency: null, taxBasis: { id: "not-applicable", version: "1" }, deliveryBasis: { id: "on-site", version: "1" },
+            observationWindow: { start: "2026-10-01T00:00:00.000Z", end: competitorInstant },
+          };
+          content.rows[0]!.comparisonBasis = basis;
+          const attributes = await dataset(actor, s.id, "competitor.attributes", 4, { content: JSON.stringify(content) });
+          const dictionary = competitorDataset("competitor.dimensions", 4); dictionary.sourceId = s.id;
+          if (dictionary.role !== "competitor.dimensions") throw new Error("Fixture role");
+          dictionary.rows.push({ kind: "ATTRIBUTE", definition: content.rows[0]!.definition }, { kind: "UNIT", definition: content.rows[0]!.unit });
+          const dimensions = await dataset(actor, s.id, "competitor.dimensions", 4, { content: JSON.stringify(dictionary) });
+          req.data.roles["competitor.attributes"] = [{ versionId: attributes.version.id }];
+          req.data.roles["competitor.dimensions"] = [{ versionId: dimensions.version.id }];
+          req.parameters = { attributes: [{ id: "seating", subjectKind: "LOCATION", definition: content.rows[0]!.definition, unit: content.rows[0]!.unit, basis }] };
+          const before = await counts(tx); const result = await runCompetitorDataCenterAnalysis(req, actor, execution());
+          const median = result.results.flatMap((section) => section.metrics).find((metric) => metric.operation === "MEDIAN");
+          expect(median).toMatchObject({ value: 10, status: "PARTIAL", sample: { eligible: 4, observed: 1, missing: 3 } });
+          expect(await counts(tx)).toEqual(before);
+        });
+      });
+    });
   it("uses Data Center deterministic type/asOf selection without registering runtime types", async () => {
     await isolated(async (_tx, actor) => {
       await bundle(actor); const req = competitorRequest(); req.data.roles = {};

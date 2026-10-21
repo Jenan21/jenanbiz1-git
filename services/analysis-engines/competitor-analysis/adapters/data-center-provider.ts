@@ -4,6 +4,7 @@ import { readDataCenterVersionContent } from "@/services/data-center/version-con
 import { competitorTimestampSchema } from "../model";
 import { prepareCompetitorData } from "../data-sources";
 import type { CompetitorDataPort } from "../data-port";
+import { runCompetitorAnalysis, type CompetitorExecution } from "../engine";
 
 export interface CompetitorProviderContext {
   evaluatedAt: string; specialty?: string; missionContext?: string; organizationId?: string;
@@ -38,4 +39,8 @@ export function createCompetitorDataCenterProvider(trustedActor: DataCenterActor
 }
 export function prepareCompetitorDataCenterInputs(request: unknown, actor: DataCenterActor, context: CompetitorProviderContext) {
   return prepareCompetitorData(createCompetitorDataCenterProvider(actor, context), request, context.evaluatedAt);
+}
+export function runCompetitorDataCenterAnalysis(request: unknown, actor: DataCenterActor, context: CompetitorProviderContext & CompetitorExecution) {
+  const { runId, evaluatedAt, environment, timing } = context;
+  return runCompetitorAnalysis(createCompetitorDataCenterProvider(actor, context), request, { runId, evaluatedAt, environment, timing });
 }

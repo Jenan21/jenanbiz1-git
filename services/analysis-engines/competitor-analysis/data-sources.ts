@@ -24,7 +24,7 @@ const fail = (role: CompetitorDatasetRole, requestedVersionId: string | null, st
   selection: CompetitorDiscovery | null = null): CompetitorPreparedSource =>
   ({ role, requestedVersionId, status, reason, selection, reference: null, dataset: null, input: null });
 const referenceIdentity = (reference: CompetitorSourceReference) => omitKeys(reference, ["resolvedAt"]);
-function inputFrom(reference: CompetitorSourceReference, dataset: CompetitorDataset): EngineInput | null {
+export function competitorInputFromReference(reference: CompetitorSourceReference, dataset: CompetitorDataset): EngineInput | null {
   const { version, source, rights, freshness } = reference;
   const parsed = engineInputSchema.safeParse({
     id: `dc:${version.versionId}`, roles: [dataset.role], kind: "DATA_CENTER_VERSION", governance: "DC_PUBLISHED",
@@ -38,7 +38,7 @@ function inputFrom(reference: CompetitorSourceReference, dataset: CompetitorData
   });
   return parsed.success ? parsed.data : null;
 }
-function eligibleReference(reference: CompetitorSourceReference, evaluatedAt: string, asOf: string) {
+export function isCompetitorReferenceEligible(reference: CompetitorSourceReference, evaluatedAt: string, asOf: string) {
   return reference.dataset.layer === "DATA" && reference.rights.allowRetrieval && !!reference.rights.usagePolicy.trim()
     && !["CONFLICTED", "ESTIMATED"].includes(reference.version.evidenceStatus)
     && reference.freshness.status !== "EXPIRED"
@@ -49,7 +49,7 @@ function eligibleReference(reference: CompetitorSourceReference, evaluatedAt: st
 }
 /** SELF is a declared dataset token, not a guessed id or fallback to another source version. */
 const bindRef = (ref: SourceRecordRef, versionId: string): SourceRecordRef => ({ ...ref, inputId: ref.inputId === "SELF" ? `dc:${versionId}` : ref.inputId });
-function boundDataset(dataset: CompetitorDataset, versionId: string): CompetitorDataset {
+export function bindCompetitorDataset(dataset: CompetitorDataset, versionId: string): CompetitorDataset {
   const copy = structuredClone(dataset);
   for (const record of copy.sourceRecords) record.inputId = `dc:${versionId}`;
   if (copy.role === "competitor.dimensions") return copy;
@@ -66,6 +66,7 @@ function boundDataset(dataset: CompetitorDataset, versionId: string): Competitor
 export async function prepareCompetitorData(port: CompetitorDataPort, rawRequest: unknown, evaluatedAt: string) {
   const { normalized: request, requestHash } = normalizeCompetitorRequest(rawRequest, evaluatedAt);
   const roles = new Set<CompetitorDatasetRole>(["competitor.entities", "competitor.locations", "competitor.matching-rules", "competitor.dimensions"]);
+  if (request.analyses.includes("DIMENSION_COMPARISON")) roles.add("competitor.attributes");
   for (const role of Object.keys(request.data.roles)) roles.add(role as CompetitorDatasetRole);
   const selections = [...roles].reduce((count, role) => { const selector = request.data.roles[role]; return count + (Array.isArray(selector) ? selector.length : 1); }, 0);
   if (selections > 32) throw new EngineError("REQUEST_TOO_LARGE", { first: "Required roles plus requested pins exceed 32 versions" });
@@ -83,7 +84,7 @@ export async function prepareCompetitorData(port: CompetitorDataPort, rawRequest
     if (pin ? selection.mode !== "EXACT" || selection.policy !== "exact-version" || selection.unavailableVersionIds.length > 0 || selection.candidates.length !== 1 || selection.selected !== null || selection.asOf !== null
       : selection.mode !== "BY_TYPE" || selection.policy !== "dc-version-selection-v1" || selection.asOf !== (typeSelection?.asOf ?? request.scope.asOf)
         || !same(selection.candidates[0]?.reference, metadata)) return fail(role, versionId, "NOT_COMPUTABLE", "SELECTION_POLICY_MISMATCH", selection);
-    if (metadata.dataset.typeKey !== typeKey || !eligibleReference(metadata, evaluatedAt, request.scope.asOf)) return fail(role, versionId, "NOT_COMPUTABLE", "SOURCE_METADATA_INVALID", selection);
+    if (metadata.dataset.typeKey !== typeKey || !isCompetitorReferenceEligible(metadata, evaluatedAt, request.scope.asOf)) return fail(role, versionId, "NOT_COMPUTABLE", "SOURCE_METADATA_INVALID", selection);
     if (pin?.expectedChecksum && pin.expectedChecksum !== metadata.version.checksum.value) return fail(role, versionId, "NOT_COMPUTABLE", "CHECKSUM_MISMATCH", selection);
     work.reads++;
     const readResult = competitorReadSchema.safeParse(await port.read({ versionId: metadata.version.versionId, expectedChecksum: pin?.expectedChecksum ?? metadata.version.checksum.value }));
@@ -102,7 +103,7 @@ export async function prepareCompetitorData(port: CompetitorDataPort, rawRequest
     const dataset = datasetResult.data;
     work.parsedRows += dataset.rows.length + dataset.sourceRecords.length;
     if (work.parsedRows > 10_000) throw new EngineError("REQUEST_TOO_LARGE", { first: "Competitor run exceeds 10000 parsed rows" });
-    const input = inputFrom(metadata, dataset);
+    const input = competitorInputFromReference(metadata, dataset);
     if (!input) return fail(role, versionId, "NOT_COMPUTABLE", "INPUT_METADATA_INVALID", selection);
     const status = competitorDatasetCoverage(dataset, request.scope, request.competitorDefinition);
     const contradictsMetadata = metadata.coverage === null || !metadata.coverage.countryCodes.includes(request.scope.geography.countryCode)
@@ -128,7 +129,7 @@ export async function prepareCompetitorData(port: CompetitorDataPort, rawRequest
   let evidence: CompetitorEvidence | null = null; let coverage = null as Extract<CompetitorDataset, { role: "competitor.locations" }>["inventory"] | null;
   let validationReason: string | null = null;
   if (sources.every((source) => source.status === "AVAILABLE")) {
-    const datasets = usable.map((source) => boundDataset(source.dataset!, source.reference!.version.versionId));
+    const datasets = usable.map((source) => bindCompetitorDataset(source.dataset!, source.reference!.version.versionId));
     const locations = datasets.filter((dataset) => dataset.role === "competitor.locations");
     if (locations.length !== 1) validationReason = "MULTIPLE_INVENTORY_UNIVERSES_REQUIRE_EXPLICIT_PARTITION_POLICY";
     else {

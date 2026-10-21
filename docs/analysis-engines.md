@@ -16,8 +16,10 @@ defers final Sonar acceptance and final tags until all seven technical baselines
 3. Competitor Analysis Engine ([contracts and checkpoints](competitor-analysis-engine-v1.md);
    M0 APPROVED at `88858341da8c016617cb380775e5aef12a0b244b`;
    M1 CLOSED at `bde54c6d53a4062bb1edf7223d83328e98f34c6b`;
-   M2 implements read-only Data Center exact-version/source validation,
-   separate entity/location semantics and governed coverage; M3 NOT STARTED;
+   M2 CLOSED at `f8d974c206e25af32bc18472d94ad32eefbcb8c4`;
+   M3 implements deterministic counts, relationship breakdowns, documented location
+   distribution, observed dimension comparisons and comparable historical count changes;
+   M3 CHECKPOINT FOR OWNER REVIEW; M4 NOT STARTED;
    real-competitor acceptance BLOCKED / NOT VERIFIED)
 4. Opportunity & Gap Engine
 5. Financial Feasibility Engine
@@ -56,11 +58,19 @@ and is never modified by the engines. The engines are aggregated on their own li
   `jenan-engines/competitor-analysis` branch, then APPROVED revised M0 at
   `88858341da8c016617cb380775e5aef12a0b244b` and authorized **M1 only**.
   M1 was accepted and CLOSED at `bde54c6d53a4062bb1edf7223d83328e98f34c6b`;
-  the owner separately authorized **M2 only**. M2 adds read-only Data Center integration
+  the owner separately authorized M2, accepted and CLOSED it at
+  `f8d974c206e25af32bc18472d94ad32eefbcb8c4`, then authorized **M3 only**.
+  M2 adds read-only Data Center integration
   and strict source/dataset/identity/coverage checks, with no Data Center writes,
   persistence, Map/UI/Projects connection, or direct Spatial/Market dependency.
   Real competitor acceptance remains BLOCKED / NOT VERIFIED, independently of
-  synthetic PostgreSQL test success. M3 and later phases require separate approval.
+  synthetic PostgreSQL test success. M3 adds pure versioned analytics over those same
+  authorized exact reads, preserving the M1 result validator and Shared Core.
+  Missing approved spatial facts produce explicit null / NOT_COMPUTABLE gaps.
+  Final M3 gates: 1,812 unit PASS (+3 existing browser-only skips), 357 database PASS,
+  final focused Competitor database rerun 16/16 PASS, TypeScript, zero-warning ESLint
+  and production build PASS. No persistence or historical replay is introduced;
+  historical count comparison is not replay. M4 requires separate approval.
   No main merge, final tag or Sonar attempt is authorized.
 
 - Spatial: **TECHNICALLY COMPLETE — PENDING FINAL SONAR**, not `FINAL CLOSED`.
