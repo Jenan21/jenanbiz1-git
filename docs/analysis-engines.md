@@ -10,7 +10,9 @@ defers final Sonar acceptance and final tags until all seven technical baselines
 2. Market & Demand Engine ([contracts and checkpoints](market-demand-engine-v1.md);
    M0 and M1–M5 split approved; M1 CLOSED at `d95da803`; M2 CLOSED at `e905daa`;
    M3 CLOSED at `e57a295`; real-demand acceptance BLOCKED / NOT VERIFIED;
-   M4-only persistence/replay authorized and implemented for checkpoint review; M5 not started)
+   M4 CLOSED at `d2ef88e`; M5 local technical gates PASS, exact-final-SHA CodeQL
+   verification recorded with the delivery; TECHNICALLY COMPLETE — PENDING FINAL SONAR
+   once that check passes; no third engine, final tag, main merge or Sonar attempt)
 3. Competitor Analysis Engine
 4. Opportunity & Gap Engine
 5. Financial Feasibility Engine
@@ -53,7 +55,15 @@ and is never modified by the engines. The engines are aggregated on their own li
   The owner subsequently accepted and CLOSED M3 at
   `e57a295d6d09343ccc3bdfbc62f8093646bc97d2`, after identical Local/Remote/Desktop
   hashes were verified, then explicitly authorized M4 only. M4 adds existing shared-table
-  persistence and authorized exact historical replay; M5 requires separate approval.
+  persistence and authorized exact historical replay. The owner then CLOSED M4 at
+  `d2ef88e609b516ef6fb10483e14f4e29554db629` and explicitly authorized M5 final
+  technical acceptance only. The third engine requires a separate owner decision.
+  The M5 acceptance commit changes tests/documentation only: production Market
+  arithmetic and persistence retain M4's accepted behavior. Full local gates pass;
+  the existing CodeQL workflow is dispatched only after that final commit is pushed,
+  with its exact SHA and language analysis records checked before technical closure.
+  The delivery report records that immutable SHA/run linkage. Real demand acceptance
+  remains BLOCKED / NOT VERIFIED independently of these synthetic technical gates.
 - Spatial is frozen. A necessary shared fix for a later engine requires stopping and
   informing the owner before modifying the accepted Spatial baseline.
 - After all seven engines: run Sonar against their recorded Final Technical SHAs, address

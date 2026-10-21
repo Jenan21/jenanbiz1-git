@@ -18,7 +18,11 @@ remains **BLOCKED / NOT VERIFIED**, not an engine failure.
 `e57a295d6d09343ccc3bdfbc62f8093646bc97d2`, with Local HEAD = Remote HEAD = Desktop HEAD
 verified identical. The owner then explicitly selected **"ابدأ M4 فقط وفق الخطة المعتمدة"**:
 existing Shared Run/Input persistence and exact authorized historical replay only.
-The M4 checkpoint is recorded in section 17; it does not authorize M5.
+The owner subsequently accepted **M4 = CLOSED** at
+`d2ef88e609b516ef6fb10483e14f4e29554db629` and explicitly authorized **M5 only**:
+final technical acceptance and closure, not the third engine. The M5 report is in
+section 18. Sonar remains deferred until all seven technical engines are complete;
+no main merge or final tag is authorized.
 Shared Core, Spatial, Map and the Data Center frozen baseline remain unchanged.
 
 - Engine: Market & Demand Engine / محرك السوق والطلب.
@@ -1251,3 +1255,159 @@ needs an authorized populated source and suitable comparable actual-demand perio
 **Sonar: DEFERRED / PENDING; no attempts. Final tags: NOT CREATED.**
 M4 is **TECHNICALLY COMPLETE**, stops at this checkpoint for owner review, and does
 not claim final Market Engine closure or authorize M5.
+
+## 18. JENAN MARKET & DEMAND ENGINE — M5 FINAL ACCEPTANCE & TECHNICAL CLOSURE REPORT
+
+### Authorization and final technical baseline
+
+The owner explicitly accepted **M4 = CLOSED** at
+`d2ef88e609b516ef6fb10483e14f4e29554db629` and authorized **M5 only**.
+M5 adds acceptance tests and this documentation; **production engine code is unchanged
+from the accepted M4 baseline**. No Shared Core, Spatial, Data Center, Map, application,
+schema, registry, dependency or workflow change was necessary.
+
+The **Final Technical Commit** is the M5 acceptance commit containing this report,
+whose parent is exactly the accepted M4 SHA above. Its full immutable SHA is recorded
+in the delivery report with verified Local/Remote/Desktop equality, and the existing
+CodeQL workflow/analysis records must match that same SHA before technical closure.
+The SHA is not embedded in its own commit, nor is a later documentation-only commit
+misrepresented as the already analyzed technical baseline.
+
+After the local gates below and exact-SHA CodeQL verification succeed, the engine state is:
+
+**MARKET & DEMAND ENGINE = TECHNICALLY COMPLETE — PENDING FINAL SONAR**
+
+This is technical acceptance, **not FINAL CLOSED**, not Real-Demand acceptance and not
+authorization to start the third engine.
+
+### Complete validation results
+
+| Gate | M5 result |
+| --- | --- |
+| All Market units | **338/338 PASS** across nine files, including record/service/boundary/limit and new interleaved-load cases |
+| Shared/Spatial units | **1,108/1,108 PASS**, unchanged accepted contracts and behavior |
+| Combined units | **1,446/1,446 PASS**, 42 files, no failures/skips, 24.85 s |
+| Market PostgreSQL governance/persistence/history | **68/68 PASS**, all previous acceptance cases retained |
+| New committed concurrency/rollback suite | **5/5 PASS**, plus final focused 5/5 rerun after strengthening the input-constraint assertion |
+| Existing Data Center/provider PostgreSQL suites | **138/138 PASS**, eight files |
+| Existing Spatial/PostGIS suites | **130/130 PASS**, including 44 existing real-Saudi copied-Map regression cases |
+| Combined PostgreSQL/Data Center/PostGIS | **341/341 PASS**, 13 files, no failures/skips, 229.84 s |
+| Fresh database | All **78 existing migrations** applied to owned disposable databases; exact database deletion verified |
+| TypeScript | PASS, including final production build type checking |
+| ESLint | PASS with **zero warnings**, all Market/Shared/Spatial runtime and unit sources plus both Market integration suites |
+| Production build | PASS, supported Webpack path, one worker, **161/161** static generation tasks |
+| Whitespace/frozen-source checks | `git diff --check` PASS; production surfaces unchanged |
+
+Tests were run sequentially around the database/load/build gates to avoid artificial
+CPU contention. No existing deadline, limit, assertion, contract or threshold was relaxed.
+Initial new fixture assertions were corrected to use the canonical output order and
+an evaluation instant after synthetic publication; engine behavior was not changed to
+make the tests pass. The pre-existing pg concurrent-query deprecation is unchanged.
+
+### Actual concurrency, load and performance
+
+The new PostgreSQL suite uses the **real application database client and real committed
+transactions**, with no transaction proxy or mocked persistence/replay. It requires the
+separate opt-in `MARKET_ACCEPTANCE_DATABASE_TESTS=1` and rejects every database name
+except the owned `se_market_m5_<12 hex digits>` scratch pattern before writing fixtures.
+The harness applies all migrations, runs acceptance and drops that exact owned database.
+Neither a real production database nor the configured original local database is seeded,
+migrated or reset.
+
+The measured fixture contains actual **synthetic** governed observation and dictionary
+versions, two inputs per run, two demand-period outputs, recorded rights and provenance.
+It is not Real Demand Data or a production capacity benchmark.
+
+| Workload | Samples / concurrency | Total | Sample p50 | Sample p95 / maximum | Throughput |
+| --- | --- | --- | --- | --- | --- |
+| Pure deterministic calculation | 32 async-interleaved runs | 832.27 ms | Not sampled | Not sampled | 38.45 runs/s |
+| Committed calculation + atomic persistence | 8 runs / 4 workers | 3,384.13 ms | 927.72 ms | 2,504.28 ms | 2.36 runs/s |
+| Exact authorized historical replay | 16 replays / 4 workers | 1,535.45 ms | 357.17 ms | 470.62 ms | 10.42 replays/s |
+| Existing single exact two-input replay case | One run | 146.90 ms | Not applicable | Not applicable | Not claimed |
+
+The pure async test checks interleaving and isolated evidence, not multicore CPU
+parallelism. Database workers overlap actual independent transactions. Reported p95s
+are nearest-rank **small-sample measurements**, not production percentiles or an SLA.
+Explicit synthetic smoke budgets are **under 15 s per operation and 30 s per batch**;
+the new committed-load test deadline is 60 s to cover setup/assertions. Existing
+20-second regression deadlines are unchanged.
+
+Verified invariants:
+
+- Eight concurrent successful runs create exactly eight parents and sixteen inputs,
+  with identical request/input/output hashes, correct values, separate ids and no
+  cross-run evidence mutation. Source rights/provenance are retained.
+- Sixteen concurrent replays reproduce the **entire** original result and hashes,
+  with no additional runs, inputs, source/version/type/usage/audit/event/quality writes.
+- Four real transactions race for the same run id: exactly **one succeeds**, three
+  explicitly fail with unique-key `P2002`, and only one parent/two inputs commit.
+- A test-only named CHECK constraint forces a real nested input insert failure.
+  The thrown error must name that constraint, not an unrelated outage. **No parent
+  or input survives the transaction**, and Data Center row counts do not change.
+- Eight concurrent unauthorized lookups of hidden/missing ids yield the same generic
+  unavailable error; no existence distinction is returned.
+- The load suite is rerun in another fresh migrated database after the full gate;
+  overlapping reruns are not counted as additional unique test cases.
+
+### Persistence, replay, deterministic limits and boundaries
+
+All M4 tests remain green: real committed durability across separate transactions;
+immutable exact-version checksums and source/version/type linkage; canonical input order
+independent of database collation; complete provenance/usage integrity; append-only
+UPDATE/DELETE rejection; failed requests captured without fabricated results;
+current retrieval/rights, owner/admin, membership and robot-grant reauthorization;
+no newer-version fallback; no rewriting historical quality/freshness or originally
+missing source decisions; full-result and request/input/output hash equality.
+
+Metric/admission/source/output bounds retain their prior tests: exactly 20 series,
+120 periods, 32 selections and 500 projected outcome slots; over-budget rejection
+before reads; missing slots remain explicit/null; bounded datasets/rows; shared **2 MiB**
+request/result evidence limits and bounded failed-request capture, never silent truncation.
+Evidence classes, zero-denominator protection, comparable-series checks, weakest-input
+confidence/caps and restrictive rights propagation remain deterministic.
+
+The AST security/boundary suites pass: no Spatial/Projects/Map dependency, Data Center
+write/registration, network/scraping, LLM, hidden clock/randomness or arbitrary raw SQL.
+Only the exact named Market adapters have database capabilities; the sole runtime write
+is the existing Shared run nested create. Test-only database constraint/guard manipulation
+is confined to owned synthetic databases and grants no runtime capability.
+
+### CodeQL on the exact final technical commit
+
+The existing `CodeQL` workflow supports `workflow_dispatch`, both
+`javascript-typescript` and `actions`, `security-extended`, with no workflow modification.
+It is dispatched **after this commit is pushed**, not on an earlier M4/M3 SHA.
+Before reporting closure, verify:
+
+1. The completed run's `headSha` equals the full Final Technical SHA.
+2. Both language jobs succeed, with no analysis/upload error.
+3. The code-scanning analyses for `refs/heads/jenan-engines/market-demand` name that
+   exact commit and both language categories.
+4. Open/new alerts are checked separately from existing dismissed repository findings.
+
+The frozen Spatial analysis baseline contains five previously dismissed repository
+findings, zero open alerts, and zero Actions results. These are **not** described as
+zero analyzer results, suppressed again, reopened or changed by M5. The final delivery
+report records the actual Market run link, counts and any difference after analysis.
+No success is claimed solely from dispatching the workflow.
+
+### Real data, saving and closure restrictions
+
+**REAL-DATA DEMAND ACCEPTANCE = BLOCKED / NOT VERIFIED.**
+The authorized configured **local** read-only schema check was repeated: Data Center
+source/version tables are still absent. This does not prove the production Data Center
+lacks Market data. No newly authorized populated Market source was supplied; no
+production existence/absence claim, fabricated dataset, population-to-demand conversion
+or Fixture-as-Real-Data substitution is made.
+
+M5 changed only this document, the shared architecture status, the new unit load suite
+and the new guarded committed PostgreSQL acceptance suite. Temporary orchestration
+helpers are not committed. The final save gate is a clear commit/push on
+`jenan-engines/market-demand`, a clean desktop Market archive at the same SHA, verified
+remote equality, preserved unrelated desktop edits and unchanged protected branch tips.
+No UI changed; responsive/visual acceptance is not applicable to this backend-only phase.
+
+**Map changed: NO. Data Center frozen baseline changed: NO. Spatial changed: NO.**
+**Shared Core changed: NO. Main merge: NO. Final Tag: NOT CREATED.**
+**Sonar: DEFERRED / PENDING UNTIL ALL 7 ENGINES ARE TECHNICALLY COMPLETE.**
+**Third engine started: NO.** Stop after the M5 report for owner review.
