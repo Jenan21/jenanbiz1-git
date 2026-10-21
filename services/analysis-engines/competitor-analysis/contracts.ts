@@ -11,6 +11,11 @@ import { EngineError } from "../shared/errors";
 import { competitorRequestSchema, normalizeCompetitorRequest } from "./request";
 
 const ownGaps = defineGapCatalog({
+  COMPETITOR_SOURCE_UNAVAILABLE: {
+    severity: "BLOCKING",
+    message: { ar: "لا يتوفر إصدار مصرح صالح للدور المطلوب؛ النتيجة غير معروفة.", en: "No usable authorized version is available for the required role; the result is unknown." },
+    remedy: { ar: "وفر إصدارًا مصرحًا بعقد ونطاق وحقوق ملائمة.", en: "Provide an authorized version with a compatible contract, scope and rights." },
+  },
   COMPETITOR_IDENTITY_UNRESOLVED: {
     severity: "BLOCKING",
     message: { ar: "هوية الكيان أو الموقع غير مثبتة؛ العدد غير معروف.", en: "Entity or location identity is not established; the count is unknown." },

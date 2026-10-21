@@ -88,6 +88,7 @@ describe("analysis engine boundaries", () => {
   describe("adapters", () => {
     const dataCenterProviderPath = "spatial/adapters/data-center-provider.ts";
     const marketProviderPath = "market-demand/adapters/data-center-provider.ts";
+    const competitorProviderPath = "competitor-analysis/adapters/data-center-provider.ts";
     const marketHistoryAdapters = new Set([
       "market-demand/adapters/run-persistence.ts", "market-demand/adapters/run-service.ts",
       "market-demand/adapters/replay-service.ts", "market-demand/adapters/historical-data-center.ts",
@@ -99,12 +100,12 @@ describe("analysis engine boundaries", () => {
       "spatial/adapters/historical-data-center.ts",
     ]);
     const adapters = sources.filter((entry) => isAdapter(entry.path));
-    const databaseAdapters = adapters.filter((entry) => ![dataCenterProviderPath, marketProviderPath].includes(entry.path) && !m5Adapters.has(entry.path) && !marketHistoryAdapters.has(entry.path));
+    const databaseAdapters = adapters.filter((entry) => ![dataCenterProviderPath, marketProviderPath, competitorProviderPath].includes(entry.path) && !m5Adapters.has(entry.path) && !marketHistoryAdapters.has(entry.path));
     const allowedAdapterPackages = new Set(["pg", "zod"]);
 
-    it("exist only in Spatial's adapters directory or Market's exact provider/history allowlist", () => {
+    it("exist only in Spatial's directory or the exact Market/Competitor adapter allowlists", () => {
       expect(adapters.length).toBeGreaterThan(0);
-      for (const adapter of adapters) expect(adapter.path.startsWith("spatial/adapters/") || adapter.path === marketProviderPath || marketHistoryAdapters.has(adapter.path), adapter.path).toBe(true);
+      for (const adapter of adapters) expect(adapter.path.startsWith("spatial/adapters/") || [marketProviderPath, competitorProviderPath].includes(adapter.path) || marketHistoryAdapters.has(adapter.path), adapter.path).toBe(true);
     });
 
     it("import only pg, zod and the engine's own tree: never Prisma, the application's database layer, Projects, the Map's service, the Data Center or the framework", () => {
@@ -165,7 +166,7 @@ describe("analysis engine boundaries", () => {
 
       it("exists, and no other adapter imports anything of the Data Center", () => {
         expect(provider).toBeDefined();
-        for (const adapter of adapters.filter((entry) => ![dataCenterProviderPath, marketProviderPath].includes(entry.path) && !m5Adapters.has(entry.path) && !marketHistoryAdapters.has(entry.path))) {
+        for (const adapter of adapters.filter((entry) => ![dataCenterProviderPath, marketProviderPath, competitorProviderPath].includes(entry.path) && !m5Adapters.has(entry.path) && !marketHistoryAdapters.has(entry.path))) {
           expect(specifiersOf(adapter.text).filter((specifier) => specifier.startsWith("@/services/data-center")), adapter.path).toEqual([]);
         }
       });
@@ -186,9 +187,9 @@ describe("analysis engine boundaries", () => {
         expect(text).not.toMatch(/recordDataCenterUsage|\.(?:create|createMany|update|updateMany|upsert|delete|deleteMany)\s*\(/);
       });
 
-      it("confines Data Center read-service imports to the two named engine providers", () => {
+      it("confines Data Center read-service imports to the three named engine providers", () => {
         const importers = sources.filter((entry) => specifiersOf(entry.text).some((specifier) => readServices.includes(specifier))).map((entry) => entry.path);
-        expect(importers).toEqual([marketProviderPath, dataCenterProviderPath]);
+        expect(importers).toEqual([competitorProviderPath, marketProviderPath, dataCenterProviderPath]);
       });
     });
   });

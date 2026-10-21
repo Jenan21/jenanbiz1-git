@@ -3,12 +3,13 @@
 ## M0 status, authority and frozen baselines
 
 **M0 APPROVED at `88858341da8c016617cb380775e5aef12a0b244b`.
-M1 IMPLEMENTED — CHECKPOINT FOR OWNER REVIEW. M2 NOT STARTED.**
+M1 CLOSED at `bde54c6d53a4062bb1edf7223d83328e98f34c6b`.
+M2 IMPLEMENTED — CHECKPOINT FOR OWNER REVIEW. M3 NOT STARTED.**
 
 The subsequent owner decisions replace establishment-only counting: model a unified
 Competitor Entity separately from locations/branches and original source records.
-The owner subsequently approved that M0 and explicitly authorized M1 only.
-The five-stage split is not authorization to start M2 or later phases.
+The owner subsequently approved M0, accepted and closed M1 at the SHA above,
+and explicitly authorized M2 only. The five-stage split does not authorize M3.
 
 The owner authorized architecture/planning only on 2026-10-21 and separately approved
 a nonsquashed integration merge followed by this planning branch:
@@ -353,7 +354,10 @@ candidate facts in v1; Data Center exact versions; independent eight-factor conf
 zero only with proved coverage; five phases approved in principle; Sonar deferred.
 
 The owner approved the revised contracts and proof limits at the M0 SHA above.
-M1 implements only the foundation below. **M2 NOT STARTED.**
+The historical M1 checkpoint below describes its foundation-only scope; the owner
+then accepted and **CLOSED M1 at `bde54c6d53a4062bb1edf7223d83328e98f34c6b`**.
+Local, remote and Desktop archive HEADs were verified equal at that accepted SHA.
+M2 is documented separately in section 12; **M3 NOT STARTED**.
 
 ## 11. JENAN COMPETITOR ANALYSIS ENGINE — M1 CHECKPOINT REPORT
 
@@ -541,4 +545,180 @@ activity and coverage remain NOT VERIFIED.
 | Final tag | NOT CREATED |
 | Sonar | DEFERRED / PENDING until all seven technical engines are complete |
 
-**Stop after this M1 checkpoint for owner review.**
+**M1 owner review complete: CLOSED at the SHA recorded above.**
+
+## 12. JENAN COMPETITOR ANALYSIS ENGINE — M2 CHECKPOINT REPORT
+
+### Scope and read capability
+
+M2 adds a read-only Data Center provider and pure source preparation, not an analytics
+runner, datastore, public API or persistence implementation. The accepted M1
+request/result contracts, confidence policy and count guards retain their version
+and behavior. Preparation returns `jenan.competitor-analysis.prepared-inputs/v1`:
+normalized request/evaluation instant/hash, per-role states/reasons/selection trace,
+exact metadata and validated datasets, Shared inputs/hash, normalized evidence,
+coverage, M1 matching decisions, intersected rights, attribution, gaps and work counts.
+No production counts, distribution/comparison runner or historical replay is added.
+
+The sole provider imports existing Data Center discovery/exact-content services
+and pure actor/error vocabulary only. Actor, evaluation time, organization, specialty
+and mission context come from trusted server context, never the request body.
+Trusted actor/context are copied when creating the provider.
+Organization scope is rechecked on exact reads, not just by-type discovery.
+Current Data Center source/robot authorization runs for every read; its policy is
+not replaced by an engine-specific authorization system.
+
+- Exact pins discover/read only their exact version and optional checksum.
+- By-type selection delegates to `dc-version-selection-v1`, with explicit request
+  `asOf`, exact role/type and a bounded candidate trace. No title/name heuristic.
+- Missing, inaccessible, superseded and withdrawn versions remain unavailable,
+  with no alternate dataset, prior version, synthetic content or other-engine fallback.
+- Discovery and reader version/source/metadata/checksum must agree. The existing
+  Data Center reader recomputes its canonical version checksum, not just the raw
+  content string or stored checksum field. Corruption and pin mismatch block input.
+- Data Center backend/programming/policy errors propagate explicitly; only documented
+  unavailable/integrity errors map to typed source states.
+- Runtime performs no registry, dataset, source, usage, event, audit, run or input write.
+  No Prisma/driver/network dependency is added to Competitor production code.
+
+### Dataset, source-record and identity contracts
+
+Six strict, independently versioned dataset contracts implement the proposed roles
+in section 3: `jenan.competitor.entities/v1`, `...locations/v1`,
+`...matching-rules/v1`, `...identity-links/v1`, `...attributes/v1`,
+`...dimensions/v1`. The corresponding type keys remain **proposals, not new
+production registry entries**.
+
+Required roles are entities, locations, matching-rules and dimensions.
+Attributes and identity-links are validated if explicitly supplied.
+Each dataset declares its source id, source records, geographic/activity/entity/
+segment coverage, half-open validity, completeness, limitations and role-specific rows.
+The source id must match the authorized Data Center metadata.
+Local source records use the explicit `SELF` token, bound only after an authorized
+exact read to `dc:<versionId>`. Other-version evidence must resolve to a source record
+from another version explicitly selected in the same bundle. A dataset cannot
+impersonate another version. Duplicate original records in one version are rejected.
+
+- Entity, location/branch and original record ids stay distinct.
+- Canonical definitions, location geography/activity and rule criteria must be declared
+  by the selected versioned dimensions dictionary.
+- Missing/broad/conflicting category evidence gives UNKNOWN, not invented DIRECT.
+  INDIRECT requires documented substitution, not a relabeled same-need rule.
+- Resolved cross-source links must agree with explicit canonical row bindings;
+  they do not establish a speculative merge. Ambiguous/conflicted link datasets
+  block preparation with NOT_COMPUTABLE rather than silently produce a distinct total.
+  Ambiguous entity links on otherwise established locations retain the accepted M1
+  behavior: unique-business total null; resolved locations may remain usable.
+- Attribute/link subjects, evidence, canonical targets, scope and row/source-record
+  validity are verified. Future observations are rejected.
+- Exactly one location inventory universe is supported in M2. Multiple selected
+  location inventories explicitly return NOT_COMPUTABLE until a documented partition
+  policy exists; no accidental union, overlap deduction or invented deduplication.
+
+### Coverage, rights, confidence and limits
+
+Geography/category/entity definition/segment/time coverage is checked before evidence
+assembly. Metadata and dataset country/region assertions cannot contradict each other.
+The location inventory must attest the exact request scope/entity definition and
+enumerate the supplied in-force canonical locations with location-source evidence.
+
+Missing authorization/source yields NOT_AVAILABLE; uncovered scope/time yields
+NO_COVERAGE; invalid/incompatible evidence yields NOT_COMPUTABLE. Partial inventory
+remains PARTIAL in coverage and the unchanged M1 count guard returns a null scoped
+total, not zero; a positive observed subset is separate.
+Preparation status AVAILABLE means usable validated inputs, not complete market coverage.
+No 0-competitor claim is made from absent/partial data.
+
+Exact source/version/checksum/origin/upstream links, publication/freshness, ownership,
+license/usage/export restrictions, attribution, coverage, measured quality and
+source-record methods/claims remain traceable. Current authorized reads establish
+the explicit analysis-usage descriptor; this captured descriptor is not future
+authorization or a replay capability. `competitor-confidence-v1@1.0.0` remains unchanged:
+confidence measures evidence quality, never strength or success. Restricted export
+does not imply denied analysis, and derived rights never become more permissive.
+
+Bounds: 32 total selected versions including implicit required roles; 100 returned
+discovery candidates; 200,000 content characters/version before parsing; 2,000 rows
+including source records/version; 10,000 parsed rows/run; the stricter existing
+combined M1 evidence limits; 100 rules; 500 future result metrics; unchanged 2 MiB
+canonical JSON ceiling. Limits reject explicitly; no truncation or silent fallback.
+
+### Verification and evidence status
+
+All new PostgreSQL datasets and unit source DTOs are **Fixtures / Synthetic**.
+Real PostgreSQL execution is not real competitor data acceptance.
+Each new integration fixture transaction is rolled back; proposed type registration
+is test-only. Checksum corruption injection temporarily changes only the owned
+synthetic scratch fixture's immutable trigger inside its rolled-back transaction,
+following existing integration-test practice, never production behavior.
+
+Final unit gate: **1,749 PASS, 3 existing browser-only tests SKIPPED**, across
+58 passing files and one skipped file, 83.90 seconds:
+Competitor **194**, Market **338**, Shared **239**, Spatial **869**, Data Center **109**.
+All 47 engine files / **1,640 engine tests PASS**, with zero skips.
+The three existing Data Center UI/browser tests require their separate browser mode;
+there are no UI changes or claims of running that mode.
+The focused new PostgreSQL suite passes **10/10** after all **78 existing migrations**
+deploy to a fresh owned scratch database. Its 15-location / four-source preparation
+measured **234.84 ms** on this local synthetic fixture, excluding publication/setup.
+This is an observation, not a production latency/load/SLA claim.
+
+Final database regression gate: **351/351 PASS across 14 files**, zero skips/failures:
+Competitor **10**, Market **68 + 5 committed acceptance**, Data Center/provider **138**,
+Spatial/PostGIS **130**. The 346-test regression run took **293.09 seconds**;
+the five committed-load acceptance tests took **10.44 seconds** in a separate fresh
+database. All 78 existing migrations applied successfully to each owned database;
+both were dropped after verification. No migration/schema edit or configured DB reset.
+Final full-gate Competitor preparation measured **491.28 ms** for the same
+four-source/15-location synthetic size. Market regression telemetry: eight committed
+runs/concurrency four in **2,620.59 ms** (max **1,832.15 ms**); sixteen exact replays/
+concurrency four in **1,440.96 ms** (max **441.54 ms**). These verify the frozen
+Market regression only, not a new Competitor persistence/load feature.
+
+Initial harness attempts exposed the existing Market committed-load suite's required
+database name and committed fixtures contaminating by-type discovery in other suites.
+The final harness isolates that suite in its own owned fresh database; no frozen test
+or source change was made. An initial concurrent run also exceeded an existing Spatial
+latency bound; the final isolated gate passed its original threshold without relaxation.
+An initial build exited natively during host memory pressure; the real production
+retry used one worker and a 3 GiB Node heap, with no skipped TypeScript/static checks.
+
+TypeScript: PASS. Scoped ESLint: PASS with zero warnings. Existing Map asset check:
+PASS. Production Webpack build: PASS, compilation **30.9 seconds**, built-in TypeScript
+**33.7 seconds**, **161/161 static-generation tasks**. `git diff --check`: PASS.
+Build-only generated route-reference edits are restored; no dependency/config change.
+CodeQL is not run for M2; the final technical scan belongs to M5.
+No UI change: responsive/visual acceptance is not applicable.
+
+The read-only configured loopback schema probe found no Data Center tables.
+No authorized populated production connection was supplied or accessed.
+This does **not** establish that the production Data Center lacks competitor or
+market data. Actual entities, branches, categories, coverage, activity and counts are
+**NOT VERIFIED**. Do not create data just to satisfy acceptance.
+
+**REAL-DATA COMPETITOR ACCEPTANCE = BLOCKED / NOT VERIFIED.**
+
+New production files: `data-port.ts`, `datasets.ts`, `data-sources.ts`,
+`adapters/data-center-provider.ts`. Additive exports/gap in `index.ts`/`contracts.ts`.
+New tests: `competitor-analysis-data-sources.test.ts`,
+`competitor-analysis-data-provider.test.ts`, `support/competitor-data-fixtures.ts`,
+and `competitor-analysis-data-center.integration.test.ts`.
+Competitor and global boundary tests allow exactly the new provider and pure DTO;
+no accepted engine capability is broadened. Documentation changes are limited to
+this checkpoint and `docs/analysis-engines.md`.
+
+| Boundary / later phase | Status |
+| --- | --- |
+| Map changed | NO |
+| Data Center frozen baseline changed | NO |
+| Spatial changed | NO |
+| Market changed | NO |
+| Shared Core changed | NO |
+| Schema / migrations changed | NO |
+| Separate Competitor Data Store | NO |
+| M3 started | NO |
+| Main merge | NO |
+| Final tag | NOT CREATED |
+| Sonar | DEFERRED / PENDING until all seven technical engines are complete |
+
+**Stop after M2 for owner review; M3 requires explicit authorization.**

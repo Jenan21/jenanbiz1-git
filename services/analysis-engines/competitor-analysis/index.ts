@@ -5,3 +5,6 @@ export * from "./matching";
 export * from "./confidence";
 export * from "./counts";
 export * from "./contracts";
+export * from "./data-port";
+export * from "./datasets";
+export * from "./data-sources";

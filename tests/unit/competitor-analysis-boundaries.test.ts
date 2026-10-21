@@ -6,6 +6,7 @@ import { describe, expect, it } from "vitest";
 const root = resolve(process.cwd(), "services", "analysis-engines");
 const competitor = join(root, "competitor-analysis");
 const shared = join(root, "shared");
+const provider = join(competitor, "adapters", "data-center-provider.ts");
 const within = (directory: string, target: string) => target === directory || target.startsWith(`${directory}${sep}`);
 const filesAt = (directory: string): string[] => readdirSync(directory, { withFileTypes: true }).flatMap((entry) =>
   entry.isDirectory() ? filesAt(join(directory, entry.name)) : entry.name.endsWith(".ts") ? [join(directory, entry.name)] : []);
@@ -15,6 +16,8 @@ function boundaryProblems(text: string, file: string): string[] {
   const source = ts.createSourceFile(file, text, ts.ScriptTarget.Latest, true);
   const inspectImport = (specifier: string) => {
     if (specifier === "zod") return;
+    if (file === join(competitor, "data-port.ts") && specifier === "@/services/data-center/map-contract") return;
+    if (file === provider && ["@/services/data-center/contracts", "@/services/data-center/discovery", "@/services/data-center/version-content"].includes(specifier)) return;
     if (specifier.startsWith(".")) {
       const target = resolve(dirname(file), specifier);
       if ((within(competitor, target) || within(shared, target)) && !within(join(competitor, "adapters"), target)) return;
@@ -38,11 +41,18 @@ function boundaryProblems(text: string, file: string): string[] {
   visit(source);
   return problems;
 }
-describe("Competitor M1 pure/static isolation boundaries", () => {
-  it("has only pure Competitor and unchanged Shared Core dependencies, no adapters", () => {
+describe("Competitor M2 pure/static isolation boundaries", () => {
+  it("has only pure dependencies plus one exact read-only Data Center provider", () => {
     for (const file of filesAt(competitor)) expect(boundaryProblems(readFileSync(file, "utf8"), file), relative(root, file)).toEqual([]);
-    expect(readdirSync(competitor)).not.toContain("adapters");
+    expect(readdirSync(join(competitor, "adapters"))).toEqual(["data-center-provider.ts"]);
     expect(readFileSync(join(competitor, "index.ts"), "utf8")).not.toMatch(/adapters/);
+  });
+  it.each([
+    'import x from "@/services/data-center/service";', 'import x from "@/services/data-center/map-resolver";',
+    'import x from "@/lib/db";', 'import x from "../../spatial";', 'fetch("https://example.test");',
+    "tx.dataCenterItem.create({});", "tx.analysisEngineRun.create({});",
+  ])("rejects excess capability even inside the provider: %s", (text) => {
+    expect(boundaryProblems(text, provider).length).toBeGreaterThan(0);
   });
   it.each([
     'import "../spatial/engine";', 'export * from "../market-demand";',

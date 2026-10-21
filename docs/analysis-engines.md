@@ -13,10 +13,11 @@ defers final Sonar acceptance and final tags until all seven technical baselines
    M4 CLOSED at `d2ef88e`; M5 accepted; Final Technical SHA
    `c54d647838c1ce10730277f3977abc4980c3715d`;
    **TECHNICALLY COMPLETE — PENDING FINAL SONAR**, frozen)
-3. Competitor Analysis Engine ([contracts and M1 checkpoint](competitor-analysis-engine-v1.md);
+3. Competitor Analysis Engine ([contracts and checkpoints](competitor-analysis-engine-v1.md);
    M0 APPROVED at `88858341da8c016617cb380775e5aef12a0b244b`;
-   M1 implements pure entity/location/source contracts, deterministic supported matching,
-   separate count semantics and independent confidence; M2 NOT STARTED;
+   M1 CLOSED at `bde54c6d53a4062bb1edf7223d83328e98f34c6b`;
+   M2 implements read-only Data Center exact-version/source validation,
+   separate entity/location semantics and governed coverage; M3 NOT STARTED;
    real-competitor acceptance BLOCKED / NOT VERIFIED)
 4. Opportunity & Gap Engine
 5. Financial Feasibility Engine
@@ -54,8 +55,12 @@ and is never modified by the engines. The engines are aggregated on their own li
   explicitly approved a Market-to-integration merge without squash and the isolated
   `jenan-engines/competitor-analysis` branch, then APPROVED revised M0 at
   `88858341da8c016617cb380775e5aef12a0b244b` and authorized **M1 only**.
-  M1 adds no actual Data Center integration, persistence, Map/UI/Projects connection,
-  or direct Spatial/Market dependency. M2 and later phases require separate approval.
+  M1 was accepted and CLOSED at `bde54c6d53a4062bb1edf7223d83328e98f34c6b`;
+  the owner separately authorized **M2 only**. M2 adds read-only Data Center integration
+  and strict source/dataset/identity/coverage checks, with no Data Center writes,
+  persistence, Map/UI/Projects connection, or direct Spatial/Market dependency.
+  Real competitor acceptance remains BLOCKED / NOT VERIFIED, independently of
+  synthetic PostgreSQL test success. M3 and later phases require separate approval.
   No main merge, final tag or Sonar attempt is authorized.
 
 - Spatial: **TECHNICALLY COMPLETE — PENDING FINAL SONAR**, not `FINAL CLOSED`.
@@ -125,6 +130,15 @@ An engine reaches anything outside its own tree only through an adapter: a direc
   calculations, bounded source/row/method evidence and strict result revalidation.
   The provider itself still writes no run/input/usage/audit data. M4 adds separate internal
   adapters below; Shared Core, Spatial and Data Center remain unchanged.
+- **Competitor's M2 read-only Data Center provider** has its own exact allowlist:
+  discovery, version-content and pure actor/error vocabulary, plus its own engine
+  modules. It reuses the existing metadata DTO through a pure port; no Map resolver,
+  driver, database, registration, usage/audit write or Spatial/Market import.
+  Exact pins never fall back; current actor/robot and trusted organization/specialty/
+  mission restrictions are retained. Strict entity/location/source-record datasets
+  and versioned category/coverage validation prepare evidence only, not M3 analytics.
+  The frozen registry is unchanged; proposed type entries exist only in rolled-back
+  synthetic integration fixtures. Real competitor acceptance is BLOCKED / NOT VERIFIED.
 - **Spatial M5 run persistence and historical replay adapters** have explicit, narrow exceptions for
   Prisma and the application database. The persistence adapter inserts run/input rows only; the
   historical reader performs one exact-version read and applies Data Center source-scope,
@@ -146,7 +160,7 @@ An engine reaches anything outside its own tree only through an adapter: a direc
   History lookup is owner/platform-admin scoped and reauthorizes inputs before returning
   stored evidence; hidden/missing runs use the same unavailable error.
 
-Neither is re-exported by the engine's index, and neither may read the environment, the clock or
+These adapters are not re-exported by the engine's index, and may not read the environment, the clock or
 the network. An adapter never imports Projects or the Map's service. The pure core talks to an
 adapter through a port (an interface), so the place where the computation runs, or the way the
 Data Center is reached, can change without changing the contracts.
