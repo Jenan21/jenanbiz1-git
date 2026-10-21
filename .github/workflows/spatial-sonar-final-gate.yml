@@ -1,0 +1,41 @@
+name: Spatial Sonar final gate
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [jenan-engines/spatial]
+    paths:
+      - .github/workflows/spatial-sonar-final-gate.yml
+
+permissions:
+  contents: read
+
+concurrency:
+  group: spatial-sonar-final-gate
+  cancel-in-progress: false
+
+jobs:
+  sonar:
+    name: SonarCloud Quality Gate
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: 8d97baace8abd6889f400a56952e345f3068f3af
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Analyze approved Spatial checkpoint and wait for Quality Gate
+        uses: SonarSource/sonarqube-scan-action@fd88b7d7ccbaefd23d8f36f73b59db7a3d246602 # v6
+        env:
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+          SONAR_HOST_URL: https://sonarcloud.io
+        with:
+          args: >
+            -Dsonar.organization=jenan21
+            -Dsonar.projectKey=Jenan21_jenanbiz1-git
+            -Dsonar.sources=.
+            -Dsonar.branch.name=jenan-engines/spatial
+            -Dsonar.scm.revision=8d97baace8abd6889f400a56952e345f3068f3af
+            -Dsonar.qualitygate.wait=true
+            -Dsonar.qualitygate.timeout=600
