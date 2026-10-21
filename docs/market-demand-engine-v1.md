@@ -2,7 +2,8 @@
 
 ## M0 status and authority
 
-**Architecture proposal only — awaiting owner approval. M1 has not started.**
+**M0 architectural direction and owner decisions approved on 2026-10-21.
+Detailed contracts and the final proposed stage split below await review. M1 has not started.**
 
 - Engine: Market & Demand Engine / محرك السوق والطلب.
 - Proposed engine key and directory: `market-demand`,
@@ -18,6 +19,26 @@
   The final Sonar policy is recorded in [the shared architecture](analysis-engines.md).
 - This M0 creates documentation only: no engine module, shared schema extension, migration,
   Data Center type/record, source connection, UI, API or analytical result.
+
+### Approved decisions, incorporated without implementation
+
+1. A count is not demand. A measurement needs explicit subject, unit, reporting period,
+   geography, sector/cohort, source and observation/estimate semantics. Population, business
+   and POI counts remain contextual unless a genuinely different demand observation is supplied.
+2. Additive engine-neutral primitives for quantities, dimensions, time windows, signed absolute/
+   percentage change and base-period indices are allowed when needed. Existing Spatial
+   contracts keep their meaning. A zero/invalid denominator never yields a percentage.
+3. Data Center is the only governed dataset source. Reuse the shared run/input tables and
+   contracts; do not create a second Market dataset store or force economic data into GeoJSON.
+   Large inputs remain future immutable references, not larger inline content limits.
+4. Strict Market boundaries prohibit Spatial/Projects imports, network calls, AI/LLM arithmetic,
+   Data Center/Map writes, business recommendations, success probability and revenue prediction.
+5. Results distinguish OBSERVED, ESTIMATED, DERIVED and CONTEXTUAL independently from
+   availability states. Confidence policy id is exactly **`market-confidence-v1`**.
+6. Time semantics are mandatory from the beginning. No implicit interpolation, adoption rate,
+   current-period substitution or conversion of population/competitors into a market value.
+7. No "market size in SAR" without appropriate sales/transaction evidence or an approved
+   explicit valuation methodology. Monetary sizing remains excluded from this v1 proposal.
 
 ## 1. Exact purpose
 
@@ -43,7 +64,7 @@ Reuse the existing pure modules, not copies of them:
 | Metric/run/platform states and errors | Null unavailable values; explicit partial/estimated/error states |
 | EngineInput and source/version descriptors | Exact version/hash, source, quality, dates, rights, coverage and attribution |
 | Gap catalog/rendering/normalization | Engine-specific bilingual gaps combined with common gaps |
-| Confidence-policy framework | Explainable `market-demand-confidence-v1`, not Spatial's geometry weights |
+| Confidence-policy framework | Explainable `market-confidence-v1`, not Spatial's geometry weights |
 | Rights, export and envelope validation | Fail-closed export and full provenance, including derived outputs |
 | Cost primitives | A request-only market work estimate and early admission check |
 | RunRecord contract and AnalysisEngineRun/Input tables | Append-only run/input history, provenance and usage without new Project/Map FKs |
@@ -54,9 +75,10 @@ Reuse the existing pure modules, not copies of them:
    for transactions or products would violate their meaning. Current numeric kinds also
    reject negative values, so a falling demand series cannot be represented as a signed
    numeric change without an additive contract extension.
-2. Propose engine-neutral `QUANTITY` and `CHANGE` kinds with explicit units and signed-change
-   validation. Final names/units and envelope checks must be approved in M1; never reinterpret
-   existing COUNT, RATIO or ORDINAL members, or encode a negative number as misleading text.
+2. The owner approves additive generic primitives in principle. The concrete proposal below
+   uses `QUANTITY`, `CHANGE` and `INDEX`, explicit dimensions/units, time windows and an
+   optional metric-semantics block. Review these definitions before M1 implements anything;
+   never reinterpret existing COUNT, RATIO or ORDINAL, or encode a negative number as text.
 3. The existing database persistence, usage and historical-replay implementations live under
    `spatial/adapters`, and some are GeoJSON/Spatial-specific. Market must not import them.
    The shared tables and pure run contracts are reusable; those adapter implementations are
@@ -64,9 +86,10 @@ Reuse the existing pure modules, not copies of them:
 4. The architecture test currently permits adapters only in Spatial and names the allowed
    files explicitly. Market needs a narrow additive boundary-test update, not a disabled guard.
 
-Any shared-core extension or proposed extraction that would require changing frozen Spatial
-must be brought to the owner **before editing**, with its backward-compatibility tests.
-No such change is made or implicitly approved by this M0.
+Additive Shared Core extensions must preserve old payloads/hashes when optional fields are
+absent, and pass Spatial regression tests. Any extraction or fix requiring edits to frozen
+Spatial must be brought to the owner **before editing**. This document does not authorize
+rewiring Spatial or claim that its adapter implementations have already moved into Shared Core.
 
 ## 3. Architecture and independence
 
@@ -103,8 +126,9 @@ evidence. It is not imported, replaced, or wired into the engine.
 - A later orchestrator may supply an authorized, immutable ENGINE_RUN reference to an
   approved upstream result, using a common contract and exact output hash. A client-supplied
   JSON blob or hash alone does not prove authorization or provenance.
-- For v1, Spatial summaries are **optional context only**, not a prerequisite for measured
-  market calculations. They cannot turn population into buyers or POIs into transactions.
+- v1 does not ingest Spatial results. Documented spatial facts may be optional context in a
+  future orchestrator/contract integration, never a prerequisite for demand calculations.
+  They cannot turn population into buyers or POIs into transactions.
 - If optional engine-output ingestion is enabled later, a resolver must validate current
   access, the stored run/version/output hash and lineage/rights; do not trust copied claims.
   Do not add that dependency or resolver during Market M0.
@@ -121,6 +145,35 @@ types or datasets. Registering/publishing sources is a separate approved governa
 | Population/cohort | Official or otherwise governed population/household cohort, geography and reference period | Audience context, not customer count |
 | Consumption assumptions | Dated eligible share/adoption/frequency, measured or reviewed estimate, with exact denominators and compatible units | Explicit assumption-based demand estimate |
 | Classification dictionary | Sector taxonomy/version, area authority/code/version, cohort definitions and unit/period semantics | Exact matching and auditable joins |
+
+### Proposed role/typeKey bindings
+
+Use four registered type keys at most. A demand time series is multiple observations in
+one logical dataset, not a second copy or an artificial version per reporting period.
+
+| Engine role | Proposed Data Center typeKey | Layer | Required for |
+| --- | --- | --- | --- |
+| `demand.observations` | `market-demand-observations` | DATA | OBSERVED_DEMAND, DEMAND_TREND |
+| `context.indicators` | `market-context-indicators` | DATA | MARKET_CONTEXT, AUDIENCE_CONTEXT |
+| `demand.assumptions` | `market-demand-assumptions` | DATA | ASSUMPTION_BASED_DEMAND only |
+| `dimensions.dictionary` | `market-dimensions` | DATA | Taxonomy, geography, cohort and unit definition validation |
+
+The proposed content contracts are `jenan.market.observations/v1`,
+`jenan.market.context/v1`, `jenan.market.assumptions/v1` and
+`jenan.market.dimensions/v1`. None has been registered by this M0. Existing registered
+equivalent types can be mapped only after actor-authorized inventory and schema equivalence
+checks, never by guessing a type key. A version must match both its type and content contract.
+
+Observed-demand rows require `measuredSubject` such as fulfilled purchase transactions,
+service-use events or product units actually sold; `evidenceNature=OBSERVATION`; a measurement
+method; and an explicit `statisticalScope`. Unmet intentions, internet interest, active
+businesses and population cannot be relabelled as these subjects. Estimated source rows
+remain estimates; they do not satisfy a request for observed demand.
+
+Each role pins the Data Center version and its actual checksum. Row ids identify observations
+inside that version. No row is independently copied to a Market source table. Assumption rows
+record adoption/frequency value, basis, applicability, method, evidence nature and source
+lineage; unsupported free-text assumptions never become calculation inputs.
 
 Each observation needs an id, sector code/classification version, area authority/level/code/
 boundary version, cohort/universe, period start/end and granularity, metric definition, numeric
@@ -161,9 +214,17 @@ Data inventory is a first execution prerequisite, not a reason to fabricate a fi
 | --- | --- |
 | MARKET_CONTEXT | Source-backed sector/geography/cohort/period descriptors and available indicator observations; no synthetic overview score |
 | OBSERVED_DEMAND | Source observations; sum only explicitly disjoint additive partitions on the same definition/unit/period/universe |
-| DEMAND_TREND | Comparable adjacent/selected period absolute change and relative change `(current - previous) / previous`; negative change allowed; previous zero makes relative change unavailable |
+| DEMAND_TREND | Explicit comparable period pairs: absolute change, optional percent change and base-100 index; negative change allowed; invalid/zero base disables the affected derivative |
 | AUDIENCE_CONTEXT | Population/household cohort as an observed context value; no assertion that all residents are potential buyers |
 | ASSUMPTION_BASED_DEMAND | Optional `eligible population × explicit adoption fraction × frequency per matched period`, only with compatible source-backed inputs; always ESTIMATED |
+
+`changeAbsolute = current - previous`; `changePercent = 100 * (current - previous) / previous`
+requires a finite positive previous value; `index = 100 * current / base` requires a finite
+positive base value and an explicit base period. A zero baseline still permits absolute
+change when both observed values are valid. Percent is not a probability or market-share
+claim; index is not a project score. Current/base values must come from the same comparable
+series. The calculation trace retains the unrounded values and operand refs; round the final
+display metric once under a declared method version.
 
 Trend v1 does not extrapolate future periods, smooth gaps, interpolate missing observations or
 automatically seasonally adjust. Different-length periods, real/nominal definitions, changed
@@ -187,27 +248,151 @@ rate is supplied. Assumptions and calculation lineage are returned with the esti
 Currency-valued market size, TAM/SAM/SOM, CAGR, cross-country conversion and inflation
 adjustments are deferred from v1. They need separately approved definitions, units, price
 indices and compatible series; they are not approximated from unrelated indicators.
+Even if future sources contain sales amounts, monetary sizing needs a separately reviewed
+contract; a population/POI-only request must never emit a SAR market size.
 
-## 6. Proposed inputs and outputs
+## 6. Detailed contract proposal — for review before M1
 
 ### Request (proposed `jenan.market-demand.request/v1`)
 
-- `analyses`: explicit subset of the five v1 analyses.
-- `scope`: country and exact area authority/level/code/version, sector taxonomy/code/version,
-  cohort/universe definition and the requested reporting period(s).
-- `data`: per-role exact Data Center version pins, or approved registered type plus `asOf`.
-- `parameters`: explicit series selection/comparison periods and optional estimate assumptions
-  represented by governed input references, not silent constants.
-- `options`: correlation id; evaluation instant permitted only in authorized replay/acceptance.
-- No Project FK, project budget, success target, recommendation flag, raw customer data,
-  external URL connector, caller-selected server budget or arbitrary table/query.
+Strict object: unknown fields are rejected. All ids are bounded opaque identifiers, all
+numbers finite, all arrays bounded; actor authorization is injected by the trusted caller,
+not accepted as a client-provided grant.
+
+| Field | Proposed shape and validation |
+| --- | --- |
+| `contract` | Literal `jenan.market-demand.request/v1` |
+| `analyses` | Nonempty subset of the five named analyses; normalized in stable engine order |
+| `scope.geography` | `{countryCode, authority, level, code, version}`; one exact administrative/statistical area; no arbitrary geometry |
+| `scope.sector` | `{taxonomy, version, code}`; one exact sector, no inferred taxonomy mapping |
+| `scope.cohort` | `{definitionId, version}`; includes an explicit all-population universe when applicable, never omitted to mean everyone |
+| `series` | Up to 20 `{id, metricDefinitionId, unit, aggregation, timeWindow, periods}` selections; ids refer to definitions in governed content |
+| `data.roles` | Role to bounded nonempty list of exact `{source:"DATA_CENTER", versionId, expectedChecksum?}` OR one `{source:"DATA_CENTER", typeKey, asOf?}` selector; modes cannot be mixed within a role |
+| `parameters.comparisons` | Optional explicit `{seriesId, fromPeriodId, toPeriodId, measures}` pairs; measures are ABSOLUTE_CHANGE, PERCENT_CHANGE, INDEX; no inferred missing-period comparisons |
+| `parameters.basePeriods` | Required per series requesting INDEX; exact selected `periodId`, no automatic base substitution |
+| `parameters.estimates` | Explicit `{id, cohortObservationRef, adoptionObservationRef, frequencyObservationRef, outputUnit, periodId}`; all refs resolve to selected governed version/row ids |
+| `options.requestId` | Optional correlation id, not a data/source selector |
+| `options.evaluatedAt` | Permitted only by trusted replay/acceptance path; ordinary callers cannot set freshness arbitrarily |
+
+Raw client observation arrays, rates or frequency values are not accepted as governed inputs.
+Every role selected must be used by a requested analysis or definition validation; reject
+unrelated inputs. Type selection uses captured evaluation time when `asOf` is omitted, then
+pins the actual chosen version/hash. Exact selectors have no `asOf`; no historical access is
+opened through this normal request.
+
+Normalize defaults, sorted unique selections and periods, explicit comparison/base refs and
+the captured `asOf` before hashing. Preserve dimension identifiers byte-for-byte; don't
+silently case-fold taxonomy codes. No Project FK, budget, success target, recommendation flag,
+personal records, raw URL connector, arbitrary SQL or caller-chosen server work limits.
+`periods` select source-defined interval ids or snapshot ids, not caller-created observations.
+Snapshot selections resolve to a reference date rather than a fictitious interval.
+INDEX selects its current period through the comparison's `toPeriodId` and its base through
+`basePeriods`; a conflicting `fromPeriodId` is rejected, not silently ignored.
+
+### Generic metric semantics and time-series model
+
+The proposed **optional generic semantics block** describes quantity and time, not Market
+business logic. Existing Spatial metrics omit it and retain exactly their current encoding.
+Market-specific analytical categories stay in the Market result contract.
+
+| Generic member | Meaning |
+| --- | --- |
+| `value`, `unit`, `dimension` | Value plus a versioned unit definition: e.g. transaction count, product quantity, persons, fraction, percent or base-100 index; product/person/event definitions are not interchangeable |
+| `measureKind` | FLOW, STOCK, RATE, SHARE or INDEX; governs aggregation and comparison |
+| `evidenceNature` | OBSERVATION, ESTIMATE or DERIVED; independent of publication/evidence verification state |
+| `period` | `{id, startDate, endDate, frequency, calendar, timeZone}` for an interval observation; null for a STOCK snapshot |
+| `timeWindow` | Requested bounds, distinct from the actual source period; never fabricated source coverage |
+| `referenceDate` | `{id, date, calendar, timeZone}` for STOCK snapshots; null for interval observations; no invented annual total |
+| `asOf` | Captured data-selection instant; not the observation period or source publication date |
+| `dimensionRefs` | Versioned geography, sector, cohort and metric-definition refs, plus statistical universe/coverage |
+| `comparison` | From/to period refs, optional `basePeriod`, operand refs and method; not a second independent value outside the metric |
+
+Proposed additive value kinds: QUANTITY (nonnegative level), CHANGE (signed absolute or
+percent change) and INDEX (nonnegative, explicit positive base). Percent levels stay bounded
+to their definition (e.g. adoption fraction [0,1]); percent change may exceed 100 or be
+negative. An index of 100 is the base observation, not "100% demand." No new kind changes
+the legacy COUNT/DENSITY mapped-feature constraints or existing nonnegative kinds.
+Add SOURCE_OBSERVATION and DERIVED_QUANTITY interpretations for these new kinds; keep
+ESTIMATE for estimated values and retain the existing estimated-status invariant.
+Do not route population context through legacy mapped-feature POPULATION semantics.
+
+Unit definitions describe the measured entity and denominator and are versioned in the
+dictionary. FLOW units might be transactions or product units during the observation period;
+RATE units specify the denominator period and entity. A CHANGE in absolute units shares its
+operands' dimension; percent change and INDEX are dimensionless but retain operand dimension
+and unit refs in their calculation trace. Definition mismatch blocks the calculation.
+
+**Time rules:**
+
+- Dates use ISO `YYYY-MM-DD`; intervals are half-open `[startDate,endDate)` with explicit
+  Gregorian calendar and IANA reporting time zone. Selection/evaluation/publication instants
+  are separate UTC timestamps. Source declarations must support any normalization from
+  inclusive dates; do not guess a conversion.
+- v1 supports MONTHLY, QUARTERLY, ANNUAL and CUSTOM reporting periods; arbitrary custom
+  comparisons require exact equal-length/equivalent-basis declarations. No fiscal/calendar
+  or daily/monthly conversion is implicit.
+- A series has stable definition, sector/geography/cohort/boundary versions, measure kind,
+  unit, methodology, statistical universe and adjustment basis. Those attributes form its
+  identity; changes split the series or block comparison.
+- Monthly/quarterly/annual FLOWs can compare aligned completed calendar periods on the same
+  reporting basis even if calendar month lengths differ; no per-day normalization or
+  seasonality adjustment is implied. Partial-to-full period change is NOT_COMPUTABLE.
+- STOCK levels belong to a declared snapshot date. Do not sum populations across time.
+  FLOW rows may be summed only over explicitly disjoint additive partitions; RATE/SHARE/
+  INDEX are not summed or averaged without declared numerator/denominator weights.
+  Exactly one of `period` and `referenceDate` is populated for a level observation.
+- A current level is the explicitly selected latest eligible completed period/snapshot
+  available at `asOf`, with the actual period returned. An older observation is never
+  relabelled as today. The requested time window cannot expand source coverage.
+- Missing months stay missing. Each trend pair and base period must exist and satisfy
+  comparability; no interpolation, forward fill, inferred zero or annualization.
+- Duplicate/revision resolution requires explicit precedence in the pinned version. Sort
+  by series identity, period start/end and observation id; equal conflicting revisions
+  fail the affected metric rather than using arrival order.
+- Seasonality, forecasts and seasonal adjustment are deferred; retain frequency and
+  adjustment metadata so later support does not require inventing historic periods.
 
 ### Result (proposed `jenan.market-demand.result/v1`)
 
-Reuse the engine envelope: engine identity/contracts/policies; normalized request; input
-availability and descriptors; analysis metrics grouped by the requested scope/series;
-per-metric method, units, state, input refs, confidence and limitations; bilingual gaps;
-rights and attribution; hashes; bounded work/cost and timing.
+Strict result envelope: `contract`, `runId`, engine key/version/contracts/runtime/policies,
+derived run `status`, normalized request/evaluation instant, `inputs`, `dataAvailability`,
+analysis `results`, `gaps`, `rights`, `attribution`, `determinism`, `limits` and `timing`.
+Results group stable metrics by analysis/series/period or explicit comparison, never by
+an undisclosed chosen candidate. Run statuses remain the existing shared COMPLETED,
+COMPLETED_WITH_GAPS and FAILED; do not overload them with evidence categories.
+
+Each Market metric contains the existing key/bilingual label/status/platformState/valueKind/
+unit/value/inputRefs/confidence/limitations/method, plus required semantics and Market-only
+`resultClass`, `signalRole` and `lineageNature` described below. The exact extension layout
+must preserve backwards compatibility of existing shared schemas in M1.
+
+Every numeric demand metric must state **what was measured, unit/dimension, period or
+snapshot, geography, sector/cohort, source refs and evidence nature**. Context metrics
+require the same applicable semantics. A unit/label alone never establishes demand.
+
+### Metric taxonomy: evidence category is not availability
+
+| Market `resultClass` | Meaning | Typical shared `status` |
+| --- | --- | --- |
+| OBSERVED | Direct measured demand observation, no assumption-based extrapolation | COMPUTED or PARTIAL |
+| ESTIMATED | Assumption-based output or a derived output that depends on an estimate | ESTIMATED; incomplete scope additionally carries a gap |
+| DERIVED | Deterministic transformation of compatible non-estimated demand observations | COMPUTED or PARTIAL |
+| CONTEXTUAL | Population, households, businesses, POIs or other non-demand indicator; never counted as demand | COMPUTED/PARTIAL, or ESTIMATED when the context value itself is estimated |
+
+`signalRole` is DEMAND or CONTEXT. `lineageNature` is OBSERVATION, ESTIMATE or DERIVED and
+retains the contributing natures in the calculation trace; a contextual source estimate
+is therefore CONTEXTUAL + CONTEXT + ESTIMATE + ESTIMATED, not an observed demand metric.
+Any estimate in required demand operands makes a derived demand output ESTIMATED, never
+pure OBSERVED/DERIVED. Context remains CONTEXTUAL even after arithmetic.
+
+NO_COVERAGE, NOT_AVAILABLE and NOT_COMPUTABLE are **availability statuses**, not extra
+numeric kinds. They carry `value=null`, `confidence=null`, platformState UNAVAILABLE and
+the expected signal role/semantics, with `resultClass=null` and `lineageNature=null` because
+no result was obtained. A gap explains the intended but missing observation/calculation.
+
+The platformState VERIFIED, if ever used for COMPUTED, requires all contributing inputs
+to be verified under shared rules; it is not inferred from the label OBSERVED. CONTEXTUAL
+and DERIVED are classifications, not proof of evidence verification or data completeness.
 
 Add a validated calculation trace identifying exact observation ids and transformations,
 periods, numerator/denominator or assumption input references. Keep that trace inside the
@@ -218,11 +403,13 @@ Observations may be COMPUTED or PARTIAL; assumption-derived outputs are ESTIMATE
 upgraded to VERIFIED by a successful formula. No best-project recommendation, feasibility
 score, success probability, project revenue forecast or financial conclusion is produced.
 
-### Proposed work caps (for approval/calibration in M1–M6)
+### Proposed work caps (for approval/calibration in M1–M5)
 
 - 500 total metrics, bounded before discovery/reads or expensive work.
 - At most 32 input versions (below Data Center's 50-id exact-read request cap).
 - At most 20 selected series and 120 requested periods.
+- At most 40 explicit comparisons and 20 estimates; preflight includes every requested
+  absolute/percent/index derivative, context and estimated metric in the 500 total.
 - At most 2,000 rows per version and 10,000 parsed observations per run, with a refusal
   before calculations on any excess; also retain content and common run JSON byte limits.
 - Preflight the output cross-product and server cost; enforce actual read/parse bounds too.
@@ -250,16 +437,50 @@ Period comparability and stale/fresh states are separate: a historic reporting p
 be a valid historical observation, but does not become a current-period demand measurement.
 Pin the evaluation instant and explain the applicable freshness policy.
 
-## 8. Confidence, provenance, rights and persistence
+## 8. market-confidence-v1, provenance, rights and persistence
 
-Use a dedicated `market-demand-confidence-v1` policy on the shared framework. Proposed factors:
-source/evidence quality, methodology and sample representativeness, geographic/sector/cohort
-coverage, period alignment, freshness and dimensional comparability. Weights/thresholds must
-be explicit, versioned and tested in M1, not borrowed from Spatial or treated as probability.
+**Policy proposal for review:** id `market-confidence-v1`, version `1.0.0`,
+EXPLAINABLE_HEURISTIC, POINTS_100, `isProbability=false`. HIGH >=80, MEDIUM >=60,
+LOW >=35, otherwise INSUFFICIENT. Points are quality heuristics, not confidence intervals
+or probabilities of market/project success. No Spatial weights/policy are imported.
+
+| Factor | Max | Full / limited / unavailable points and basis |
+| --- | ---: | --- |
+| sourceQuality | 20 | 20 for recorded MEASURED quality >=0.8 with method/date; 10 for lower recorded MEASURED quality; 0 if unavailable/insufficient |
+| geographicCoverage | 15 | 15 exact area/boundary coverage; 8 declared partial usable coverage; 0 unknown |
+| temporalCoverage | 15 | 15 all required complete periods/snapshots; 8 declared partial coverage usable for the particular level; 0 unknown |
+| freshness | 10 | 10 fresh under explicit policy; 5 stale usable only with limitation; 0 unknown; expired inputs cannot support a valued metric |
+| completeness | 15 | 15 declared complete for the exact statistical universe; 8 declared sample/subset; 0 unknown |
+| measurementMethod | 15 | 15 named/versioned applicable and compatible method; 8 documented but limited method; 0 absent/unsupported |
+| evidenceNature | 5 | 5 traceable non-estimated observations/derivations; 3 reviewed explicit estimates; 0 unverified nature |
+| rightsProvenance | 5 | 5 complete exact source/version/hash/row lineage and declared rights; 3 complete lineage but undeclared license class; 0 inadequate metadata |
+
+Weights total 100. Scope/comparability/integrity checks happen first: points cannot rescue
+an invalid comparison, invalid denominator, missing required assumptions or unauthorized input.
+For each metric, evaluate every required input/operand for the same eight factors and use
+the minimum points per factor, recording the determining input id and explanation. For a
+derived metric, additionally cap its final band at the weakest operand band; the original
+score remains the sum of factors, not an untraceable adjusted value.
+
+Proposed caps: SAMPLE or UNKNOWN completeness, incomplete descriptor coverage, undeclared license
+class or unverified evidence => at most LOW; estimated required inputs/outputs, stale input,
+unknown freshness or unmeasured source quality => at most MEDIUM. Apply all relevant caps
+and the weakest-operand cap.
+Sample weights do not remove the sample cap in v1 or create representative national demand.
+These coverage caps apply only after content establishes the actual statistical scope.
+An unknown requested geography/cohort/time basis still fails the scope gate rather than
+yielding a low-confidence market total.
+If the weakest operand is INSUFFICIENT, return NOT_COMPUTABLE with null value/confidence,
+rather than forcing it into a supported HIGH/MEDIUM/LOW cap. A candidate level with an
+INSUFFICIENT own score is likewise unavailable under this Market proposal.
 
 Hard caps take precedence: unknown/sample representativeness cannot become HIGH because
 arithmetic succeeded; an estimate cannot outrank its weakest required input; lack of data
 never increases confidence. Unavailable metrics have null confidence.
+Known denied retrieval, missing exact provenance or checksum mismatch blocks use before
+scoring. Missing/RESTRICTED export rights deny export but do not create analysis permission
+or automatically destroy an otherwise authorized observation. Rights are a gate plus a
+provenance factor, not a way to purchase higher confidence.
 
 Persist exact normalized request; request/input/output hashes; policy/method versions;
 observation/calculation lineage; Data Center exact version/source/type/checksum; source and
@@ -267,12 +488,17 @@ publication/effective metadata; license/usage/attribution/quality snapshot; acto
 run-linked usage intents. Use the existing append-only run/input tables without new Project,
 Map or Data Center foreign keys and without writes to frozen Data Center usage tables.
 
-A Market-owned adapter can use the existing generic published read and pure Data Center
-policy/checksum helpers. Exact historical replay of non-GeoJSON content requires its own
-approved internal seam: the Spatial historical adapter currently requires GeoJSON. Design
-that seam in M1 and implement/test it in M5 without importing or editing Spatial. Prefer an
-approved engine-neutral extraction if needed; stop for owner approval before any extraction
-that touches the frozen engine. No ordinary historical discovery/API is added.
+The shared storage contracts/tables already exist; the current executable persistence/replay
+adapters still live in Spatial, and the historical reader requires GeoJSON. M0 must not
+claim otherwise. Propose an engine-neutral service over the existing run/input tables and
+current Data Center read/access/checksum contracts, with an injected engine content validator.
+Market consumes that shared service; Spatial's existing adapters remain byte-for-byte frozen.
+No Market dataset persistence, shadow input-content store, duplicate tables or second migration.
+
+Design the generic non-GeoJSON historical-read authorization/integrity seam in M1 and
+implement it in M4. It is internal exact-version replay only, never historical discovery.
+Any implementation that cannot avoid editing frozen Spatial or Data Center must stop and
+explain the blocker before doing so. Do not extract/rewire Spatial without new permission.
 
 Run ownership checks and current source access apply at replay. Authorization, exact version
 and checksum validation precede parsing/analysis. Recompute the three hashes with the saved
@@ -292,26 +518,33 @@ financials, real-time streams, causal claims, recommendations and success scores
 No Projects/marketplace UI, reports UI or production routes are added by the engine milestones.
 Future consumers integrate through its contracts, not duplicate calculations.
 
-## 10. Proposed milestones: M0 plus six implementation/acceptance stages
+## 10. Final proposed split: M0 plus five implementation/acceptance stages
 
-M1–M6 are **proposed only**; no stage starts before this M0 is approved. Six stages keep
-foundations, source access, observed calculations, assumption-based work, history and technical
-acceptance independently reviewable, while avoiding an unnecessary second Spatial build.
+**Recommend M1–M5, not seven stages.** These stages remain proposed until the detailed
+contracts in this revision are reviewed. M0 direction approval is not authorization to
+start M1. Five stages preserve separate gates for contracts, governed data, deterministic
+analysis, exact history and technical acceptance. Four would combine history with final
+acceptance or data access with arithmetic and hide a meaningful risk boundary.
 
 | Stage | Bounded deliverable / review gate |
 | --- | --- |
-| M0 (this report) | Architecture, v1/data contracts, limitations and decisions; no implementation |
-| M1 | Contracts/normalization, additive shared vocabulary proposal approval, boundary guards, cost/caps, gaps/confidence and persistence/replay seam design |
-| M2 | Read-only governed Data Center adapter, engine-side observation validator, exact/by-type selection, scope/rights/provenance; authorized source inventory |
-| M3 | MARKET_CONTEXT, OBSERVED_DEMAND and DEMAND_TREND; duplicate/revision handling, comparable periods/dimensions, signed changes and no false zero |
-| M4 | AUDIENCE_CONTEXT and optional ASSUMPTION_BASED_DEMAND; explicit assumptions, unit/time/cohort compatibility and ESTIMATED lineage |
-| M5 | Append-only run/input/usage persistence and exact historical non-spatial replay; real fresh PostgreSQL acceptance |
-| M6 | Full technical acceptance, real-data cases where available, bounded performance/security/access tests, CodeQL/review, documentation and Technical SHA |
+| M0 (this report) | Approved direction/decisions incorporated; seven contract/model proposals presented; stop for review |
+| M1 — Contracts & boundaries | Strict input/output/observation/time schemas, additive shared primitives with unchanged legacy encodings, market-confidence-v1, gaps, normalization/hashes, caps and boundary tests; design shared persistence/history seam; Spatial/shared regression gate |
+| M2 — Governed inputs | Read-only Data Center adapter, authorized inventory, exact/by-type pinning, typed content/dictionaries, rights/coverage/period/revision validation; actual PostgreSQL/RBAC tests and real-data manifest or explicit source gaps |
+| M3 — Deterministic analysis | All five analyses: context/audience, measured quantity, signed change/percent/base index, explicit assumption estimates; hand-computed golden tests, time/units/cohorts/sample/zero/lineage cases; no estimation shortcut or monetary result |
+| M4 — Persistence & replay | Engine-neutral internal service over existing run/input tables, append-only usage/provenance, exact authorized non-GeoJSON historical read/replay; fresh PostgreSQL migrations and mismatch/access/revision tests; no Spatial/DC rewiring |
+| M5 — Technical acceptance | Full functional/integration/regression gates, actual-data reconciliation and declared gaps, cold/warm/repeated/concurrent bounds, access/boundary review, CodeQL, typecheck/lint/build, recorded Technical SHA and desktop/remote equality |
+
+Combining the smaller audience/assumption module with M3 reuses the same typed quantities,
+scope matching, confidence and trace calculations; it removes a handoff, not a feature or
+test. Approval of M1 does not automatically approve completing all later stages unattended.
 
 After every stage, report delivered contracts/capabilities, targeted tests, baseline diff,
 data gaps and git/archive status, then stop for the next explicit owner instruction. Final
-Sonar and final tags remain deferred under the seven-engine policy; an M6 technical pass is
+Sonar and final tags remain deferred under the seven-engine policy; an M5 technical pass is
 not a claim that Sonar passed or final closure was granted.
+Missing observed-demand data blocks numerical real-data acceptance; it is not waived by
+finishing fixture tests or by reducing the number of milestones.
 
 ## 11. Required tests and technical gates
 
@@ -325,6 +558,12 @@ not a claim that Sonar passed or final closure was granted.
   missing vs measured zero, samples vs inventories, suppressed observations.
 - Positive/negative/zero change, zero denominator, discontinuous/unequal periods, changed
   methods/boundaries, no hidden interpolation and no automatic conversion.
+- Percent formula distinguishes 0.1 fraction from 10 percent; explicit positive-base
+  indices, missing/zero base, partial/full period mismatch, snapshot-vs-flow rejection.
+- OBSERVED/ESTIMATED/DERIVED/CONTEXTUAL independent of availability, source verification
+  and lineage nature; population/business/POI counts cannot satisfy demand requirements.
+- All eight confidence factor points, 100-point sum, threshold boundaries, weakest-input
+  rules, interacting caps, insufficient-score null values and rights gates.
 - Explicit estimate factors including valid zero, invalid rates/frequencies, missing inputs,
   cohort incompatibility, ESTIMATED status and weakest-input confidence.
 - Provenance down to rows/assumptions; rights/export/attribution closure; trace/hash sensitivity.
@@ -333,6 +572,9 @@ not a claim that Sonar passed or final closure was granted.
 - Reproducibility for identical requests and versions, stable tie-breaks and caller isolation.
 - No external network/AI, no Map writes, no Data Center writes, no Projects FK/imports, no
   engine-to-engine imports, no silent weakening of the existing Spatial regression tests.
+- Negative contract/boundary cases for recommendation, success probability, revenue
+  prediction and monetary sizing from contextual counts; neither forbidden fields nor
+  unsupported analysis flags are accepted or emitted.
 - Regression: complete Spatial/shared suite and relevant Data Center/PostgreSQL suites;
   PostGIS regression when a shared change could affect Spatial geometry/envelope behavior.
 - TypeScript, lint, production build and diff checks at implementation technical acceptance;
@@ -340,6 +582,26 @@ not a claim that Sonar passed or final closure was granted.
 - Security/access testing, review and CodeQL. Sonar is deferred, not reported as PASS.
 
 ## 12. Proposed Real-Data Acceptance
+
+### Evidence ledger at this M0 revision
+
+| Capability / evidence | Current verified fact | What may be tested after implementation | Remaining gap |
+| --- | --- | --- | --- |
+| Real Saudi spatial sample | Prior Spatial M7 acceptance exists | Existing Spatial regression only; not Market demand acceptance | No Market ingestion or inferred demand from that sample |
+| Published market source inventory | Not performed under an authorized Market consuming actor | Actor-scoped metadata/read/access/checksum tests in M2 | Types, rights and actual market coverage UNVERIFIED |
+| Observed demand quantity | No approved exact version/rows established here | Reconcile observed quantity to independently calculated source rows | Real sales/service-use/product-volume source needed |
+| Time change/index | No two comparable actual demand periods established | Reconcile signed change, percent and base-100 index on exact periods | Comparable definitions/periods and valid base needed |
+| Audience context | No suitable population source established by prior Spatial acceptance; not proof of organization-wide absence | Reconcile governed statistical cohort/snapshot to source | Authorized suitable population/cohort version needed |
+| Assumption-based demand | No approved compatible adoption/frequency/cohort set | Recompute explicit estimate and test its lineage/confidence | Method, sources and applicability approval needed |
+| Market persistence/replay | Generic tables exist; Market service not implemented | Real disposable PostgreSQL persistence/access/history tests in M4 | Not yet a Market replay PASS; fixture replay remains separate |
+
+There is currently **no verified actual-data numerical Market acceptance**. Existing
+Spatial/PostgreSQL evidence is reusable infrastructure evidence, not measured market demand.
+Hand-calculated fixtures will prove algorithm behavior but are never called production data.
+Only actual accessible versions may establish real no-coverage/unavailable behavior; an
+empty fixture or failed login cannot prove there is no organization-wide source.
+
+### Acceptance protocol once sources and execution are approved
 
 1. Inventory only actor-readable published source metadata first. Record date, exact version/
    checksum, rights, source reporting periods and statistical coverage. Do not publish hidden
@@ -363,14 +625,17 @@ If no suitable actual demand source is available, the unavailable-state acceptan
 but numerical real-data acceptance remains **BLOCKED / NOT VERIFIED**. Do not call fixture
 accuracy or a census population lookup proof of real consumer demand.
 
-## 13. Current blockers and decisions required before M1
+## 13. Remaining review items and blockers
 
-1. **Owner M0 approval:** authorize v1 analyses, deferred items, milestone count and proposed
-   work caps. Implementation remains stopped.
-2. **Shared vocabulary/guards:** approve the additive quantities/units/signed-change semantics
-   and narrow Market adapter allowlist before any shared edits; preserve Spatial semantics.
-3. **Persistence/replay seam:** approve the Market-owned/internal or engine-neutral approach
-   for non-GeoJSON history. Any necessary change to frozen Spatial requires a separate stop.
+1. **Detailed contract review:** direction and the four architectural decisions are approved;
+   review this revision's seven deliverables, five-stage split, confidence rubric and work
+   caps, then separately authorize M1. Implementation remains stopped.
+2. **Compatibility:** additive engine-neutral primitives are approved in principle. Their
+   concrete schemas/interpretations, legacy encoding/hash preservation and narrow boundary
+   allowlist are specified here for review, not already implemented.
+3. **Persistence/replay seam:** review the proposed engine-neutral service without dataset
+   duplication or Spatial/DC edits. Exact non-GeoJSON historical authorization remains a
+   capability to implement and verify, not an existing generic implementation.
 4. **Governed data:** authorize an actor-scoped inventory and supply/approve statistical
    sources, taxonomy, observation schemas, area/cohort definitions and estimate assumptions.
    M0 has not established production availability or source licensing.
