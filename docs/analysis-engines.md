@@ -18,9 +18,8 @@ defers final Sonar acceptance and final tags until all seven technical baselines
    M1 CLOSED at `bde54c6d53a4062bb1edf7223d83328e98f34c6b`;
    M2 CLOSED at `f8d974c206e25af32bc18472d94ad32eefbcb8c4`;
    M3 CLOSED at `54c5c0fc02414b23087a08e47b747524b758556c`;
-   M4 implements existing Shared Run/Input persistence, currently authorized exact
-   historical replay and reproducibility; M4 CHECKPOINT FOR OWNER REVIEW;
-   M5 NOT STARTED;
+   M4 CLOSED at `f1a7f7da1c0873ccdeb8a6e99db8b1f8d5937974`;
+   M5 local technical gates PASS; exact-SHA CodeQL / final closure pending;
    real-competitor acceptance BLOCKED / NOT VERIFIED)
 4. Opportunity & Gap Engine
 5. Financial Feasibility Engine
@@ -82,7 +81,14 @@ and is never modified by the engines. The engines are aggregated on their own li
   M4 gates: 1,851 unit PASS (+3 existing browser-only skips), 394 database PASS,
   including 53 Competitor cases; all 78 migrations on fresh databases; TypeScript,
   zero-warning scoped ESLint, production build and diff checks PASS.
-  Real-competitor acceptance remains BLOCKED / NOT VERIFIED. M5 requires separate approval.
+  The owner accepted and CLOSED M4 at `f1a7f7da1c0873ccdeb8a6e99db8b1f8d5937974`
+  and authorized M5 final technical acceptance only. M5 adds synthetic acceptance
+  tests, not runtime changes: 1,853 unit PASS (+3 existing browser-only skips),
+  399 database PASS across 15 files, all 78 migrations on fresh disposable databases,
+  committed concurrency/replay/duplicate-ID/rollback/recovery acceptance, TypeScript,
+  zero-warning scoped ESLint and production build PASS. Exact-SHA CodeQL and final
+  closure are recorded separately after the technical commit exists.
+  Real-competitor acceptance remains BLOCKED / NOT VERIFIED. Do not start engine four.
   No main merge, final tag or Sonar attempt is authorized.
 
 - Spatial: **TECHNICALLY COMPLETE — PENDING FINAL SONAR**, not `FINAL CLOSED`.

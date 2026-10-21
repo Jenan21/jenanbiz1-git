@@ -6,14 +6,16 @@
 M1 CLOSED at `bde54c6d53a4062bb1edf7223d83328e98f34c6b`.
 M2 CLOSED at `f8d974c206e25af32bc18472d94ad32eefbcb8c4`.
 M3 CLOSED at `54c5c0fc02414b23087a08e47b747524b758556c`.
-M4 IMPLEMENTED — CHECKPOINT FOR OWNER REVIEW. M5 NOT STARTED.**
+M4 CLOSED at `f1a7f7da1c0873ccdeb8a6e99db8b1f8d5937974`.
+M5 LOCAL TECHNICAL GATES PASS — EXACT-SHA CODEQL / FINAL CLOSURE PENDING.**
 
 The subsequent owner decisions replace establishment-only counting: model a unified
 Competitor Entity separately from locations/branches and original source records.
 The owner subsequently approved M0, accepted and closed M1 at the SHA above,
 and explicitly authorized M2. After accepting and closing M2 at the SHA above,
 the owner authorized M3, accepted and CLOSED it at the SHA above, then authorized
-M4 only. The five-stage split does not authorize M5.
+M4, accepted and CLOSED it at the SHA above, then authorized M5 final technical
+acceptance only. No fourth engine is authorized.
 
 The owner authorized architecture/planning only on 2026-10-21 and separately approved
 a nonsquashed integration merge followed by this planning branch:
@@ -1020,3 +1022,102 @@ checkpoint and `docs/analysis-engines.md`.
 | Sonar | DEFERRED / PENDING until all seven technical engines are complete |
 
 **Stop after this M4 checkpoint for owner review. Do not start M5 automatically.**
+
+The preceding status/table records the M4 checkpoint. The owner subsequently
+accepted and CLOSED M4 at `f1a7f7da1c0873ccdeb8a6e99db8b1f8d5937974` and explicitly
+authorized M5 final technical acceptance. Sonar remains deferred.
+
+## 15. M5 final technical acceptance
+
+### Scope, frozen boundaries and existing behavior
+
+M5 adds `tests/unit/competitor-analysis-acceptance.test.ts` and
+`tests/integration/competitor-analysis-acceptance.integration.test.ts`.
+No production runtime, formula, matching/identity/confidence contract, Shared Core,
+Data Center, Spatial, Market, Map, schema, migration, UI or endpoint is changed.
+All M1-M4 cases remain part of the final gates. The accepted M3 calculation version
+`1.0.0-m3` and M4 history format are not upgraded.
+
+### Final local gates
+
+| Gate | Result |
+| --- | --- |
+| Full Competitor / Shared / Spatial / Market / Data Center unit/static regression | 1,853 PASS; 3 pre-existing browser-only skips; 62 passing files + 1 skipped; 47.50 s |
+| Full isolated PostgreSQL / Data Center / PostGIS regression | 389/389 PASS; 13 files; 194.62 s |
+| Committed Competitor final acceptance | 5/5 PASS; 20.42 s |
+| Separate committed Market frozen acceptance | 5/5 PASS; 7.71 s |
+| Combined database gates | 399/399 PASS across 15 files |
+| Competitor PostgreSQL coverage | 53 prior M2-M4 cases + 5 committed M5 cases = 58 PASS |
+| Fresh databases and migrations | All 78 migrations applied independently to each of three owned scratch databases; all dropped |
+| TypeScript | PASS; standalone check and production-build type check enabled |
+| Scoped ESLint | PASS; zero warnings across Competitor runtime/tests and global boundaries |
+| Production Webpack build | PASS; 161/161 static-generation tasks |
+| Map asset preparation | PASS; no tracked Map change |
+| `git diff --check` | PASS |
+| Exact-SHA CodeQL | Pending the technical commit; both language jobs will be recorded below |
+| Sonar | DEFERRED / PENDING until all seven engines are technically complete |
+
+The 389-case regression includes Competitor 53, Market 68, Spatial/provider/PostGIS
+169 and Data Center 99. The separate committed suites add five cases each.
+All database acceptance uses fresh migrated disposable databases, not a production
+reset. Saudi/PostGIS regressions retain their existing read/template fixture policy.
+
+### Committed load, concurrency and recovery
+
+The new suite refuses to run unless `COMPETITOR_ACCEPTANCE_DATABASE_TESTS=1` and
+`current_database()` matches the owned `se_competitor_m5_<12 hex>` scratch pattern.
+It creates explicitly synthetic governed fixtures in that database only and freezes
+Data Center row counts after setup. Runtime writes are limited to Shared history.
+
+| Measurement | Observed | Enforced gate |
+| --- | --- | --- |
+| Pure 32 interleaved analyses, four sources / 15 locations each | 5,505.54 ms total; 5.81 operations/s | total <15,000 ms |
+| Eight committed runs, concurrency four | 4,733.83 ms total; p50 2,105.38 ms; p95/max 2,633.95 ms; 1.69 operations/s | max <15,000 ms; total <30,000 ms |
+| Sixteen exact replays, concurrency four | 5,353.91 ms total; p50 1,318.22 ms; p95/max 1,618.93 ms; 2.99 operations/s | max <15,000 ms; total <30,000 ms |
+
+Every committed run retains four exact input rows, one unique entity, 15 locations,
+restricted export, attribution and identical deterministic hashes. Separate read
+transactions reload the full nonempty results. Replay reproduces the complete stored
+result/hashes with no Run/Input/Data Center/audit/usage writes. Pure interleaved
+calculations preserve submitted requests/source bytes and isolate result mutation.
+These are bounded synthetic measurements on a shared Windows host, not production
+capacity, a generalized throughput claim or a production latency SLA.
+
+Four concurrent attempts at one run ID produce exactly one success and three explicit
+unique-constraint failures; exactly one parent/four children remain, no overwritten or
+orphan inputs. A test-only constraint then rejects a nested child insertion in a real
+transaction: no parent/child is committed and Data Center counts do not change.
+After removing that exact test-only constraint, retrying the same unsaved ID succeeds,
+persists four inputs and replays exactly. No production trigger is disabled by this
+acceptance suite. Concurrent foreign/missing lookups/replays all yield the same
+unavailable error and make no writes.
+
+### Security, integrity and static capability gates
+
+The unchanged 53-case PostgreSQL suite plus final acceptance verify current source/
+organization/version-context/robot permissions, owner/admin filtering, no existence
+leak, exact bytes/checksums, input/source provenance/rights, expiry/supersession,
+canonical hashes, rehashed result/input corruption, append-only triggers, failures
+and rollback. Pure tests cover metric/input/output/version limits, explicit missing/
+partial states, identity ambiguity, taxonomy, observed dimension comparability and
+historical arithmetic guards. Oversized submitted input is rejected before source I/O.
+
+Competitor AST and global static boundaries still restrict writes to one atomic
+Shared Run nested create; exact history/read adapters have narrow allowlists.
+No network, AI/LLM, scraping, Spatial/Market import, Map/Projects access, raw SQL,
+Data Center write, hidden clock or success/revenue/strength inference capability is
+added to runtime. This is automated static/integrity/access acceptance, not a claim
+that bounded tests alone prove the absence of every possible vulnerability.
+
+### Real-data status and finalization
+
+**REAL-DATA COMPETITOR ACCEPTANCE = BLOCKED / NOT VERIFIED.**
+All technical fixtures, including the durable committed load/recovery dataset, are
+**Fixtures / Synthetic**, not real competitors. No authorized populated production
+connection was supplied or accessed. Absence of production visibility is not evidence
+that the Data Center lacks competitor/Market data, and is not a technical failure.
+
+Local gates above are complete. Final technical SHA, exact-SHA CodeQL results and
+the subsequent documentation-only closure will be pinned once the technical commit
+and remote scan exist. Finalization must verify Local/Remote/Desktop equality.
+No main merge, final tag, Sonar run or fourth-engine start is authorized.
