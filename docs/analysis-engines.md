@@ -8,8 +8,8 @@ defers final Sonar acceptance and final tags until all seven technical baselines
 
 1. Spatial Analysis Engine (`docs/spatial-engine-v1.md`)
 2. Market & Demand Engine ([contracts and checkpoints](market-demand-engine-v1.md);
-   M0 and M1–M5 split approved; M1 CLOSED at `d95da803`; M2 read-only integration implemented
-   and verified for checkpoint review; real-demand acceptance blocked; M3 not started)
+   M0 and M1–M5 split approved; M1 CLOSED at `d95da803`; M2 CLOSED at `e905daa`;
+   real-demand acceptance BLOCKED / NOT VERIFIED; M3 only authorized, M4 not started)
 3. Competitor Analysis Engine
 4. Opportunity & Gap Engine
 5. Financial Feasibility Engine

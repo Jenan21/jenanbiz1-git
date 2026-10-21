@@ -7,6 +7,14 @@ M1 was subsequently accepted and CLOSED at
 `d95da8030fbdcd6e68199cc4ca60bb6f528ece01`. The owner then authorized M2 only.
 M3 must not start automatically.**
 
+**Owner finalization (2026-10-21): M2 = CLOSED.** Final M2 implementation SHA:
+`e905daa0675f4cccf808978280cfe34eb133bc20` (TECHNICALLY COMPLETE).
+M2 PostgreSQL datasets were **Fixtures / Synthetic**, never Real Demand Data.
+Production visibility is **NOT VERIFIED**; the local connection's missing schema does
+not mean the production Data Center lacks Market data. Real-data demand acceptance
+remains **BLOCKED / NOT VERIFIED**, not an engine failure. The owner now authorizes
+**M3 only**; M4 requires separate approval. Shared Core, Spatial and Data Center remain frozen.
+
 - Engine: Market & Demand Engine / محرك السوق والطلب.
 - Proposed engine key and directory: `market-demand`,
   `services/analysis-engines/market-demand/`.
