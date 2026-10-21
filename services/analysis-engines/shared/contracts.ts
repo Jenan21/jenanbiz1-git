@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { quantitySemanticsSchema, quantityValueProblems } from "./quantities";
 import { boundingBoxSchema, countryCodeSchema, evidenceStates, licenseClasses, ownerships, regionCodeSchema } from "@/services/data-center/contracts";
 import { canonicalHash, canonicalize, compareText, omitKeys } from "./canonical";
 import { confidenceBreakdownSchema, confidencePolicyDescriptorSchema, findBreakdownPolicyViolations, type ConfidencePolicyDescriptor } from "./confidence";
@@ -143,18 +144,19 @@ export function deriveInputGaps(input: EngineInput): Gap[] {
  * Later engines extend these vocabularies in their own commit, with tests (for example currency amounts or ratios for the
  * financial engine); an existing member never changes meaning.
  */
-export const valueKinds = ["DISTANCE", "AREA", "COUNT", "DENSITY", "POPULATION", "RATIO", "ORDINAL", "CATEGORICAL", "BOOLEAN", "TEXT"] as const;
+export const valueKinds = ["DISTANCE", "AREA", "COUNT", "DENSITY", "POPULATION", "RATIO", "ORDINAL", "CATEGORICAL", "BOOLEAN", "TEXT", "QUANTITY", "CHANGE", "INDEX"] as const;
 export type ValueKind = typeof valueKinds[number];
-export const metricUnits = ["m", "km", "km2", "count", "per_km2", "people", "ratio", "none"] as const;
+export const metricUnits = ["m", "km", "km2", "count", "per_km2", "people", "ratio", "none", "quantity", "percent", "index_points"] as const;
 export type MetricUnit = typeof metricUnits[number];
 /**
  * What a value means. MAPPED_FEATURES_ONLY: it describes the features present in the data used, not the real world.
  * MEASURED_GEOMETRY: it is a measurement of geometry (the request's own, or a derived shape). ESTIMATE: it relies on an assumption.
  */
-export const interpretations = ["MAPPED_FEATURES_ONLY", "MEASURED_GEOMETRY", "ESTIMATE"] as const;
+export const interpretations = ["MAPPED_FEATURES_ONLY", "MEASURED_GEOMETRY", "ESTIMATE", "SOURCE_OBSERVATION", "DERIVED_QUANTITY"] as const;
 export type Interpretation = typeof interpretations[number];
 const unitsByKind: Record<ValueKind, readonly MetricUnit[]> = {
   DISTANCE: ["m", "km"], AREA: ["km2"], COUNT: ["count"], DENSITY: ["per_km2"], POPULATION: ["people"], RATIO: ["ratio"], ORDINAL: ["none"], CATEGORICAL: ["none"], BOOLEAN: ["none"], TEXT: ["none"],
+  QUANTITY: ["quantity"], CHANGE: ["quantity", "percent"], INDEX: ["index_points"],
 };
 const numericKinds: readonly ValueKind[] = ["DISTANCE", "AREA", "COUNT", "DENSITY", "POPULATION", "RATIO", "ORDINAL"];
 const integerKinds: readonly ValueKind[] = ["COUNT", "POPULATION", "ORDINAL"];
@@ -172,6 +174,7 @@ const engineMetricObject = z.object({
   confidence: confidenceBreakdownSchema.nullable(),
   limitations: z.array(shortTextSchema).max(10),
   method: shortTextSchema.optional(),
+  semantics: quantitySemanticsSchema.optional(),
 }).strict();
 export type EngineMetric = z.infer<typeof engineMetricObject>;
 
@@ -186,11 +189,31 @@ export function findMetricViolations(metric: EngineMetric): string[] {
   if (!unitsByKind[valueKind].includes(metric.unit)) problems.push(`Unit ${metric.unit} does not fit ${valueKind}`);
   if (!allowedPlatformStates(status).includes(metric.platformState)) problems.push(`platformState ${metric.platformState} does not fit ${status}`);
   if (value !== null) {
-    if (numericKinds.includes(valueKind)) {
+    if (valueKind === "QUANTITY" || valueKind === "CHANGE" || valueKind === "INDEX") {
+      if (typeof value !== "number") problems.push(`${valueKind} needs a number`);
+      else if (metric.semantics) problems.push(...quantityValueProblems(value, metric.semantics, valueKind === "CHANGE"));
+    } else if (numericKinds.includes(valueKind)) {
       if (typeof value !== "number" || value < 0) problems.push(`${valueKind} needs a number that is not negative`);
       else if (integerKinds.includes(valueKind) && !Number.isInteger(value)) problems.push(`${valueKind} needs a whole number`);
     } else if (valueKind === "BOOLEAN" ? typeof value !== "boolean" : typeof value !== "string") problems.push(`${valueKind} has the wrong value type`);
   }
+  const quantitative = valueKind === "QUANTITY" || valueKind === "CHANGE" || valueKind === "INDEX";
+  if (quantitative) {
+    if (!metric.semantics) problems.push("A quantitative metric requires explicit semantics");
+    if (!["SOURCE_OBSERVATION", "DERIVED_QUANTITY", "ESTIMATE"].includes(metric.interpretation)) problems.push("Quantities require source, derived or estimate interpretation");
+    if (metric.semantics) {
+      const comparison = metric.semantics.comparison;
+      if ((valueKind !== "QUANTITY") !== (comparison !== undefined)) problems.push("Only CHANGE and INDEX require a comparison");
+      if (comparison && ((valueKind === "INDEX") !== (comparison.operation === "INDEX"))) problems.push("Value kind disagrees with comparison operation");
+      if (metric.unit === "percent" && comparison?.operation !== "PERCENT_CHANGE") problems.push("Percent change requires its operation");
+      if (comparison?.operation === "PERCENT_CHANGE" && metric.unit !== "percent") problems.push("Percent change requires percent unit");
+      if (value !== null) {
+        if ((metric.interpretation === "ESTIMATE") !== (metric.semantics.evidenceNature === "ESTIMATE")) problems.push("Estimate interpretation must match evidence nature");
+        if (metric.interpretation === "SOURCE_OBSERVATION" && metric.semantics.evidenceNature !== "OBSERVATION") problems.push("Source observation must be observed");
+        if (metric.interpretation === "DERIVED_QUANTITY" && metric.semantics.evidenceNature !== "DERIVED") problems.push("Derived quantity must be derived");
+      }
+    }
+  } else if (metric.semantics || ["SOURCE_OBSERVATION", "DERIVED_QUANTITY"].includes(metric.interpretation)) problems.push("New quantity semantics cannot reinterpret legacy value kinds");
   if ((valueKind === "COUNT" || valueKind === "DENSITY") && metric.interpretation !== "MAPPED_FEATURES_ONLY") problems.push(`${valueKind} describes mapped features only`);
   if (valueKind === "POPULATION" && metric.interpretation === "MEASURED_GEOMETRY") problems.push("POPULATION is mapped values or an estimate, never a geometry measurement");
   if (value !== null) {

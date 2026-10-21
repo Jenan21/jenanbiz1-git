@@ -7,9 +7,8 @@ is built, tested and approved before the next one starts. The owner's 2026-10-21
 defers final Sonar acceptance and final tags until all seven technical baselines are complete:
 
 1. Spatial Analysis Engine (`docs/spatial-engine-v1.md`)
-2. Market & Demand Engine ([M0 contracts and implementation plan](market-demand-engine-v1.md);
-   architectural direction/decisions approved; detailed contracts and proposed M1–M5 await review;
-   M1 not started)
+2. Market & Demand Engine ([contracts and M1 checkpoint](market-demand-engine-v1.md);
+   M0 and M1–M5 split approved; M1 foundations implemented for review; M2 not started)
 3. Competitor Analysis Engine
 4. Opportunity & Gap Engine
 5. Financial Feasibility Engine

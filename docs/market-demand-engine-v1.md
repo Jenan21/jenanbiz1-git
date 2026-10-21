@@ -2,8 +2,8 @@
 
 ## M0 status and authority
 
-**M0 architectural direction and owner decisions approved on 2026-10-21.
-Detailed contracts and the final proposed stage split below await review. M1 has not started.**
+**M0 APPROVED on 2026-10-21, including M1–M5 and the detailed contract/policy basis.
+M1 only is authorized. M2 must not start automatically.**
 
 - Engine: Market & Demand Engine / محرك السوق والطلب.
 - Proposed engine key and directory: `market-demand`,
@@ -17,8 +17,9 @@ Detailed contracts and the final proposed stage split below await review. M1 has
   Sonar-only setup SHA: `98ad93e3706a506bed8e6df9ff6e0eec1a2e64d0`.
 - No Spatial final tag, no merge to `main`, no Sonar subscription or further Sonar attempts.
   The final Sonar policy is recorded in [the shared architecture](analysis-engines.md).
-- This M0 creates documentation only: no engine module, shared schema extension, migration,
-  Data Center type/record, source connection, UI, API or analytical result.
+- The initial M0 was documentation only. The M1 checkpoint below records the pure contract,
+  validation and arithmetic implementation; it adds no Data Center connection, migration,
+  registered type/record, dataset store, UI, API or production analytical run.
 
 ### Approved decisions, incorporated without implementation
 
@@ -77,7 +78,7 @@ Reuse the existing pure modules, not copies of them:
    numeric change without an additive contract extension.
 2. The owner approves additive generic primitives in principle. The concrete proposal below
    uses `QUANTITY`, `CHANGE` and `INDEX`, explicit dimensions/units, time windows and an
-   optional metric-semantics block. Review these definitions before M1 implements anything;
+   optional metric-semantics block. M0 approval authorizes these additions in M1;
    never reinterpret existing COUNT, RATIO or ORDINAL, or encode a negative number as text.
 3. The existing database persistence, usage and historical-replay implementations live under
    `spatial/adapters`, and some are GeoJSON/Spatial-specific. Market must not import them.
@@ -251,9 +252,9 @@ indices and compatible series; they are not approximated from unrelated indicato
 Even if future sources contain sales amounts, monetary sizing needs a separately reviewed
 contract; a population/POI-only request must never emit a SAR market size.
 
-## 6. Detailed contract proposal — for review before M1
+## 6. Approved contract basis and M1 concrete encoding
 
-### Request (proposed `jenan.market-demand.request/v1`)
+### Request (`jenan.market-demand.request/v1`)
 
 Strict object: unknown fields are rejected. All ids are bounded opaque identifiers, all
 numbers finite, all arrays bounded; actor authorization is injected by the trusted caller,
@@ -266,11 +267,11 @@ not accepted as a client-provided grant.
 | `scope.geography` | `{countryCode, authority, level, code, version}`; one exact administrative/statistical area; no arbitrary geometry |
 | `scope.sector` | `{taxonomy, version, code}`; one exact sector, no inferred taxonomy mapping |
 | `scope.cohort` | `{definitionId, version}`; includes an explicit all-population universe when applicable, never omitted to mean everyone |
-| `series` | Up to 20 `{id, metricDefinitionId, unit, aggregation, timeWindow, periods}` selections; ids refer to definitions in governed content |
+| `series` | Up to 20 `{id, metricDefinition:{id,version}, unit, aggregation, timeWindow, periods}` selections; periods are explicit typed intervals/snapshots with source-defined ids |
 | `data.roles` | Role to bounded nonempty list of exact `{source:"DATA_CENTER", versionId, expectedChecksum?}` OR one `{source:"DATA_CENTER", typeKey, asOf?}` selector; modes cannot be mixed within a role |
 | `parameters.comparisons` | Optional explicit `{seriesId, fromPeriodId, toPeriodId, measures}` pairs; measures are ABSOLUTE_CHANGE, PERCENT_CHANGE, INDEX; no inferred missing-period comparisons |
 | `parameters.basePeriods` | Required per series requesting INDEX; exact selected `periodId`, no automatic base substitution |
-| `parameters.estimates` | Explicit `{id, cohortObservationRef, adoptionObservationRef, frequencyObservationRef, outputUnit, periodId}`; all refs resolve to selected governed version/row ids |
+| `parameters.estimates` | Explicit `{id, seriesId, cohortObservationRef, adoptionObservationRef, frequencyObservationRef, outputUnit, periodId}`; all refs identify governed inputs/rows; actual source resolution and estimate orchestration are later milestones |
 | `options.requestId` | Optional correlation id, not a data/source selector |
 | `options.evaluatedAt` | Permitted only by trusted replay/acceptance path; ordinary callers cannot set freshness arbitrarily |
 
@@ -284,8 +285,9 @@ Normalize defaults, sorted unique selections and periods, explicit comparison/ba
 the captured `asOf` before hashing. Preserve dimension identifiers byte-for-byte; don't
 silently case-fold taxonomy codes. No Project FK, budget, success target, recommendation flag,
 personal records, raw URL connector, arbitrary SQL or caller-chosen server work limits.
-`periods` select source-defined interval ids or snapshot ids, not caller-created observations.
-Snapshot selections resolve to a reference date rather than a fictitious interval.
+`periods` name source-defined intervals/snapshots with their expected temporal semantics,
+not caller-created observations. M2 checks those declarations against actual source content.
+Snapshot selections carry a reference date rather than a fictitious interval.
 INDEX selects its current period through the comparison's `toPeriodId` and its base through
 `basePeriods`; a conflicting `fromPeriodId` is rejected, not silently ignored.
 
@@ -300,9 +302,8 @@ Market-specific analytical categories stay in the Market result contract.
 | `value`, `unit`, `dimension` | Value plus a versioned unit definition: e.g. transaction count, product quantity, persons, fraction, percent or base-100 index; product/person/event definitions are not interchangeable |
 | `measureKind` | FLOW, STOCK, RATE, SHARE or INDEX; governs aggregation and comparison |
 | `evidenceNature` | OBSERVATION, ESTIMATE or DERIVED; independent of publication/evidence verification state |
-| `period` | `{id, startDate, endDate, frequency, calendar, timeZone}` for an interval observation; null for a STOCK snapshot |
+| `time` | Discriminated union: `{kind:"INTERVAL",id,startDate,endDate,frequency,calendar,timeZone}` or `{kind:"SNAPSHOT",id,date,calendar,timeZone}`; no invented interval for stocks |
 | `timeWindow` | Requested bounds, distinct from the actual source period; never fabricated source coverage |
-| `referenceDate` | `{id, date, calendar, timeZone}` for STOCK snapshots; null for interval observations; no invented annual total |
 | `asOf` | Captured data-selection instant; not the observation period or source publication date |
 | `dimensionRefs` | Versioned geography, sector, cohort and metric-definition refs, plus statistical universe/coverage |
 | `comparison` | From/to period refs, optional `basePeriod`, operand refs and method; not a second independent value outside the metric |
@@ -340,7 +341,7 @@ and unit refs in their calculation trace. Definition mismatch blocks the calcula
 - STOCK levels belong to a declared snapshot date. Do not sum populations across time.
   FLOW rows may be summed only over explicitly disjoint additive partitions; RATE/SHARE/
   INDEX are not summed or averaged without declared numerator/denominator weights.
-  Exactly one of `period` and `referenceDate` is populated for a level observation.
+  Exactly one temporal variant is present; no ambiguous period-plus-snapshot payload.
 - A current level is the explicitly selected latest eligible completed period/snapshot
   available at `asOf`, with the actual period returned. An older observation is never
   relabelled as today. The requested time window cannot expand source coverage.
@@ -352,11 +353,14 @@ and unit refs in their calculation trace. Definition mismatch blocks the calcula
 - Seasonality, forecasts and seasonal adjustment are deferred; retain frequency and
   adjustment metadata so later support does not require inventing historic periods.
 
-### Result (proposed `jenan.market-demand.result/v1`)
+### Result (`jenan.market-demand.result/v1`)
 
 Strict result envelope: `contract`, `runId`, engine key/version/contracts/runtime/policies,
 derived run `status`, normalized request/evaluation instant, `inputs`, `dataAvailability`,
 analysis `results`, `gaps`, `rights`, `attribution`, `determinism`, `limits` and `timing`.
+The concrete request member is `{normalized, evaluatedAt}`. Each result group is
+`{analysis, seriesId, metrics}`; `limits` uses the existing cost/budget fields, and the
+shared 2 MiB canonical JSON limit applies to the whole result.
 Results group stable metrics by analysis/series/period or explicit comparison, never by
 an undisclosed chosen candidate. Run statuses remain the existing shared COMPLETED,
 COMPLETED_WITH_GAPS and FAILED; do not overload them with evidence categories.
@@ -403,7 +407,7 @@ Observations may be COMPUTED or PARTIAL; assumption-derived outputs are ESTIMATE
 upgraded to VERIFIED by a successful formula. No best-project recommendation, feasibility
 score, success probability, project revenue forecast or financial conclusion is produced.
 
-### Proposed work caps (for approval/calibration in M1–M5)
+### Work caps (M1 admission / later runtime calibration)
 
 - 500 total metrics, bounded before discovery/reads or expensive work.
 - At most 32 input versions (below Data Center's 50-id exact-read request cap).
@@ -415,7 +419,9 @@ score, success probability, project revenue forecast or financial conclusion is 
 - Preflight the output cross-product and server cost; enforce actual read/parse bounds too.
   Admission cost is a work heuristic, not a promised number of milliseconds.
 
-These are proposals, not implemented or claimed to be performance-qualified. In particular,
+M1 enforces request-side series/period/version/comparison/estimate and metric bounds, and
+the whole-result metric/byte bounds. Actual read/parse row bounds belong to M2/M3; no M1
+reader exists. These limits are not claimed to be performance-qualified. In particular,
 32 versions do not authorize exceeding the shared 2 MiB persisted request/result bounds.
 
 ## 7. Missing-data and integrity behavior
@@ -439,7 +445,7 @@ Pin the evaluation instant and explain the applicable freshness policy.
 
 ## 8. market-confidence-v1, provenance, rights and persistence
 
-**Policy proposal for review:** id `market-confidence-v1`, version `1.0.0`,
+**Approved M1 policy:** id `market-confidence-v1`, version `1.0.0`,
 EXPLAINABLE_HEURISTIC, POINTS_100, `isProbability=false`. HIGH >=80, MEDIUM >=60,
 LOW >=35, otherwise INSUFFICIENT. Points are quality heuristics, not confidence intervals
 or probabilities of market/project success. No Spatial weights/policy are imported.
@@ -518,17 +524,16 @@ financials, real-time streams, causal claims, recommendations and success scores
 No Projects/marketplace UI, reports UI or production routes are added by the engine milestones.
 Future consumers integrate through its contracts, not duplicate calculations.
 
-## 10. Final proposed split: M0 plus five implementation/acceptance stages
+## 10. Approved split: M0 plus five implementation/acceptance stages
 
-**Recommend M1–M5, not seven stages.** These stages remain proposed until the detailed
-contracts in this revision are reviewed. M0 direction approval is not authorization to
-start M1. Five stages preserve separate gates for contracts, governed data, deterministic
+**M1–M5 approved; M1 only authorized to execute.** Five stages preserve separate gates for
+contracts, governed data, deterministic
 analysis, exact history and technical acceptance. Four would combine history with final
 acceptance or data access with arithmetic and hide a meaningful risk boundary.
 
 | Stage | Bounded deliverable / review gate |
 | --- | --- |
-| M0 (this report) | Approved direction/decisions incorporated; seven contract/model proposals presented; stop for review |
+| M0 | APPROVED: direction, detailed contracts, policy basis and five-stage split |
 | M1 — Contracts & boundaries | Strict input/output/observation/time schemas, additive shared primitives with unchanged legacy encodings, market-confidence-v1, gaps, normalization/hashes, caps and boundary tests; design shared persistence/history seam; Spatial/shared regression gate |
 | M2 — Governed inputs | Read-only Data Center adapter, authorized inventory, exact/by-type pinning, typed content/dictionaries, rights/coverage/period/revision validation; actual PostgreSQL/RBAC tests and real-data manifest or explicit source gaps |
 | M3 — Deterministic analysis | All five analyses: context/audience, measured quantity, signed change/percent/base index, explicit assumption estimates; hand-computed golden tests, time/units/cohorts/sample/zero/lineage cases; no estimation shortcut or monetary result |
@@ -627,12 +632,11 @@ accuracy or a census population lookup proof of real consumer demand.
 
 ## 13. Remaining review items and blockers
 
-1. **Detailed contract review:** direction and the four architectural decisions are approved;
-   review this revision's seven deliverables, five-stage split, confidence rubric and work
-   caps, then separately authorize M1. Implementation remains stopped.
-2. **Compatibility:** additive engine-neutral primitives are approved in principle. Their
-   concrete schemas/interpretations, legacy encoding/hash preservation and narrow boundary
-   allowlist are specified here for review, not already implemented.
+1. **M1 review:** M0 and M1 execution are approved. Review the M1 checkpoint before any M2
+   implementation; the engine is not claimed complete at this foundation stage.
+2. **Compatibility:** M1 implements additive engine-neutral quantities/time/semantics.
+   Legacy Spatial payloads omit these fields and keep their meaning/encoding. Frozen Spatial
+   source remains unchanged; any necessary future fix still requires a stop and owner notice.
 3. **Persistence/replay seam:** review the proposed engine-neutral service without dataset
    duplication or Spatial/DC edits. Exact non-GeoJSON historical authorization remains a
    capability to implement and verify, not an existing generic implementation.
@@ -643,4 +647,88 @@ accuracy or a census population lookup proof of real consumer demand.
    proposal. Keep bounded inline v1 or request a separate approved contract; no DC schema change.
 6. **Sonar:** DEFERRED / PENDING by owner decision, not an M1 blocker and not final closure.
 
-**Stop after M0. Do not implement Market & Demand M1 until the owner reviews this plan.**
+**Stop after M1. Do not start M2 until the owner reviews the checkpoint and authorizes it.**
+
+## 14. M1 implementation checkpoint
+
+### Delivered surface and deliberate limits
+
+- Pure `services/analysis-engines/market-demand/` modules: model/taxonomy and evidence
+  validation, strict request/normalized-request/result/metric contracts, normalization,
+  confidence, bilingual gaps and arithmetic helpers. Version `1.0.0-m1`.
+- No `runMarketAnalysis` pipeline, Data Center adapter, source inventory, source registration,
+  persistence implementation or report/UI endpoint. Those are not hidden M1 deliverables.
+- LEVEL, ABSOLUTE_CHANGE, PERCENT_CHANGE and INDEX helpers operate only on injected typed
+  evidence. Trend traces preserve exact from/to rows, units, periods and method version.
+  No aggregation, assumption-product orchestration, forecast or seasonality runner in M1;
+  full five-analysis execution remains M3.
+- Source estimates must carry explicit source refs, assumptions, method and limitations.
+  Derived arithmetic remains ESTIMATED if any operand is an estimate; context stays
+  CONTEXTUAL. Current confidence handling fails closed if required supporting input
+  evidence is unresolved; M2/M3 must resolve it, not guess or bypass it.
+
+### Final concrete temporal/unit encoding
+
+Shared `quantities.ts` supplies strict temporal unions, ordered half-open windows,
+Gregorian complete MONTHLY/QUARTERLY/ANNUAL intervals and explicit CUSTOM intervals,
+IANA time zones, source/assumption refs, quantity dimensions and unit definitions.
+Unit shape: `{id, version, dimension, entity, per}`; dimensions are EVENTS, ITEMS, PEOPLE,
+HOUSEHOLDS, ENTITIES, FREQUENCY, FRACTION, PERCENT and INDEX. A FREQUENCY alone requires
+an explicit entity/frequency denominator. There is no currency unit in this Market v1.
+
+Discrete counts require safe integers; levels are finite/nonnegative; changes may be signed;
+fraction/share bounds differ from percent-change bounds. The metric's generic `unit` tag
+is `quantity`, `percent` or `index_points`, with the actual versioned unit in `semantics`.
+Comparison semantics retain the operand unit and exact temporal refs. Results round once
+to six decimals; unrounded operands and a versioned method stay in the hashed trace.
+
+### Integrity, compatibility and trust boundary
+
+The new optional `semantics` block and QUANTITY/CHANGE/INDEX value kinds extend Shared Core;
+SOURCE_OBSERVATION/DERIVED_QUANTITY interpretations describe these kinds only. Existing
+COUNT/DENSITY retain MAPPED_FEATURES_ONLY; legacy numeric kinds still reject negatives.
+No default is inserted into an old result or its hashes when the new optional block is absent.
+
+The full Market result schema rechecks the shared envelope, exact request normalization,
+input pins/roles, series/scope/period selection, deterministic arithmetic, classification,
+confidence policy/breakdown, rights/attribution and all three hashes. Rehashing a falsified
+numeric result does not make it valid. Missing metrics/values require explicit gaps.
+
+Injected inputs are trusted server-side evidence snapshots, not self-authorizing client
+records. M1 schemas cannot prove that an input was really retrieved or that a source exists;
+M2 must verify actor access, exact content/checksum, role/type/content semantics and period
+coverage before supplying these snapshots. M1 adds no endpoint that accepts arbitrary
+observations as production Data Center data.
+
+Static tests enforce Market -> own modules/Shared Core only; Shared Core -> no engines;
+no Spatial, Projects, Map service, Data Center reader/writer, database, network, AI SDK,
+dynamic import/require, hidden clock/environment, randomness or logging. Existing Spatial
+adapter allowlists are not widened for M1.
+
+**REAL-DATA DEMAND ACCEPTANCE = BLOCKED / NOT VERIFIED.**
+Every new observation fixture is synthetic unit-test evidence, not real demand data.
+
+### M1 verification results (2026-10-21)
+
+| Gate | Result |
+| --- | --- |
+| Market M1 unit/contract/boundary fixtures | 145 PASS across four test files |
+| Complete existing Shared Core/Spatial unit regression | 1,108 PASS; combined 1,253/1,253 across 37 files |
+| Real migrated PostgreSQL Data Center/provider regression | 138/138 PASS across eight files; all 78 migrations on a fresh disposable database |
+| Complete Spatial PostGIS regression | 130/130 PASS across three files, including the real Saudi Map-copy suite |
+| Combined database regression | 268/268 PASS, zero failed/skipped; child and wrapper exit codes 0; own scratch database removed |
+| TypeScript | PASS |
+| Scoped ESLint | PASS, zero warnings (`--max-warnings=0`) |
+| Production build | PASS with existing `next-build.mjs --webpack`, one build worker, 161 static-page generation tasks |
+| Whitespace/scope checks | PASS; frozen paths unchanged; build-generated `next-env.d.ts` change removed from this clean worktree |
+
+The default Turbopack attempt failed on this isolated worktree's existing `node_modules`
+junction leaving its filesystem root. The supported Webpack build then passed, including
+Next's TypeScript check. No dependency, build script or configuration was changed to
+work around it. The existing pg concurrent-query deprecation remains a disclosed test
+warning, not a failed test or a relaxed threshold. No Sonar analysis was attempted.
+
+This is **M1 implemented and verified — awaiting owner checkpoint review**, not a full
+Market Engine completion or final closure. No M2 source inventory or connection has started.
+Map changed: **NO**. Data Center frozen baseline changed: **NO**. Spatial source changed:
+**NO**. Main merge: **NO**. Final tags: **NOT CREATED**.
