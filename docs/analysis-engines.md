@@ -13,7 +13,8 @@ defers final Sonar acceptance and final tags until all seven technical baselines
    M4 CLOSED at `d2ef88e`; M5 accepted; Final Technical SHA
    `c54d647838c1ce10730277f3977abc4980c3715d`;
    **TECHNICALLY COMPLETE — PENDING FINAL SONAR**, frozen)
-3. Competitor Analysis Engine (M0 planning only authorized; implementation requires review)
+3. Competitor Analysis Engine ([M0 architecture proposal](competitor-analysis-engine-v1.md);
+   planning only, awaiting review; M1 NOT STARTED)
 4. Opportunity & Gap Engine
 5. Financial Feasibility Engine
 6. Operational Feasibility Engine
