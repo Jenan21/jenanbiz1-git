@@ -19,7 +19,9 @@ defers final Sonar acceptance and final tags until all seven technical baselines
    M2 CLOSED at `f8d974c206e25af32bc18472d94ad32eefbcb8c4`;
    M3 CLOSED at `54c5c0fc02414b23087a08e47b747524b758556c`;
    M4 CLOSED at `f1a7f7da1c0873ccdeb8a6e99db8b1f8d5937974`;
-   M5 local technical gates PASS; exact-SHA CodeQL / final closure pending;
+   M5 final technical gates PASS; Final Technical SHA
+   `eaa2d09374593d5677fc77c3efbc4f5a3e42e4a0`;
+   **TECHNICALLY COMPLETE — PENDING FINAL SONAR**, frozen;
    real-competitor acceptance BLOCKED / NOT VERIFIED)
 4. Opportunity & Gap Engine
 5. Financial Feasibility Engine
@@ -86,8 +88,15 @@ and is never modified by the engines. The engines are aggregated on their own li
   tests, not runtime changes: 1,853 unit PASS (+3 existing browser-only skips),
   399 database PASS across 15 files, all 78 migrations on fresh disposable databases,
   committed concurrency/replay/duplicate-ID/rollback/recovery acceptance, TypeScript,
-  zero-warning scoped ESLint and production build PASS. Exact-SHA CodeQL and final
-  closure are recorded separately after the technical commit exists.
+  zero-warning scoped ESLint and production build PASS. Final Technical SHA
+  **`eaa2d09374593d5677fc77c3efbc4f5a3e42e4a0`** passed exact-SHA CodeQL
+  [39689010268](https://github.com/Jenan21/jenanbiz1-git/actions/runs/39689010268)
+  for javascript-typescript and actions (security-extended), with zero open/new
+  alerts and the five pre-existing dismissed repository findings unchanged.
+  Competitor: **TECHNICALLY COMPLETE — PENDING FINAL SONAR**, not FINAL CLOSED.
+  Freeze runtime/contracts except for an explicitly approved necessary shared change.
+  The subsequent documentation-only closure pins that immutable technical SHA;
+  it does not replace it. Local/Remote/Desktop must match the closure commit.
   Real-competitor acceptance remains BLOCKED / NOT VERIFIED. Do not start engine four.
   No main merge, final tag or Sonar attempt is authorized.
 

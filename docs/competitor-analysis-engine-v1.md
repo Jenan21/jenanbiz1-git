@@ -7,7 +7,13 @@ M1 CLOSED at `bde54c6d53a4062bb1edf7223d83328e98f34c6b`.
 M2 CLOSED at `f8d974c206e25af32bc18472d94ad32eefbcb8c4`.
 M3 CLOSED at `54c5c0fc02414b23087a08e47b747524b758556c`.
 M4 CLOSED at `f1a7f7da1c0873ccdeb8a6e99db8b1f8d5937974`.
-M5 LOCAL TECHNICAL GATES PASS — EXACT-SHA CODEQL / FINAL CLOSURE PENDING.**
+M5 FINAL TECHNICAL GATES PASS.
+COMPETITOR ANALYSIS ENGINE = TECHNICALLY COMPLETE — PENDING FINAL SONAR.**
+
+Final Technical SHA: **`eaa2d09374593d5677fc77c3efbc4f5a3e42e4a0`**.
+The later documentation-only closure records this immutable SHA and does not replace it.
+Runtime/contracts are frozen except for a necessary shared change explicitly approved
+by the owner. No fourth engine starts automatically.
 
 The subsequent owner decisions replace establishment-only counting: model a unified
 Competitor Entity separately from locations/branches and original source records.
@@ -1054,7 +1060,7 @@ All M1-M4 cases remain part of the final gates. The accepted M3 calculation vers
 | Production Webpack build | PASS; 161/161 static-generation tasks |
 | Map asset preparation | PASS; no tracked Map change |
 | `git diff --check` | PASS |
-| Exact-SHA CodeQL | Pending the technical commit; both language jobs will be recorded below |
+| Exact-SHA CodeQL | PASS on `eaa2d09374593d5677fc77c3efbc4f5a3e42e4a0`; javascript-typescript + actions |
 | Sonar | DEFERRED / PENDING until all seven engines are technically complete |
 
 The 389-case regression includes Competitor 53, Market 68, Spatial/provider/PostGIS
@@ -1117,7 +1123,47 @@ All technical fixtures, including the durable committed load/recovery dataset, a
 connection was supplied or accessed. Absence of production visibility is not evidence
 that the Data Center lacks competitor/Market data, and is not a technical failure.
 
-Local gates above are complete. Final technical SHA, exact-SHA CodeQL results and
-the subsequent documentation-only closure will be pinned once the technical commit
-and remote scan exist. Finalization must verify Local/Remote/Desktop equality.
-No main merge, final tag, Sonar run or fourth-engine start is authorized.
+### Immutable technical SHA and CodeQL
+
+Final Technical SHA: **`eaa2d09374593d5677fc77c3efbc4f5a3e42e4a0`**.
+This is the pushed M5 acceptance commit with the tested unchanged runtime.
+The subsequent closure commit is documentation-only and must not be confused with
+or replace this technical SHA.
+
+Exact-SHA workflow [39689010268](https://github.com/Jenan21/jenanbiz1-git/actions/runs/39689010268)
+completed successfully with `security-extended`, build mode `none`, for both
+**javascript-typescript** and **actions**. Uploaded analysis IDs `2000756338` and
+`2000752406` explicitly name the same technical commit and dedicated Competitor branch.
+Both have empty error/warning fields. Actions reports zero results; JavaScript reports
+the **five pre-existing dismissed repository findings**, not zero raw results.
+The branch has **zero open alerts**, and before/after repository alert IDs/states are
+unchanged: **zero new alerts**. Existing dismissed/fixed repository findings were not
+reopened, dismissed or modified by this work.
+
+### Technical closure and stop
+
+**COMPETITOR ANALYSIS ENGINE = TECHNICALLY COMPLETE — PENDING FINAL SONAR.**
+Technical acceptance is complete; the deferred final Sonar campaign and blocked
+real-data acceptance are stated separately, not represented as passed.
+Finalization pushes the documentation-only closure, updates the clean dedicated
+Desktop archive and verifies **Local HEAD = Remote HEAD = Desktop HEAD** at that
+closure commit. The actual closure hash is reported after creating the commit
+(a commit cannot embed its own hash). The implementation/archive must be clean;
+unrelated Desktop/main work and existing archives remain untouched.
+
+| Final boundary / deferred action | Status |
+| --- | --- |
+| Map changed | NO |
+| Data Center frozen baseline changed / runtime writes | NO |
+| Spatial / Market / Shared Core changed | NO |
+| Competitor production runtime changed during M5 | NO |
+| Schema / migrations changed | NO |
+| Separate Competitor datastore / Projects / UI integration | NO |
+| Real-data Competitor acceptance | BLOCKED / NOT VERIFIED |
+| Main merge | NO |
+| Final tag | NOT CREATED |
+| Sonar | DEFERRED / PENDING until all seven engines are technically complete |
+| Fourth engine started | NO |
+
+**Stop and deliver the M5 FINAL TECHNICAL CLOSURE REPORT for owner review.
+Do not start the fourth engine.**
