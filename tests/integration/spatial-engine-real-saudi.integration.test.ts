@@ -599,6 +599,56 @@ describe.runIf(postgisTestsEnabled && realMapTemplate !== "")("LOCATION_CONTEXT 
   }, 120_000);
 
   // ------------------------------------------------------------------------------------------------------------- performance
+  it("M7 bounds real density latency, four concurrent callers and twenty candidates without changing deterministic results", async () => {
+    const run = sharedEngine();
+    const request = baseRequest({
+      analyses: ["DENSITY"], location: point(46.6753, 24.7136),
+      parameters: { roles: ["poi:hospital"], radiiMeters: [500, 1000, 3000, 5000] },
+      data: { roles: { "poi:hospital": { source: "MAP", layerKey: "pois", releaseId } } },
+    });
+    const baseline = await timed("m7.density.warmup", () => run(request));
+    const assertSame = (result: SpatialResult) => {
+      expect(result.determinism).toEqual(baseline.determinism);
+      expect(result.results.flatMap((entry) => entry.metrics)).toHaveLength(13);
+      expectNoVerdictsAndNoPercentages(result);
+    };
+    for (let round = 0; round < 10; round += 1) {
+      assertSame(await timed("m7.density.sequential", () => run(request)));
+    }
+    for (let batch = 0; batch < 3; batch += 1) {
+      const results = await Promise.all(Array.from({ length: 4 }, () => timed("m7.density.concurrent4", () => run(request))));
+      results.forEach(assertSame);
+    }
+    const percentile95 = (values: number[]) => [...values].sort((first, second) => first - second)[Math.ceil(values.length * 0.95) - 1]!;
+    const sequentialP95 = percentile95(timings["m7.density.sequential"]!);
+    const concurrentP95 = percentile95(timings["m7.density.concurrent4"]!);
+    expect(sequentialP95).toBeLessThan(5000);
+    expect(concurrentP95).toBeLessThan(10000);
+
+    const maximum = {
+      ...request, analyses: ["DENSITY", "SITE_COMPARISON"],
+      parameters: { roles: ["poi:hospital"], radiiMeters: [5000] },
+      candidates: Array.from({ length: 20 }, (_, index) => ({
+        id: `site${index.toString().padStart(2, "0")}`,
+        location: point(46.66 + (index % 5) * 0.005, 24.70 + Math.floor(index / 5) * 0.005),
+      })),
+    };
+    const first = await timed("m7.candidates21", () => run(maximum));
+    const repeat = await timed("m7.candidates21", () => run(maximum));
+    expect(first.results.filter((entry) => entry.analysis === "SITE_COMPARISON")).toHaveLength(21);
+    expect(first.results.flatMap((entry) => entry.metrics)).toHaveLength(441);
+    expect(repeat.determinism).toEqual(first.determinism);
+    expect(Math.max(...timings["m7.candidates21"]!)).toBeLessThan(15000);
+    expectNoVerdictsAndNoPercentages(first);
+    examples.m7Performance = {
+      releaseId, sequentialRuns: 10, concurrentRuns: 12, concurrency: 4,
+      sequentialP95, concurrentP95, maximumCandidates: 20, maximumMetrics: 441,
+      thresholdsMs: { sequentialP95: 5000, concurrentP95: 10000, maximumCandidates: 15000 },
+      deterministic: true,
+      scope: "Local real-release acceptance on a read-only scratch copy, not a production throughput SLA.",
+    };
+  }, 240_000);
+
   it("answers quickly on real data: repeated runs of the main scenarios, on one pool", async () => {
     const run = sharedEngine();
     const scenarios: Array<[string, unknown]> = [

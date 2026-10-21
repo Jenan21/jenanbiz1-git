@@ -657,6 +657,42 @@ machine was loaded were up to ten times slower, so these figures are a baseline 
 performance gate, not a promise. The heaviest case is an area that holds many places (the
 nearest-place search ranks them all); the statement timeout fails it safe.
 
+### M7 bounded workload acceptance
+
+The real Saudi suite now also enforces explicit thresholds for density and comparison on a
+read-only scratch copy of the existing published release. It warms one reader pool, measures
+10 sequential density runs, then 12 runs in three batches of four concurrent callers. Every
+answer must retain the same determinism hashes and 13 metrics. The nearest-rank p95 must be
+below 5,000 ms sequentially and 10,000 ms at concurrency four. No timeout, pool size, metric cap,
+feature cap or server budget is raised to make the test pass.
+
+The maximum-candidate case uses 20 candidates plus the primary location, one common hospital
+source and one 5 km radius, with density and site comparison. Both repeated runs must emit
+441 metrics with identical determinism hashes and finish below 15,000 ms each. These are
+local acceptance ceilings, not production throughput or availability promises. The fixture
+does not manufacture a population or constraint source.
+
+An isolated run on 2026-10-21 measured sequential p95 **279 ms**, concurrent p95 **538 ms**,
+and maximum-candidate runs **1,763 / 1,886 ms**, on release
+`b3c4b6ff-7cee-4b42-95d3-c3683cf88a34`. The full-suite rerun is reported separately at
+closure; measurements vary with host load.
+
+The final complete three-file PostGIS rerun passed **130/130** tests using Vitest's thread
+pool with a single worker. Its sequential density p95 was **117 ms**, concurrent p95
+**173 ms**, and maximum-candidate runs **1,070 / 1,205 ms**. The existing three-site Riyadh
+acceptance took **470 / 330 ms**. Earlier attempts encountered transaction/statement timeouts
+and then Windows fork/temp-cache initialization errors. The complete PostgreSQL suite passed
+on a sequential rerun and the complete PostGIS suite passed with the thread runner; no
+application timeout or acceptance threshold was increased and no test was excluded.
+
+The existing `spatial-cost-v1@1.2.0` weights and request/data limits are retained, not
+reinterpreted as milliseconds. The cost estimate is a deterministic admission heuristic;
+measured latency also depends on feature distribution, topology and host contention. The
+500-metric preflight, 10,000-feature analytical cap, 20-candidate bound, read-only pool and
+statement/lock/connection timeouts remain the independent work/safety limits. Real dense
+population and constraint datasets still need their own performance qualification when
+available; this acceptance makes no national-scale SLA claim.
+
 ## DENSITY, CONSTRAINT_SCREENING and SITE_COMPARISON (M6)
 
 These capabilities remain inside the engine and its read-only PostGIS adapter. No Map or
@@ -743,7 +779,8 @@ Missing real constraint/population data remains an acceptance gap, not a synthet
 - The freshness periods are engine defaults, not Map declarations.
 - M6 rejects requests whose conservative total output bound exceeds 500 metrics across all
   targets, analyses and comparison derivatives; it does not truncate results.
-- The cost weights remain provisional until M7.
+- M7 retains the cost weights as an admission heuristic, not a latency prediction; the
+  measured workload and remaining production-data qualification limits are documented above.
 - A Data Center dataset's completeness is `UNKNOWN`: the Data Center does not record it, so a
   count from it is never presented as an inventory.
 - Data Center content is validated structurally (WGS84, ranges, closed rings, limits); topological
@@ -755,8 +792,8 @@ Missing real constraint/population data remains an acceptance gap, not a synthet
   internal historical reader can replay an exact saved superseded version, never a fallback.
 - The Map records no binding to a Data Center version yet, so the reconciliation is a tested
   capability that the engine run does not call.
-- CodeQL runs only for pull requests into `main`; its trigger needs to include
-  `jenan-engines/integration` for the closure gate.
+- CodeQL's automatic push/PR triggers target `main`. Its existing `workflow_dispatch` supports
+  explicit branch acceptance without a merge, PR or trigger change.
 
 ## Milestones
 
@@ -767,13 +804,44 @@ Missing real constraint/population data remains an acceptance gap, not a synthet
 | M3 | Data Center discovery and content read functions (on the engines branch only), the provider, deterministic version selection, request selections, Map reference reconciliation, prepared usage | Done |
 | M4 | `PROXIMITY` and `CATCHMENT` | Done |
 | M5 | Append-only run/input/usage persistence and authorized exact historical replay, no public history discovery | Closed at `f09aedc` |
-| M6 | `DENSITY`, `CONSTRAINT_SCREENING`, `SITE_COMPARISON` | Implemented; checkpoint review, not final engine closure |
-| M7 | Real-data performance, documentation, closure gate | Planned |
+| M6 | `DENSITY`, `CONSTRAINT_SCREENING`, `SITE_COMPARISON` | Closed at `faba3a7` |
+| M7 | Real-data performance, bounded concurrency/max-candidate acceptance, documentation, closure gate | OPEN: local gates passed; approved Sonar Server/Cloud quality gate pending |
 
 ### Closure gate
 
 lint, typecheck, unit tests, PostGIS integration tests, Data Center integration tests, build,
-Sonar, CodeQL, Copilot review and performance. Then a pull request into
-`jenan-engines/integration` (not `main`), a merge commit and the tag
-`JENAN-PRO-SPATIAL-ENGINE-V1.0`. CodeQL currently runs only for pull requests targeting `main`,
-so its trigger needs to include the integration branch for this gate.
+Sonar, CodeQL, Copilot review and performance. Record the scope and evidence for each gate;
+IDE diagnostics alone are not evidence of a server-side Sonar quality-gate status.
+
+The owner's M7 authorization explicitly prohibits a merge, a final tag or starting the next
+engine. Final acceptance produces a report for review on `jenan-engines/spatial` only. A later
+pull request/merge into `jenan-engines/integration` (never `main`) or a final
+`JENAN-PRO-SPATIAL-ENGINE-V1.0` tag requires a separate explicit authorization. M7's
+validation-only changes do not change the accepted M6 runtime version or invalidate its
+persisted run/replay provenance.
+
+### M7 acceptance checkpoint (2026-10-21; not engine closure)
+
+- Spatial/shared units: **1,108/1,108**, 33 files.
+- Real Data Center/PostgreSQL: **138/138**, eight files, on an independent fresh database
+  after all **78** approved migrations. No schema/migration change was needed. Rollback
+  verification left no run/input/item/source fixtures; append-only triggers were enabled.
+  Only that disposable database was dropped afterwards.
+- Full PostGIS: **130/130**, three files, including the actual Saudi release acceptance
+  and the new measured M7 workload. Synthetic constraint/population tests are not described
+  as real-data acceptance; those actual production datasets are still unavailable.
+- TypeScript, ESLint, production build (163 static pages) and `git diff --check`: passed.
+  The six unrelated lint warnings, four existing build tracing warnings and the existing
+  PostgreSQL driver's concurrent-query deprecation warning remain disclosed.
+- CodeQL: existing workflow explicitly dispatched on `jenan-engines/spatial`, run
+  [39540990106](https://github.com/Jenan21/jenanbiz1-git/actions/runs/39540990106), at
+  `faba3a7b8d69c47511c466e13357886a56a77708`; JavaScript/TypeScript and Actions analyses
+  completed successfully. The branch had no open code-scanning alerts when checked.
+  A checkpoint commit containing the new tests/docs needs its own dispatched run.
+- Copilot read-only review of Spatial/shared, persistence/replay and the new performance
+  acceptance: no significant issues reported. This is review evidence, not a formal proof.
+- Sonar: IDE file analysis was triggered for core paths, but this is **not** a verified
+  Server/Cloud quality gate. The owner explicitly chose to keep M7 **OPEN** until the approved
+  Sonar Server/Cloud gate is provided. It must not be silently replaced with IDE diagnostics.
+- The frozen Map/Data Center baselines, Projects UI, `main` and previous unrelated work
+  remain untouched. No merge, final tag or second-engine work is authorized or performed.
