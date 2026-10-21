@@ -9,8 +9,8 @@ defers final Sonar acceptance and final tags until all seven technical baselines
 1. Spatial Analysis Engine (`docs/spatial-engine-v1.md`)
 2. Market & Demand Engine ([contracts and checkpoints](market-demand-engine-v1.md);
    M0 and M1–M5 split approved; M1 CLOSED at `d95da803`; M2 CLOSED at `e905daa`;
-   real-demand acceptance BLOCKED / NOT VERIFIED; M3 deterministic checkpoint implemented,
-   awaiting review; M4 not started)
+   M3 CLOSED at `e57a295`; real-demand acceptance BLOCKED / NOT VERIFIED;
+   M4-only persistence/replay authorized and implemented for checkpoint review; M5 not started)
 3. Competitor Analysis Engine
 4. Opportunity & Gap Engine
 5. Financial Feasibility Engine
@@ -50,7 +50,10 @@ and is never modified by the engines. The engines are aggregated on their own li
   architecture/scope review. The owner subsequently approved M0/M1–M5, closed M1 at
   `d95da8030fbdcd6e68199cc4ca60bb6f528ece01`, then closed M2 at
   `e905daa0675f4cccf808978280cfe34eb133bc20` and explicitly authorized M3 only.
-  The M3 deterministic checkpoint awaits owner review; M4 needs separate approval.
+  The owner subsequently accepted and CLOSED M3 at
+  `e57a295d6d09343ccc3bdfbc62f8093646bc97d2`, after identical Local/Remote/Desktop
+  hashes were verified, then explicitly authorized M4 only. M4 adds existing shared-table
+  persistence and authorized exact historical replay; M5 requires separate approval.
 - Spatial is frozen. A necessary shared fix for a later engine requires stopping and
   informing the owner before modifying the accepted Spatial baseline.
 - After all seven engines: run Sonar against their recorded Final Technical SHAs, address
@@ -91,13 +94,28 @@ An engine reaches anything outside its own tree only through an adapter: a direc
   inventory and real demand acceptance remain BLOCKED / NOT VERIFIED, not assumed empty.
   Its M3 execution entry point composes those reads with pure deterministic Market
   calculations, bounded source/row/method evidence and strict result revalidation.
-  It writes no run/input/usage/audit data and creates no persistence/replay capability;
-  Shared Core, Spatial and Data Center remain unchanged.
-- **M5 run persistence and historical replay adapters** have explicit, narrow exceptions for
+  The provider itself still writes no run/input/usage/audit data. M4 adds separate internal
+  adapters below; Shared Core, Spatial and Data Center remain unchanged.
+- **Spatial M5 run persistence and historical replay adapters** have explicit, narrow exceptions for
   Prisma and the application database. The persistence adapter inserts run/input rows only; the
   historical reader performs one exact-version read and applies Data Center source-scope,
   permission, specialty and mission-context checks. It never discovers versions or writes to
   Data Center tables. The replay service is internal and is not re-exported by the engine index.
+- **Market M4 shared-table persistence and historical replay adapters** have their own exact,
+  separate allowlists, without broadening the frozen Spatial permissions. The run service
+  returns only after a complete shared `AnalysisEngineRun`/`AnalysisEngineRunInput` nested
+  create succeeds. These existing append-only tables hold the bounded request/result/input
+  evidence and per-input provenance/usage intent; there is no new dataset store, table,
+  migration, Data Center usage/audit write or public API. The historical reader loads raw
+  non-GeoJSON content by exact version, reuses current source/robot authorization, checks
+  required permission and the recorded organization/specialty/mission context, and verifies
+  the existing Data Center checksum and captured typed content. The replay transaction is
+  Repeatable Read; it preserves recorded selection/gap/quality/time decisions and reruns
+  the exact `1.0.0-m3` calculation, checking request/input/output hashes and full equality.
+  It never discovers a newer replacement or writes a new run. Changed rights, ownership
+  or attribution conservatively block replay rather than widen a historical result.
+  History lookup is owner/platform-admin scoped and reauthorizes inputs before returning
+  stored evidence; hidden/missing runs use the same unavailable error.
 
 Neither is re-exported by the engine's index, and neither may read the environment, the clock or
 the network. An adapter never imports Projects or the Map's service. The pure core talks to an

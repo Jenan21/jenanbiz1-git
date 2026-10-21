@@ -88,6 +88,10 @@ describe("analysis engine boundaries", () => {
   describe("adapters", () => {
     const dataCenterProviderPath = "spatial/adapters/data-center-provider.ts";
     const marketProviderPath = "market-demand/adapters/data-center-provider.ts";
+    const marketHistoryAdapters = new Set([
+      "market-demand/adapters/run-persistence.ts", "market-demand/adapters/run-service.ts",
+      "market-demand/adapters/replay-service.ts", "market-demand/adapters/historical-data-center.ts",
+    ]);
     const m5Adapters = new Set([
       "spatial/adapters/run-persistence.ts",
       "spatial/adapters/run-service.ts",
@@ -95,12 +99,12 @@ describe("analysis engine boundaries", () => {
       "spatial/adapters/historical-data-center.ts",
     ]);
     const adapters = sources.filter((entry) => isAdapter(entry.path));
-    const databaseAdapters = adapters.filter((entry) => ![dataCenterProviderPath, marketProviderPath].includes(entry.path) && !m5Adapters.has(entry.path));
+    const databaseAdapters = adapters.filter((entry) => ![dataCenterProviderPath, marketProviderPath].includes(entry.path) && !m5Adapters.has(entry.path) && !marketHistoryAdapters.has(entry.path));
     const allowedAdapterPackages = new Set(["pg", "zod"]);
 
-    it("exist only in Spatial's adapters directory or the single read-only Market provider", () => {
+    it("exist only in Spatial's adapters directory or Market's exact provider/history allowlist", () => {
       expect(adapters.length).toBeGreaterThan(0);
-      for (const adapter of adapters) expect(adapter.path.startsWith("spatial/adapters/") || adapter.path === marketProviderPath, adapter.path).toBe(true);
+      for (const adapter of adapters) expect(adapter.path.startsWith("spatial/adapters/") || adapter.path === marketProviderPath || marketHistoryAdapters.has(adapter.path), adapter.path).toBe(true);
     });
 
     it("import only pg, zod and the engine's own tree: never Prisma, the application's database layer, Projects, the Map's service, the Data Center or the framework", () => {
@@ -129,14 +133,18 @@ describe("analysis engine boundaries", () => {
       }
     });
 
-    it("keeps the M5 database adapters narrowly scoped to persistence and exact historical reads", () => {
+    it("keeps Spatial M5 and Market M4 database adapters narrowly scoped to persistence and exact historical reads", () => {
       const permitted = new Map<string, Set<string>>([
+        ["market-demand/adapters/run-persistence.ts", new Set(["@/generated/prisma/client", "@/lib/db", "@/services/data-center/contracts", "@/services/data-center/policy"])],
+        ["market-demand/adapters/run-service.ts", new Set(["@/services/data-center/contracts"])],
+        ["market-demand/adapters/replay-service.ts", new Set(["@/services/data-center/contracts", "@/generated/prisma/client", "@/lib/db"])],
+        ["market-demand/adapters/historical-data-center.ts", new Set(["@/generated/prisma/client", "@/lib/auth/authorization", "@/lib/db", "@/services/data-center/contracts", "@/services/data-center/policy", "@/services/data-center/version-checksum"])],
         ["spatial/adapters/run-persistence.ts", new Set(["@/generated/prisma/client", "@/lib/db", "@/services/data-center/contracts", "@/services/data-center/map-contract", "@/services/data-center/policy"])],
         ["spatial/adapters/run-service.ts", new Set(["@/services/data-center/contracts"])],
         ["spatial/adapters/replay-service.ts", new Set(["zod", "@/services/data-center/contracts", "@/services/data-center/map-contract"])],
         ["spatial/adapters/historical-data-center.ts", new Set(["@/generated/prisma/client", "@/lib/auth/authorization", "@/lib/db", "@/services/data-center/contracts", "@/services/data-center/imports", "@/services/data-center/policy", "@/services/data-center/version-checksum"])],
       ]);
-      for (const adapter of adapters.filter((entry) => m5Adapters.has(entry.path))) {
+      for (const adapter of adapters.filter((entry) => m5Adapters.has(entry.path) || marketHistoryAdapters.has(entry.path))) {
         for (const specifier of specifiersOf(adapter.text)) {
           if (specifier.startsWith(".")) expect(resolve(dirname(adapter.file), specifier).startsWith(root), `${adapter.path} imports ${specifier}`).toBe(true);
           else expect(permitted.get(adapter.path)?.has(specifier), `${adapter.path} imports ${specifier}`).toBe(true);
@@ -157,7 +165,7 @@ describe("analysis engine boundaries", () => {
 
       it("exists, and no other adapter imports anything of the Data Center", () => {
         expect(provider).toBeDefined();
-        for (const adapter of adapters.filter((entry) => ![dataCenterProviderPath, marketProviderPath].includes(entry.path) && !m5Adapters.has(entry.path))) {
+        for (const adapter of adapters.filter((entry) => ![dataCenterProviderPath, marketProviderPath].includes(entry.path) && !m5Adapters.has(entry.path) && !marketHistoryAdapters.has(entry.path))) {
           expect(specifiersOf(adapter.text).filter((specifier) => specifier.startsWith("@/services/data-center")), adapter.path).toEqual([]);
         }
       });

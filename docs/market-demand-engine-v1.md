@@ -5,15 +5,21 @@
 **M0 APPROVED on 2026-10-21, including M1–M5 and the detailed contract/policy basis.
 M1 was subsequently accepted and CLOSED at
 `d95da8030fbdcd6e68199cc4ca60bb6f528ece01`. The owner then authorized M2 only.
-M3 was subsequently authorized explicitly in the owner finalization below.**
+M3 was subsequently authorized and accepted as recorded below.**
 
 **Owner finalization (2026-10-21): M2 = CLOSED.** Final M2 implementation SHA:
 `e905daa0675f4cccf808978280cfe34eb133bc20` (TECHNICALLY COMPLETE).
 M2 PostgreSQL datasets were **Fixtures / Synthetic**, never Real Demand Data.
 Production visibility is **NOT VERIFIED**; the local connection's missing schema does
 not mean the production Data Center lacks Market data. Real-data demand acceptance
-remains **BLOCKED / NOT VERIFIED**, not an engine failure. The owner now authorizes
-**M3 only**; M4 requires separate approval. Shared Core, Spatial and Data Center remain frozen.
+remains **BLOCKED / NOT VERIFIED**, not an engine failure.
+
+**Subsequent owner acceptance: M3 = CLOSED** at
+`e57a295d6d09343ccc3bdfbc62f8093646bc97d2`, with Local HEAD = Remote HEAD = Desktop HEAD
+verified identical. The owner then explicitly selected **"ابدأ M4 فقط وفق الخطة المعتمدة"**:
+existing Shared Run/Input persistence and exact authorized historical replay only.
+The M4 checkpoint is recorded in section 17; it does not authorize M5.
+Shared Core, Spatial, Map and the Data Center frozen baseline remain unchanged.
 
 - Engine: Market & Demand Engine / محرك السوق والطلب.
 - Proposed engine key and directory: `market-demand`,
@@ -1097,3 +1103,151 @@ periods are still required. This is not a functional calculation failure.
 **Shared Core additions/changes: NONE. M4 started: NO. Main merge: NO.**
 **Sonar: DEFERRED / PENDING; no attempts. Final tags: NOT CREATED.**
 M3 stops for owner review; it does not grant M4 approval or final Market Engine closure.
+
+## 17. JENAN MARKET & DEMAND ENGINE — M4 CHECKPOINT REPORT
+
+### Accepted prerequisite and scope
+
+The owner accepted and CLOSED M3 at `e57a295d6d09343ccc3bdfbc62f8093646bc97d2`;
+Local HEAD, Remote HEAD and the desktop Market archive were verified identical before
+M4 began. The subsequent explicit M4-only approval authorizes persistence in existing
+Shared Run/Input tables and exact historical replay. It does not authorize M5, new
+datasets, Data Center/schema changes, Spatial changes, Sonar or a main merge.
+
+M4 adds internal backend services, not public routes or UI. There is no second Market
+dataset store, new table, migration, registered type, shared-core rewrite or dependency.
+The existing nonpersisting M3 entry points retain their original behavior and hashes.
+
+### Contracts and entry points
+
+| Surface | Contract / behavior |
+| --- | --- |
+| Request / result | Unchanged `jenan.market-demand.request/v1` and `jenan.market-demand.result/v1` |
+| Arithmetic version | Exactly `1.0.0-m3`; M4 does not silently upgrade historical calculations |
+| Shared stored record | Existing `jenan.analysis-engine.run-record/v1` |
+| Market runtime metadata | `jenan.market-demand.run-history/v1`, with trusted replay authorization context |
+| Per-input provenance | `jenan.market-demand.input-provenance/v1`, exact role/reference/selection evidence |
+| Per-input usage intent | `jenan.market-demand.input-usage/v1`, exact version/checksum/roles/analyses and CALCULATION_EVIDENCE or SOURCE_VALIDATION |
+| `runMarketAnalysisPersisted` | Trusted actor/context, existing governed M3 execution, atomic save, then return |
+| `persistMarketRun` | Internal validated Shared record append; verifies current source authorization and historical content before saving |
+| `readMarketRun` | Internal owner/platform-admin lookup, full record/column integrity and current input authorization before returning evidence |
+| `replayMarketAnalysis` | Internal authorized exact historical reconstruction, no new run or discovery |
+
+Neither database adapter nor service is re-exported through the pure engine index.
+The trusted caller supplies run id, evaluation instant, timing, createdAt, environment
+and optional subject/organization/specialty/mission context. Recorded USER/ROBOT identity
+comes from the authenticated Data Center actor, never an independent submitted actor.
+Persistence context is validated before computation.
+
+### Atomic persistence and failure behavior
+
+The existing `AnalysisEngineRun` stores the bounded complete request/result envelope,
+engine/contracts, request/input/output hashes, status, actor, subject, timing, cost,
+confidence/gap summaries, recorded access context and createdAt. The existing
+`AnalysisEngineRunInput` stores each exact snapshot, version/source/type/checksum plus
+provenance and usage intent. This is run evidence, not a duplicate independently managed
+Market dataset inventory. The original shared **2 MiB** JSON bounds remain enforced.
+
+Successful persistence uses one nested run/input create in a **Repeatable Read**
+transaction, with a 30-second transaction timeout. Required exact versions are checked
+inside that transaction before creation. Duplicate ids or a persistence failure surface
+as errors; no unsaved successful result is returned and no orphan input is accepted.
+Existing database append-only triggers still reject UPDATE and DELETE.
+
+An `EngineError` before a result is recorded explicitly as FAILED, with its error code,
+bounded submitted request (or an omitted/size/SHA-256 marker), and no invented result,
+input/output hash or confidence. Its cost/gap defaults and failure capture are strictly
+validated. A failed record is not replayable. If execution and failure-history saving
+both fail, an AggregateError preserves both causes. Data Center authorization and
+unexpected infrastructure errors propagate unchanged; no successful empty result or
+fabricated calculation failure is substituted.
+
+The PostgreSQL suite also verifies a real committed run can be reloaded from another
+transaction and replayed, independently of the rolled-back fixture transaction proxy.
+Only that test's exact generated record/user are removed under test-only guard control;
+production adapters never disable triggers or execute raw SQL.
+
+### Authorized exact historical replay
+
+1. Query the Market run by id and owner kind/id, unless the caller is the current platform
+   administrator. Foreign and missing ids return the same generic unavailable error.
+2. Validate the complete shared record against the recorded M3 result, including all
+   duplicated columns, snapshots, summaries, provenance and usage intent. Input rows are
+   restored using Shared code-point ordering, independent of database collation/row order.
+3. Reauthorize each captured input using the existing current Data Center source-scope/
+   robot-grant policy and matching required permission, organization, specialty and mission
+   context. Revoked retrieval, private/organization access loss, suspended membership,
+   revoked robot grant, archived/conflicted item or unavailable exact version block replay.
+4. Read only the recorded immutable version id. Verify the existing Data Center checksum
+   over content and immutable version metadata/lineage; verify version number, source,
+   type and canonical parsed Market dataset against the captured evidence. Non-GeoJSON
+   Market content remains raw typed JSON, not a forced geographic representation.
+5. Conservatively require current license/class, usage policy, export permission,
+   attribution requirement/text and ownership/owner to match the captured rights.
+   A rights change blocks lookup/replay, even if apparently more permissive; it never
+   silently broadens or rewrites the old result.
+6. Retain original source-selection decisions, failed pins, gaps, quality, evaluation
+   time and confidence evidence. A newer publication, later quality assessment, changed
+   source freshness or elapsed original measurement expiry never chooses replacement
+   data or rewrites historical evaluation. Current access/rights revocation still wins.
+7. Reuse M3 source finalization and deterministic calculations at the recorded evaluation
+   instant. Recompute request/input/output hashes and require complete canonical result
+   equality, not just matching displayed numbers. Unsupported arithmetic versions fail.
+
+Replay executes in a Repeatable Read transaction. It performs no rediscovery/current
+type selection, fallback, interpolation, network/AI call, persistence or Data Center
+usage/audit write. An originally missing measurement stays missing; later data do not
+turn the historical gap into an observation.
+
+### Validation and measured behavior
+
+| Gate | M4 result |
+| --- | --- |
+| Market full units | 337 PASS across eight files, including 39 new record/service cases and tightened AST capability checks |
+| Frozen Shared/Spatial units | 1,108 PASS; combined **1,445/1,445** across 41 files, zero failures/skips |
+| Full PostgreSQL/Data Center/provider/PostGIS regression | **334/334 PASS** across the existing 12 files, including 66 Market cases at that point |
+| Final Market PostgreSQL suite | **68/68 PASS**, after adding committed durability and database-order independence cases; includes all 27 previous cases and 41 M4 cases |
+| Final targeted record/service/boundary rerun | 92/92 PASS after the last canonical-order refinement |
+| Existing Data Center/provider regressions | 138/138 PASS, unchanged |
+| Existing Spatial/PostGIS regressions | 130/130 PASS, including 44 existing real-Saudi Map-copy cases |
+| TypeScript / scoped ESLint / diff check | PASS, zero-warning lint |
+| Final production build | PASS, existing Webpack path with one worker, 161 static generation tasks |
+| Database safety | All 78 existing migrations applied only to owned disposable databases; exact scratch cleanup verified |
+
+The completed full database regression took **199.05 s**. The final focused Market
+suite took **49.03 s**; these runs overlap and are not summed as unique test counts.
+An interim collected test nesting error was corrected. Another interim fixture run hit
+the existing 20-second test deadline during concurrent checks; the final sequential
+rerun passed all 68 cases without relaxing any timeout, threshold, assertion or scope.
+The pre-existing pg concurrent-query deprecation remains, with no driver/Spatial edit.
+
+Local synthetic two-input exact replay measured **214.32 ms** in the full regression
+and **169.64 ms** in the final focused run. These individual measurements are not a
+production SLA, percentile, load/concurrency certification or Real Demand acceptance.
+Broader technical acceptance/performance remains M5 scope.
+
+### Changed files, frozen surfaces and remaining acceptance
+
+- New Market-only pure `run-history.ts`; new adapters `run-persistence.ts`,
+  `run-service.ts`, `historical-data-center.ts`, `replay-service.ts`.
+- New unit suites `market-demand-run-history.test.ts` and
+  `market-demand-run-service.test.ts`; extended existing Market PostgreSQL and
+  Market/global AST boundary suites. The only runtime write allowlisted is
+  `tx.analysisEngineRun.create` with nested inputs; no Data Center/Map/Projects writes,
+  raw SQL, network, scraping, LLM or cross-engine imports.
+- This checkpoint and the shared architecture status. **Shared Core additions: NONE.**
+  No existing arithmetic, Data Center contract, schema, registry or Spatial adapter changed.
+- No new UI/routes: responsive and visual acceptance are not applicable to this
+  backend-only checkpoint; no accepted public interface was modified.
+
+**REAL-DATA DEMAND ACCEPTANCE = BLOCKED / NOT VERIFIED.**
+Market PostgreSQL content is **Fixtures / Synthetic**, never Real Demand Data.
+Production Data Center inventory remains NOT VERIFIED; unavailable authorized access
+does not prove production Market data are absent. Real observed-demand acceptance still
+needs an authorized populated source and suitable comparable actual-demand periods.
+
+**Map changed: NO. Data Center frozen baseline changed: NO. Spatial changed: NO.**
+**Shared Core changed: NO. M5 started: NO. Main merge: NO.**
+**Sonar: DEFERRED / PENDING; no attempts. Final tags: NOT CREATED.**
+M4 is **TECHNICALLY COMPLETE**, stops at this checkpoint for owner review, and does
+not claim final Market Engine closure or authorize M5.

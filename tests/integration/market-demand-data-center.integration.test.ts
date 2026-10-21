@@ -17,13 +17,19 @@ vi.mock("@/lib/db", async (importOriginal) => {
   }) };
 });
 import { db } from "@/lib/db";
-import { createDataCenterItem, createDataCenterSource, registerDataCenterType, reviewDataCenterItem, transitionDataCenterItem } from "@/services/data-center/service";
+import { createDataCenterItem, createDataCenterSource, createDataCenterVersion, registerDataCenterType, reviewDataCenterItem, transitionDataCenterItem } from "@/services/data-center/service";
+import { grantDataCenterRobotAccess, revokeDataCenterRobotAccess } from "@/services/data-center/robot-grants";
 import { recordDataCenterQualityAssessment } from "@/services/data-center/quality";
 import { type DataCenterActor, DataCenterError } from "@/services/data-center/contracts";
 import { createMarketDataCenterProvider, prepareMarketDataCenterInputs, runMarketDataCenterAnalysis } from "@/services/analysis-engines/market-demand/adapters/data-center-provider";
 import { proposedMarketTypeKeys, type MarketDataset, type MarketDatasetRole } from "@/services/analysis-engines/market-demand";
 import { marketDataset } from "../unit/support/market-data-fixtures";
 import { marketRequest } from "../unit/support/market-demand-fixtures";
+import { runMarketAnalysisPersisted } from "@/services/analysis-engines/market-demand/adapters/run-service";
+import { persistMarketRun, readMarketRun } from "@/services/analysis-engines/market-demand/adapters/run-persistence";
+import { replayMarketAnalysis } from "@/services/analysis-engines/market-demand/adapters/replay-service";
+import { MarketHistoryMismatch, MarketHistoryUnavailable } from "@/services/analysis-engines/market-demand/adapters/historical-data-center";
+import { buildMarketRunRecord } from "@/services/analysis-engines/market-demand/run-history";
 
 const enabled = process.env.DATA_CENTER_DATABASE_TESTS === "1";
 const rollback = new Error("ROLLBACK_MARKET_M2_TEST_FIXTURES");
@@ -75,6 +81,304 @@ const counts = async (tx: DbExecutor) => ({
   sources: await tx.dataCenterSource.count(), items: await tx.dataCenterItem.count(), versions: await tx.dataCenterVersion.count(),
   types: await tx.dataCenterType.count(), usages: await tx.dataCenterUsage.count(), audits: await tx.auditLog.count(), events: await tx.dataCenterEvent.count(),
   inputs: await tx.analysisEngineRunInput.count(), runs: await tx.analysisEngineRun.count(),
+});
+
+const historyContext = () => {
+  const instant = new Date().toISOString();
+  return { evaluatedAt: instant, runId: `market-m4-${randomUUID()}`, environment: "test" as const, createdAt: instant,
+    timing: { startedAt: instant, finishedAt: instant, durationMs: 0 } };
+};
+async function marketHistoryFixture(tx: DbExecutor, admin: DataCenterActor) {
+  const s = await source(admin); const item = await dataset(admin, s.id); await withDictionary(admin, s.id);
+  const user = await tx.user.create({ data: { email: `m4-owner-${randomUUID()}@example.test`, status: "ACTIVE" } });
+  const owner: DataCenterActor = { id: user.id, kind: "HUMAN", systemRole: "USER" };
+  const request = pinRequest(item.version.id, item.version.checksum);
+  const runContext = historyContext();
+  const result = await runMarketAnalysisPersisted(request, owner, runContext);
+  return { s, item, owner, request, runContext, result };
+}
+async function mutableHistory(tx: DbExecutor, table: "AnalysisEngineRun" | "AnalysisEngineRunInput", work: () => Promise<unknown>) {
+  await tx.$executeRawUnsafe(`ALTER TABLE "${table}" DISABLE TRIGGER "${table}_append_only"`);
+  try { await work(); } finally { await tx.$executeRawUnsafe(`ALTER TABLE "${table}" ENABLE TRIGGER "${table}_append_only"`); }
+}
+async function expectedDatabaseFailure(tx: DbExecutor, work: () => Promise<unknown>) {
+  await tx.$executeRawUnsafe("SAVEPOINT market_m4_expected_failure");
+  await expect(work()).rejects.toThrow();
+  await tx.$executeRawUnsafe("ROLLBACK TO SAVEPOINT market_m4_expected_failure");
+  await tx.$executeRawUnsafe("RELEASE SAVEPOINT market_m4_expected_failure");
+}
+describe.skipIf(!enabled)("Market M4 existing shared persistence and exact replay (synthetic PostgreSQL fixtures)", () => {
+  it("commits a run durably and reloads/replays it in a separate real transaction, not only the fixture transaction proxy", async () => {
+    const actual = context.actual as typeof db;
+    const user = await actual.user.create({ data: { email: `m4-durability-${randomUUID()}@example.test`, status: "ACTIVE" } });
+    const actor: DataCenterActor = { id: user.id, kind: "HUMAN", systemRole: "USER" };
+    const runContext = historyContext();
+    try {
+      const missing = () => ({ source: "DATA_CENTER" as const, versionId: `absent-${randomUUID()}` });
+      const request = marketRequest({ data: { roles: { "demand.observations": [missing()], "dimensions.dictionary": [missing()] } } });
+      const result = await runMarketAnalysisPersisted(request, actor, runContext);
+      expect(context.tx).toBeNull();
+      expect(result.inputs).toEqual([]);
+      const committed = await actual.$transaction(async (tx) => tx.analysisEngineRun.findUniqueOrThrow({ where: { runId: runContext.runId } }));
+      expect(committed.outputHash).toBe(result.determinism.outputHash);
+      expect(await replayMarketAnalysis(result.runId, actor)).toEqual(result);
+    } finally {
+      // Remove only this test's committed record/user; production code never disables append-only guards.
+      await actual.$transaction(async (tx) => {
+        await tx.$executeRawUnsafe('ALTER TABLE "AnalysisEngineRun" DISABLE TRIGGER "AnalysisEngineRun_append_only"');
+        await tx.analysisEngineRun.deleteMany({ where: { runId: runContext.runId, actorId: user.id } });
+        await tx.$executeRawUnsafe('ALTER TABLE "AnalysisEngineRun" ENABLE TRIGGER "AnalysisEngineRun_append_only"');
+        await tx.user.delete({ where: { id: user.id } });
+      });
+    }
+  });
+  it("atomically saves the full result and exact version/rights/provenance/usage evidence only to shared run/input tables", async () => {
+    await isolated(async (tx, admin) => {
+      const before = await counts(tx);
+      const { result, owner, runContext } = await marketHistoryFixture(tx, admin);
+      const after = await counts(tx);
+      expect(after.runs - before.runs).toBe(1);
+      expect(after.inputs - before.inputs).toBe(result.inputs.length);
+      const rows = await tx.analysisEngineRunInput.findMany({ where: { runId: result.runId } });
+      for (const row of rows) {
+        const input = result.inputs.find((entry) => entry.id === row.inputId)!;
+        expect(row).toMatchObject({ refId: input.ref.id, dataCenterVersionId: input.ref.id, contentHash: input.checksum!.value,
+          provenance: { contract: "jenan.market-demand.input-provenance/v1" }, usageIntent: { contract: "jenan.market-demand.input-usage/v1", versionId: input.ref.id } });
+      }
+      expect((await readMarketRun(result.runId, owner)).result).toEqual(result);
+      const baseline = await counts(tx);
+      await persistMarketRun(buildMarketRunRecord({ ...result, runId: `${result.runId}-copy` }, {
+        actor: { kind: "USER", id: owner.id }, access: {}, createdAt: runContext.createdAt,
+      }), owner);
+      expect(await counts(tx)).toEqual({ ...baseline, runs: baseline.runs + 1, inputs: baseline.inputs + result.inputs.length });
+    });
+  });
+  it("replays with identical full result/hashes and no run/input/Data Center/usage writes", async () => {
+    await isolated(async (tx, admin) => {
+      const { result, owner } = await marketHistoryFixture(tx, admin); const before = await counts(tx);
+      const start = performance.now();
+      expect(await replayMarketAnalysis(result.runId, owner)).toEqual(result);
+      console.log(`MARKET_M4_POSTGRES_EXACT_REPLAY_MS=${(performance.now() - start).toFixed(2)}`);
+      expect(await counts(tx)).toEqual(before);
+      expect(await replayMarketAnalysis(result.runId, admin)).toEqual(result);
+    });
+  });
+  it("reconstructs canonical input order independently of database collation or row return order", async () => {
+    await isolated(async (tx, admin) => {
+      const { result, owner } = await marketHistoryFixture(tx, admin);
+      const row = await tx.analysisEngineRun.findUniqueOrThrow({ where: { runId: result.runId }, include: { inputs: { orderBy: { inputId: "asc" } } } });
+      expect(row.inputs.length).toBeGreaterThan(1);
+      const reversed = { ...row, inputs: [...row.inputs].reverse() };
+      const lookup = vi.spyOn(tx.analysisEngineRun, "findFirst").mockResolvedValueOnce(reversed);
+      try { expect((await readMarketRun(result.runId, owner)).result).toEqual(result); }
+      finally { lookup.mockRestore(); }
+    });
+  });
+  it("retains exact by-type discovery decisions after a newer version is published, without rediscovery", async () => {
+    await isolated(async (tx, admin) => {
+      const { item, owner } = await marketHistoryFixture(tx, admin);
+      const original = await runMarketAnalysisPersisted(marketRequest(), owner, historyContext());
+      await createDataCenterVersion({ itemId: item.id, title: "Newer synthetic version", content: JSON.stringify(marketDataset()), evidenceStatus: "VERIFIED",
+        provenance: [{ kind: "DOCUMENT", reference: "fixture:m4-later", label: "Later synthetic fixture" }], sourcePublishedAt: ago(1), reason: "Synthetic newer publication" }, admin);
+      await publish(item.id, admin);
+      const published = await tx.dataCenterItem.findUniqueOrThrow({ where: { id: item.id } });
+      expect(published.publishedVersion).toBe(2);
+      expect(await replayMarketAnalysis(original.runId, owner)).toEqual(original);
+    });
+  });
+  it("does not rewrite historical confidence, quality or freshness when later quality arrives", async () => {
+    await isolated(async (tx, admin) => {
+      const { result, owner, item, s } = await marketHistoryFixture(tx, admin);
+      await recordDataCenterQualityAssessment({ versionId: item.version.id, status: "MEASURED", measuredAt: new Date().toISOString(),
+        method: "later-synthetic-measurement", methodVersion: "1", score: 0.1, explanation: "Later synthetic metadata" }, admin);
+      await tx.dataCenterSource.update({ where: { id: s.id }, data: { freshnessDays: 1 } });
+      expect(await replayMarketAnalysis(result.runId, owner)).toEqual(result);
+    });
+  });
+  it("keeps originally missing pins/gaps even if matching data become available later", async () => {
+    await isolated(async (tx, admin) => {
+      const { owner, s } = await marketHistoryFixture(tx, admin);
+      const missing = await runMarketAnalysisPersisted(pinRequest("missing-exact-version"), owner, historyContext());
+      await dataset(admin, s.id);
+      expect(await replayMarketAnalysis(missing.runId, owner)).toEqual(missing);
+      expect(missing.outcomes.every((outcome) => outcome.value === null)).toBe(true);
+    });
+  });
+  it("hides a foreign run identically to a missing run, while the platform administrator remains authorized", async () => {
+    await isolated(async (tx, admin) => {
+      const { result } = await marketHistoryFixture(tx, admin);
+      const user = await tx.user.create({ data: { email: `foreign-${randomUUID()}@example.test` } });
+      const foreign: DataCenterActor = { id: user.id, kind: "HUMAN", systemRole: "USER" };
+      for (const id of [result.runId, "not-an-existing-run"]) {
+        await expect(replayMarketAnalysis(id, foreign)).rejects.toEqual(new MarketHistoryUnavailable());
+      }
+      expect(await replayMarketAnalysis(result.runId, admin)).toEqual(result);
+    });
+  });
+  it.each([
+    ["retrieval revoked", { allowRetrieval: false }],
+    ["private scope", { scope: "PRIVATE" as const }],
+    ["license", { license: "Changed license" }],
+    ["license class", { licenseClass: "RESTRICTED" as const }],
+    ["usage policy", { usagePolicy: "Changed usage restrictions" }],
+    ["export policy", { allowExport: true }],
+    ["attribution text", { attribution: "Changed credit" }],
+    ["required attribution", { attributionRequired: false }],
+    ["owner", { owner: "Changed owner" }],
+    ["ownership", { ownership: "PLATFORM_OWNED" as const }],
+  ])("blocks historical result/lookup rather than widen access after current %s changes", async (_label, changes) => {
+    await isolated(async (tx, admin) => {
+      const { result, owner, s } = await marketHistoryFixture(tx, admin);
+      await tx.dataCenterSource.update({ where: { id: s.id }, data: changes });
+      const before = await counts(tx);
+      await expect(replayMarketAnalysis(result.runId, owner)).rejects.toBeInstanceOf(MarketHistoryUnavailable);
+      await expect(readMarketRun(result.runId, owner)).rejects.toBeInstanceOf(MarketHistoryUnavailable);
+      expect(await counts(tx)).toEqual(before);
+    });
+  });
+  it("blocks an archived historical item rather than reading another eligible dataset", async () => {
+    await isolated(async (tx, admin) => {
+      const { item, result, owner, s } = await marketHistoryFixture(tx, admin);
+      await dataset(admin, s.id);
+      await transitionDataCenterItem({ itemId: item.id, status: "ARCHIVED", reason: "Synthetic archival" }, admin);
+      await expect(replayMarketAnalysis(result.runId, owner)).rejects.toBeInstanceOf(MarketHistoryUnavailable);
+    });
+  });
+  it("detects altered immutable content even when another current dataset is available", async () => {
+    await isolated(async (tx, admin) => {
+      const { result, owner, item, s } = await marketHistoryFixture(tx, admin); await dataset(admin, s.id);
+      await mutableVersion(tx, () => tx.dataCenterVersion.update({ where: { id: item.version.id }, data: { content: "{}" } }));
+      await expect(replayMarketAnalysis(result.runId, owner)).rejects.toMatchObject({ reason: "VERSION_CHECKSUM" });
+    });
+  });
+  it("requires the captured organization/specialty/mission authorization context at replay", async () => {
+    await isolated(async (tx, admin) => {
+      const s = await source(admin);
+      const item = await dataset(admin, s.id, { specialties: ["market"], missionContexts: ["study"] });
+      await dataset(admin, s.id, { typeKey: "market-dimensions", content: JSON.stringify(marketDataset("dimensions.dictionary")), specialties: ["market"], missionContexts: ["study"] });
+      const result = await runMarketAnalysisPersisted(pinRequest(item.version.id), admin, { ...historyContext(), specialty: "market", missionContext: "study" });
+      expect(await replayMarketAnalysis(result.runId, admin)).toEqual(result);
+      await mutableHistory(tx, "AnalysisEngineRun", () => tx.analysisEngineRun.update({ where: { runId: result.runId },
+        data: { runtime: { contract: "jenan.market-demand.run-history/v1", replayAuthorizationContext: {} } } }));
+      await expect(replayMarketAnalysis(result.runId, admin)).rejects.toBeInstanceOf(MarketHistoryUnavailable);
+    });
+  });
+  it("rechecks live organization membership instead of trusting the stored owner's old membership", async () => {
+    await isolated(async (tx, admin) => {
+      const { owner, s, request } = await marketHistoryFixture(tx, admin);
+      const organization = await tx.organization.create({ data: { name: "M4 synthetic organization", slug: `m4-${randomUUID()}` } });
+      const member = await tx.organizationMember.create({ data: { organizationId: organization.id, userId: owner.id, isOwner: true, status: "ACTIVE" } });
+      await tx.dataCenterSource.update({ where: { id: s.id }, data: { scope: "ORGANIZATION", organizationId: organization.id } });
+      const result = await runMarketAnalysisPersisted(request, owner, { ...historyContext(), organizationId: organization.id });
+      expect(await replayMarketAnalysis(result.runId, owner)).toEqual(result);
+      await tx.organizationMember.update({ where: { id: member.id }, data: { status: "SUSPENDED" } });
+      await expect(replayMarketAnalysis(result.runId, owner)).rejects.toBeInstanceOf(MarketHistoryUnavailable);
+    });
+  });
+  it("records robot identity from the trusted actor and rejects replay after its live grant is revoked", async () => {
+    await isolated(async (tx, admin) => {
+      const { s, request } = await marketHistoryFixture(tx, admin);
+      const robot = await tx.robot.create({ data: { name: "Synthetic market analyst", slug: `m4-${randomUUID()}` } });
+      const mission = await tx.mission.create({ data: { name: "Synthetic market study", assignedRobots: { connect: { id: robot.id } } } });
+      const user = await tx.user.create({ data: { email: `m4-robot-${randomUUID()}@example.test`, status: "ACTIVE" } });
+      const actor: DataCenterActor = { id: user.id, kind: "AI", systemRole: "USER", robotId: robot.id, roleKey: "analyst", specialty: "market", missionId: mission.id };
+      const grant = await grantDataCenterRobotAccess({ sourceId: s.id, robotId: robot.id, principalId: user.id, roleKey: "analyst", specialty: "market",
+        missionId: mission.id, access: "READ", reason: "Synthetic M4 test", expiresAt: new Date(Date.now() + 86_400_000).toISOString() }, admin);
+      const result = await runMarketAnalysisPersisted(request, actor, historyContext());
+      expect((await readMarketRun(result.runId, actor)).record.actor).toEqual({ kind: "ROBOT", id: user.id });
+      expect(await replayMarketAnalysis(result.runId, actor)).toEqual(result);
+      await revokeDataCenterRobotAccess({ grantId: grant.id, reason: "Synthetic revocation" }, admin);
+      await expect(replayMarketAnalysis(result.runId, actor)).rejects.toBeInstanceOf(MarketHistoryUnavailable);
+    });
+  });
+  it.each([
+    ["provenance", { provenance: {} }], ["usage intent", { usageIntent: {} }],
+    ["version id", { dataCenterVersionId: "wrong" }], ["source id", { dataCenterSourceId: "wrong" }],
+    ["type key", { dataCenterTypeKey: "wrong" }], ["content hash", { contentHash: "0".repeat(64) }],
+  ])("rejects tampered stored input %s", async (_label, changes) => {
+    await isolated(async (tx, admin) => {
+      const { result, owner } = await marketHistoryFixture(tx, admin);
+      await mutableHistory(tx, "AnalysisEngineRunInput", () => tx.analysisEngineRunInput.updateMany({ where: { runId: result.runId }, data: changes }));
+      await expect(replayMarketAnalysis(result.runId, owner)).rejects.toBeInstanceOf(MarketHistoryMismatch);
+    });
+  });
+  it.each([
+    ["request hash", { requestHash: "0".repeat(64) }], ["output hash", { outputHash: "0".repeat(64) }],
+    ["engine version", { engineVersion: "1.0.0-future" }], ["request snapshot", { request: {} }],
+  ])("rejects tampered stored run %s without silently upgrading historical arithmetic", async (_label, changes) => {
+    await isolated(async (tx, admin) => {
+      const { result, owner } = await marketHistoryFixture(tx, admin);
+      await mutableHistory(tx, "AnalysisEngineRun", () => tx.analysisEngineRun.update({ where: { runId: result.runId }, data: changes }));
+      await expect(replayMarketAnalysis(result.runId, owner)).rejects.toThrow();
+    });
+  });
+  it.each(["AnalysisEngineRun", "AnalysisEngineRunInput"] as const)("keeps %s append-only against update and delete", async (table) => {
+    await isolated(async (tx, admin) => {
+      const { result } = await marketHistoryFixture(tx, admin); const before = await counts(tx);
+      await expectedDatabaseFailure(tx, () => tx.$executeRawUnsafe(`UPDATE "${table}" SET "runId" = "runId" WHERE "runId" = $1`, result.runId));
+      await expectedDatabaseFailure(tx, () => tx.$executeRawUnsafe(`DELETE FROM "${table}" WHERE "runId" = $1`, result.runId));
+      expect(await counts(tx)).toEqual(before);
+    });
+  });
+  it("does not create orphan/duplicate input rows on a duplicate run failure", async () => {
+    await isolated(async (tx, admin) => {
+      const { result, owner, request, runContext } = await marketHistoryFixture(tx, admin); const before = await counts(tx);
+      await expectedDatabaseFailure(tx, () => runMarketAnalysisPersisted(request, owner, runContext));
+      expect(await counts(tx)).toEqual(before);
+      expect((await readMarketRun(result.runId, owner)).result).toEqual(result);
+    });
+  });
+  it("refuses an unsaved result if source permission is revoked after calculation but before persistence", async () => {
+    await isolated(async (tx, admin) => {
+      const { result, owner, s, runContext } = await marketHistoryFixture(tx, admin);
+      const record = buildMarketRunRecord({ ...result, runId: `${result.runId}-revoked` }, { actor: { kind: "USER", id: owner.id }, access: {}, createdAt: runContext.createdAt });
+      await tx.dataCenterSource.update({ where: { id: s.id }, data: { allowRetrieval: false } });
+      const before = await counts(tx);
+      await expect(persistMarketRun(record, owner)).rejects.toBeInstanceOf(MarketHistoryUnavailable);
+      expect(await counts(tx)).toEqual(before);
+    });
+  });
+  it("does not choose a replacement when the captured exact historical version is no longer readable", async () => {
+    await isolated(async (tx, admin) => {
+      const { result, owner, s } = await marketHistoryFixture(tx, admin); await dataset(admin, s.id);
+      const lookup = vi.spyOn(tx.dataCenterVersion, "findFirst").mockResolvedValueOnce(null);
+      try {
+        await expect(replayMarketAnalysis(result.runId, owner)).rejects.toBeInstanceOf(MarketHistoryUnavailable);
+        expect(lookup).toHaveBeenCalledOnce();
+      } finally { lookup.mockRestore(); }
+    });
+  });
+  it("can reproduce a historically valid version after its original measurement freshness/expiry passes", async () => {
+    await isolated(async (_tx, admin) => {
+      const s = await source(admin);
+      const item = await dataset(admin, s.id, { expiresAt: new Date(Date.now() + 86_400_000).toISOString() }); await withDictionary(admin, s.id);
+      const result = await runMarketAnalysisPersisted(pinRequest(item.version.id), admin, historyContext());
+      vi.useFakeTimers({ toFake: ["Date"] });
+      try {
+        vi.setSystemTime(new Date(Date.now() + 10 * 86_400_000));
+        expect(await replayMarketAnalysis(result.runId, admin)).toEqual(result);
+      } finally { vi.useRealTimers(); }
+    });
+  });
+  it("persists a failed contract evaluation explicitly with no fake result/inputs and does not replay it", async () => {
+    await isolated(async (tx, admin) => {
+      const runContext = historyContext(); const before = await counts(tx);
+      await expect(runMarketAnalysisPersisted({ contract: "invalid" }, admin, runContext)).rejects.toThrow();
+      const row = await tx.analysisEngineRun.findUniqueOrThrow({ where: { runId: runContext.runId } });
+      expect(row).toMatchObject({ status: "FAILED", result: null, inputsHash: null, outputHash: null, confidence: null, errorCode: "INVALID_INPUT" });
+      expect(await counts(tx)).toEqual({ ...before, runs: before.runs + 1 });
+      await expect(replayMarketAnalysis(runContext.runId, admin)).rejects.toBeInstanceOf(MarketHistoryUnavailable);
+    });
+  });
+  it("rejects a forged persistence actor before any shared table write", async () => {
+    await isolated(async (tx, admin) => {
+      const { result, owner, runContext } = await marketHistoryFixture(tx, admin);
+      const before = await counts(tx);
+      const record = buildMarketRunRecord(result, { actor: { kind: "USER", id: owner.id }, access: {}, createdAt: runContext.createdAt });
+      await expect(persistMarketRun(record, admin)).rejects.toBeInstanceOf(MarketHistoryUnavailable);
+      expect(await counts(tx)).toEqual(before);
+    });
+  });
 });
 async function mutableVersion(tx: DbExecutor, work: () => Promise<unknown>) {
   await tx.$executeRawUnsafe('ALTER TABLE "DataCenterVersion" DISABLE TRIGGER "DataCenterVersion_immutable"');
