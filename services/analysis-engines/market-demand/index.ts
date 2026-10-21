@@ -4,3 +4,6 @@ export * from "./contracts";
 export * from "./calculations";
 export * from "./confidence";
 export * from "./gaps";
+export * from "./data-port";
+export * from "./datasets";
+export * from "./data-sources";

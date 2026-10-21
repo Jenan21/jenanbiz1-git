@@ -3,7 +3,9 @@
 ## M0 status and authority
 
 **M0 APPROVED on 2026-10-21, including M1–M5 and the detailed contract/policy basis.
-M1 only is authorized. M2 must not start automatically.**
+M1 was subsequently accepted and CLOSED at
+`d95da8030fbdcd6e68199cc4ca60bb6f528ece01`. The owner then authorized M2 only.
+M3 must not start automatically.**
 
 - Engine: Market & Demand Engine / محرك السوق والطلب.
 - Proposed engine key and directory: `market-demand`,
@@ -728,7 +730,179 @@ Next's TypeScript check. No dependency, build script or configuration was change
 work around it. The existing pg concurrent-query deprecation remains a disclosed test
 warning, not a failed test or a relaxed threshold. No Sonar analysis was attempted.
 
-This is **M1 implemented and verified — awaiting owner checkpoint review**, not a full
-Market Engine completion or final closure. No M2 source inventory or connection has started.
+The owner accepted and **CLOSED M1** at
+`d95da8030fbdcd6e68199cc4ca60bb6f528ece01`. The figures above describe that immutable
+checkpoint, not the subsequent M2 test totals. M2 was separately authorized; see below.
 Map changed: **NO**. Data Center frozen baseline changed: **NO**. Spatial source changed:
 **NO**. Main merge: **NO**. Final tags: **NOT CREATED**.
+
+## 15. JENAN MARKET & DEMAND ENGINE — M2 CHECKPOINT REPORT
+
+### Delivered read-only integration
+
+M2 prepares governed inputs, not analytical results. The server entry point
+`prepareMarketDataCenterInputs(request, trustedActor, trustedContext)` normalizes the M1
+request, constructs the isolated provider and calls pure `prepareMarketData`.
+There is no analytical runner, aggregation, assumption-product calculation, endpoint,
+UI, dataset store, new run/input persistence or historical replay implementation.
+The M1 arithmetic/result identity remains `1.0.0-m1`; M2 does not emit a result envelope
+or silently reinterpret an old result version.
+
+The single adapter calls only the existing Data Center discovery and exact-content read
+services. They apply current source scope, organization membership/permission, robot grants,
+publication, conflict, expiry, specialty and mission-context policy. Optional organization
+context also narrows a direct exact read. An asOf selection does not authorize historical
+access or reveal a currently hidden/superseded version. Missing and inaccessible versions
+have the same external unavailable response; authorization/infrastructure errors are not
+disguised as empty successful discovery.
+
+The complete pure Data Center metadata DTO is reused rather than copied. Its existing file
+and contract name contain `map-reference`; this is a Data Center value/schema, **not Map
+access**. Market does not import the Map resolver, any Map service or Spatial. Neither
+Spatial's provider nor Data Center's frozen code was extracted or changed.
+
+### Explicit inventory contracts
+
+These remain engine contract names, not production Data Center registrations:
+
+| Role | Exact proposed typeKey | Strict JSON content contract | Declaration |
+| --- | --- | --- | --- |
+| demand.observations | market-demand-observations | jenan.market.observations/v1 | ACTUAL_DEMAND_MEASUREMENTS |
+| context.indicators | market-context-indicators | jenan.market.context/v1 | CONTEXT_ONLY |
+| demand.assumptions | market-demand-assumptions | jenan.market.assumptions/v1 | EXPLICIT_ASSUMPTIONS |
+| dimensions.dictionary | market-dimensions | jenan.market.dimensions/v1 | DIMENSION_DEFINITIONS |
+
+Every dataset declares versioned geography/sector/cohort, periods and INVENTORY/SAMPLE/UNKNOWN
+completeness. Unknown coverage is explicit `null`, never worldwide/complete coverage.
+Observation/context rows carry a unique id, subject, full M1 quantity/unit/dimension/time
+semantics, evidence nature, nullable availability/value, coverage/method, lineage,
+assumptions and limitations. Population/business/competitor/POI subjects cannot enter the
+demand-observation contract. All context remains CONTEXTUAL, even if measured accurately.
+Estimated/derived Data Center sources cannot be relabelled as actual observations.
+
+Assumption rows explicitly distinguish ADOPTION_FRACTION in [0,1] and
+CONSUMPTION_FREQUENCY with its entity/frequency denominator, applicability dimensions/time,
+method and evidence/assumption/limitation basis. Dictionary entries bind versioned metric
+definitions to subject, unit, measure kind and methodology. No currency/monetary-sizing
+contract was added.
+
+Rows name self evidence as `{observationId}`; an external reference additionally names
+`versionId`. The authorized reader supplies the actual `dc:<versionId>` identity,
+source, version number and verified checksum; the JSON never supplies a self-referential
+checksum. Self refs must resolve. External refs must resolve to explicitly selected inputs
+and to Data Center-declared upstream lineage. Missing, unavailable, cyclic and transitively
+invalid evidence is blocked without implicit reads. Repeated ids/conflicting definitions,
+invalid values/units/time, duplicate refs and header/row coverage contradictions are rejected,
+not silently repaired or truncated.
+
+### Selection, availability and provenance
+
+- Exact pins are discovered and read literally. A supplied expected checksum must agree
+  with discovery, and the existing exact reader recomputes the stored Data Center checksum
+  over its authoritative content/metadata representation. No alternate dataset is tried.
+- By-type selection delegates to `dc-version-selection-v1`, with a captured normalized asOf.
+  The selected version is validated once; a malformed, wrong-scope or incompatible preferred
+  dataset does not cause a search for a more convenient candidate.
+- Missing relevant roles discover only their exact proposed typeKeys; dimensions.dictionary
+  is required for requested measurement-definition validation. No title/fuzzy-name matching.
+- Preserve discovery mode/policy/asOf, authorized candidates, selected id, exclusions and
+  truncation. The existing preferred-of-all policy still selects correctly if its displayed
+  candidate list is truncated; TOO_MANY_CANDIDATES fails explicitly.
+- Prepared sources include their complete metadata reference, EngineInput, validated dataset,
+  bound observation/assumption rows, per-series/period matches and bilingual gaps.
+  Independently valid levels remain available if a comparison is incompatible.
+  `comparisonAvailability` checks definitions, unit, geography/sector/cohort, methodology,
+  measurement coverage and comparable periods across selected sources; it calculates no change.
+  `operandAvailability` resolves explicit estimate refs and their declared roles/kinds/coverage;
+  formula eligibility, cross-operand estimation and its confidence are still M3.
+- Outside declared geography/sector/cohort/time: NO_COVERAGE, never zero. Unknown coverage,
+  mismatched boundary/classification versions or overlapping but incompatible period definitions:
+  NOT_COMPUTABLE. Covered but absent/suppressed requested measurement: NOT_AVAILABLE.
+  Multirow aggregation is not performed in M2 and is not silently treated as an identity value.
+- Snapshot the source, ownership/owner, license/class, usage policy, attribution/requirement,
+  exact version/checksum, publication/effective dates, geographic metadata, quality methodology
+  and freshness. Do not borrow Data Center's heuristic score as Market confidence.
+  Shared rights/attribution derivation and input hashing are reused unchanged; exports can
+  never be more permissive than any contributing input. Future/expired or contradictory
+  evidence is blocked; independent valid sources are retained with explicit gaps.
+- Bounds: 32 version selections including automatically required roles, 200,000 content
+  characters/version, 2,000 rows/definitions per version, 10,000 total rows/definitions.
+  Existing Data Center discovery caps remain unchanged. No quota increase or artifact-store
+  workaround was introduced.
+
+### Actual data inventory and blockers — not fixture acceptance
+
+At **2026-10-21T10:49:40.511Z**, the repository's actually configured **local** database
+was contacted in a PostgreSQL **READ ONLY** transaction. `to_regclass` returned NULL for
+`public."DataCenterType"`, `public."DataCenterSource"` and `public."DataCenterVersion"`.
+The schema-only preflight took 23 ms; this is not a dataset-performance measurement.
+The configured database cannot supply a governed Data Center inventory in this state.
+No migration, reset, account creation, fabricated actor, type registration or data write was
+performed against it to make the inventory pass.
+
+**Current-source discovery = BLOCKED_CONFIGURED_DATABASE_HAS_NO_DATA_CENTER_SCHEMA.**
+Registered type/source/version counts and usable real contextual sources are **NOT VERIFIED**,
+not zero. The production Data Center was not inventoried by this local connection; the finding
+does not establish organization-wide absence of market data.
+
+**REAL DEMAND DATA = NOT AVAILABLE FOR VERIFICATION.**
+**REAL-DATA DEMAND ACCEPTANCE = BLOCKED / NOT VERIFIED.**
+An authorized connection to the populated Data Center is needed to settle the actual inventory,
+then suitable demand observations and comparable time-series evidence are needed for acceptance.
+No population/Spatial/POI dataset was converted or invented to fill this gap.
+
+Integration fixtures are explicitly synthetic even though the PostgreSQL services, checksums,
+lifecycle and policy enforcement under test are real. Proposed types are registered **only
+inside rolled-back fixture transactions in an independently migrated disposable database**,
+never as a production schema/registry change.
+
+### Validation and save state
+
+| Gate | M2 checkpoint |
+| --- | --- |
+| Market complete unit/contract/boundary tests | 216 PASS across five files, including 65 new dataset/source-preparation cases |
+| Existing Shared/Spatial unit regression | 1,108 PASS; combined 1,324/1,324 across 38 files, zero failed/skipped |
+| Market real PostgreSQL integration, synthetic governed fixtures | 25/25 PASS |
+| Existing Data Center/PostgreSQL/provider regression | 138/138 PASS across eight files |
+| Full Spatial/PostGIS regression | 130/130 PASS across three files, including 44 real Saudi Map-copy cases |
+| Final database suite outcomes | 293 PASS across 12 suites, zero failed/skipped; reconciled from each suite's latest completed run |
+| Disposable database safety | All 78 existing migrations applied only to own fresh scratch databases; scratch databases removed |
+| TypeScript | PASS, including the final production build's TypeScript check |
+| Scoped ESLint | PASS, zero warnings (`--max-warnings=0`) |
+| Production build | PASS, existing `next-build.mjs --webpack`, one worker, 161 static-page generation tasks |
+| Whitespace and frozen-source checks | PASS; no Shared/Spatial/Map/Data Center/schema/workflow/dependency change |
+
+The first combined database run exposed a nested test-registration mistake in the new
+Market suite and four existing real Saudi PostGIS statement timeouts during concurrent
+validation. The test declaration was corrected. The complete Market and real Saudi suites
+then passed 69/69 without competing builds, with **no Spatial change, timeout increase,
+retry flag, skip or threshold relaxation**. After a final source-reference alias validation
+refinement, all 25 Market PostgreSQL tests passed again. The other ten suites had already
+passed; the total above reports latest per-suite outcomes, not a fictitious single green run.
+The pre-existing pg concurrent-query deprecation remains a disclosed warning.
+The existing isolated-worktree dependency junction still requires the supported Webpack
+path documented at M1. No build configuration or dependency was changed. The two
+build-generated `next-env.d.ts` import changes were removed from this clean worktree;
+unrelated edits in the original workspace and desktop root were preserved.
+
+Measured final exact-input preparation on the migrated local PostgreSQL fixture:
+**785.48 ms** for two discovery calls, two checksum-verified reads and three rows/definitions
+(two demand periods and one dictionary definition). This is one fixture measurement,
+not a production-data benchmark, percentile, load SLA or real-demand acceptance.
+
+No Shared Core additions were necessary: M1 quantities, normalization, gaps, rights,
+confidence foundations and hashes were reused. Existing M1 and Spatial contracts remain
+unchanged, including legacy result/hash behavior. Market's AST boundary now permits exactly
+one read-only provider; pure modules cannot import it. The global adapter allowlist preserves
+Spatial's existing entries and adds only Market discovery/content access.
+
+Changed surfaces: Market `data-port.ts`, `datasets.ts`, `data-sources.ts`,
+`adapters/data-center-provider.ts`, `gaps.ts` and pure `index.ts`; the new Market data-source
+unit suite and synthetic fixture helper; the Market/global boundary suites; the new
+PostgreSQL Market integration suite; this document and the shared architecture status.
+
+**Map changed: NO. Data Center frozen baseline changed: NO. Spatial changed: NO.**
+**Shared Core changed: NO. M3 started: NO. Main merge: NO. Final tags: NOT CREATED.**
+**Sonar: DEFERRED / PENDING, no attempt made.**
+M2 stops at this technical checkpoint for owner review; it is not full Market Engine closure
+and does not certify unavailable real demand data.

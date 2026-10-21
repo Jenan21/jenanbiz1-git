@@ -7,8 +7,9 @@ is built, tested and approved before the next one starts. The owner's 2026-10-21
 defers final Sonar acceptance and final tags until all seven technical baselines are complete:
 
 1. Spatial Analysis Engine (`docs/spatial-engine-v1.md`)
-2. Market & Demand Engine ([contracts and M1 checkpoint](market-demand-engine-v1.md);
-   M0 and M1–M5 split approved; M1 foundations implemented for review; M2 not started)
+2. Market & Demand Engine ([contracts and checkpoints](market-demand-engine-v1.md);
+   M0 and M1–M5 split approved; M1 CLOSED at `d95da803`; M2 read-only integration implemented
+   and verified for checkpoint review; real-demand acceptance blocked; M3 not started)
 3. Competitor Analysis Engine
 4. Opportunity & Gap Engine
 5. Financial Feasibility Engine
@@ -45,7 +46,8 @@ and is never modified by the engines. The engines are aggregated on their own li
 - Final Tag: **NOT CREATED**. Main Merge: **NO**.
 - The owner authorizes merging Spatial into `jenan-engines/integration` only to continue
   subsequent engine development, then creating `jenan-engines/market-demand` for M0
-  architecture/scope review only. Market & Demand M1 needs separate plan approval.
+  architecture/scope review. The owner subsequently approved M0/M1–M5, closed M1 at
+  `d95da8030fbdcd6e68199cc4ca60bb6f528ece01`, and authorized M2 only. M3 needs separate approval.
 - Spatial is frozen. A necessary shared fix for a later engine requires stopping and
   informing the owner before modifying the accepted Spatial baseline.
 - After all seven engines: run Sonar against their recorded Final Technical SHAs, address
@@ -77,6 +79,13 @@ An engine reaches anything outside its own tree only through an adapter: a direc
   layer, holds no SQL and calls nothing that writes (no usage record, no audit entry). It has no
   access policy of its own: the Data Center applies its existing policy to the actor it is given.
   No other file of an engine may import those services.
+- **Market's read-only Data Center provider** has a separate exact allowlist: discovery,
+  version-content and the pure actor/error vocabulary only, plus its own/shared modules.
+  It does not import the Map resolver or Spatial, and it performs no registration, usage,
+  audit, persistence or Data Center writes. Its pure port reuses Data Center's existing
+  metadata DTO/schema (named `map-reference` historically); this grants no Map capability.
+  The actual configured local database currently lacks the Data Center schema, so production
+  inventory and real demand acceptance remain BLOCKED / NOT VERIFIED, not assumed empty.
 - **M5 run persistence and historical replay adapters** have explicit, narrow exceptions for
   Prisma and the application database. The persistence adapter inserts run/input rows only; the
   historical reader performs one exact-version read and applies Data Center source-scope,
