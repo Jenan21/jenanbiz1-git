@@ -2,8 +2,9 @@
 
 ## Purpose and order
 
-Jenan PRO builds seven analysis engines, one at a time. Each engine is built, tested and
-closed before the next one starts:
+Jenan PRO builds seven analysis engines, one at a time. Each engine's technical baseline
+is built, tested and approved before the next one starts. The owner's 2026-10-21 decision
+defers final Sonar acceptance and final tags until all seven technical baselines are complete:
 
 1. Spatial Analysis Engine (`docs/spatial-engine-v1.md`)
 2. Market & Demand Engine
@@ -24,11 +25,32 @@ Projects yet, and no engine has a foreign key to Projects or to the `jenan_map` 
 The Data Center foundation is a frozen baseline at `jenan-data-center/integration@04d6148`
 and is never modified by the engines. The engines are aggregated on their own line:
 
-- `jenan-engines/integration` starts from that baseline and receives each closed engine
-  through a merge commit, followed by a tag (for example `JENAN-PRO-SPATIAL-ENGINE-V1.0`).
+- `jenan-engines/integration` starts from that baseline and receives approved technical
+  engine baselines through explicit merge commits, without squash or destructive rebase.
+  A technical merge is not final engine closure and creates no final tag.
 - Each engine is built on its own branch (`jenan-engines/spatial`, ...) created from
   `jenan-engines/integration`, so the next engine starts from the previous one.
 - Nothing is merged to `main` until the owner decides.
+
+## Technical freeze and deferred final closure (owner decision, 2026-10-21)
+
+- Spatial: **TECHNICALLY COMPLETE — PENDING FINAL SONAR**, not `FINAL CLOSED`.
+- Final Technical Engine SHA (M7):
+  `8d97baace8abd6889f400a56952e345f3068f3af`.
+- Separate Sonar workflow-only setup SHA:
+  `98ad93e3706a506bed8e6df9ff6e0eec1a2e64d0`; this adds no engine logic.
+- Spatial M1–M7 technical acceptance is approved. Sonar Quality Gate:
+  **DEFERRED / PENDING**. No further Sonar setup, subscription or analysis attempts now.
+- Final Tag: **NOT CREATED**. Main Merge: **NO**.
+- The owner authorizes merging Spatial into `jenan-engines/integration` only to continue
+  subsequent engine development, then creating `jenan-engines/market-demand` for M0
+  architecture/scope review only. Market & Demand M1 needs separate plan approval.
+- Spatial is frozen. A necessary shared fix for a later engine requires stopping and
+  informing the owner before modifying the accepted Spatial baseline.
+- After all seven engines: run Sonar against their recorded Final Technical SHAs, address
+  quality-gate failures in traceable follow-up revisions, rerun the required tests, and
+  record the accepted replacement SHAs where fixes change a technical baseline. Only then
+  issue approved final tags and mark the engines `FINAL CLOSED`.
 
 ## The shared core
 

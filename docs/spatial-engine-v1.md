@@ -4,6 +4,26 @@ The first of the seven analysis engines (see `docs/analysis-engines.md` for the 
 the branch line and the principles). It lives in `services/analysis-engines/spatial` on the
 branch `jenan-engines/spatial`, built on top of the frozen Data Center baseline.
 
+## Accepted technical freeze (owner decision, 2026-10-21)
+
+**TECHNICALLY COMPLETE — PENDING FINAL SONAR**, not `FINAL CLOSED`.
+
+| Record | Value |
+| --- | --- |
+| Final Technical Engine SHA (M7) | `8d97baace8abd6889f400a56952e345f3068f3af` |
+| Separate Sonar workflow-only setup SHA | `98ad93e3706a506bed8e6df9ff6e0eec1a2e64d0` |
+| M1–M7 technical acceptance | Approved |
+| Sonar Quality Gate | DEFERRED / PENDING until all seven engines' technical baselines are complete |
+| Final Tag | NOT CREATED |
+| Main Merge | NO |
+
+The workflow setup is not part of the analytical implementation. No additional Sonar
+attempts, subscriptions or setup changes are authorized now. The owner authorizes an
+explicit merge commit into `jenan-engines/integration` only for subsequent engine
+development, followed by Market & Demand M0 review; this is not final Spatial closure.
+The accepted engine remains frozen. Stop and inform the owner before a later engine's
+necessary shared fix changes this baseline.
+
 ## Scope
 
 Six analyses, all expressed as documented spatial facts and measurements:
@@ -805,7 +825,7 @@ Missing real constraint/population data remains an acceptance gap, not a synthet
 | M4 | `PROXIMITY` and `CATCHMENT` | Done |
 | M5 | Append-only run/input/usage persistence and authorized exact historical replay, no public history discovery | Closed at `f09aedc` |
 | M6 | `DENSITY`, `CONSTRAINT_SCREENING`, `SITE_COMPARISON` | Closed at `faba3a7` |
-| M7 | Real-data performance, bounded concurrency/max-candidate acceptance, documentation, closure gate | OPEN: local gates passed; approved Sonar Server/Cloud quality gate pending |
+| M7 | Real-data performance, bounded concurrency/max-candidate acceptance, documentation, closure gate | Technical acceptance approved at `8d97baa`; final Sonar deferred |
 
 ### Closure gate
 
@@ -813,12 +833,12 @@ lint, typecheck, unit tests, PostGIS integration tests, Data Center integration 
 Sonar, CodeQL, Copilot review and performance. Record the scope and evidence for each gate;
 IDE diagnostics alone are not evidence of a server-side Sonar quality-gate status.
 
-The owner's M7 authorization explicitly prohibits a merge, a final tag or starting the next
-engine. Final acceptance produces a report for review on `jenan-engines/spatial` only. A later
-pull request/merge into `jenan-engines/integration` (never `main`) or a final
-`JENAN-PRO-SPATIAL-ENGINE-V1.0` tag requires a separate explicit authorization. M7's
-validation-only changes do not change the accepted M6 runtime version or invalidate its
-persisted run/replay provenance.
+The later owner decision above supersedes the earlier M7 prohibition on a technical merge
+and the next engine's M0 review. Only `jenan-engines/integration` may receive the technical
+baseline now; no merge to `main` and no final `JENAN-PRO-SPATIAL-ENGINE-V1.0` tag are
+authorized. Final Sonar acceptance is deferred until the seven engines are technically
+complete. M7's validation-only changes do not change the accepted M6 runtime version or
+invalidate its persisted run/replay provenance.
 
 ### M7 acceptance checkpoint (2026-10-21; not engine closure)
 
@@ -837,11 +857,15 @@ persisted run/replay provenance.
   [39540990106](https://github.com/Jenan21/jenanbiz1-git/actions/runs/39540990106), at
   `faba3a7b8d69c47511c466e13357886a56a77708`; JavaScript/TypeScript and Actions analyses
   completed successfully. The branch had no open code-scanning alerts when checked.
-  A checkpoint commit containing the new tests/docs needs its own dispatched run.
+  The exact M7 checkpoint subsequently passed
+  [39546478859](https://github.com/Jenan21/jenanbiz1-git/actions/runs/39546478859), with no
+  open branch alerts at verification.
 - Copilot read-only review of Spatial/shared, persistence/replay and the new performance
   acceptance: no significant issues reported. This is review evidence, not a formal proof.
-- Sonar: IDE file analysis was triggered for core paths, but this is **not** a verified
-  Server/Cloud quality gate. The owner explicitly chose to keep M7 **OPEN** until the approved
-  Sonar Server/Cloud gate is provided. It must not be silently replaced with IDE diagnostics.
+- Sonar: IDE file analysis is **not** a verified Server/Cloud quality gate. The separate
+  workflow setup analyzed the exact technical checkpoint, but the server refused access to
+  non-main branch gate data. No PASS or code-quality FAIL was established. The latest owner
+  decision defers this final gate until all seven engines are technically complete.
 - The frozen Map/Data Center baselines, Projects UI, `main` and previous unrelated work
-  remain untouched. No merge, final tag or second-engine work is authorized or performed.
+  remain untouched. The technical integration merge and next-engine M0 are now authorized
+  as stated above; main merges, final tags and Market & Demand M1 remain unauthorized.
