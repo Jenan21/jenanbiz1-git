@@ -1,5 +1,25 @@
 # JENAN MARKET & DEMAND ENGINE — ARCHITECTURE & IMPLEMENTATION PLAN
 
+## Accepted technical freeze — owner decision, 2026-10-21
+
+**MARKET & DEMAND ENGINE = TECHNICALLY COMPLETE — PENDING FINAL SONAR**
+
+- Final Technical SHA: **`c54d647838c1ce10730277f3977abc4980c3715d`**.
+- M5 accepted by the owner; this subsequent documentation-only acceptance does not
+  replace the Final Technical SHA or imply its CodeQL analysis covers later commits.
+- Exact-SHA [CodeQL run 39617080553](https://github.com/Jenan21/jenanbiz1-git/actions/runs/39617080553)
+  succeeded for JavaScript/TypeScript and Actions. Analysis ids: `1997228004` and
+  `1997220899`; zero open/new alerts, five unchanged previously dismissed repository findings.
+- Real-data demand acceptance: **BLOCKED / NOT VERIFIED**; synthetic acceptance
+  does not prove production data availability or absence.
+- Runtime, arithmetic, persistence, replay and contracts are frozen. Any necessary
+  shared change requires explicit owner approval before implementation.
+- Sonar: **DEFERRED / PENDING** until all seven technical engines are complete.
+  Final Tag: **NOT CREATED**. Main Merge: **NO**. This is not FINAL CLOSED.
+- The owner separately authorized Competitor M0 only, and explicitly approved a
+  nonsquashed merge commit to engines integration followed by its planning branch.
+  That authorization starts no Competitor implementation.
+
 ## M0 status and authority
 
 **M0 APPROVED on 2026-10-21, including M1–M5 and the detailed contract/policy basis.

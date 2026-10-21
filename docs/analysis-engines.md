@@ -10,10 +10,10 @@ defers final Sonar acceptance and final tags until all seven technical baselines
 2. Market & Demand Engine ([contracts and checkpoints](market-demand-engine-v1.md);
    M0 and M1–M5 split approved; M1 CLOSED at `d95da803`; M2 CLOSED at `e905daa`;
    M3 CLOSED at `e57a295`; real-demand acceptance BLOCKED / NOT VERIFIED;
-   M4 CLOSED at `d2ef88e`; M5 local technical gates PASS, exact-final-SHA CodeQL
-   verification recorded with the delivery; TECHNICALLY COMPLETE — PENDING FINAL SONAR
-   once that check passes; no third engine, final tag, main merge or Sonar attempt)
-3. Competitor Analysis Engine
+   M4 CLOSED at `d2ef88e`; M5 accepted; Final Technical SHA
+   `c54d647838c1ce10730277f3977abc4980c3715d`;
+   **TECHNICALLY COMPLETE — PENDING FINAL SONAR**, frozen)
+3. Competitor Analysis Engine (M0 planning only authorized; implementation requires review)
 4. Opportunity & Gap Engine
 5. Financial Feasibility Engine
 6. Operational Feasibility Engine
@@ -38,6 +38,18 @@ and is never modified by the engines. The engines are aggregated on their own li
 - Nothing is merged to `main` until the owner decides.
 
 ## Technical freeze and deferred final closure (owner decision, 2026-10-21)
+
+- Market & Demand technical closure is accepted by the owner at Final Technical SHA
+  **`c54d647838c1ce10730277f3977abc4980c3715d`**. Exact-SHA CodeQL run
+  [39617080553](https://github.com/Jenan21/jenanbiz1-git/actions/runs/39617080553)
+  passed both languages with zero open/new alerts. Its five existing dismissed
+  repository findings remain unchanged. Status: **TECHNICALLY COMPLETE — PENDING
+  FINAL SONAR**, not FINAL CLOSED. Real-demand acceptance remains BLOCKED / NOT VERIFIED.
+  Freeze the engine; stop for explicit approval before any necessary shared modification.
+- The owner authorized Competitor Architecture & Implementation Plan / M0 only,
+  then explicitly approved a Market-to-integration merge commit without squash and
+  a `jenan-engines/competitor-analysis` planning branch. No main merge, final tag,
+  Sonar attempt or Competitor implementation is authorized.
 
 - Spatial: **TECHNICALLY COMPLETE — PENDING FINAL SONAR**, not `FINAL CLOSED`.
 - Final Technical Engine SHA (M7):
