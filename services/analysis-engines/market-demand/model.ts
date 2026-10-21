@@ -16,6 +16,10 @@ export const measurementSubjects = [...demandSubjects, ...contextSubjects] as co
 export const marketResultClasses = ["OBSERVED", "ESTIMATED", "DERIVED", "CONTEXTUAL"] as const;
 export type MarketResultClass = typeof marketResultClasses[number];
 export const isContextSubject = (subject: string) => (contextSubjects as readonly string[]).includes(subject);
+export const marketPartitionSchema = z.object({
+  scheme: z.object({ id: shortTextSchema, version: shortTextSchema }).strict(),
+  key: shortTextSchema, disjoint: z.literal(true),
+}).strict();
 
 export const marketObservationSchema = z.object({
   ref: observationRefSchema,
@@ -30,6 +34,7 @@ export const marketObservationSchema = z.object({
   sourceRefs: z.array(observationRefSchema).min(1).max(32),
   assumptions: z.array(assumptionSchema).max(20),
   limitations: z.array(shortTextSchema).max(10),
+  partition: marketPartitionSchema.optional(),
 }).strict().superRefine((row, context) => {
   const fail = (message: string) => context.addIssue({ code: "custom", message });
   if (row.semantics.measuredSubject !== row.subject) fail("Subject must agree with metric semantics");

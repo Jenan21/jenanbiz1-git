@@ -7,3 +7,7 @@ export * from "./gaps";
 export * from "./data-port";
 export * from "./datasets";
 export * from "./data-sources";
+export * from "./advanced-calculations";
+export * from "./engine";
+export * from "./result";
+export { marketAnalysisResultSchema as marketResultSchema } from "./result";

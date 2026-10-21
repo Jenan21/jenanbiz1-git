@@ -116,7 +116,7 @@ export function calculateMarketMetric(
   return metric;
 }
 
-export function metricWithoutMarketFields(metric: MarketCalculatedMetric): EngineMetric {
+export function metricWithoutMarketFields(metric: Omit<MarketCalculatedMetric, "trace">): EngineMetric {
   return {
     key: metric.key, label: metric.label, status: metric.status, platformState: metric.platformState,
     valueKind: metric.valueKind, unit: metric.unit, value: metric.value, interpretation: metric.interpretation,

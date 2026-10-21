@@ -42,7 +42,7 @@ export const marketMetricSchema = engineMetricSchema.safeExtend({
     if (estimated && (metric.status !== "ESTIMATED" || metric.confidence?.band === "HIGH")) fail("Estimates require estimated state and at most MEDIUM confidence");
   }
 });
-const resultObject = z.object({
+export const marketResultObject = z.object({
   contract: z.literal(MARKET_RESULT_CONTRACT), runId: identifierSchema, evaluatedAt: timestampSchema,
   engine: z.object({
     ...engineIdentityShape, key: z.literal(MARKET_ENGINE_KEY), version: z.literal(MARKET_VERSION),
@@ -60,7 +60,7 @@ const resultObject = z.object({
   attribution: z.array(attributionEntrySchema).max(32), rights: rightsSchema, determinism: determinismSchema,
   limits: z.object(limitsShape).strict(), timing: timingSchema,
 }).strict();
-export type MarketResult = z.infer<typeof resultObject>;
+export type MarketResult = z.infer<typeof marketResultObject>;
 
 export function findMarketResultProblems(result: MarketResult): string[] {
   if (Buffer.byteLength(canonicalize(result), "utf8") > MAX_RUN_JSON_BYTES) return ["Market result exceeds the shared 2 MiB run JSON limit"];
@@ -148,6 +148,7 @@ export function findMarketResultProblems(result: MarketResult): string[] {
   }
   return problems;
 }
-export const marketResultSchema = resultObject.superRefine((result, context) => {
+export const marketM1ResultSchema = marketResultObject.superRefine((result, context) => {
   for (const message of findMarketResultProblems(result)) context.addIssue({ code: "custom", message });
 });
+export const marketResultSchema = marketM1ResultSchema;

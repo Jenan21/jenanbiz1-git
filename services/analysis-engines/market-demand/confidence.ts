@@ -5,6 +5,7 @@ import { engineInputSchema } from "../shared/contracts";
 import { bandRank } from "../shared/states";
 import { timestampSchema } from "../shared/primitives";
 import { EngineError } from "../shared/errors";
+import { observationRefSchema, temporalReferenceSchema } from "../shared/quantities";
 import { isContextSubject, marketObservationSchema, normalizeMarketObservation, type MarketObservation } from "./model";
 
 const weights = { sourceQuality: 20, geographicCoverage: 15, temporalCoverage: 15, freshness: 10, completeness: 15, measurementMethod: 15, evidenceNature: 5, rightsProvenance: 5 } as const;
@@ -39,6 +40,18 @@ export const marketConfidencePolicy: ConfidencePolicyDescriptor = {
 
 const basisSchema = z.object({ observation: marketObservationSchema, input: engineInputSchema }).strict();
 export type MarketConfidenceBasis = z.infer<typeof basisSchema>;
+const evidenceSchema = z.object({
+  ref: observationRefSchema, role: z.enum(["demand.observations", "context.indicators", "demand.assumptions", "dimensions.dictionary"]),
+  nature: z.enum(["OBSERVATION", "ESTIMATE", "DERIVED"]), time: temporalReferenceSchema,
+  status: z.enum(["AVAILABLE", "SUPPRESSED", "NOT_AVAILABLE"]),
+  geographicCoverage: z.enum(["EXACT", "PARTIAL", "UNKNOWN", "OUTSIDE"]),
+  temporalCoverage: z.enum(["COMPLETE", "PARTIAL", "UNKNOWN"]),
+  measurementMethod: z.enum(["DOCUMENTED", "LIMITED", "UNSUPPORTED"]),
+  sourceRefs: z.array(observationRefSchema).min(1).max(672),
+  identity: z.string().min(1).max(200_000),
+}).strict();
+export type MarketConfidenceEvidence = z.infer<typeof evidenceSchema>;
+type ScoringBasis = { observation: MarketConfidenceEvidence; input: z.infer<typeof engineInputSchema> };
 export type MarketConfidenceResult =
   | { kind: "SCORED"; confidence: ConfidenceBreakdown }
   | { kind: "NOT_SCORABLE"; reason: string; confidence: null };
@@ -49,7 +62,7 @@ function localReportingDate(instant: string, timeZone: string): string {
   return `${part("year")}-${part("month")}-${part("day")}`;
 }
 
-function pointsFor({ observation: row, input }: MarketConfidenceBasis): Record<Factor, number> {
+function pointsFor({ observation: row, input }: ScoringBasis): Record<Factor, number> {
   return {
     sourceQuality: input.quality.status === "MEASURED" ? input.quality.score >= 0.8 ? 20 : 10 : 0,
     geographicCoverage: row.geographicCoverage === "EXACT" ? 15 : row.geographicCoverage === "PARTIAL" ? 8 : 0,
@@ -57,31 +70,46 @@ function pointsFor({ observation: row, input }: MarketConfidenceBasis): Record<F
     freshness: input.freshness.status === "FRESH" ? 10 : input.freshness.status === "STALE" ? 5 : 0,
     completeness: input.completeness === "INVENTORY" ? 15 : input.completeness === "SAMPLE" ? 8 : 0,
     measurementMethod: row.measurementMethod === "DOCUMENTED" ? 15 : row.measurementMethod === "LIMITED" ? 8 : 0,
-    evidenceNature: row.semantics.evidenceNature === "ESTIMATE" ? 3 : input.evidenceStatus === "UNVERIFIED" || input.evidenceStatus === null ? 0 : 5,
+    evidenceNature: row.nature === "ESTIMATE" ? 3 : input.evidenceStatus === "UNVERIFIED" || input.evidenceStatus === null ? 0 : 5,
     rightsProvenance: input.licenseClass === null ? 3 : 5,
   };
 }
-function capsFor({ observation: row, input }: MarketConfidenceBasis): ConfidenceCapInput[] {
+function capsFor({ observation: row, input }: ScoringBasis): ConfidenceCapInput[] {
   const codes = new Set<string>();
   if (input.completeness !== "INVENTORY" || row.geographicCoverage !== "EXACT" || row.temporalCoverage !== "COMPLETE" || !input.coverage) codes.add("MARKET_INCOMPLETE");
   if (input.licenseClass === null || input.evidenceStatus === "UNVERIFIED" || input.evidenceStatus === null) codes.add("MARKET_UNVERIFIED");
-  if (row.semantics.evidenceNature === "ESTIMATE" || input.evidenceStatus === "ESTIMATED") codes.add("MARKET_ESTIMATED");
+  if (row.nature === "ESTIMATE" || input.evidenceStatus === "ESTIMATED") codes.add("MARKET_ESTIMATED");
   if (input.freshness.status !== "FRESH") codes.add("MARKET_FRESHNESS_LIMITED");
   if (input.quality.status !== "MEASURED") codes.add("MARKET_QUALITY_UNMEASURED");
   return capDefinitions.filter((cap) => codes.has(cap.code)).map((cap) => ({ code: cap.code, maxBand: cap.maxBand, reason: cap.appliesWhen }));
 }
 
 export function calculateMarketConfidence(raw: readonly MarketConfidenceBasis[], evaluatedAt: string): MarketConfidenceResult {
+  const bases = z.array(basisSchema).min(1).max(32).parse(raw);
+  return calculateMarketEvidenceConfidence(bases.map(({ observation: original, input }) => {
+    const row = normalizeMarketObservation(original);
+    return { input, observation: {
+      ref: row.ref, role: isContextSubject(row.subject) ? "context.indicators" as const : "demand.observations" as const,
+      nature: row.semantics.evidenceNature, time: row.semantics.time, status: row.status,
+      geographicCoverage: row.geographicCoverage, temporalCoverage: row.temporalCoverage, measurementMethod: row.measurementMethod,
+      sourceRefs: [...row.sourceRefs, ...row.assumptions.flatMap((assumption) => assumption.sourceRefs)],
+      identity: canonicalize(row),
+    } };
+  }), evaluatedAt);
+}
+
+export function calculateMarketEvidenceConfidence(raw: readonly ScoringBasis[], evaluatedAt: string): MarketConfidenceResult {
   timestampSchema.parse(evaluatedAt);
-  const bases = z.array(basisSchema).min(1).max(32).parse(raw).map((basis) => {
+  const bases = z.array(z.object({ observation: evidenceSchema, input: engineInputSchema }).strict()).min(1).max(10_000).parse(raw).map((basis) => {
     const freshness = basis.input.freshness;
     const tooOld = freshness.sourcePublishedAt && freshness.freshnessDays
       && Date.parse(evaluatedAt) - Date.parse(freshness.sourcePublishedAt) > freshness.freshnessDays * 86_400_000;
-    return { ...basis, observation: normalizeMarketObservation(basis.observation), input: { ...basis.input, freshness: { ...freshness, status: freshness.status === "FRESH" && tooOld ? "STALE" as const : freshness.status } } };
+    return { ...basis, input: { ...basis.input, freshness: { ...freshness, status: freshness.status === "FRESH" && tooOld ? "STALE" as const : freshness.status } } };
   }).sort((a, b) => compareText(a.input.id, b.input.id) || compareText(a.observation.ref.observationId, b.observation.ref.observationId));
   const blocked = (reason: string): MarketConfidenceResult => ({ kind: "NOT_SCORABLE", reason, confidence: null });
   const rowsByRef = new Map<string, string>();
   const inputsById = new Map<string, string>();
+  const knownInputIds = new Set(bases.map((basis) => basis.input.id));
   for (const basis of bases) {
     const { input, observation: row } = basis;
     const ref = canonicalize(row.ref);
@@ -92,16 +120,16 @@ export function calculateMarketConfidence(raw: readonly MarketConfidenceBasis[],
     if (previousInput && previousInput !== canonicalize(input)) return blocked("Conflicting snapshots of one exact source input");
     inputsById.set(input.id, canonicalize(input));
     if (input.kind !== "DATA_CENTER_VERSION" || input.governance !== "DC_PUBLISHED" || row.ref.inputId !== input.id || !input.checksum) return blocked("Exact governed input provenance is required");
-    if (!input.roles.includes(isContextSubject(row.subject) ? "context.indicators" : "demand.observations")) return blocked("Source role does not support the measurement subject");
-    if ([...row.sourceRefs, ...row.assumptions.flatMap((assumption) => assumption.sourceRefs)].some((source) => !bases.some((entry) => entry.input.id === source.inputId))) return blocked("Required lineage input is unresolved");
+    if (!input.roles.includes(row.role)) return blocked("Source role does not support the measurement subject");
+    if (row.sourceRefs.some((source) => !knownInputIds.has(source.inputId))) return blocked("Required lineage input is unresolved");
     if (input.evidenceStatus === "CONFLICTED" || row.status !== "AVAILABLE" || row.geographicCoverage === "UNKNOWN" || row.geographicCoverage === "OUTSIDE" || row.temporalCoverage === "UNKNOWN" || row.measurementMethod === "UNSUPPORTED") return blocked("Observation scope or evidence is unusable");
-    if (input.evidenceStatus === "ESTIMATED" && row.semantics.evidenceNature !== "ESTIMATE") return blocked("An estimated source cannot be relabelled as observed");
+    if (input.evidenceStatus === "ESTIMATED" && row.nature !== "ESTIMATE") return blocked("An estimated source cannot be relabelled as observed");
     const expiry = input.freshness.expiresAt;
     if (input.freshness.status === "EXPIRED" || (expiry && Date.parse(expiry) <= Date.parse(evaluatedAt))) return blocked("Input expired");
     if (input.freshness.sourcePublishedAt && Date.parse(input.freshness.sourcePublishedAt) > Date.parse(evaluatedAt)) return blocked("Input publication lies after the evaluation instant");
     if (input.quality.status !== "UNAVAILABLE" && Date.parse(input.quality.measuredAt) > Date.parse(evaluatedAt)) return blocked("Quality assessment lies after the evaluation instant");
-    const date = localReportingDate(evaluatedAt, row.semantics.time.timeZone);
-    if ((row.semantics.time.kind === "INTERVAL" ? row.semantics.time.endDate : row.semantics.time.date) > date) return blocked("Incomplete or future reporting period");
+    const date = localReportingDate(evaluatedAt, row.time.timeZone);
+    if ((row.time.kind === "INTERVAL" ? row.time.endDate : row.time.date) > date) return blocked("Incomplete or future reporting period");
   }
   const scored = bases.map((basis) => ({ basis, points: pointsFor(basis) }));
   const factors = (Object.keys(weights) as Factor[]).map((key) => {

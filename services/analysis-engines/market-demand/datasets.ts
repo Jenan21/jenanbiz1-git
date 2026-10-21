@@ -16,6 +16,7 @@ export const marketDatasetRowSchema = z.object({
   temporalCoverage: fields.temporalCoverage, measurementMethod: fields.measurementMethod,
   method: fields.method, sourceRefs: z.array(referenceSchema).min(1).max(32),
   assumptions: z.array(assumptionSchema).max(20), limitations: fields.limitations,
+  partition: fields.partition,
 }).strict();
 export const marketDatasetCoverageSchema = z.object({
   geographies: z.array(quantityDimensionsSchema.shape.geography).min(1).max(100).nullable(),
@@ -84,6 +85,7 @@ export const marketDatasetSchema = z.discriminatedUnion("role", [observations, c
         subject: row.subject, semantics: row.semantics, status: row.status, value: row.value,
         geographicCoverage: row.geographicCoverage, temporalCoverage: row.temporalCoverage,
         measurementMethod: row.measurementMethod, method: row.method, limitations: row.limitations,
+        ...(row.partition ? { partition: row.partition } : {}),
         ref: { inputId: "dc:validation", observationId: row.id },
         sourceRefs: row.sourceRefs.map((ref, index) => ({ inputId: `dc:validation-${index}`, observationId: ref.observationId })),
         assumptions: row.assumptions.map((assumption) => ({ ...assumption, sourceRefs: assumption.sourceRefs.map((ref, index) => ({ inputId: `dc:validation-${index}`, observationId: ref.observationId })) })),

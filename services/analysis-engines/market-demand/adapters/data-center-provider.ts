@@ -5,6 +5,7 @@ import { timestampSchema } from "../../shared/primitives";
 import type { MarketDataPort } from "../data-port";
 import { prepareMarketData } from "../data-sources";
 import { normalizeMarketRequest } from "../request";
+import { runMarketAnalysis, type MarketRunContext } from "../result";
 
 interface MarketProviderContext {
   evaluatedAt: string; specialty?: string; missionContext?: string; organizationId?: string;
@@ -49,4 +50,12 @@ export function createMarketDataCenterProvider(
 export function prepareMarketDataCenterInputs(request: unknown, actor: DataCenterActor, context: MarketProviderContext) {
   const normalized = normalizeMarketRequest(request, { evaluatedAt: context.evaluatedAt });
   return prepareMarketData(createMarketDataCenterProvider(actor, { ...context, evaluatedAt: normalized.evaluatedAt }), normalized.normalized, normalized.evaluatedAt);
+}
+
+export function runMarketDataCenterAnalysis(
+  request: unknown, actor: DataCenterActor, context: MarketProviderContext & MarketRunContext,
+) {
+  return runMarketAnalysis(request, createMarketDataCenterProvider(actor, context), {
+    runId: context.runId, evaluatedAt: context.evaluatedAt, environment: context.environment, timing: context.timing,
+  });
 }

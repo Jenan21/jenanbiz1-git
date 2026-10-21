@@ -5,7 +5,7 @@
 **M0 APPROVED on 2026-10-21, including M1–M5 and the detailed contract/policy basis.
 M1 was subsequently accepted and CLOSED at
 `d95da8030fbdcd6e68199cc4ca60bb6f528ece01`. The owner then authorized M2 only.
-M3 must not start automatically.**
+M3 was subsequently authorized explicitly in the owner finalization below.**
 
 **Owner finalization (2026-10-21): M2 = CLOSED.** Final M2 implementation SHA:
 `e905daa0675f4cccf808978280cfe34eb133bc20` (TECHNICALLY COMPLETE).
@@ -536,7 +536,7 @@ Future consumers integrate through its contracts, not duplicate calculations.
 
 ## 10. Approved split: M0 plus five implementation/acceptance stages
 
-**M1–M5 approved; M1 only authorized to execute.** Five stages preserve separate gates for
+**M1–M5 approved; M1/M2 accepted and M3 explicitly authorized; M4 not started.** Five stages preserve separate gates for
 contracts, governed data, deterministic
 analysis, exact history and technical acceptance. Four would combine history with final
 acceptance or data access with arithmetic and hide a meaningful risk boundary.
@@ -914,3 +914,186 @@ PostgreSQL Market integration suite; this document and the shared architecture s
 **Sonar: DEFERRED / PENDING, no attempt made.**
 M2 stops at this technical checkpoint for owner review; it is not full Market Engine closure
 and does not certify unavailable real demand data.
+
+## 16. JENAN MARKET & DEMAND ENGINE — M3 CHECKPOINT REPORT
+
+### Accepted prerequisite and bounded scope
+
+- M2 implementation: `e905daa0675f4cccf808978280cfe34eb133bc20`, accepted **CLOSED** by
+  the owner. The separate documentation-only closure is
+  `e492835618366f0d788a9fc5e2c02d1160a28bbd`; it records the accepted SHA, synthetic
+  PostgreSQL fixtures and production inventory **NOT VERIFIED** before M3 implementation.
+- M3 implements deterministic calculations and their governed execution/validation seam
+  only. It creates no persistence adapter, run/input/usage record, replay service, API,
+  UI, registry entry, migration or datastore. M4 is not authorized or started.
+- Shared Core, Spatial, Map, Data Center, schemas, application routes, dependencies,
+  workflows and protected branch tips remain unchanged.
+
+### Contracts and execution
+
+Request and result identifiers remain `jenan.market-demand.request/v1` and
+`jenan.market-demand.result/v1`. New execution results identify
+`engine.version = 1.0.0-m3`. The public `marketResultSchema` accepts both this shape
+and the unchanged `1.0.0-m1` envelope. M1's schema/type and arithmetic API remain
+available; old parsed values, classifications, confidence and deterministic hashes
+continue to pass their original regression suite.
+
+`runMarketAnalysis(request, injectedReadOnlyPort, trustedContext)` normalizes the request,
+performs M2 discovery/exact read/checksum/content/coverage/rights validation, computes
+only eligible measurements and validates the complete result before returning it.
+The existing single privileged provider exposes `runMarketDataCenterAnalysis`; it supplies
+the authorized actor and existing Data Center read services. It gains no write capability.
+Run id, evaluation instant, environment and timing come from the trusted caller; neither
+the engine nor provider reads a hidden clock, environment, random source or network.
+
+In addition to the existing envelope, M3 returns:
+
+- `outcomes`: exactly one identified slot for each requested analysis/series/period,
+  comparison operation or explicit estimate. Each slot names its periods, operation,
+  nullable metric key, availability/computation state, `value` and result class.
+  Missing/incompatible/unsupported evidence returns `value: null`, not zero, and a
+  specific blocking gap. A failed slot does not erase independent valid measurements.
+- `sourceEvidence`: the exact governed selection decision, version/checksum, complete
+  metadata/ownership/license/usage/attribution/publication/effective dates/quality,
+  typed dataset and bound rows used during this run. These are bounded, in-memory
+  validation evidence, **not new persistence or historical replay**.
+- `work`: discovery calls, exact reads and parsed rows/definitions. The deterministic
+  cost also includes requested outcome slots; the fixed budget is 20,000 cost units.
+
+Shared `dataAvailability` describes whether a dataset was found, not whether a particular
+measurement can be calculated. A present dataset can be AVAILABLE there while a requested
+slot correctly says NOT_AVAILABLE or NOT_COMPUTABLE. The exact per-source validation
+state and per-slot null value are retained; no failed dataset or pin is silently replaced.
+Every caller-specified pin, including unavailable ones, must retain its own explicit decision.
+Implicit type/asOf discovery remains recorded as such; it is not rewritten as a caller pin.
+
+### Deterministic calculation methods
+
+| Capability | M3 behavior |
+| --- | --- |
+| Market/audience context | Population, households, businesses, competitors, POIs and contextual indicators retain CONTEXTUAL; audience analysis only accepts population/households |
+| Observed demand | Only actual measurements from validated `jenan.market.observations/v1`, demand subject and OBSERVATION evidence; contextual, derived or estimated evidence cannot become an observed measurement |
+| Identity level | Report the source quantity with its exact scope, time, unit, method and evidence lineage; existing six-decimal numerical normalization remains explicit |
+| Disjoint subtotal | Add only additive FLOW/STOCK quantities with compatible definitions, scope, unit, period and method; every component in a multirow subtotal must declare a unique partition key in one versioned disjoint scheme |
+| Absolute change | `current - base`, signed; a measured zero base is permitted |
+| Percentage change | `100 * (current - base) / base`; base must be positive |
+| Base index | `100 * current / base`; explicit matching requested base period, positive base |
+| Historical comparability | Definition, unit, geography, sector/cohort/universe, adjustment, methodology, measurement method/coverage and time basis must agree; ordered nonoverlapping equal-frequency periods, with equal CUSTOM durations |
+| Aggregated historical change | Preserve original component rows in both periods, require matching disjoint schemes and partition keys, and compare their exact subtotals without interpolation |
+| Explicit estimate | Only the selected `cohort * adoptionFraction * consumptionFrequency` method, never a generic formula evaluator or a guessed default |
+
+The optional additive Market dataset member
+`partition: {scheme:{id,version}, key, disjoint:true}` is a source-backed declaration, not
+an inference from unique row ids. It extends only Market contracts; existing datasets
+without it still parse and retain identity behavior. Missing/duplicate/incompatible proof
+returns NOT_COMPUTABLE. Rates, shares and indices are not blindly summed; they need
+a separately approved weighting contract.
+
+Observed components can produce a **DERIVED subtotal/change**, never a fabricated
+new observation or an estimate. Contextual subtotals remain CONTEXTUAL. Any required
+estimated lineage is explicitly reflected/capped and cannot be admitted as observed demand.
+
+The explicit estimate uses genuine, separately typed assumption rows; it does not fabricate
+observations, change roles or relabel unit dimensions to satisfy validation. It requires:
+
+- Population/household cohort snapshot at the reporting period start, matching calendar
+  and time zone; no silent carry-forward of an older snapshot.
+- Compatible geographic, sector, cohort, universe and adjustment scope for all operands.
+- Adoption fraction in [0,1] with the cohort entity, plus a nonnegative consumption
+  frequency whose entity, denominator/cohort and reporting frequency match the output.
+- A validated output dictionary definition, explicit selected source rows, model formula,
+  declared source assumptions, scenario assumption, limitations and confidence cap.
+- Only supported demand quantities; no currency/money unit, monetary market sizing,
+  revenue prediction, probability, project ranking or investment recommendation.
+
+No rounding policy for fractional **discrete event/person/entity counts** was approved.
+If a formula produces a noninteger in such a unit, M3 returns NOT_COMPUTABLE with null,
+including tiny fractions that would otherwise round to zero at six decimals. It does not
+invent a rounding assumption or misuse an ITEMS dimension. Continuous product quantities
+can use their genuinely declared ITEMS unit. Unsafe/overflowing intermediates and results
+also fail explicitly; a finite percentage does not legitimize an overflowing subtotal.
+
+### Confidence, provenance and validation
+
+Policy remains exactly `market-confidence-v1@1.0.0`: the same eight factors, weights,
+thresholds and caps approved in M1, not a probability of business success.
+Only Market's basis adaptation changed; Shared confidence code is untouched.
+
+Each calculation expands the exact transitive observation/assumption lineage and retains
+all required source inputs. Real typed dictionary definitions also participate in quality,
+rights, freshness/completeness and weakest-input capping; they are not pretend demand
+observations. Each factor uses the weakest evidence, and every required operand's band
+caps the result. A declared scenario is ESTIMATED and at most MEDIUM even if all its
+measured operands are high quality. Missing/expired/conflicting/insufficient evidence
+does not receive a confidence-shaped fallback.
+
+Trace forms are MARKET_LEVEL, SUM_DISJOINT, MARKET_COMPARISON and EXPLICIT_ESTIMATE.
+Every metric links source/version/hash to exact source rows, supporting definitions and
+assumptions, method, semantics and result. Rights and attribution are the conservative
+Shared derivations over the governed inputs, never widened for a derived result.
+
+The result validator rebinds each typed dataset to its actual source/version metadata,
+reapplies the same pure source validation, reconstructs selection/coverage/operand states,
+reruns the deterministic calculations, and compares every outcome, metric, trace,
+confidence, gap, input, availability entry, budget and rights. Recomputing hashes does
+not legitimize a changed number, formula, classification, method, source decision,
+missing/duplicate output, confidence or export permission.
+
+Existing limits remain: 20 series, 120 selected periods, 32 total version selections
+including implicit roles, 2,000 rows per version, 10,000 total rows and **500 requested
+outcome slots / at most 500 computed metrics**. The exact 500-slot all-unavailable result
+is tested without dropping any slot or substituting zero. A 501st result slot is rejected.
+The M3 envelope permits up to 5,000 distinct gaps so full-budget unavailable slots can
+coexist with source-validation gaps; this is Market-only, not a Shared/M1 contract change.
+The Shared 2 MiB envelope ceiling is preserved, checked incrementally during metric
+construction and before return. Oversized evidence fails REQUEST_TOO_LARGE; it is
+never silently truncated.
+
+### Validation and performance
+
+Tests use synthetic
+governed fixtures unless explicitly identified as existing Spatial real-Saudi regression.
+No fixture is Real Demand Data. PostgreSQL integration counts run/input and Data Center
+source/item/version/type/usage/audit/event rows before/after M3 execution, verifies zero writes, exact checksums,
+repeat-run deterministic hashes and identical missing/inaccessible public outcomes.
+
+| Gate | M3 checkpoint |
+| --- | --- |
+| Market full unit/contract/arithmetic/source/boundary suite | 289 PASS across six files, including 73 M3 end-to-end/golden/adversarial cases |
+| Frozen Shared/Spatial unit regression | 1,108 PASS; combined 1,397/1,397 across 39 files, no failures/skips |
+| Full PostgreSQL/Data Center/provider/PostGIS suite | 295/295 PASS across 12 files in one completed combined run |
+| Market PostgreSQL integration | 27/27 PASS, including governed M3 execution/determinism/zero writes/no-existence-leak; rerun after final source refinements |
+| Existing Data Center/PostgreSQL/provider regressions | 138/138 PASS across eight files |
+| Existing Spatial/PostGIS regressions | 130/130 PASS across three files, including 44 real Saudi Map-copy cases |
+| Database safety | All 78 existing migrations applied only to own disposable scratch databases; exact scratch cleanup verified |
+| TypeScript / scoped ESLint / whitespace | PASS; lint requires zero warnings |
+| Production build | PASS with existing supported Webpack path, one worker, 161 static-page generation tasks |
+| Frozen source/baseline diff | Shared, Spatial, Map, Data Center, schema, dependencies, workflows and app/UI unchanged |
+
+The full database suite completed in **251.71 s** without failed tests, relaxed thresholds
+or skips. A final focused Market rerun retains the latest per-suite evidence without claiming
+that every repeated run adds new unique tests. The pre-existing pg concurrent-query
+deprecation warning remains, without a driver/dependency or Spatial change.
+
+Local synthetic PostgreSQL M3 exact-read-to-calculation measurements: **590.63 ms**
+in the complete database run and **298.01 ms** in the final focused run, for two discovery
+calls, two exact/checksum-verified reads, two demand-period rows and one dictionary
+definition. These are individual fixture measurements, not a production SLA, percentile,
+load/concurrency gate or Real-Demand acceptance. M5 retains the broader performance gate.
+
+Changed surfaces: Market `model.ts`, `datasets.ts`, `data-sources.ts`, `confidence.ts`,
+`calculations.ts`, `contracts.ts`, `index.ts`, `adapters/data-center-provider.ts`; new
+`advanced-calculations.ts`, `engine.ts`, `result.ts`; new unit engine suite, two additive
+PostgreSQL integration cases; this report and the architecture status. Shared additions:
+**NONE**. Only the Market-local source-validation helper was extracted/reused so runtime
+preparation and result verification apply identical metadata/evidence rules.
+
+**REAL-DATA DEMAND ACCEPTANCE = BLOCKED / NOT VERIFIED.**
+Production inventory remains NOT VERIFIED; unavailable access does not prove absence
+of Market data. An authorized populated Data Center connection and suitable actual demand
+periods are still required. This is not a functional calculation failure.
+
+**Map changed: NO. Data Center frozen baseline changed: NO. Spatial changed: NO.**
+**Shared Core additions/changes: NONE. M4 started: NO. Main merge: NO.**
+**Sonar: DEFERRED / PENDING; no attempts. Final tags: NOT CREATED.**
+M3 stops for owner review; it does not grant M4 approval or final Market Engine closure.

@@ -30,7 +30,7 @@ export interface PreparedMarketSource {
   gaps: Gap[];
 }
 const same = (a: unknown, b: unknown) => canonicalize(a) === canonicalize(b);
-function inputOf(reference: MarketSourceReference, role: MarketDatasetRole, dataset: MarketDataset): EngineInput | null {
+export function marketInputFromReference(reference: MarketSourceReference, role: MarketDatasetRole, dataset: MarketDataset): EngineInput | null {
   const { version, source, rights, freshness } = reference;
   const parsed = engineInputSchema.safeParse({
     id: `dc:${version.versionId}`, roles: [role], kind: "DATA_CENTER_VERSION", governance: "DC_PUBLISHED",
@@ -45,7 +45,7 @@ function inputOf(reference: MarketSourceReference, role: MarketDatasetRole, data
   });
   return parsed.success ? parsed.data : null;
 }
-function bindAssumptions(dataset: MarketDataset, versionId: string): PreparedMarketAssumption[] {
+export function bindMarketAssumptions(dataset: MarketDataset, versionId: string): PreparedMarketAssumption[] {
   if (dataset.role !== "demand.assumptions") return [];
   const bind = (ref: { versionId?: string; observationId: string }) => ({ inputId: `dc:${ref.versionId ?? versionId}`, observationId: ref.observationId });
   return dataset.rows.map((row) => ({
@@ -53,7 +53,7 @@ function bindAssumptions(dataset: MarketDataset, versionId: string): PreparedMar
     assumptions: row.assumptions.map((assumption) => ({ ...assumption, sourceRefs: assumption.sourceRefs.map(bind) })),
   })).sort((a, b) => compareText(a.id, b.id));
 }
-function bindObservations(dataset: MarketDataset, versionId: string): MarketObservation[] | null {
+export function bindMarketObservations(dataset: MarketDataset, versionId: string): MarketObservation[] | null {
   if (dataset.role !== "demand.observations" && dataset.role !== "context.indicators") return [];
   const bind = (ref: { versionId?: string; observationId: string }) => ({ inputId: `dc:${ref.versionId ?? versionId}`, observationId: ref.observationId });
   const parsed = marketObservationSchema.array().safeParse(dataset.rows.map((row) => ({
@@ -61,12 +61,13 @@ function bindObservations(dataset: MarketDataset, versionId: string): MarketObse
     subject: row.subject, semantics: row.semantics, status: row.status, value: row.value,
     geographicCoverage: row.geographicCoverage, temporalCoverage: row.temporalCoverage,
     measurementMethod: row.measurementMethod, method: row.method, limitations: row.limitations,
+    ...(row.partition ? { partition: row.partition } : {}),
     sourceRefs: row.sourceRefs.map(bind),
     assumptions: row.assumptions.map((assumption) => ({ ...assumption, sourceRefs: assumption.sourceRefs.map(bind) })),
   })));
   return parsed.success ? parsed.data.map(normalizeMarketObservation).sort((a, b) => compareText(a.ref.observationId, b.ref.observationId)) : null;
 }
-function coverageStatus(dataset: MarketDataset, request: MarketNormalizedRequest, period?: TemporalReference): MarketSourceStatus {
+export function marketCoverageStatus(dataset: MarketDataset, request: MarketNormalizedRequest, period?: TemporalReference): MarketSourceStatus {
   const { coverage } = dataset;
   let unknown = false;
   let incompatible = false;
@@ -96,7 +97,7 @@ const statusGap = (status: MarketSourceStatus): MarketGapCode => status === "NO_
 function failedSource(role: MarketDatasetRole, requestedVersionId: string | null, code: MarketGapCode, status: MarketSourceStatus = "NOT_COMPUTABLE", selection: MarketDiscovery | null = null): PreparedMarketSource {
   return { role, status, requestedVersionId, selection, reference: null, input: null, dataset: null, observations: [], assumptionInputs: [], matches: [], gaps: [marketGap(code, role)] };
 }
-function requiredRoles(request: MarketNormalizedRequest): MarketDatasetRole[] {
+export function requiredMarketRoles(request: MarketNormalizedRequest): MarketDatasetRole[] {
   const roles = new Set<MarketDatasetRole>(Object.keys(request.data.roles) as MarketDatasetRole[]);
   roles.add("dimensions.dictionary");
   if (request.analyses.some((analysis) => analysis === "OBSERVED_DEMAND" || analysis === "DEMAND_TREND")) roles.add("demand.observations");
@@ -143,14 +144,14 @@ function matchesFor(source: PreparedMarketSource, request: MarketNormalizedReque
   if (source.role === "context.indicators" && !request.analyses.some((analysis) => analysis === "MARKET_CONTEXT" || analysis === "AUDIENCE_CONTEXT")) return [];
   const matches: MarketSourceMatch[] = [];
   for (const series of request.series) for (const period of series.periods) {
-    let status = coverageStatus(dataset, request, period);
+    let status = marketCoverageStatus(dataset, request, period);
     let rows: MarketObservation[] = [];
     if (status === "AVAILABLE") {
       rows = source.observations.filter((row) => same(row.semantics.dimensions.metricDefinition, series.metricDefinition)
         && row.semantics.time.id === period.id && same(row.semantics.dimensions.geography, request.scope.geography)
         && same(row.semantics.dimensions.sector, request.scope.sector) && same(row.semantics.dimensions.cohort, request.scope.cohort));
       if (!rows.length || rows.every((row) => row.status !== "AVAILABLE")) status = "NOT_AVAILABLE";
-      else if (rows.length !== 1 || rows.some((row) => !same(row.semantics.unit, series.unit) || !same(row.semantics.time, period)
+      else if ((rows.length !== 1 && series.aggregation === "IDENTITY") || rows.some((row) => !same(row.semantics.unit, series.unit) || !same(row.semantics.time, period)
         || row.geographicCoverage === "UNKNOWN" || row.temporalCoverage === "UNKNOWN" || row.measurementMethod === "UNSUPPORTED")) status = "NOT_COMPUTABLE";
       else if (rows.some((row) => row.geographicCoverage === "OUTSIDE")) status = "NO_COVERAGE";
       if (status === "AVAILABLE") {
@@ -172,7 +173,7 @@ export async function prepareMarketData(port: MarketDataPort, rawRequest: Market
   const { normalized: request, evaluatedAt } = normalizeMarketRequest(rawRequest, { evaluatedAt: evaluationInstant });
   const sources: PreparedMarketSource[] = [];
   const work = { discoveries: 0, reads: 0, parsedRows: 0 };
-  const roles = requiredRoles(request);
+  const roles = requiredMarketRoles(request);
   const selections = roles.map((role) => ({ role, selector: request.data.roles[role] ?? { source: "DATA_CENTER" as const, typeKey: typeKeyByMarketRole[role], asOf: evaluatedAt } }));
   const versionSlots = selections.reduce((count, { selector }) => count + (Array.isArray(selector) ? selector.length : 1), 0);
   if (versionSlots > 32) throw new EngineError("REQUEST_TOO_LARGE", { first: "Resolved source roles exceed 32 version selections" });
@@ -187,7 +188,10 @@ export async function prepareMarketData(port: MarketDataPort, rawRequest: Market
       ? { versionIds: selector.map((pin) => pin.versionId) }
       : { typeKeys: [selector.typeKey], asOf: selector.asOf ?? evaluatedAt, limit: 100 }));
     const pins = Array.isArray(selector) ? selector : [{ versionId: discovery.selected?.reference.version.versionId ?? "", expectedChecksum: undefined }];
-    if (discovery.status === "TOO_MANY_CANDIDATES") { sources.push(failedSource(role, null, "MARKET_SOURCE_LIMIT", "NOT_COMPUTABLE", discovery)); continue; }
+    if (discovery.status === "TOO_MANY_CANDIDATES") {
+      for (const pin of Array.isArray(selector) ? selector : [{ versionId: null }]) sources.push(failedSource(role, pin.versionId, "MARKET_SOURCE_LIMIT", "NOT_COMPUTABLE", discovery));
+      continue;
+    }
     if (!Array.isArray(selector) && (discovery.mode !== "BY_TYPE" || discovery.policy !== "dc-version-selection-v1" || discovery.asOf !== new Date(selector.asOf ?? evaluatedAt).toISOString())) throw new EngineError("CONTRACT_VIOLATION", { first: "Provider selection policy/instant mismatch" });
     if (Array.isArray(selector) && discovery.mode !== "EXACT") throw new EngineError("CONTRACT_VIOLATION", { first: "Provider exact selection mismatch" });
     for (const pin of pins) {
@@ -218,33 +222,47 @@ export async function prepareMarketData(port: MarketDataPort, rawRequest: Market
       const rowCount = dataset.role === "dimensions.dictionary" ? dataset.definitions.length : dataset.rows.length;
       work.parsedRows += rowCount;
       if (work.parsedRows > 10_000) throw new EngineError("REQUEST_TOO_LARGE", { first: "Market source read exceeds 10000 total rows" });
-      const input = inputOf(read.reference, role, dataset);
-      if (!input) { sources.push(failedSource(role, pin.versionId, "MARKET_DATASET_INVALID", "NOT_COMPUTABLE", discovery)); continue; }
-      const observations = bindObservations(dataset, pin.versionId);
-      const assumptionInputs = bindAssumptions(dataset, pin.versionId);
-      if (!observations || assumptionInputs.some((row) => [row.sourceRefs, ...row.assumptions.map((assumption) => assumption.sourceRefs)]
-        .some((refs) => new Set(refs.map((ref) => canonicalize(ref))).size !== refs.length))) {
-        sources.push(failedSource(role, pin.versionId, "MARKET_DATASET_INVALID", "NOT_COMPUTABLE", discovery)); continue;
-      }
-      const status = coverageStatus(dataset, request);
-      const source: PreparedMarketSource = { role, status, requestedVersionId: pin.versionId, selection: discovery, reference: read.reference, input, dataset, observations, assumptionInputs, matches: [], gaps: deriveInputGaps(input) };
-      if (status !== "AVAILABLE") source.gaps.push(marketGap(statusGap(status), role));
-      const natures = [...observations.map((row) => row.semantics.evidenceNature), ...assumptionInputs.map((row) => row.evidenceNature)];
-      const futureMeasurements = [...observations.map((row) => row.semantics.time), ...assumptionInputs.map((row) => row.time)]
-        .some((time) => (time.kind === "INTERVAL" ? time.endDate : time.date) > evaluatedAt.slice(0, 10));
-      const futureSource = [read.reference.freshness.sourcePublishedAt, read.reference.publication.publishedAt, read.reference.freshness.effectiveFrom]
-        .some((date) => date !== null && Date.parse(date) > Date.parse(evaluatedAt));
-      const expiredSource = read.reference.freshness.status === "EXPIRED"
-        || [read.reference.freshness.expiresAt, read.reference.freshness.effectiveTo].some((date) => date !== null && Date.parse(date) <= Date.parse(evaluatedAt));
-      const contradictsGeography = read.reference.coverage?.countryCodes.length && dataset.coverage.geographies?.some((geography) => !read.reference.coverage!.countryCodes.includes(geography.countryCode));
-      if ((read.reference.version.evidenceStatus === "ESTIMATED" && natures.some((nature) => nature !== "ESTIMATE"))
-        || (read.reference.version.evidenceStatus === "DERIVED" && natures.some((nature) => nature === "OBSERVATION"))
-        || futureMeasurements || futureSource || expiredSource || contradictsGeography) {
-        source.status = "NOT_COMPUTABLE"; source.observations = []; source.assumptionInputs = []; source.gaps.push(marketGap("MARKET_DATASET_INVALID", role));
-      }
-      sources.push(source);
+      sources.push(buildMarketSourceEvidence(role, read.reference, dataset, discovery, request, evaluatedAt));
     }
   }
+  return finalizeMarketSources(sources, request, evaluatedAt, work);
+}
+
+export function buildMarketSourceEvidence(
+  role: MarketDatasetRole, reference: MarketSourceReference, dataset: MarketDataset, selection: MarketDiscovery,
+  request: MarketNormalizedRequest, evaluatedAt: string,
+): PreparedMarketSource {
+  const versionId = reference.version.versionId;
+  const input = marketInputFromReference(reference, role, dataset);
+  const observations = bindMarketObservations(dataset, versionId);
+  const assumptionInputs = bindMarketAssumptions(dataset, versionId);
+  if (!input || !observations || assumptionInputs.some((row) => [row.sourceRefs, ...row.assumptions.map((assumption) => assumption.sourceRefs)]
+    .some((refs) => new Set(refs.map((ref) => canonicalize(ref))).size !== refs.length))) return failedSource(role, versionId, "MARKET_DATASET_INVALID", "NOT_COMPUTABLE", selection);
+  const status = marketCoverageStatus(dataset, request);
+  const source: PreparedMarketSource = { role, status, requestedVersionId: versionId, selection, reference, input, dataset, observations, assumptionInputs, matches: [], gaps: deriveInputGaps(input) };
+  if (status !== "AVAILABLE") source.gaps.push(marketGap(statusGap(status), role));
+  const natures = [...observations.map((row) => row.semantics.evidenceNature), ...assumptionInputs.map((row) => row.evidenceNature)];
+  const futureMeasurements = [...observations.map((row) => row.semantics.time), ...assumptionInputs.map((row) => row.time)]
+    .some((time) => (time.kind === "INTERVAL" ? time.endDate : time.date) > evaluatedAt.slice(0, 10));
+  const futureSource = [reference.freshness.sourcePublishedAt, reference.publication.publishedAt, reference.freshness.effectiveFrom]
+    .some((date) => date !== null && Date.parse(date) > Date.parse(evaluatedAt));
+  const expiredSource = reference.freshness.status === "EXPIRED"
+    || [reference.freshness.expiresAt, reference.freshness.effectiveTo].some((date) => date !== null && Date.parse(date) <= Date.parse(evaluatedAt));
+  const contradictsGeography = reference.coverage?.countryCodes.length && dataset.coverage.geographies?.some((geography) => !reference.coverage!.countryCodes.includes(geography.countryCode));
+  if ((reference.version.evidenceStatus === "ESTIMATED" && natures.some((nature) => nature !== "ESTIMATE"))
+    || (reference.version.evidenceStatus === "DERIVED" && natures.some((nature) => nature === "OBSERVATION"))
+    || futureMeasurements || futureSource || expiredSource || contradictsGeography) {
+    source.status = "NOT_COMPUTABLE"; source.observations = []; source.assumptionInputs = []; source.gaps.push(marketGap("MARKET_DATASET_INVALID", role));
+  }
+  return source;
+}
+
+export function finalizeMarketSources(
+  evidence: readonly PreparedMarketSource[], request: MarketNormalizedRequest, evaluatedAt: string,
+  work: { discoveries: number; reads: number; parsedRows: number },
+) {
+  const sourceEvidence = structuredClone([...evidence]);
+  const sources = structuredClone([...evidence]);
   const invalidRefs = invalidLineage(sources);
   const dictionaries = sources.filter((source) => source.status === "AVAILABLE" && source.role === "dimensions.dictionary" && source.dataset).map((source) => source.dataset!);
   for (const source of sources) {
@@ -269,8 +287,9 @@ export async function prepareMarketData(port: MarketDataPort, rawRequest: Market
     const first = available(pair.fromPeriodId);
     const last = available(pair.toPeriodId);
     const selectedMatches = sources.flatMap((source) => source.matches.filter((match) => match.seriesId === pair.seriesId && [pair.fromPeriodId, pair.toPeriodId].includes(match.periodId)));
-    const status: MarketSourceStatus = first.length > 1 || last.length > 1 ? "NOT_COMPUTABLE"
-      : first.length !== 1 || last.length !== 1 ? selectedMatches.some((match) => match.status === "NOT_COMPUTABLE") ? "NOT_COMPUTABLE"
+    const multiple = request.series.find((series) => series.id === pair.seriesId)?.aggregation !== "SUM_DISJOINT" && (first.length > 1 || last.length > 1);
+    const status: MarketSourceStatus = multiple ? "NOT_COMPUTABLE"
+      : !first.length || !last.length ? selectedMatches.some((match) => match.status === "NOT_COMPUTABLE") ? "NOT_COMPUTABLE"
         : selectedMatches.some((match) => match.status === "NO_COVERAGE") ? "NO_COVERAGE" : "NOT_AVAILABLE"
         : comparableSeriesProblems(first[0]!, last[0]!).length ? "NOT_COMPUTABLE" : "AVAILABLE";
     return { ...pair, status };
@@ -285,7 +304,7 @@ export async function prepareMarketData(port: MarketDataPort, rawRequest: Market
     let status: MarketSourceStatus = !source || !row ? "NOT_AVAILABLE" : source.status;
     if (status === "AVAILABLE" && row && source?.dataset) {
       const time = "semantics" in row ? row.semantics.time : row.time;
-      status = coverageStatus(source.dataset, request, time);
+      status = marketCoverageStatus(source.dataset, request, time);
       if (invalidRefs.has(canonicalize(operand.ref))
         || ("kind" in row ? row.kind !== operand.kind : operand.kind !== "COHORT" || !["population_count", "household_count"].includes(row.subject))) status = "NOT_COMPUTABLE";
     }
@@ -303,5 +322,5 @@ export async function prepareMarketData(port: MarketDataPort, rawRequest: Market
     ...comparisonAvailability.filter((comparison) => comparison.status !== "AVAILABLE").map((comparison) => marketGap(comparison.status === "NOT_COMPUTABLE" ? "MARKET_NOT_COMPARABLE" : statusGap(comparison.status), `${comparison.seriesId}/${comparison.fromPeriodId}/${comparison.toPeriodId}`)),
     ...operandAvailability.filter((operand) => operand.status !== "AVAILABLE").map((operand) => marketGap(statusGap(operand.status), `${operand.estimateId}/${operand.kind}`)),
   ]);
-  return { evaluatedAt, sources, inputs, inputsHash: canonicalHash(inputs), rights: deriveRights(inputs), attribution: deriveAttribution(inputs), comparisonAvailability, operandAvailability, gaps, work };
+  return { evaluatedAt, sourceEvidence, sources, inputs, inputsHash: canonicalHash(inputs), rights: deriveRights(inputs), attribution: deriveAttribution(inputs), comparisonAvailability, operandAvailability, gaps, work };
 }

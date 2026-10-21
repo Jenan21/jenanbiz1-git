@@ -20,7 +20,7 @@ import { db } from "@/lib/db";
 import { createDataCenterItem, createDataCenterSource, registerDataCenterType, reviewDataCenterItem, transitionDataCenterItem } from "@/services/data-center/service";
 import { recordDataCenterQualityAssessment } from "@/services/data-center/quality";
 import { type DataCenterActor, DataCenterError } from "@/services/data-center/contracts";
-import { createMarketDataCenterProvider, prepareMarketDataCenterInputs } from "@/services/analysis-engines/market-demand/adapters/data-center-provider";
+import { createMarketDataCenterProvider, prepareMarketDataCenterInputs, runMarketDataCenterAnalysis } from "@/services/analysis-engines/market-demand/adapters/data-center-provider";
 import { proposedMarketTypeKeys, type MarketDataset, type MarketDatasetRole } from "@/services/analysis-engines/market-demand";
 import { marketDataset } from "../unit/support/market-data-fixtures";
 import { marketRequest } from "../unit/support/market-demand-fixtures";
@@ -83,6 +83,42 @@ async function mutableVersion(tx: DbExecutor, work: () => Promise<unknown>) {
 afterAll(async () => { if (enabled) await (context.actual as typeof db).$disconnect(); });
 
 describe.skipIf(!enabled)("Market M2 real PostgreSQL governed integration (synthetic data, always rolled back)", () => {
+  it("M3 calculates from exact PostgreSQL versions without writing runs, inputs, usages or any Data Center row", async () => {
+    await isolated(async (tx, admin) => {
+      const s = await source(admin); const item = await dataset(admin, s.id); await withDictionary(admin, s.id);
+      await recordDataCenterQualityAssessment({ versionId: item.version.id, status: "MEASURED", measuredAt: ago(1), method: "synthetic-contract-check", methodVersion: "1", score: 0.9, explanation: "Synthetic calculation integration evidence, not real demand acceptance" }, admin);
+      const before = await counts(tx); const instant = trustedContext().evaluatedAt;
+      const runContext = { evaluatedAt: instant, runId: "market-m3-postgres", environment: "test" as const,
+        timing: { startedAt: instant, finishedAt: instant, durationMs: 0 } };
+      const started = performance.now();
+      const first = await runMarketDataCenterAnalysis(pinRequest(item.version.id, item.version.checksum), admin, runContext);
+      const durationMs = performance.now() - started;
+      expect(first.outcomes.map((outcome) => outcome.value).sort((a, b) => a! - b!)).toEqual([80, 100]);
+      expect(first.outcomes.every((outcome) => outcome.resultClass === "OBSERVED")).toBe(true);
+      expect(first.rights.allowExport).toBe(false);
+      expect(first.sourceEvidence.find((entry) => entry.role === "demand.observations")?.reference?.version.checksum.value).toBe(item.version.checksum);
+      const second = await runMarketDataCenterAnalysis(pinRequest(item.version.id, item.version.checksum), admin, { ...runContext, runId: "market-m3-second-run" });
+      expect(second.determinism).toEqual(first.determinism);
+      expect(await counts(tx)).toEqual(before);
+      console.log(`MARKET_M3_POSTGRES_EXACT_CALCULATION_MS=${durationMs.toFixed(2)}`);
+    });
+  });
+  it("M3 missing and inaccessible PostgreSQL source pins have identical public metric outcomes", async () => {
+    await isolated(async (tx, admin) => {
+      const s = await source(admin, { scope: "PRIVATE" }); const item = await dataset(admin, s.id);
+      const user = await tx.user.create({ data: { email: `m3-${randomUUID()}@example.test`, status: "ACTIVE" } });
+      const actor: DataCenterActor = { id: user.id, kind: "HUMAN", systemRole: "USER" };
+      const instant = trustedContext().evaluatedAt;
+      const runContext = { evaluatedAt: instant, runId: "market-m3-access", environment: "test" as const,
+        timing: { startedAt: instant, finishedAt: instant, durationMs: 0 } };
+      const before = await counts(tx);
+      const inaccessible = await runMarketDataCenterAnalysis(pinRequest(item.version.id), actor, runContext);
+      const missing = await runMarketDataCenterAnalysis(pinRequest("unavailable-pin"), actor, runContext);
+      expect(inaccessible.outcomes).toEqual(missing.outcomes);
+      expect(inaccessible.inputs).toEqual([]); expect(missing.inputs).toEqual([]);
+      expect(await counts(tx)).toEqual(before);
+    });
+  });
   it("reads an exact non-GeoJSON dataset and dictionary, verifies their stored checksums, and performs zero writes", async () => {
     await isolated(async (tx, admin) => {
       const s = await source(admin);
