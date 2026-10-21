@@ -7,8 +7,13 @@ is built, tested and approved before the next one starts. The owner's 2026-10-21
 defers final Sonar acceptance and final tags until all seven technical baselines are complete:
 
 1. Spatial Analysis Engine (`docs/spatial-engine-v1.md`)
-2. Market & Demand Engine
-3. Competitor Analysis Engine
+2. Market & Demand Engine ([contracts and checkpoints](market-demand-engine-v1.md);
+   M0 and M1–M5 split approved; M1 CLOSED at `d95da803`; M2 CLOSED at `e905daa`;
+   M3 CLOSED at `e57a295`; real-demand acceptance BLOCKED / NOT VERIFIED;
+   M4 CLOSED at `d2ef88e`; M5 accepted; Final Technical SHA
+   `c54d647838c1ce10730277f3977abc4980c3715d`;
+   **TECHNICALLY COMPLETE — PENDING FINAL SONAR**, frozen)
+3. Competitor Analysis Engine (M0 planning only authorized; implementation requires review)
 4. Opportunity & Gap Engine
 5. Financial Feasibility Engine
 6. Operational Feasibility Engine
@@ -34,6 +39,18 @@ and is never modified by the engines. The engines are aggregated on their own li
 
 ## Technical freeze and deferred final closure (owner decision, 2026-10-21)
 
+- Market & Demand technical closure is accepted by the owner at Final Technical SHA
+  **`c54d647838c1ce10730277f3977abc4980c3715d`**. Exact-SHA CodeQL run
+  [39617080553](https://github.com/Jenan21/jenanbiz1-git/actions/runs/39617080553)
+  passed both languages with zero open/new alerts. Its five existing dismissed
+  repository findings remain unchanged. Status: **TECHNICALLY COMPLETE — PENDING
+  FINAL SONAR**, not FINAL CLOSED. Real-demand acceptance remains BLOCKED / NOT VERIFIED.
+  Freeze the engine; stop for explicit approval before any necessary shared modification.
+- The owner authorized Competitor Architecture & Implementation Plan / M0 only,
+  then explicitly approved a Market-to-integration merge commit without squash and
+  a `jenan-engines/competitor-analysis` planning branch. No main merge, final tag,
+  Sonar attempt or Competitor implementation is authorized.
+
 - Spatial: **TECHNICALLY COMPLETE — PENDING FINAL SONAR**, not `FINAL CLOSED`.
 - Final Technical Engine SHA (M7):
   `8d97baace8abd6889f400a56952e345f3068f3af`.
@@ -44,7 +61,21 @@ and is never modified by the engines. The engines are aggregated on their own li
 - Final Tag: **NOT CREATED**. Main Merge: **NO**.
 - The owner authorizes merging Spatial into `jenan-engines/integration` only to continue
   subsequent engine development, then creating `jenan-engines/market-demand` for M0
-  architecture/scope review only. Market & Demand M1 needs separate plan approval.
+  architecture/scope review. The owner subsequently approved M0/M1–M5, closed M1 at
+  `d95da8030fbdcd6e68199cc4ca60bb6f528ece01`, then closed M2 at
+  `e905daa0675f4cccf808978280cfe34eb133bc20` and explicitly authorized M3 only.
+  The owner subsequently accepted and CLOSED M3 at
+  `e57a295d6d09343ccc3bdfbc62f8093646bc97d2`, after identical Local/Remote/Desktop
+  hashes were verified, then explicitly authorized M4 only. M4 adds existing shared-table
+  persistence and authorized exact historical replay. The owner then CLOSED M4 at
+  `d2ef88e609b516ef6fb10483e14f4e29554db629` and explicitly authorized M5 final
+  technical acceptance only. The third engine requires a separate owner decision.
+  The M5 acceptance commit changes tests/documentation only: production Market
+  arithmetic and persistence retain M4's accepted behavior. Full local gates pass;
+  the existing CodeQL workflow is dispatched only after that final commit is pushed,
+  with its exact SHA and language analysis records checked before technical closure.
+  The delivery report records that immutable SHA/run linkage. Real demand acceptance
+  remains BLOCKED / NOT VERIFIED independently of these synthetic technical gates.
 - Spatial is frozen. A necessary shared fix for a later engine requires stopping and
   informing the owner before modifying the accepted Spatial baseline.
 - After all seven engines: run Sonar against their recorded Final Technical SHAs, address
@@ -76,11 +107,37 @@ An engine reaches anything outside its own tree only through an adapter: a direc
   layer, holds no SQL and calls nothing that writes (no usage record, no audit entry). It has no
   access policy of its own: the Data Center applies its existing policy to the actor it is given.
   No other file of an engine may import those services.
-- **M5 run persistence and historical replay adapters** have explicit, narrow exceptions for
+- **Market's read-only Data Center provider** has a separate exact allowlist: discovery,
+  version-content and the pure actor/error vocabulary only, plus its own/shared modules.
+  It does not import the Map resolver or Spatial, and it performs no registration, usage,
+  audit, persistence or Data Center writes. Its pure port reuses Data Center's existing
+  metadata DTO/schema (named `map-reference` historically); this grants no Map capability.
+  The actual configured local database currently lacks the Data Center schema, so production
+  inventory and real demand acceptance remain BLOCKED / NOT VERIFIED, not assumed empty.
+  Its M3 execution entry point composes those reads with pure deterministic Market
+  calculations, bounded source/row/method evidence and strict result revalidation.
+  The provider itself still writes no run/input/usage/audit data. M4 adds separate internal
+  adapters below; Shared Core, Spatial and Data Center remain unchanged.
+- **Spatial M5 run persistence and historical replay adapters** have explicit, narrow exceptions for
   Prisma and the application database. The persistence adapter inserts run/input rows only; the
   historical reader performs one exact-version read and applies Data Center source-scope,
   permission, specialty and mission-context checks. It never discovers versions or writes to
   Data Center tables. The replay service is internal and is not re-exported by the engine index.
+- **Market M4 shared-table persistence and historical replay adapters** have their own exact,
+  separate allowlists, without broadening the frozen Spatial permissions. The run service
+  returns only after a complete shared `AnalysisEngineRun`/`AnalysisEngineRunInput` nested
+  create succeeds. These existing append-only tables hold the bounded request/result/input
+  evidence and per-input provenance/usage intent; there is no new dataset store, table,
+  migration, Data Center usage/audit write or public API. The historical reader loads raw
+  non-GeoJSON content by exact version, reuses current source/robot authorization, checks
+  required permission and the recorded organization/specialty/mission context, and verifies
+  the existing Data Center checksum and captured typed content. The replay transaction is
+  Repeatable Read; it preserves recorded selection/gap/quality/time decisions and reruns
+  the exact `1.0.0-m3` calculation, checking request/input/output hashes and full equality.
+  It never discovers a newer replacement or writes a new run. Changed rights, ownership
+  or attribution conservatively block replay rather than widen a historical result.
+  History lookup is owner/platform-admin scoped and reauthorizes inputs before returning
+  stored evidence; hidden/missing runs use the same unavailable error.
 
 Neither is re-exported by the engine's index, and neither may read the environment, the clock or
 the network. An adapter never imports Projects or the Map's service. The pure core talks to an

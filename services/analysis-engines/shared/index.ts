@@ -5,5 +5,6 @@ export * from "./cost";
 export * from "./errors";
 export * from "./gaps";
 export * from "./primitives";
+export * from "./quantities";
 export * from "./run-record";
 export * from "./states";
