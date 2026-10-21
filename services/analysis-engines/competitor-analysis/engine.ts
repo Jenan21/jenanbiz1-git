@@ -81,12 +81,12 @@ export async function prepareCompetitorAnalysis(port: CompetitorDataPort, rawReq
   const historicalRequest = baselineRequest(request);
   const historical = historicalRequest ? normalizeCompetitorRequest(historicalRequest, evaluatedAt).normalized : null;
   if (selections(request) + (historical ? selections(historical) : 0) > 32) throw new EngineError("REQUEST_TOO_LARGE", { first: "Current plus historical required roles exceed 32 versions" });
-  const current = canonicalPreparation(await prepareCompetitorData(port, request, evaluatedAt));
-  const baseline = historical ? canonicalPreparation(await prepareCompetitorData(port, historical, evaluatedAt)) : null;
+  const current = canonicalCompetitorPreparation(await prepareCompetitorData(port, request, evaluatedAt));
+  const baseline = historical ? canonicalCompetitorPreparation(await prepareCompetitorData(port, historical, evaluatedAt)) : null;
   if (current.work.parsedRows + (baseline?.work.parsedRows ?? 0) > 10_000) throw new EngineError("REQUEST_TOO_LARGE", { first: "Current plus historical inputs exceed 10000 parsed rows" });
   return { current, baseline };
 }
-function canonicalPreparation(prepared: CompetitorPrepared): CompetitorPrepared {
+export function canonicalCompetitorPreparation(prepared: CompetitorPrepared): CompetitorPrepared {
   const copy = structuredClone(prepared);
   const ordered = (value: unknown): unknown => Array.isArray(value) ? value.map(ordered).sort((a, b) => compareText(canonicalize(a), canonicalize(b)))
     : value !== null && typeof value === "object" ? Object.fromEntries(Object.entries(value).map(([key, entry]) => [key, ordered(entry)])) : value;
@@ -96,7 +96,7 @@ function canonicalPreparation(prepared: CompetitorPrepared): CompetitorPrepared 
 }
 function verifyPreparation(prepared: CompetitorPrepared) {
   const fail = (first: string): never => { throw new EngineError("CONTRACT_VIOLATION", { first }); };
-  if (!same(prepared, canonicalPreparation(prepared))) fail("Prepared rows are not canonical");
+  if (!same(prepared, canonicalCompetitorPreparation(prepared))) fail("Prepared rows are not canonical");
   const sourceInputs = prepared.sources.flatMap((source) => source.input ? [source.input] : []).sort((a, b) => compareText(a.id, b.id));
   if (!same(sourceInputs, prepared.inputs) || !same(deriveRights(prepared.inputs), prepared.rights)
     || !same(deriveAttribution(prepared.inputs), prepared.attribution)) fail("Prepared inputs, rights or attribution do not match the selected sources");
@@ -219,8 +219,8 @@ export function assertCompetitorAnalyticsResult(raw: unknown): asserts raw is Co
 }
 export function runPreparedCompetitorAnalysis(current: CompetitorPrepared, baseline: CompetitorPrepared | null, rawExecution: CompetitorExecution): CompetitorAnalyticsResult {
   const execution = competitorExecutionSchema.parse(rawExecution);
-  const prepared = canonicalPreparation(competitorPreparationSchema.parse(current));
-  const previous = baseline ? canonicalPreparation(competitorPreparationSchema.parse(baseline)) : null;
+  const prepared = canonicalCompetitorPreparation(competitorPreparationSchema.parse(current));
+  const previous = baseline ? canonicalCompetitorPreparation(competitorPreparationSchema.parse(baseline)) : null;
   const result = calculate(prepared, previous, execution);
   assertCompetitorAnalyticsResult(result);
   return result;

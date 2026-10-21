@@ -10,3 +10,4 @@ export * from "./datasets";
 export * from "./data-sources";
 export * from "./analytics";
 export * from "./engine";
+export * from "./run-history";

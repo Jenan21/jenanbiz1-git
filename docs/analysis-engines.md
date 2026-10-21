@@ -17,9 +17,10 @@ defers final Sonar acceptance and final tags until all seven technical baselines
    M0 APPROVED at `88858341da8c016617cb380775e5aef12a0b244b`;
    M1 CLOSED at `bde54c6d53a4062bb1edf7223d83328e98f34c6b`;
    M2 CLOSED at `f8d974c206e25af32bc18472d94ad32eefbcb8c4`;
-   M3 implements deterministic counts, relationship breakdowns, documented location
-   distribution, observed dimension comparisons and comparable historical count changes;
-   M3 CHECKPOINT FOR OWNER REVIEW; M4 NOT STARTED;
+   M3 CLOSED at `54c5c0fc02414b23087a08e47b747524b758556c`;
+   M4 implements existing Shared Run/Input persistence, currently authorized exact
+   historical replay and reproducibility; M4 CHECKPOINT FOR OWNER REVIEW;
+   M5 NOT STARTED;
    real-competitor acceptance BLOCKED / NOT VERIFIED)
 4. Opportunity & Gap Engine
 5. Financial Feasibility Engine
@@ -69,8 +70,19 @@ and is never modified by the engines. The engines are aggregated on their own li
   Missing approved spatial facts produce explicit null / NOT_COMPUTABLE gaps.
   Final M3 gates: 1,812 unit PASS (+3 existing browser-only skips), 357 database PASS,
   final focused Competitor database rerun 16/16 PASS, TypeScript, zero-warning ESLint
-  and production build PASS. No persistence or historical replay is introduced;
-  historical count comparison is not replay. M4 requires separate approval.
+  and production build PASS. M3 introduced no persistence/replay; historical count
+  comparison is not replay. The owner then accepted and CLOSED M3 at
+  `54c5c0fc02414b23087a08e47b747524b758556c` and authorized **M4 only**.
+  M4 adds atomic append-only persistence in the existing Shared Run/Input tables,
+  owner/admin lookup and exact historical replay with current source/rights/organization/
+  robot access checks. Even retained discovery-candidate and excluded-version trace
+  metadata is reauthorized. No rediscovery, new dataset, schema, Data Center write,
+  Map connection or frozen engine change is introduced. M3 arithmetic remains version
+  `1.0.0-m3`; historical execution is never silently upgraded.
+  M4 gates: 1,851 unit PASS (+3 existing browser-only skips), 394 database PASS,
+  including 53 Competitor cases; all 78 migrations on fresh databases; TypeScript,
+  zero-warning scoped ESLint, production build and diff checks PASS.
+  Real-competitor acceptance remains BLOCKED / NOT VERIFIED. M5 requires separate approval.
   No main merge, final tag or Sonar attempt is authorized.
 
 - Spatial: **TECHNICALLY COMPLETE — PENDING FINAL SONAR**, not `FINAL CLOSED`.

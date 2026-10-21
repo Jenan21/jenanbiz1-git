@@ -2,6 +2,7 @@ import { randomUUID } from "node:crypto";
 import { performance } from "node:perf_hooks";
 import { afterAll, describe, expect, it, vi } from "vitest";
 import type { DbExecutor } from "@/lib/db";
+import { Prisma } from "@/generated/prisma/client";
 const context = vi.hoisted(() => ({ tx: null as unknown, actual: null as unknown }));
 vi.mock("@/lib/db", async (importOriginal) => {
   const original = await importOriginal<typeof import("@/lib/db")>();
@@ -23,6 +24,12 @@ import { createCompetitorDataCenterProvider, prepareCompetitorDataCenterInputs, 
 import { assertCompetitorAnalyticsResult, assessCompetitorCount, typeKeyByCompetitorRole, type CompetitorDatasetRole } from "@/services/analysis-engines/competitor-analysis";
 import { competitorDataset } from "../unit/support/competitor-data-fixtures";
 import { competitorInstant, competitorRequest } from "../unit/support/competitor-analysis-fixtures";
+import { buildCompetitorRunRecord } from "@/services/analysis-engines/competitor-analysis/run-history";
+import { runCompetitorAnalysisPersisted } from "@/services/analysis-engines/competitor-analysis/adapters/run-service";
+import { persistCompetitorRun, readCompetitorRun } from "@/services/analysis-engines/competitor-analysis/adapters/run-persistence";
+import { replayCompetitorAnalysis } from "@/services/analysis-engines/competitor-analysis/adapters/replay-service";
+import { CompetitorHistoryUnavailable } from "@/services/analysis-engines/competitor-analysis/adapters/historical-data-center";
+import { recordDataCenterQualityAssessment } from "@/services/data-center/quality";
 
 const enabled = process.env.DATA_CENTER_DATABASE_TESTS === "1";
 const rollback = new Error("ROLLBACK_COMPETITOR_M2_SYNTHETIC_FIXTURES");
@@ -81,7 +88,319 @@ const counts = async (tx: DbExecutor) => ({
   types: await tx.dataCenterType.count(), audits: await tx.auditLog.count(), events: await tx.dataCenterEvent.count(),
   usages: await tx.dataCenterUsage.count(), runs: await tx.analysisEngineRun.count(), inputs: await tx.analysisEngineRunInput.count(),
 });
+const historyContext = () => { const ctx = execution(); return { ...ctx, createdAt: ctx.evaluatedAt }; };
+async function historyFixture(tx: DbExecutor, admin: DataCenterActor) {
+  const fixture = await bundle(admin, 15);
+  const user = await tx.user.create({ data: { email: `competitor-m4-${randomUUID()}@example.test`, status: "ACTIVE" } });
+  const owner: DataCenterActor = { id: user.id, kind: "HUMAN", systemRole: "USER" };
+  const ctx = historyContext(); const result = await runCompetitorAnalysisPersisted(fixture.req, owner, ctx);
+  return { ...fixture, owner, ctx, result };
+}
+async function mutableHistory(tx: DbExecutor, table: "AnalysisEngineRun" | "AnalysisEngineRunInput", work: () => Promise<unknown>) {
+  await tx.$executeRawUnsafe(`ALTER TABLE "${table}" DISABLE TRIGGER "${table}_append_only"`);
+  try { await work(); } finally { await tx.$executeRawUnsafe(`ALTER TABLE "${table}" ENABLE TRIGGER "${table}_append_only"`); }
+}
+async function expectedDatabaseFailure(tx: DbExecutor, work: () => Promise<unknown>) {
+  await tx.$executeRawUnsafe("SAVEPOINT competitor_m4_expected_failure");
+  await expect(work()).rejects.toThrow();
+  await tx.$executeRawUnsafe("ROLLBACK TO SAVEPOINT competitor_m4_expected_failure");
+  await tx.$executeRawUnsafe("RELEASE SAVEPOINT competitor_m4_expected_failure");
+}
 afterAll(async () => { if (enabled) await (context.actual as typeof db).$disconnect(); });
+describe.skipIf(!enabled)("Competitor M4 shared persistence and exact historical replay (synthetic PostgreSQL)", () => {
+  it("commits history durably and reads/replays it in separate real transactions", async () => {
+    const actual = context.actual as typeof db;
+    const user = await actual.user.create({ data: { email: `competitor-durable-${randomUUID()}@example.test`, status: "ACTIVE" } });
+    const actor: DataCenterActor = { id: user.id, kind: "HUMAN", systemRole: "USER" };
+    const ctx = historyContext();
+    try {
+      const req = competitorRequest(); req.data.roles = Object.fromEntries(
+        ["competitor.entities", "competitor.locations", "competitor.matching-rules", "competitor.dimensions"].map((role) => [role, [{ versionId: `absent-${randomUUID()}` }]]));
+      const result = await runCompetitorAnalysisPersisted(req, actor, ctx);
+      expect(result.inputs).toEqual([]); expect(context.tx).toBeNull();
+      const row = await actual.$transaction((tx) => tx.analysisEngineRun.findUniqueOrThrow({ where: { runId: result.runId } }));
+      expect(row.outputHash).toBe(result.determinism.outputHash);
+      expect(await replayCompetitorAnalysis(result.runId, actor)).toEqual(result);
+    } finally {
+      await actual.$transaction(async (tx) => {
+        await tx.$executeRawUnsafe('ALTER TABLE "AnalysisEngineRun" DISABLE TRIGGER "AnalysisEngineRun_append_only"');
+        await tx.analysisEngineRun.deleteMany({ where: { runId: ctx.runId, actorId: user.id } });
+        await tx.$executeRawUnsafe('ALTER TABLE "AnalysisEngineRun" ENABLE TRIGGER "AnalysisEngineRun_append_only"');
+        await tx.user.delete({ where: { id: user.id } });
+      });
+    }
+  });
+  it("atomically stores full entity/location/matching decisions and exact Shared input/provenance/usage rows only", async () => {
+    await isolated(async (tx, admin) => {
+      const { result, owner, ctx } = await historyFixture(tx, admin); const before = await counts(tx);
+      const rows = await tx.analysisEngineRunInput.findMany({ where: { runId: result.runId } });
+      expect(rows).toHaveLength(4);
+      for (const row of rows) expect(row).toMatchObject({ dataCenterVersionId: row.refId, contentHash: row.checksum,
+        provenance: { contract: "jenan.competitor-analysis.input-provenance/v1" },
+        usageIntent: { contract: "jenan.competitor-analysis.input-usage/v1", versionId: row.refId } });
+      expect((await readCompetitorRun(result.runId, owner)).result).toEqual(result);
+      const copy = { ...result, runId: `${result.runId}-copy` };
+      await persistCompetitorRun(buildCompetitorRunRecord(copy, { actor: { kind: "USER", id: owner.id }, access: {}, createdAt: ctx.createdAt }), owner);
+      expect(await counts(tx)).toEqual({ ...before, runs: before.runs + 1, inputs: before.inputs + 4 });
+    });
+  });
+  it("replays exact inventory, confidence, rights and all hashes without any writes", async () => {
+    await isolated(async (tx, admin) => {
+      const { result, owner } = await historyFixture(tx, admin); const before = await counts(tx); const start = performance.now();
+      expect(await replayCompetitorAnalysis(result.runId, owner)).toEqual(result);
+      console.log(`COMPETITOR_M4_EXACT_REPLAY_MS=${(performance.now() - start).toFixed(2)}`);
+      expect(await replayCompetitorAnalysis(result.runId, admin)).toEqual(result); expect(await counts(tx)).toEqual(before);
+    });
+  });
+  it("does not rediscover or upgrade a stored by-type selection when newer content is published", async () => {
+    await isolated(async (tx, admin) => {
+      const { req, s, items, owner } = await historyFixture(tx, admin); req.data.roles = {};
+      const result = await runCompetitorAnalysisPersisted(req, owner, historyContext());
+      const changed = competitorDataset("competitor.locations", 2); changed.sourceId = s.id;
+      await createDataCenterVersion({ itemId: items[1]!.id, title: "Later synthetic locations", reason: "Synthetic exact replay",
+        content: JSON.stringify(changed), evidenceStatus: "VERIFIED", sourcePublishedAt: "2026-10-01T00:00:00.000Z",
+        provenance: [{ kind: "DOCUMENT", reference: "fixture:m4-new", label: "Synthetic later version" }], coverage: { countryCodes: ["SA"], regionCodes: [] } }, admin);
+      await publish(items[1]!.id, admin);
+      expect(await replayCompetitorAnalysis(result.runId, owner)).toEqual(result);
+      expect(result.inventory).toHaveLength(15);
+    });
+  });
+    it("persists and replays both snapshots and eight exact input versions for historical count comparisons", async () => {
+      await isolated(async (tx, admin) => {
+        const { req, s } = await bundle(admin, 15); req.analyses = ["COUNTS", "HISTORICAL_CHANGE"];
+        const asOf = "2026-10-15T12:00:00.000Z"; req.parameters = { historical: { asOf, roles: {} } };
+        for (const role of ["competitor.entities", "competitor.locations", "competitor.matching-rules", "competitor.dimensions"] as const) {
+          const content = competitorDataset(role, 10); content.sourceId = s.id;
+          if (content.role === "competitor.locations") content.inventory.scope.asOf = asOf;
+          const item = await dataset(admin, s.id, role, 10, { content: JSON.stringify(content) });
+          req.parameters.historical!.roles[role] = [{ versionId: item.version.id }];
+        }
+        const result = await runCompetitorAnalysisPersisted(req, admin, historyContext());
+        expect(result.inputs).toHaveLength(8);
+        expect(await tx.analysisEngineRunInput.count({ where: { runId: result.runId } })).toBe(8);
+        const before = await counts(tx);
+        expect(await replayCompetitorAnalysis(result.runId, admin)).toEqual(result);
+        expect(await counts(tx)).toEqual(before);
+        const changes = result.results.flatMap((entry) => entry.metrics).filter((metric) => metric.analysis === "HISTORICAL_CHANGE" && metric.countingUnit === "COMPETITOR_LOCATIONS");
+        expect(Object.fromEntries(changes.map((metric) => [metric.operation, metric.value]))).toEqual({ ABSOLUTE_CHANGE: 5, PERCENT_CHANGE: 50, INDEX: 150 });
+      });
+    });
+    it("reauthorizes unselected discovery candidates before returning their cached metadata", async () => {
+      await isolated(async (tx, admin) => {
+        const extra = await source(admin); await dataset(admin, extra.id, "competitor.locations", 1, { sourcePublishedAt: "2026-09-01T00:00:00.000Z" });
+        const { req, owner } = await historyFixture(tx, admin); req.data.roles = {};
+        const result = await runCompetitorAnalysisPersisted(req, owner, historyContext());
+        const selected = result.preparation.current.sources.find((entry) => entry.role === "competitor.locations")!;
+        expect(selected.reference?.source.sourceId).not.toBe(extra.id);
+        expect(selected.selection?.candidates.some((entry) => entry.reference.source.sourceId === extra.id)).toBe(true);
+        await tx.dataCenterSource.update({ where: { id: extra.id }, data: { scope: "PRIVATE" } });
+        await expect(readCompetitorRun(result.runId, owner)).rejects.toBeInstanceOf(CompetitorHistoryUnavailable);
+      });
+    });
+    it("retains recorded specialty/mission restrictions on exact replay", async () => {
+      await isolated(async (tx, admin) => {
+        const s = await source(admin); const req = competitorRequest(); req.data.roles = {};
+        for (const role of ["competitor.entities", "competitor.locations", "competitor.matching-rules", "competitor.dimensions"] as const) {
+          const item = await dataset(admin, s.id, role, 2, { specialties: ["competitor"], missionContexts: ["study"] });
+          req.data.roles[role] = [{ versionId: item.version.id }];
+        }
+        const result = await runCompetitorAnalysisPersisted(req, admin, { ...historyContext(), specialty: "competitor", missionContext: "study" });
+        expect(await replayCompetitorAnalysis(result.runId, admin)).toEqual(result);
+        await mutableHistory(tx, "AnalysisEngineRun", () => tx.analysisEngineRun.update({ where: { runId: result.runId },
+          data: { runtime: { contract: "jenan.competitor-analysis.run-history/v1", replayAuthorizationContext: {} } } }));
+        await expect(replayCompetitorAnalysis(result.runId, admin)).rejects.toBeInstanceOf(CompetitorHistoryUnavailable);
+      });
+    });
+    it("blocks archived items without selecting an alternative", async () => {
+      await isolated(async (tx, admin) => {
+        const { result, owner, items } = await historyFixture(tx, admin);
+        await transitionDataCenterItem({ itemId: items[1]!.id, status: "ARCHIVED", reason: "Synthetic M4 archive" }, admin);
+        await expect(replayCompetitorAnalysis(result.runId, owner)).rejects.toBeInstanceOf(CompetitorHistoryUnavailable);
+      });
+    });
+    it("reconstructs canonical input ordering independently of database row order", async () => {
+      await isolated(async (tx, admin) => {
+        const { result, owner } = await historyFixture(tx, admin);
+        const row = await tx.analysisEngineRun.findUniqueOrThrow({ where: { runId: result.runId }, include: { inputs: true } });
+        const reversed = { ...row, inputs: [...row.inputs].reverse() };
+        const lookup = vi.spyOn(tx.analysisEngineRun, "findFirst").mockResolvedValueOnce(reversed);
+        try { expect((await readCompetitorRun(result.runId, owner)).result).toEqual(result); }
+        finally { lookup.mockRestore(); }
+      });
+    });
+  it("keeps historical confidence and quality unchanged after later source assessments/freshness changes", async () => {
+    await isolated(async (tx, admin) => {
+      const { result, owner, items, s } = await historyFixture(tx, admin);
+      await recordDataCenterQualityAssessment({ versionId: items[1]!.version.id, status: "MEASURED", score: 0.1,
+        measuredAt: new Date().toISOString(), method: "synthetic-later", methodVersion: "1", explanation: "Synthetic new quality" }, admin);
+      await tx.dataCenterSource.update({ where: { id: s.id }, data: { freshnessDays: 1 } });
+      expect(await replayCompetitorAnalysis(result.runId, owner)).toEqual(result);
+    });
+  });
+    it("replays originally valid exact versions after temporal expiry without using current discovery", async () => {
+      await isolated(async (_tx, admin) => {
+        const { req, s } = await bundle(admin, 2);
+        const expiresAt = new Date(Date.parse(competitorInstant) + 86_400_000).toISOString();
+        const item = await dataset(admin, s.id, "competitor.locations", 2, { expiresAt });
+        req.data.roles["competitor.locations"] = [{ versionId: item.version.id }];
+        const result = await runCompetitorAnalysisPersisted(req, admin, historyContext());
+        vi.useFakeTimers({ toFake: ["Date"] });
+        try {
+          vi.setSystemTime(new Date(Date.parse(expiresAt) + 86_400_000));
+          expect(await replayCompetitorAnalysis(result.runId, admin)).toEqual(result);
+        } finally { vi.useRealTimers(); }
+      });
+    });
+    it("reauthorizes retained out-of-force trace ids as well as selected input versions", async () => {
+      await isolated(async (tx, admin) => {
+        const extra = await source(admin);
+        const excluded = await dataset(admin, extra.id, "competitor.locations", 1, { effectiveTo: competitorInstant });
+        const { req, owner } = await historyFixture(tx, admin); req.data.roles = {};
+        const result = await runCompetitorAnalysisPersisted(req, owner, historyContext());
+        expect(result.preparation.current.sources.find((entry) => entry.role === "competitor.locations")!.selection?.notInForce.some((entry) => entry.versionId === excluded.version.id)).toBe(true);
+        await tx.dataCenterSource.update({ where: { id: extra.id }, data: { scope: "PRIVATE" } });
+        await expect(readCompetitorRun(result.runId, owner)).rejects.toBeInstanceOf(CompetitorHistoryUnavailable);
+      });
+    });
+  it("preserves missing pins/gaps rather than filling them from later data", async () => {
+    await isolated(async (tx, admin) => {
+      const { req, owner, s } = await historyFixture(tx, admin); req.data.roles["competitor.locations"] = [{ versionId: "missing-exact" }];
+      const result = await runCompetitorAnalysisPersisted(req, owner, historyContext());
+      await dataset(admin, s.id);
+      expect(await replayCompetitorAnalysis(result.runId, owner)).toEqual(result);
+      expect(result.results.flatMap((entry) => entry.metrics).every((metric) => metric.value === null)).toBe(true);
+    });
+  });
+  it("hides a foreign run identically to an absent run", async () => {
+    await isolated(async (tx, admin) => {
+      const { result } = await historyFixture(tx, admin);
+      const user = await tx.user.create({ data: { email: `competitor-foreign-${randomUUID()}@example.test` } });
+      const foreign: DataCenterActor = { id: user.id, kind: "HUMAN", systemRole: "USER" };
+      for (const id of [result.runId, "missing-run"]) {
+        await expect(readCompetitorRun(id, foreign)).rejects.toEqual(new CompetitorHistoryUnavailable());
+        await expect(replayCompetitorAnalysis(id, foreign)).rejects.toEqual(new CompetitorHistoryUnavailable());
+      }
+    });
+  });
+  it.each([
+    ["retrieval", { allowRetrieval: false }], ["private scope", { scope: "PRIVATE" as const }],
+    ["license", { license: "changed" }], ["license class", { licenseClass: "RESTRICTED" as const }],
+    ["usage", { usagePolicy: "changed" }], ["export", { allowExport: true }],
+    ["attribution", { attribution: "changed" }], ["required attribution", { attributionRequired: false }],
+    ["owner", { owner: "changed" }], ["ownership", { ownership: "PLATFORM_OWNED" as const }],
+  ])("blocks cached lookup/replay after current %s changes without any fallback/write", async (_label, changes) => {
+    await isolated(async (tx, admin) => {
+      const { result, owner, s } = await historyFixture(tx, admin);
+      await tx.dataCenterSource.update({ where: { id: s.id }, data: changes }); const before = await counts(tx);
+      await expect(replayCompetitorAnalysis(result.runId, owner)).rejects.toBeInstanceOf(CompetitorHistoryUnavailable);
+      await expect(readCompetitorRun(result.runId, owner)).rejects.toBeInstanceOf(CompetitorHistoryUnavailable);
+      expect(await counts(tx)).toEqual(before);
+    });
+  });
+  it("rechecks organization membership and captured scope on historical reads", async () => {
+    await isolated(async (tx, admin) => {
+      const { req, owner, s } = await historyFixture(tx, admin);
+      const org = await tx.organization.create({ data: { name: "Synthetic Competitor org", slug: `competitor-${randomUUID()}` } });
+      const member = await tx.organizationMember.create({ data: { userId: owner.id, organizationId: org.id, isOwner: true, status: "ACTIVE" } });
+      await tx.dataCenterSource.update({ where: { id: s.id }, data: { scope: "ORGANIZATION", organizationId: org.id } });
+      const result = await runCompetitorAnalysisPersisted(req, owner, { ...historyContext(), organizationId: org.id });
+      expect(await replayCompetitorAnalysis(result.runId, owner)).toEqual(result);
+      await tx.organizationMember.update({ where: { id: member.id }, data: { status: "SUSPENDED" } });
+      await expect(replayCompetitorAnalysis(result.runId, owner)).rejects.toBeInstanceOf(CompetitorHistoryUnavailable);
+    });
+  });
+  it("rechecks robot grants and mission assignment instead of trusting saved access", async () => {
+    await isolated(async (tx, admin) => {
+      const { req, s } = await bundle(admin, 2);
+      const robot = await tx.robot.create({ data: { slug: `competitor-m4-${randomUUID()}`, name: "Synthetic Competitor robot" } });
+      const mission = await tx.mission.create({ data: { name: "Synthetic replay mission", assignedRobots: { connect: { id: robot.id } } } });
+      const user = await tx.user.create({ data: { email: `competitor-m4-robot-${randomUUID()}@example.test`, status: "ACTIVE" } });
+      const actor: DataCenterActor = { id: user.id, kind: "AI", systemRole: "USER", robotId: robot.id, roleKey: "analyst", specialty: "competitor", missionId: mission.id };
+      const grant = await grantDataCenterRobotAccess({ sourceId: s.id, robotId: robot.id, principalId: user.id, roleKey: "analyst", specialty: "competitor",
+        missionId: mission.id, access: "READ", expiresAt: new Date(Date.now() + 86_400_000).toISOString(), reason: "Synthetic M4" }, admin);
+      const result = await runCompetitorAnalysisPersisted(req, actor, historyContext());
+      expect((await readCompetitorRun(result.runId, actor)).record.actor).toEqual({ kind: "ROBOT", id: user.id });
+      expect(await replayCompetitorAnalysis(result.runId, actor)).toEqual(result);
+      await revokeDataCenterRobotAccess({ grantId: grant.id, reason: "Synthetic revocation" }, admin);
+      await expect(replayCompetitorAnalysis(result.runId, actor)).rejects.toBeInstanceOf(CompetitorHistoryUnavailable);
+    });
+  });
+  it("rejects altered exact content even when a newer dataset exists", async () => {
+    await isolated(async (tx, admin) => {
+      const { result, owner, items } = await historyFixture(tx, admin);
+      await tx.$executeRawUnsafe('ALTER TABLE "DataCenterVersion" DISABLE TRIGGER "DataCenterVersion_immutable"');
+      try { await tx.dataCenterVersion.update({ where: { id: items[1]!.version.id }, data: { content: "{}" } }); }
+      finally { await tx.$executeRawUnsafe('ALTER TABLE "DataCenterVersion" ENABLE TRIGGER "DataCenterVersion_immutable"'); }
+      await expect(replayCompetitorAnalysis(result.runId, owner)).rejects.toMatchObject({ reason: "VERSION_CHECKSUM" });
+    });
+  });
+  it.each(["contentHash", "provenance", "usageIntent", "snapshot"] as const)("rejects corrupted stored input %s", async (field) => {
+    await isolated(async (tx, admin) => {
+      const { result, owner } = await historyFixture(tx, admin);
+      await mutableHistory(tx, "AnalysisEngineRunInput", () => tx.analysisEngineRunInput.updateMany({
+        where: { runId: result.runId }, data: field === "contentHash" ? { contentHash: "0".repeat(64) } : { [field]: {} },
+      }));
+      await expect(replayCompetitorAnalysis(result.runId, owner)).rejects.toThrow();
+    });
+  });
+  it("refuses permission withdrawal between calculation and persistence with no partial history", async () => {
+    await isolated(async (tx, admin) => {
+      const { req, s } = await bundle(admin, 2); const ctx = historyContext();
+      const result = await runCompetitorDataCenterAnalysis(req, admin, ctx);
+      const record = buildCompetitorRunRecord(result, { actor: { kind: "USER", id: admin.id }, createdAt: ctx.createdAt, access: {} });
+      await tx.dataCenterSource.update({ where: { id: s.id }, data: { allowRetrieval: false } });
+      const before = await counts(tx); await expect(persistCompetitorRun(record, admin)).rejects.toBeInstanceOf(CompetitorHistoryUnavailable);
+      expect(await counts(tx)).toEqual(before);
+    });
+  });
+  it("rejects a forged persistence actor before writing", async () => {
+    await isolated(async (tx, admin) => {
+      const { result, owner, ctx } = await historyFixture(tx, admin); const before = await counts(tx);
+      const record = buildCompetitorRunRecord({ ...result, runId: `${result.runId}-forged` }, { actor: { kind: "USER", id: owner.id }, createdAt: ctx.createdAt, access: {} });
+      await expect(persistCompetitorRun(record, admin)).rejects.toBeInstanceOf(CompetitorHistoryUnavailable);
+      expect(await counts(tx)).toEqual(before);
+    });
+  });
+  it("keeps failed execution history explicit and non-replayable", async () => {
+    await isolated(async (tx, admin) => {
+      const ctx = historyContext();
+      await expect(runCompetitorAnalysisPersisted({}, admin, ctx)).rejects.toThrow();
+      expect((await readCompetitorRun(ctx.runId, admin)).record).toMatchObject({ status: "FAILED", result: null, outputHash: null, inputs: [] });
+      await expect(replayCompetitorAnalysis(ctx.runId, admin)).rejects.toBeInstanceOf(CompetitorHistoryUnavailable);
+      expect(await tx.analysisEngineRunInput.count({ where: { runId: ctx.runId } })).toBe(0);
+    });
+  });
+  it("does not overwrite an existing run and atomically rejects duplicate nested input rows", async () => {
+    await isolated(async (tx, admin) => {
+      const { result, owner, ctx } = await historyFixture(tx, admin); const before = await counts(tx);
+      const record = buildCompetitorRunRecord(result, { actor: { kind: "USER", id: owner.id }, createdAt: ctx.createdAt, access: {} });
+      await expectedDatabaseFailure(tx, () => persistCompetitorRun(record, owner));
+      expect(await counts(tx)).toEqual(before);
+      const row = await tx.analysisEngineRun.findUniqueOrThrow({ where: { runId: result.runId }, include: { inputs: true } });
+      const { inputs, ...data } = row;
+      const input = inputs[0]!;
+      const json = (value: unknown): Prisma.InputJsonValue => JSON.parse(JSON.stringify(value)) as Prisma.InputJsonValue;
+      const child = { inputId: input.inputId, kind: input.kind, completeness: input.completeness, roles: input.roles,
+        governance: input.governance, refSystem: input.refSystem, refId: input.refId, refVersion: input.refVersion,
+        checksum: input.checksum, snapshot: json(input.snapshot), provenance: json(input.provenance), usageIntent: json(input.usageIntent) };
+      await expectedDatabaseFailure(tx, () => tx.analysisEngineRun.create({ data: {
+        ...data, runId: `${row.runId}-atomic`, request: json(record.request), result: json(result),
+        confidence: json(record.confidence), gaps: json(record.gaps), runtime: json(record.runtime),
+        inputs: { create: [child, child] },
+      } }));
+      expect(await counts(tx)).toEqual(before);
+    });
+  });
+  it.each(["AnalysisEngineRun", "AnalysisEngineRunInput"] as const)("retains database append-only protection for %s", async (table) => {
+    await isolated(async (tx, admin) => {
+      const { result } = await historyFixture(tx, admin);
+      for (const operation of ["UPDATE", "DELETE"] as const) await expectedDatabaseFailure(tx, () =>
+        tx.$executeRawUnsafe(operation === "UPDATE"
+          ? `UPDATE "${table}" SET "runId" = "runId" WHERE "runId" = $1`
+          : `DELETE FROM "${table}" WHERE "runId" = $1`, result.runId));
+    });
+  });
+});
 describe.skipIf(!enabled)("Competitor M2 real PostgreSQL / synthetic Data Center fixtures (always rolled back)", () => {
   it("uses exact published versions with real checksum verification, rights/provenance and no writes", async () => {
     await isolated(async (tx, actor) => {

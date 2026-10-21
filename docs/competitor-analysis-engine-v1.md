@@ -5,13 +5,15 @@
 **M0 APPROVED at `88858341da8c016617cb380775e5aef12a0b244b`.
 M1 CLOSED at `bde54c6d53a4062bb1edf7223d83328e98f34c6b`.
 M2 CLOSED at `f8d974c206e25af32bc18472d94ad32eefbcb8c4`.
-M3 IMPLEMENTED — CHECKPOINT FOR OWNER REVIEW. M4 NOT STARTED.**
+M3 CLOSED at `54c5c0fc02414b23087a08e47b747524b758556c`.
+M4 IMPLEMENTED — CHECKPOINT FOR OWNER REVIEW. M5 NOT STARTED.**
 
 The subsequent owner decisions replace establishment-only counting: model a unified
 Competitor Entity separately from locations/branches and original source records.
 The owner subsequently approved M0, accepted and closed M1 at the SHA above,
 and explicitly authorized M2. After accepting and closing M2 at the SHA above,
-the owner authorized M3 only. The five-stage split does not authorize M4.
+the owner authorized M3, accepted and CLOSED it at the SHA above, then authorized
+M4 only. The five-stage split does not authorize M5.
 
 The owner authorized architecture/planning only on 2026-10-21 and separately approved
 a nonsquashed integration merge followed by this planning branch:
@@ -868,3 +870,153 @@ checkpoint and `docs/analysis-engines.md`.
 | Sonar | DEFERRED / PENDING until all seven technical engines are complete |
 
 **Stop at this M3 checkpoint for owner review. Do not start M4 automatically.**
+
+The preceding status/table records the M3 checkpoint. The owner subsequently
+accepted and CLOSED M3 at `54c5c0fc02414b23087a08e47b747524b758556c` and explicitly
+authorized M4 only. No M3 arithmetic or approved scope is reopened by M4.
+
+## 14. M4 checkpoint — persistence, exact historical replay and reproducibility
+
+**M4 TECHNICALLY COMPLETE — CHECKPOINT FOR OWNER REVIEW. M5 NOT STARTED.**
+
+### Existing Shared storage, not a Competitor datastore
+
+`run-history.ts` adds pure `jenan.competitor-analysis.run-history/v1` contracts and
+strict result-to-record mapping. The full normalized request/result, both captured
+preparations when present, entity/location decisions, classification evidence, scope,
+coverage, quality, confidence, gaps, rights, attribution, actor/context, cost and timing
+are retained together with request/input/output hashes.
+
+Only `AnalysisEngineRun` and its existing `AnalysisEngineRunInput` children are written.
+Input columns retain exact Data Center version/source/type/checksum, the full Shared
+descriptor snapshot and independent `jenan.competitor-analysis.input-provenance/v1` /
+`jenan.competitor-analysis.input-usage/v1` records. CURRENT versus BASELINE source
+lineage is explicit. These are Shared history evidence, **not Data Center usage writes**.
+There is no new table, migration, registry, endpoint, UI, Map/Projects link or dataset.
+
+`runCompetitorAnalysisPersisted` uses the accepted read-only provider and returns the
+unchanged M3 result only after saving history. `persistCompetitorRun` validates the full
+record, binds its actor to the authenticated principal, rechecks live source access and
+exact bytes, then performs one atomic parent/nested-input create in Repeatable Read
+with a 30-second transaction timeout. Existing append-only database triggers remain
+enabled. Duplicate run IDs fail rather than overwrite; failed child insertion leaves
+no partial parent/inputs.
+
+The captured result still uses engine/calculation version `1.0.0-m3`. M4 does not
+change formulas, the confidence policy, result contract, identity resolution or
+matching semantics. It exports the existing canonical preparation function under
+`canonicalCompetitorPreparation` solely to reuse identical unordered-dataset
+normalization during exact-byte/snapshot comparison. All M3 regression cases pass.
+
+### Current-authorized exact lookup/replay
+
+- `readCompetitorRun` applies engine plus owner/actor-kind filters in the database
+  query; administrators may inspect history only while all relevant sources remain
+  authorized. Foreign and nonexistent IDs produce the same unavailable error.
+- Current source scope, organization membership/permission, required version
+  permission, specialty/mission context, robot grant and mission assignment are
+  checked again. Stored context/old grants never substitute for current authorization.
+- Retrieval withdrawal, archival, unresolved conflicts and changed license/usage/
+  export/attribution/ownership terms deny lookup/replay, even when the change appears
+  more permissive. Historical evidence cannot silently gain new rights.
+- Reauthorization includes retained unselected discovery candidates and out-of-force
+  trace IDs, not just metric input references. Returning cached metadata must not
+  bypass a later visibility restriction.
+- Exact immutable version columns are read directly under these policies and their
+  Data Center checksum recomputed. Captured version/source/type/item/layer identity,
+  checksum/number and declared rights must agree. Raw dataset bytes are parsed and
+  compared with the captured canonical typed datasets.
+- Later quality assessments, source freshness settings, version supersession or
+  temporal expiry do not rewrite the historical snapshot. A valid historical version
+  may be replayed after expiry if current access/rights still permit it.
+- Originally unavailable inputs/gaps stay unavailable; no latest-version fallback,
+  rediscovery, gap filling, external collection or new run is performed by replay.
+- `replayCompetitorAnalysis` reruns the unchanged pure M3 engine at the recorded
+  evaluation instant with captured, now-authorized exact preparations. All three hashes
+  and the complete result must match. Full identity/matching/inventory/metrics and
+  rights/provenance are reproduced, not merely retrieved as an unchecked JSON blob.
+- Unknown contract/calculation versions, inconsistent record summaries/columns,
+  altered snapshots/usage/provenance, altered source bytes or hashes fail explicitly.
+  No historical arithmetic is silently upgraded.
+
+### Failures and limits
+
+Shared 2 MiB request/result limits and accepted M3 version/row/metric/cost limits
+remain enforced. Pre-result `EngineError` failures receive an explicit FAILED record
+with no fabricated result, inputs, confidence or output/input hashes. Oversized failed
+requests are omitted with their digest/byte length rather than stored unbounded.
+Execution errors are rethrown; a simultaneous failure-history save error preserves
+both causes in `AggregateError`. Policy/infrastructure exceptions are not relabeled
+as successful calculations or fabricated arithmetic failures. Save failures never
+return success-shaped unsaved results.
+
+### Saved final gates and measurements
+
+| Gate | Result |
+| --- | --- |
+| Full unit regression: Competitor / Shared / Spatial / Market / Data Center | 1,851 PASS; 3 pre-existing browser-only skips; 61 passing files + 1 skipped; 96.16 s |
+| New pure history / persisted-service cases | 19 + 11 PASS |
+| New static boundary / test-registration checks | 9 PASS; exact history capability allowlists only |
+| Full isolated PostgreSQL/Data Center/PostGIS regression | 389/389 PASS across 13 files; 272.52 s |
+| Competitor PostgreSQL subset | 53/53 PASS: 16 accepted M2/M3 + 37 new M4 cases |
+| Separate committed Market acceptance regression | 5/5 PASS; 9.78 s |
+| Combined database gates | 394/394 PASS across 14 files |
+| Fresh database / migrations | All 78 migrations applied in each owned scratch database; databases dropped afterward |
+| TypeScript | PASS |
+| Scoped ESLint | PASS; zero warnings |
+| Production Webpack build | PASS with type checking enabled; 161/161 static-generation tasks |
+| Map asset preparation | PASS; no tracked Map change |
+| `git diff --check` | PASS |
+
+PostgreSQL cases verify Shared-only atomic storage, exact input metadata/usage,
+full-result replay, eight-version CURRENT/BASELINE historical-count replay, later
+publication/quality/expiry, original missing gaps, owner/admin and private/organization/
+robot restrictions, cached metadata visibility, specialty/mission context, archival,
+checksum corruption, four stored-input corruption surfaces, pre-save revocation,
+forged actor rejection, FAILED history, duplicate IDs, child-insertion rollback and
+append-only UPDATE/DELETE protection. The durability case commits an explicit
+missing-input result and reads/replays it through separate real transactions;
+nonempty four/eight-input cases run against actual PostgreSQL inside isolated
+rollback-only fixture transactions. Unit cases also verify no result is returned
+before save completion and both error causes survive dual failures.
+
+Measured full-regression four-source / 15-location exact replay: **893.20 ms** on this
+shared Windows/PostgreSQL host. This is a synthetic technical measurement, not a
+production SLA or M5 final load acceptance. No M5 workload/CodeQL/Sonar stage is started.
+
+Early validation caught test fixture/context mistakes and a nested test-registration
+error; the fixture scopes/registration were corrected, an active registration guard
+was added, and the complete final gates above were rerun successfully. No frozen
+Data Center policy, test threshold or engine arithmetic was weakened to pass a test.
+
+### Real data, changed files and stop
+
+**REAL-DATA COMPETITOR ACCEPTANCE = BLOCKED / NOT VERIFIED.**
+All technical data, including committed durability and rollback-only PostgreSQL cases,
+are **Fixtures / Synthetic**, not real competitor acceptance. No authorized populated
+production connection was supplied or used. Lack of production visibility is not
+evidence that Data Center lacks competitor/Market data and is not a technical failure.
+
+New runtime files: `run-history.ts`, `adapters/run-persistence.ts`,
+`adapters/historical-data-center.ts`, `adapters/replay-service.ts`,
+`adapters/run-service.ts`. Focused existing runtime changes: pure export in `index.ts`
+and naming/export of the existing canonical preparation helper in `engine.ts`.
+Tests add `competitor-analysis-run-history.test.ts` and
+`competitor-analysis-run-service.test.ts`; extend Competitor PostgreSQL and static
+boundary tests plus exact global adapter allowlists. Documentation changes only this
+checkpoint and `docs/analysis-engines.md`.
+
+| Frozen boundary / later phase | Status |
+| --- | --- |
+| Map changed | NO |
+| Data Center frozen baseline / writes | NO |
+| Spatial / Market / Shared Core changed | NO |
+| Schema / migrations / independent Competitor datastore | NO |
+| Projects / API / UI integration | NO |
+| M5 started | NO |
+| Main merge | NO |
+| Final tag | NOT CREATED |
+| CodeQL | Not run at M4; final technical scan remains M5 |
+| Sonar | DEFERRED / PENDING until all seven technical engines are complete |
+
+**Stop after this M4 checkpoint for owner review. Do not start M5 automatically.**
