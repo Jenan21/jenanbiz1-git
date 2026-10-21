@@ -2,7 +2,11 @@
 
 ## M0 status, authority and frozen baselines
 
-**M0 PROPOSAL — AWAITING OWNER REVIEW. M1 NOT STARTED.**
+**M0 DECISIONS INCORPORATED — REVISED CONTRACTS AWAITING OWNER REVIEW. M1 NOT STARTED.**
+
+The subsequent owner decisions replace establishment-only counting: model a unified
+Competitor Entity separately from locations/branches and original source records.
+The five-stage split is approved in principle, not authorization to implement M1.
 
 The owner authorized architecture/planning only on 2026-10-21 and separately approved
 a nonsquashed integration merge followed by this planning branch:
@@ -27,8 +31,9 @@ UI, database write, external collection or new engine execution.
 ## 1. Exact purpose and non-goals
 
 Describe the **documented competitive supply** for a defined geography, sector/activity,
-product/service segment and time: which establishments match an explicit definition,
-how many are distinct, how coverage and attributes differ, and what cannot be measured.
+product/service segment and time: which entities/locations match an explicit definition,
+how many unique competitors versus competitor locations are evidenced, where they are,
+how documented dimensions differ, and what cannot be measured.
 
 An establishment listing is not automatically a verified operating competitor.
 A company is not a branch; a branch is not a listing; a brand is not a legal entity.
@@ -57,12 +62,17 @@ Data flow: `Data Center exact version -> validated typed dataset -> pure engine 
 existing Shared Run/Input evidence -> authorized exact historical replay`.
 No competitor datastore. Economic/listing data need not be GeoJSON.
 
-No direct Spatial or Market imports/calls. Future orchestrator-supplied spatial facts
+No direct Spatial or Market imports/calls. Orchestrator-supplied spatial facts
 must have an approved versioned contract with run/source hashes, period, scope, rights
 and confidence. They do not grant Map access. In v1, use source-declared geographic
-membership; no inferred radius/catchment membership or travel-distance calculation.
+membership. Density/proximity and candidate-location comparisons are in v1 only when
+appropriate documented geography/facts are available; no inferred radius/catchment
+membership, hidden geometry calculation or travel-distance calculation.
 Radius/polygon requests lacking a suitable approved fact contract return unsupported/
 NOT_COMPUTABLE, not a silently substituted administrative area.
+Absence of spatial facts leaves a capability gap; it does not remove those approved
+analyses from v1 or authorize calling Spatial directly. Their optional contract is
+proposed below for review, not implemented or already supplied.
 
 ## 3. Data Center inventory and proposed roles
 
@@ -70,10 +80,18 @@ Names below are **proposed engine contracts**, not changes to the frozen type re
 
 | Role | Proposed typeKey | Required content |
 | --- | --- | --- |
-| `competitor.establishments` | `competitor-establishments` | Source record ids, explicit establishment/entity/branch/brand relationships, source claims, sector/activity, geography, operational evidence and dates |
-| `competitor.attributes` | `competitor-attributes` | Establishment-linked product/service/price/capacity attributes, units, dates, evidence and limitations |
-| `competitor.identity-links` | `competitor-identity-links` | Explicit source-backed equivalence/parent/branch links; never inferred from similar names |
+| `competitor.entities` | `competitor-entities` | Namespaced competitorEntityId, entity definition, business/brand/control identity evidence and validity dates |
+| `competitor.locations` | `competitor-locations` | Namespaced locationId/branchId, documented entity link or unresolved state, geographic membership, source records and dated operational claims |
+| `competitor.attributes` | `competitor-attributes` | Explicit ENTITY or LOCATION-linked product/service/price/capacity attributes, units, dates, evidence and limitations; no branch-to-entity extrapolation |
+| `competitor.identity-links` | `competitor-identity-links` | Typed SAME_ENTITY, SAME_LOCATION or LOCATION_OF_ENTITY links with source evidence/validity; brand association alone does not prove equivalence |
+| `competitor.matching-rules` | `competitor-matching-rules` | Versioned target activity/product/service definitions and explainable DIRECT/INDIRECT/POTENTIAL/NOT_COMPARABLE/UNKNOWN rules |
 | `competitor.dimensions` | `competitor-dimensions` | Versioned geography, sector/activity, segment, unit and attribute definitions/crosswalks |
+
+Dataset contract identifiers proposed respectively:
+`jenan.competitor.entities/v1`, `jenan.competitor.locations/v1`,
+`jenan.competitor.attributes/v1`, `jenan.competitor.identity-links/v1`,
+`jenan.competitor.matching-rules/v1` and `jenan.competitor.dimensions/v1`.
+These replace the earlier establishment-only proposal; there is no registry migration.
 
 Every dataset declares contract/version, role, coverage (geography/sector/time and
 completeness), source/version, observation method and rights. Every row has stable source
@@ -95,11 +113,23 @@ license, usage and attribution throughout. Output cannot be more permissive than
 - `scope`: country/administrative geography with versioned identity; sector/activity
   classification; optional explicit segment; `asOf` or explicit observation interval.
 - `competitorDefinition`: versioned activity/product/service matching rules and
-  counting unit **ESTABLISHMENT**; explicit treatment of inactive/unknown-status records.
-- `analyses`: establishment inventory, observed distinct count, segment composition,
-  comparable attribute summary and explicitly eligible historical changes.
+  entity-definition reference; included relationship classes and explicit treatment
+  of inactive/unknown-status records. No implicit union of direct/indirect/potential.
+- `countingUnits`: explicit `UNIQUE_COMPETITOR_ENTITIES`, `COMPETITOR_LOCATIONS`, or both.
+  Each metric retains its unit and inclusion rules; no default treats locations as entities.
+- `analyses`: discovery/inventory, entity/location counts, relationship breakdown,
+  concentration/distribution, compatible dimension comparisons, eligible historical
+  changes, and conditional documented proximity/density/candidate-location comparisons.
 - `data.roles`: exact versionId/optional expected checksum or deterministic type/asOf.
-- `parameters`: declared filters, requested attributes/units and comparison/base periods.
+- `parameters`: declared filters, requested attributes/units, denominator population,
+  comparison/base periods and optional bounded candidate-location references.
+- Optional `spatialFacts`: proposed `jenan.competitor-analysis.spatial-facts/v1`,
+  supplied by a trusted orchestrator, not an engine call or user assertion. Carries
+  factId, subject/entity/location/candidate refs, exact source/run/hash lineage,
+  geography/boundary version, period/asOf, distance/area unit and method, matching
+  inventory universe, coverage, evidence, confidence, limitations and rights.
+  Only allowlisted fact types/methods can be consumed; missing/incompatible facts
+  yield explicit gaps. No shared contract or orchestrator implementation is added in M0.
 - Trusted execution context supplies actor, evaluation instant, run id and timing;
   request cannot supply an authorization override, hidden estimate or arbitrary formula.
 
@@ -114,32 +144,61 @@ Keep these independent axes rather than one ambiguous status:
 | Axis | Proposed values / interpretation |
 | --- | --- |
 | Evidence class | OBSERVED, DERIVED, CONTEXTUAL; ESTIMATED excluded from v1 until a separate explicit method is approved |
-| Matching class | VERIFIED_MATCH (documented classification criteria met), CANDIDATE, EXCLUDED, UNRESOLVED |
+| Match relationship | DIRECT, INDIRECT, POTENTIAL, NOT_COMPARABLE, UNKNOWN, relative to the requested activity/segment and rule version |
+| Match evidence state | SUPPORTED, AMBIGUOUS, INSUFFICIENT; independent of relationship and operational status |
+| Identity state | RESOLVED, SEPARATE_UNVERIFIED, AMBIGUOUS, CONFLICTED, with explicit decision reasons |
 | Operational claim | ACTIVE, INACTIVE, UNKNOWN, CONFLICTED, with valid dates and source method; a listing alone does not prove ACTIVE |
 | Availability | AVAILABLE, NO_COVERAGE, NOT_AVAILABLE, NOT_COMPUTABLE |
 | Completeness | INVENTORY, SAMPLE, UNKNOWN, source-declared for the exact scope/period |
 
-VERIFIED_MATCH means matching evidence, not an independent audit or a success claim.
-Candidate/contextual listings remain separately labeled and do not inflate verified totals.
+A DIRECT match requires source-backed same-need/product/service/activity criteria;
+INDIRECT requires an explicit substitution/complementary-competition rule with evidence.
+POTENTIAL is a documented possible relationship, not confirmed active competition.
+NOT_COMPARABLE requires a documented exclusion rule; UNKNOWN means insufficient
+classification evidence, not proof of noncompetition. Every decision includes target,
+rule id/version, reason, evidence refs and applicable time/scope.
+Name similarity, proximity or broad category alone cannot establish DIRECT/INDIRECT.
+Activity/strength is a separate evidence axis: no invented percentage-strength field.
 
 Identity policy proposal:
 
-1. Source namespace + source record id identifies a record, not necessarily an entity.
-2. Exact duplicate records are detected deterministically and reported.
-3. Collapse multiple listings only with trustworthy stable establishment identifiers or
-   explicit equivalence links. Different branches remain different establishments.
+1. `competitorEntityId` identifies the unified competitor under a declared versioned
+   entity definition. `locationId`/`branchId` identifies its physical operating location.
+   `sourceRecordId` is the original source-namespaced record (version separately pinned).
+   None of these ids may be silently used as another.
+2. Multiple source records can describe one location; multiple locations can link to
+   one entity. A location's entity link may be unresolved: do not fabricate one unique
+   business per location. Canonical ids/links and decision evidence are deterministic.
+3. Collapse records only through trustworthy identifiers or explicit same-entity/
+   same-location evidence. Franchise, brand, chain and legal-ownership relationships
+   are typed, not automatically merged. Missing/conflicting control evidence stays ambiguous.
 4. No fuzzy name/address/phone matching and no speculative merges.
 5. Unresolved cross-source overlap means a cross-source **distinct total is
-   NOT_COMPUTABLE**; report per-source counts and unresolved overlap, never sum blindly.
+   NOT_COMPUTABLE**; report per-source records and resolved counts as scoped evidence,
+   not an exact global total. Separate unresolved records are not proven distinct entities.
 6. Identity conflicts and unexplained conflicting active/inactive claims remain gaps;
    do not choose the friendliest/latest claim without an approved precedence policy.
 
 Deterministic v1 calculations:
 
-- Inventory and distinct matching counts with counting unit, inclusion/exclusion reasons,
+- Inventory and separate entity/location counts with counting unit, relationship filter, inclusion/exclusion reasons,
   period, coverage/completeness and complete source lineage.
 - SAMPLE/UNKNOWN counts describe only observed records, never the whole market.
   A market-wide total is unavailable without scoped INVENTORY and resolvable identities.
+- One evidenced competitor entity with fifteen linked branches yields **1 unique
+  competitor / 15 competitor locations**, never fifteen unique businesses.
+- Location distribution and entity-associated location concentration may report branch
+  shares only with compatible scoped counts, explicit unit/universe and a valid denominator.
+  Name these "share of observed competitor locations", not market/sales share.
+  V1 concentration means this documented entity/location distribution; HHI/CR or
+  other composite indices need separate formula/denominator approval before exposure.
+  No sales/revenue concentration or saturation inference.
+- Density requires matching scoped location count and valid positive covered area;
+  label observed-sample density vs complete-inventory density. Proximity consumes
+  documented compatible distance facts only, not raw coordinates as distance proof.
+- Candidate-location comparisons use the same entity definition, matching policy,
+  asOf, coverage, inventory universe and spatial method; expose side-by-side facts
+  and gaps only, without an overall winner, success score or investment recommendation.
 - Segment counts/ratios require explicit definitions, declared multi-label treatment,
   valid positive denominator and stated denominator population. Multi-label percentages
   are not presented as disjoint shares summing to 100%.
@@ -151,16 +210,29 @@ Deterministic v1 calculations:
   inventory universe/coverage, methodology, unit, geography, segment and periods.
   No percent/index with zero/invalid base. A new/removed listing does not prove an
   opening/closure; actual openings/closures require explicit source events (deferred).
-- No market share, HHI/CR concentration, saturation, demand-gap, rankings or investment
-  recommendation from establishment counts; these require separate evidence/contracts.
+- No undocumented market share, sales/profit estimates, invented strength, saturation,
+  demand-gap, final investment ranking/recommendation, live internet reviews/ratings,
+  scraping or AI fame/success inference.
 
 ## 6. Proposed output contract and gaps
 
 `jenan.competitor-analysis.result/v1` reuses Shared envelope and adds:
 
 - scoped inventory entries, source claims, identity decisions and inclusion/exclusion traces;
+- `jenan.competitor-analysis.entity/v1`: competitorEntityId, entity-definition ref,
+  resolved identifiers, typed relationships, identity state and source evidence.
+- `jenan.competitor-analysis.location/v1`: locationId/branchId, nullable evidenced
+  competitorEntityId, geography, operational claims and original sourceRecordRefs.
+- `jenan.competitor-analysis.match/v1`: entity/location ref, relationship,
+  evidence state, target/rule version, reason and dated evidence.
+- `jenan.competitor-analysis.metric/v1`: metric definition/method, entity/location/
+  candidate refs, explicit counting unit/denominator, relationship filter, geography,
+  period/asOf, value or null, evidence, confidence, limitations, provenance and rights.
 - metric/outcome slots with nullable values, unit, counting basis, evidence class,
   availability, completeness, sample sizes and limitations;
+- `coverageStatus`: COMPLETE, PARTIAL, NONE or UNKNOWN, independent of metric availability
+  and the unchanged Shared status vocabulary. PARTIAL is never silently coerced to zero;
+  an observed partial count may be shown with its limitation while the total remains null.
 - exact selection/source evidence, definitions/method versions, confidence breakdown/caps,
   rights/provenance and request/input/output hashes.
 
@@ -173,7 +245,8 @@ unverified coverage or unresolvable identities cannot be represented as "no comp
 | Covered dataset lacks requested attribute/status evidence | NOT_AVAILABLE, null |
 | Conflicting identities, invalid denominator or incompatible comparisons | NOT_COMPUTABLE, null |
 | No authorized source / hidden exact version | Same generic unavailable behavior; no existence leak |
-| Valid contextual candidate list only | CONTEXTUAL candidates and gaps, not verified market inventory |
+| Partial/sample inventory | coverageStatus PARTIAL; labeled observed subset if valid, requested exact total unavailable/null |
+| Valid contextual candidate list only | CONTEXTUAL candidates with UNKNOWN/POTENTIAL evidence as supported, not confirmed market inventory |
 
 Unavailable metrics carry no invented numeric confidence. Identity ambiguity may block
 a total while leaving independent per-source observations usable and clearly labeled.
@@ -183,13 +256,16 @@ a total while leaving independent per-source observations usable and clearly lab
 Quality of competitive evidence, **not strength, popularity, market share or success**.
 Reuse Shared explainable policy machinery, not either frozen engine's policy.
 
-Proposed 100-point factors (require review before M1):
-source quality 15; geographic/sector coverage 15; temporal relevance/freshness 15;
-completeness 15; identity resolution 15; measurement/operating-status method 15;
-rights/provenance 10. HIGH >=80, MEDIUM >=60, LOW >=35, else INSUFFICIENT.
+Revised proposed 100-point factors (numerical policy still requires review before M1):
+source quality 15; identity certainty 15; category/activity match certainty 15;
+geographic coverage 10; temporal relevance/freshness 10; completeness 15;
+measurement method 10; provenance/rights 10.
+HIGH >=80, MEDIUM >=60, LOW >=35, else INSUFFICIENT.
 
 Factor awards require explicit evidence; missing metadata earns no inferred points.
-SAMPLE/UNKNOWN completeness and stale observations cap at LOW for market-wide claims;
+SAMPLE/UNKNOWN completeness blocks a whole-market total rather than granting one
+with low confidence; valid subset metrics are explicitly limited and capped at LOW.
+Stale observations cap at LOW;
 unknown operational status cannot support an active-competitor total. Unresolved
 duplicate identities block the distinct total, rather than merely lower its score.
 Expired/inaccessible/invalid evidence is ineligible under current-read policy.
@@ -201,11 +277,11 @@ limitations, factor evidence, score/band and caps remain reproducible.
 
 | Phase | Complete bounded objective / checkpoint |
 | --- | --- |
-| M1 | Contracts, identity/counting semantics, scope/time/units, confidence policy, normalization/hashes, gap states, limits and static boundaries; no Data Center connection |
-| M2 | Read-only Data Center discovery/exact selection/checksum/access/rights, typed datasets/coverage validation and truthful actual inventory inspection; no new store |
-| M3 | Deterministic identity decisions, inventory/counts/composition/compatible attributes and time changes, golden/adversarial calculations and complete lineage |
-| M4 | Existing Shared Run/Input append-only atomic persistence, current-authorized exact historical replay with preserved matching/identity decisions and full hashes |
-| M5 | Full technical acceptance, fresh migrations, Market/Spatial/Shared regressions, PostgreSQL/PostGIS, concurrency/load/rollback/limits, CodeQL on exact final SHA, types/lint/build, push/Desktop equality |
+| M1 — Contracts, Identity, Matching & Confidence | Entity/location/source contracts, relationship rules, scope/time/units, independent confidence, normalization/hashes, gaps/limits/static boundaries; no Data Center connection |
+| M2 — Data Center Integration & Source Validation | Read-only discovery/exact versions/checksum/access, dataset/coverage validation, rights/provenance and truthful inventory inspection; no new store |
+| M3 — Competitor Analytics | Entity vs location counts, direct/indirect breakdown, concentration/distribution, available proximity/density facts, dimension/candidate comparisons and gaps with full lineage |
+| M4 — Persistence, Historical Replay & Reproducibility | Existing Shared Run/Input atomic persistence, current-authorized exact replay, preserved identity/matching decisions and hashes |
+| M5 — Final Technical Acceptance | Regression, fresh migrations, PostgreSQL/PostGIS as applicable, load/performance/security/boundaries, exact-SHA CodeQL, real-data acceptance if available, types/lint/build and push/Desktop equality |
 
 Five phases reuse already available Shared infrastructure and proven acceptance
 patterns without rebuilding them. Identity correctness remains explicit M1/M3 work,
@@ -214,9 +290,15 @@ owner review; M0 approval does not authorize all phases automatically.
 
 ## 9. Required acceptance matrix
 
+- One entity/fifteen branches; fifteen listings of one branch; unresolved franchise/
+  brand links; unique-entity count distinct from location count; no fake entity per listing.
 - Same-name different branches; renamed same establishment; chain vs branch; duplicate
   rows; explicit equivalence; conflicting identifiers; multi-source unresolved overlap.
-- Listed vs verified matching vs active status; closed/unknown/conflicted temporal claims.
+- All five relationship classes, reasons/evidence and match uncertainty independent
+  from activity; name/category/proximity alone never establishes certain competition.
+- Documented concentration basis/denominator, area/distance fact scope/hash/rights,
+  absent spatial facts, invalid area and compatible candidate comparisons without ranking.
+- Listed vs supported matching vs active status; closed/unknown/conflicted temporal claims.
 - Covered complete empty inventory =0; unavailable/partial/outside coverage never =0.
 - Exact pin/no fallback, by-type/asOf determinism, wrong role/type, malformed dataset,
   checksum and metadata tampering, coverage, withdrawn rights and current authorization.
@@ -245,8 +327,15 @@ source/version tables. No new authorized populated production connection has bee
 provided. This is not evidence that production competitor data are absent. M0 performs
 no external scraping/collection and creates no synthetic production inventory.
 
-Real acceptance needs authorized immutable versions with traceable identity/counting
-units, explicit competitor classification, scope/time coverage and usable rights.
+What can be established now: existing Shared building blocks, accepted exact-version/
+rights/history patterns, planning-branch isolation and regression evidence. These are
+architectural prerequisites, not proof of real competitor identities, counts or coverage.
+Actual entity resolution, DIRECT/INDIRECT assignments, activity, concentration, geographic
+density/proximity and candidate comparisons remain **NOT VERIFIED** until suitable
+authorized datasets/facts are supplied. Synthetic tests can validate future mechanics only.
+
+Real acceptance needs authorized immutable versions with traceable entity/location/
+source-record identities, explicit competitor classification, scope/time coverage and usable rights.
 Manual source-backed spot checks should verify distinct establishments vs branches,
 active evidence, duplicate links, exclusions and at least one genuine uncovered case.
 Historical comparison additionally needs comparable real dated inventories or source
@@ -254,14 +343,12 @@ observations; a single POI snapshot cannot certify historical openings/closures.
 Contextual POIs may validate contextual ingestion only, not verified competitor inventory.
 Fixtures test function but never substitute for this acceptance.
 
-Approval decisions requested before M1:
+Owner decisions incorporated: unified competitor entity distinct from locations and
+source records; deterministic limited identity handling; five relationship classes
+separate from activity; descriptive concentration/distribution and conditional spatial/
+candidate facts in v1; Data Center exact versions; independent eight-factor confidence;
+zero only with proved coverage; five phases approved in principle; Sonar deferred.
 
-1. ESTABLISHMENT counting unit, strict explicit identity/equivalence, and no fuzzy merge.
-2. Listed/candidate vs verified match vs operational-state separation; no claimed total
-   market inventory from SAMPLE/UNKNOWN coverage.
-3. v1 scope: source-declared administrative geography; compatible observed attribute
-   summaries and historical comparisons, excluding radius inference, market-share/
-   strength/ranking/recommendation and all estimates.
-4. Proposed contracts/roles, five phases, initial limits and confidence policy above.
-
-No implementation starts until the owner reviews and approves this proposal.
+The revised Input/Output, Entity/Location model, matching taxonomy, confidence policy,
+roles/typeKeys and current evidence/gaps above are submitted for review.
+No implementation starts until the owner reviews these revised contracts and authorizes M1.
