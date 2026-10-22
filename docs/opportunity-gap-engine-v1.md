@@ -3,7 +3,8 @@
 ## 1. Status and authority
 
 **M0 APPROVED. M1 accepted at `473e0e2957525a504ff02c229d2f048ed1de0857`.
-M2 implemented; checkpoint pending owner review. M3 NOT STARTED.**
+M2 CLOSED at `2568b77c618912ca1fb41c157dfa7380ade525ee`.
+M3 implemented; all gates PASS, checkpoint pending owner review. M4 NOT STARTED.**
 The owner accepted Competitor technical closure and authorized this fourth engine's
 architecture/planning, then approved M0 and authorized M1 only. After clarification, the owner confirmed its actual Final
 Technical SHA as `eaa2d09374593d5677fc77c3efbc4f5a3e42e4a0`, not the earlier M4 commit.
@@ -20,7 +21,9 @@ Three engines are **TECHNICALLY COMPLETE — PENDING FINAL SONAR**:
 
 Data Center remains frozen at `04d6148dfb875532404059adb55fcac8ee6913b2`.
 No frozen runtime/contract, Shared Core, Map, schema, UI or production data changes
-are authorized by this plan. No main merge, tag, Sonar or M3 implementation.
+are authorized by this plan. No main merge, tag or Sonar.
+The owner subsequently accepted M2 and authorized M3 calculations only, then explicitly
+approved the limited positive-difference signal policy described in section 13.
 The owner explicitly approved promoting Competitor into `jenan-engines/integration`
 without squash, followed by creating `jenan-engines/opportunity-gap` from that merge.
 The M0 proposal was preserved at `354ca7a` before branch preparation.
@@ -457,7 +460,9 @@ The M1 stop was respected; M2 began only after explicit owner authorization.
 
 ## 12. M2 checkpoint — Data Center integration and source/version validation
 
-**M2 IMPLEMENTED — PENDING OWNER REVIEW. M3 NOT STARTED.**
+**M2 APPROVED / CLOSED. Final SHA: `2568b77c618912ca1fb41c157dfa7380ade525ee`.**
+Local HEAD, remote branch HEAD and the clean isolated Desktop archive matched that
+SHA at owner acceptance. The M2 stop was respected; M3 began only after approval.
 
 ### Scope and entry points
 
@@ -647,4 +652,137 @@ preparation, one read adapter and pure exports). Existing M1 behavior is retaine
 Only the global unit architecture allowlist is extended for the exact new read
 provider; all previous adapter allowlists remain intact. Shared, Data Center, Map,
 Spatial, Market, Competitor runtimes and all schemas/migrations remain unchanged.
-No main merge, tag or Sonar. **Stop after this M2 checkpoint; M3 requires review.**
+No main merge, tag or Sonar. The owner subsequently reviewed and closed M2, then
+explicitly authorized M3 only.
+
+## 13. M3 checkpoint — deterministic calculations and opportunity signals
+
+**M3 IMPLEMENTED; ALL GATES PASS — PENDING OWNER REVIEW. M4 NOT STARTED.**
+
+### Authority and public entry points
+
+The owner approved M2 at `2568b77c618912ca1fb41c157dfa7380ade525ee` and authorized
+M3 only. A structured follow-up explicitly approved the limited signal policy:
+positive compatible total-need/capacity difference or documented target shortfall;
+no investment inference, arbitrary thresholds, composite score or speculative
+aggregation. Multiple observations/sources for one operand remain ambiguous until
+an independently documented aggregation method is approved.
+
+- `analyzeOpportunityData(port, request, context)` calls unchanged M2 preparation,
+  then calculates from the validated exact-version evidence.
+- `analyzeOpportunityDataCenterInputs(request, actor, context)` connects that flow
+  to the existing read-only provider and preserves trusted organization/robot context.
+- `buildOpportunityCalculationResult(request, evidence, context)` is the pure
+  deterministic calculation surface for **trusted server evidence only**. It is not
+  a client-authorized source-ingestion endpoint.
+- `findOpportunityCalculationProblems(result)` reconstructs the full M3 output,
+  rejecting modified values, formulas, confidence, findings, rights and hashes,
+  including rehashed output fabrication.
+- Result contract remains `jenan.opportunity-gap.result/v1`; calculation engine
+  version is `1.0.0-m3`. The M1 diagnostic builder and its version-specific validator
+  remain unchanged. M2 preparation remains `1.0.0-m2`.
+
+### Calculation definitions
+
+| Finding | Deterministic behavior |
+| --- | --- |
+| `DATA_GAP` | Explicit missing/partial/stale/ambiguous/incompatible-source diagnostics. `data_gap.detected=false` is emitted only when requested coverage has complete fresh exactly scoped evidence; it does not claim an economic opportunity. Unknown coverage is not encoded as zero or false. |
+| `DEMAND_SUPPLY_GAP` | Signed `totalNeed - serviceableCapacity`, only for exactly comparable complete operands. Positive balance does not establish observed unmet need, accessible unmet demand or a feasible project. |
+| `BENCHMARK_GAP` | Signed `measuredProvision - documentedTarget`, plus `max(documentedTarget - measuredProvision, 0)`. Exact policy, authority, scope, period, source and validity are required. A normative target is never relabeled observed demand. |
+| Comparison index | `(left / right) * 100`, where right is capacity or benchmark target; 100 means equality. Carries explicit INDEX semantics, operand units and formula. A zero denominator gives null/NOT_COMPUTABLE, not infinity or an invented percentage. A still-valid absolute balance remains available. |
+| `OPPORTUNITY_SIGNAL` | Exact policy `opportunity-positive-difference/1.0.0`: positive demand/capacity balance, or negative provision/target balance (positive target shortfall). Sufficient comparable false evidence gives NOT_SUPPORTED; missing evidence gives INSUFFICIENT_EVIDENCE; incompatible evidence/unsupported policy gives NOT_COMPARABLE. No probability or opportunity-strength score. |
+| Historical comparison | Independently pinned and separately validated baseline balances, then `currentSignedBalance - historicalSignedBalance`. Same definitions, dimensions, methods, units and reporting frequency/time-zone are required. Nonoverlapping chronological calendar periods or chronological snapshots only; CUSTOM intervals do not establish equal reporting exposure. No interpolation, missing-baseline substitution or current-to-historical fallback. |
+
+Signals require a requested benchmark/demand comparison and the exact approved
+policy. Signals alone, without a selected comparison, return an explicit unavailable
+predicate. Unknown policies do not silently use the approved policy.
+The `data_gap.detected` metric is specifically a source-coverage diagnostic:
+false does not suppress separate ambiguity/comparability or mathematical data-gap
+findings. Always read each comparison's state and limitations independently.
+
+### Guards, evidence and confidence
+
+- Reuse M1 comparability and fact contracts. A unit/definition/geography/sector/time/
+  method/cohort/universe/adjustment mismatch prevents arithmetic. M3 explicitly maps
+  a retained dataset with a different requested scope to **NOT_COMPUTABLE**, even
+  though M2 preparation records the broader source-coverage state as NO_COVERAGE.
+- Missing source, unknown value, uncovered scope, observed zero and explicit false
+  remain distinct. Partial/unknown inventory or stale evidence never yields a
+  population-wide numeric balance or a definitive negative signal. Such balances
+  carry null/NOT_COMPUTABLE; original PARTIAL source diagnostics remain visible.
+- No implicit sum, maximum, averaging, deduplication or preferred-source selection.
+  More than one fact or exact source pin for a required role blocks the comparison,
+  even if only one source is currently usable. Served need, already-unmet need,
+  context indicators and entity/branch counts do not substitute for total need or
+  compatible serviceable capacity.
+- Current/historical input descriptors must match retained metadata exactly;
+  every role/version/checksum must be explicitly pinned. Identical fact identity
+  cannot change between phases. Original evidence, source-record refs and exact
+  governed source/version/checksum are retained.
+- Each metric/finding carries formula/method, scope, operand refs, provenance,
+  limitations, confidence or explicit null, and conservative aggregate rights.
+  Restricted/uncovered retained inputs continue to constrain export/attribution.
+- `opportunity-confidence-v1` is applied first to each necessary input and then
+  to the comparison with operand ceilings. The result cannot exceed the weakest
+  necessary operand score/band. Missing/invalid required evidence cannot be repaired
+  by confidence points. Confidence is evidence quality, not opportunity strength.
+- Signed differences retain operand units; base-100 indices declare their denominator.
+  Arithmetic that is nonfinite or unsafe for a discrete quantity becomes explicit
+  null/NOT_COMPUTABLE. No business rounding, conversion or estimated value is added.
+- Normalize all unordered evidence/pins/diagnostics and output refs. Shared request,
+  input and output hashes remain deterministic; run ID and timing are excluded from
+  output hashes as before. Evaluation instant, selected policies, evidence and
+  source diagnostics remain represented. The input hash pins exact descriptors and
+  checksums; the output hash additionally covers fact rows and diagnostics.
+- Bounds: <=32 retained inputs, <=10,000 combined current/historical facts, <=500
+  metrics/findings, <=100 rule evaluations, <=20,000 cost units and <=2 MiB JSON.
+  Reject excessive evidence/output rather than silently truncate. Complete original
+  operand limitations remain in evidence; calculation reason lists are grouped
+  deterministically to preserve multiple simultaneous incompatibilities.
+- Recomputing output from trusted evidence is not source authentication. M3's live
+  path still obtains evidence through governed M2 exact reads. M4 will add persisted
+  history/replay and reauthorization; none is implemented here.
+
+### Verification
+
+| Gate | Evidence |
+| --- | --- |
+| Opportunity unit cases | **231/231 PASS**: M1/M2 169 plus M3 62 |
+| Full unit regression | **2,084 PASS + 3 existing browser-only skips**, 69 files, 69.94 s |
+| PostgreSQL/Data Center/PostGIS regressions | **404/404 PASS**, 14 files, 484.15 s, one complete green execution: 389 unchanged baseline plus 15 Opportunity cases |
+| TypeScript / ESLint | **PASS**, zero lint warnings |
+| Production Webpack build | **PASS**, compile 67 s, static generation **161/161** in 30.7 s |
+| `git diff --check` | **PASS**, repeated before commit |
+
+M3 tests cover positive/zero/negative balances, normative targets, index denominators,
+overflow, all comparability dimensions (including simultaneous mismatches), partial/
+unknown/no coverage, served/unmet boundaries, ambiguity/no aggregation, stale sources,
+exact policy enforcement, weakest-input confidence, historical compatibility and
+chronology, deterministic permutations, rehashed output tampering, unpinned/conflicting
+evidence, byte bounds, read-only M2 integration, hidden/missing equivalence and explicit
+backend failure propagation. PostgreSQL adds a full governed M3 calculation/signal run,
+identical repeated hashes, and unchanged Data Center/audit/usage/Shared Run/Input counts.
+
+The first unit invocation omitted DATABASE_URL and had two import/setup failures;
+the final full invocation supplies an explicit nonproduction unit-only loopback URL
+and passes every runnable case. No production connection or code workaround was used.
+Saved evidence is retained in the session's `opportunity-m3-*` files.
+All 78 existing migrations were applied to owned loopback scratch database
+`se_opportunity_m3_be6b51ce1ead`; it was dropped and absence was verified.
+The unchanged Spatial harness used only disposable copies of its Saudi Map template.
+The temporary runner was removed. Build-only generated declaration changes were
+restored; no generated assets or dependencies are included in this checkpoint.
+The M3 candidate is the single implementation/test/documentation commit containing
+this checkpoint, reported by its full SHA at delivery (no separate documentation
+candidate SHA).
+
+### Real-data status, unchanged baselines and stop
+
+**REAL-DATA OPPORTUNITY & GAP ACCEPTANCE = BLOCKED / NOT VERIFIED.**
+All Opportunity calculation fixtures are synthetic, including those stored in real
+PostgreSQL. Real Saudi Map regressions do not establish Opportunity real-data acceptance.
+
+No Shared, Data Center, Map, Spatial, Market or Competitor runtime change; no schema,
+migration, new datastore, network collection, scraping, AI/LLM, profit forecast,
+investment recommendation or Opportunity Score. No persistence/history save/replay
+service, main merge, final tag or Sonar. **Stop for M3 review; M4 NOT STARTED.**

@@ -19,8 +19,8 @@ import {
   createDataCenterItem, createDataCenterSource, createDataCenterVersion, registerDataCenterType, reviewDataCenterItem, transitionDataCenterItem,
 } from "@/services/data-center/service";
 import { grantDataCenterRobotAccess, revokeDataCenterRobotAccess } from "@/services/data-center/robot-grants";
-import { createOpportunityDataCenterProvider, prepareOpportunityDataCenterInputs } from "@/services/analysis-engines/opportunity-gap/adapters/data-center-provider";
-import { type OpportunityDatasetRole, typeKeyByOpportunityRole } from "@/services/analysis-engines/opportunity-gap";
+import { analyzeOpportunityDataCenterInputs, createOpportunityDataCenterProvider, prepareOpportunityDataCenterInputs } from "@/services/analysis-engines/opportunity-gap/adapters/data-center-provider";
+import { findOpportunityCalculationProblems, opportunitySignalRule, type OpportunityDatasetRole, typeKeyByOpportunityRole } from "@/services/analysis-engines/opportunity-gap";
 import { opportunityDataset } from "../unit/support/opportunity-data-fixtures";
 import { opportunityRequest } from "../unit/support/opportunity-gap-fixtures";
 
@@ -83,6 +83,22 @@ const user = async (tx: DbExecutor): Promise<DataCenterActor> => {
 };
 afterAll(async () => { if (enabled) await (context.actual as typeof db).$disconnect(); });
 describe.skipIf(!enabled)("Opportunity M2 real PostgreSQL, disposable rollback fixtures only", () => {
+  it("M3 computes exact governed differences/signals without writes or history persistence", async () => {
+    await isolated(async (tx, admin) => {
+      const { req } = await fixture(admin);
+      req.analyses.push("OPPORTUNITY_SIGNALS"); req.signalPolicy = { ...opportunitySignalRule };
+      const before = await counts(tx); const { evaluatedAt } = trusted();
+      const ctx = { evaluatedAt, runId: "opportunity-m3-postgres", environment: "test" as const, timing: { startedAt: evaluatedAt, finishedAt: evaluatedAt, durationMs: 0 } };
+      const result = await analyzeOpportunityDataCenterInputs(req, admin, ctx);
+      expect(result.results[0]!.metrics.find((metric) => metric.key === "current.demand_supply_gap")?.value).toBe(40);
+      expect(result.findings.find((finding) => finding.kind === "OPPORTUNITY_SIGNAL")?.signalState).toBe("SUPPORTED");
+      expect(findOpportunityCalculationProblems(result)).toEqual([]);
+      expect(await counts(tx)).toEqual(before);
+      req.data.roles.reverse();
+      expect((await analyzeOpportunityDataCenterInputs(req, admin, ctx)).determinism).toEqual(result.determinism);
+      expect(await counts(tx)).toEqual(before);
+    });
+  });
   it("reads exact versions with Data Center-recomputed checksum and performs no writes", async () => {
     await isolated(async (tx, admin) => {
       const { req, items } = await fixture(admin); const before = await counts(tx); const ctx = trusted();

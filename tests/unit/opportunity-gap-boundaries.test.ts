@@ -41,7 +41,7 @@ function problems(text: string, file = join(root, "probe.ts")) {
 describe("Opportunity M2 isolation: one exact governed read provider, no persistence or prior-engine imports", () => {
   it("has only own/Shared pure dependencies plus one tightly scoped read adapter", () => {
     const files = filesAt(root);
-    expect(files.length).toBe(10);
+    expect(files.length).toBe(11);
     expect(readdirSync(join(root, "adapters"))).toEqual(["data-center-provider.ts"]);
     expect(readFileSync(join(root, "index.ts"), "utf8")).not.toMatch(/adapters/);
     for (const file of files) expect(problems(readFileSync(file, "utf8"), file), relative(root, file)).toEqual([]);

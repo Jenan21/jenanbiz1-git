@@ -23,13 +23,15 @@ defers final Sonar acceptance and final tags until all seven technical baselines
    `eaa2d09374593d5677fc77c3efbc4f5a3e42e4a0`;
    **TECHNICALLY COMPLETE — PENDING FINAL SONAR**, frozen;
    real-competitor acceptance BLOCKED / NOT VERIFIED)
-4. Opportunity & Gap Engine ([contracts and M1 checkpoint](opportunity-gap-engine-v1.md);
+4. Opportunity & Gap Engine ([contracts and checkpoints](opportunity-gap-engine-v1.md);
    M0 APPROVED; M1 accepted at `473e0e2957525a504ff02c229d2f048ed1de0857`
    (runtime implementation `ed531f1b10f1608f3f135a27a936228902c4f639`);
-   M2 exact governed Data Center reads/source-version validation implemented,
-   pending review; 169 Opportunity / 2,022 total unit PASS (+3 existing skips);
-   403 distinct consolidated database cases PASS (389 baseline + 14 final M2);
-   M3 NOT STARTED; real-data acceptance BLOCKED / NOT VERIFIED)
+   M2 CLOSED at `2568b77c618912ca1fb41c157dfa7380ade525ee`;
+   M3 deterministic calculations/signals implemented, all gates PASS, pending review;
+   231 Opportunity / 2,084 total unit PASS (+3 existing skips);
+   404/404 current PostgreSQL/Data Center/PostGIS cases PASS;
+   types/lint/build PASS; M4 NOT STARTED;
+   real-data acceptance BLOCKED / NOT VERIFIED)
 5. Financial Feasibility Engine
 6. Operational Feasibility Engine
 7. Risk & Decision Engine

@@ -4,6 +4,7 @@ import { readDataCenterVersionContent } from "@/services/data-center/version-con
 import { timestamp } from "../model";
 import { prepareOpportunityData } from "../data-sources";
 import { opportunityDiscoverySchema, type OpportunityDataPort } from "../data-port";
+import { analyzeOpportunityData, type OpportunityCalculationContext } from "../calculations";
 
 export interface OpportunityProviderContext {
   evaluatedAt: string; specialty?: string; missionContext?: string; organizationId?: string;
@@ -42,4 +43,9 @@ export function createOpportunityDataCenterProvider(trustedActor: DataCenterActo
 }
 export function prepareOpportunityDataCenterInputs(request: unknown, actor: DataCenterActor, context: OpportunityProviderContext) {
   return prepareOpportunityData(createOpportunityDataCenterProvider(actor, context), request, context.evaluatedAt);
+}
+export function analyzeOpportunityDataCenterInputs(request: unknown, actor: DataCenterActor, context: OpportunityProviderContext & OpportunityCalculationContext) {
+  return analyzeOpportunityData(createOpportunityDataCenterProvider(actor, context), request, {
+    runId: context.runId, evaluatedAt: context.evaluatedAt, environment: context.environment, timing: context.timing,
+  });
 }
