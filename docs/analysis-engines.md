@@ -88,7 +88,15 @@ defers final Sonar acceptance and final tags until all seven technical baselines
    accepted Financial closure, no integration/main merge;
    capacity/process/workforce/suppliers/inventory/quality/prerequisite evidence,
    declared assumptions/scenarios only, no readiness/success score or final decision;
-   M0 awaiting review, M1 NOT STARTED;
+   M0 owner-approved at `136b36593a813c091704845a2bfc6d8d5165fe2e`;
+   M1 pure contracts/unit/time/decimal/states/confidence/bounds/hashes and
+   unchanged Shared history-shape compatibility implemented for checkpoint review;
+   174 Operational + 18 global cases PASS; final related execution
+   648/648 PASS (174 Operational, 235 frozen Financial, 239 Shared/global);
+   TypeScript / zero-warning scoped ESLint / production build PASS,
+   existing dependency advisory retained and separate upgrade recommended;
+   no live Data Center integration, full operational calculations or persistence;
+   historical Full Regression remains NOT PASS; M2 NOT STARTED;
    real-data acceptance BLOCKED / NOT VERIFIED)
 7. Risk & Decision Engine
 

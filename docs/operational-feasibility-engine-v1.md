@@ -2,7 +2,8 @@
 
 ## 1. Authority, baseline and mandatory stop
 
-**M0 PROPOSAL ONLY — NOT APPROVED. M1 NOT STARTED.**
+**M0 owner-approved at `136b36593a813c091704845a2bfc6d8d5165fe2e`.
+M1 implemented for checkpoint review only. M2 NOT STARTED.**
 The owner approved engine five and authorized Operational M0 only on 2026-10-22.
 Five of seven engines are now owner-accepted as
 **TECHNICALLY COMPLETE — PENDING FINAL SONAR**.
@@ -31,9 +32,11 @@ this architecture work neither remediates it nor treats CodeQL as dependency cle
 
 The isolated planning branch `jenan-engines/operational-feasibility` starts directly
 from the accepted Financial closure. No integration/main merge, final tag, Sonar,
-history rewrite, dependency install, runtime scaffold or implementation is authorized.
+history rewrite or dependency install is authorized.
+M0 added no runtime scaffold. The owner subsequently authorized M1 pure contracts,
+semantics, confidence, bounds, hashes and storage compatibility only.
 The Financial branch and its Desktop archive remain at their accepted baseline.
-Stop after this M0 for owner review; do not start M1 or engine seven.
+Stop after the M1 checkpoint for owner review; do not start M2 or engine seven.
 
 References: [execution master](../design-references/Jenan-PRO/EXECUTION_MASTER.md),
 the immutable three-archive library, and page 045
@@ -306,5 +309,159 @@ weights, work-unit policy and schema invariants must be explicit in M1, not inve
 silently. Future UI/orchestration or process optimization needs separate approval.
 
 **REAL-DATA OPERATIONAL FEASIBILITY ACCEPTANCE = BLOCKED / NOT VERIFIED.**
-**M0 COMPLETE FOR REVIEW ONLY. M1 NOT STARTED.**
+**M0 owner-approved. M1 checkpoint evidence follows; M2 NOT STARTED.**
 **Sonar = DEFERRED / PENDING. No main/integration merge or Final Tag.**
+
+## 11. M1 checkpoint — pure foundation only
+
+The owner approved M0 and authorized **M1 only** on 2026-10-22, with Financial
+baseline `2eee9fd2bdb4445e30931070bff8fb0392113de8`. No new source is discovered,
+registered, read or authorized by this milestone. No operating metric is calculated.
+
+### Implemented contracts and semantics
+
+- Six pure files under `services/analysis-engines/operational-feasibility`:
+  `decimal`, `model`, `request`, `confidence`, `contracts` and `index`.
+  No adapter, database access, environment, network, AI, hidden clock, randomness,
+  prior-engine import, UI or Projects connection.
+- Strict request/dataset/value/unit/schedule/result contracts. Production/service
+  TARGET requires PLAN. Planned targets/commitments remain declared assumptions.
+  Supplier rows retain COMMITTED / QUOTATION / UNKNOWN; quotation/unknown produces
+  a prerequisite gap, never committed supply or a fabricated zero.
+- Units explicitly model quantities, time, resource-time, time/unit, consumption
+  rate, lead time, hours/FTE, FTE, fractions and unbounded load percentage.
+  Headcount is not an accepted substitute for qualified staff-hours. Hours/FTE
+  requires an explicit role and calendar reference to its reporting period.
+- Whole counts and [0,1] fractions are checked separately from load percentage,
+  which may exceed 100. Negative operand quantities are invalid; inventory
+  adjustments use an explicit ADD/SUBTRACT direction rather than hidden signs.
+- Complete empty schedules require evidenced `noApplicableItems`; missing/null
+  remains distinct from zero. Cross-references, identities, period/site/entity/
+  pool/role/calendar and operand units are checked. Schedule row/operand reuse
+  cannot silently double-count a quantity. Receipts/commitments retain explicit
+  dates and report incomplete timing; dates outside the declared period fail.
+- Observed quality schedules require observed whole counts and an inspection
+  cohort; assumed yield cannot become measured quality. Cohort mismatch is a
+  prerequisite reason. Applicability unknown remains unknown; EVIDENCED and
+  NOT_APPLICABLE requirements need supporting evidence and rationale.
+- Only one-output NET_GOOD_OUTPUT simple serial models with distinct stage pools
+  are supported. Branched/parallel/rework/shared pools, mixed outputs or unresolved
+  gross loss basis produce **NOT_SUPPORTED** without simplification. This M1
+  boundary is intentionally conservative; general network simulation is not v1.
+- Periods are explicit nonempty half-open, contiguous, ordered Gregorian intervals
+  in one validated IANA timezone. Only explicit minute/hour conversion is supplied;
+  no assumed productive hours/day, shift/FTE conversion or working-day/calendar-day
+  lead-time substitution.
+- The local `decimal.js` clone uses 34 significant digits and HALF_EVEN.
+  Input decimals allow <=18 integer / <=16 fractional digits; canonical output
+  preserves up to 34 significant digits until six-place reporting rounding.
+  No binary Number quantity conversion, global Decimal mutation, overflow clipping
+  or import of Financial arithmetic.
+- Proposed state vocabulary is retained. Foundation metrics themselves are
+  **NOT_COMPUTABLE or NOT_SUPPORTED with null value/confidence**, always including
+  `M1_CALCULATIONS_DEFERRED`; even complete valid inputs yield no capacity, staffing,
+  inventory, quality ratio, score, success probability or launch recommendation.
+  Prerequisite diagnostics include missing schedules/operands/source descriptors,
+  unknown coverage, review, zero denominator, resource/cohort/unit incompatibility,
+  quotation, timing, applicability and undeclared scenario/sensitivity.
+- Approved attestations require author/reviewer/date/rationale and evidence.
+  Future declarations/approvals are rejected relative to trusted evaluatedAt;
+  dataset approval must follow approval of every operand. These are contract
+  attestations, not live source authorization or cryptographic identity checks.
+
+### Confidence, determinism and bounds
+
+`operational-confidence-v1/1.0.0` is an evidence-quality **band policy**, not a
+numeric operational score. Its three factors are source evidence, coverage/
+freshness and assumption review; the result equals the weakest factor.
+HIGH source evidence requires every essential input VERIFIED and measured quality
+>=0.8. Incomplete/nonfresh/unmeasured evidence or unreviewed operands caps LOW.
+Approved declared plans cap MEDIUM; fully supported observed inputs may reach HIGH.
+Missing operands/evidence or incompatible methods return null confidence.
+M1 exposes this policy/helper for contract testing; no foundation metric receives
+numeric output or metric confidence.
+
+Normalization is locale-independent, deduplicates/sorts exact evidence and sorts
+unordered identities, while preserving chronological periods and stage order.
+Decimal spellings normalize before hashing. requestHash includes normalized
+request/evaluatedAt; inputsHash includes exact descriptors; outputHash excludes
+runId/timing only. Validation rebuilds the whole expected foundation result,
+rejecting forged values/rights/policies even with a recomputed outer hash.
+Returned results do not share mutable input or result state.
+
+Bounds enforce 32 exact checksummed Data Center descriptors, 120 periods, 100 stages,
+200 pools, 1,000 **combined** values + schedule rows + requirement entries,
+base plus <=9 declared scenarios, <=20 one-at-a-time sensitivity drivers,
+10,000 expanded work rows, 500 prospective scalar outputs, 20,000 work units,
+and 2 MiB canonical request/result/whole-record size.
+Work is measured before any future execution:
+
+`variants = 1 + scenarios + 3*sensitivityDrivers`
+
+`expandedRows = (combinedBaseItems + stages*periods)*variants`
+
+`prospectiveMetrics = analyses*periods*variants`
+
+`costUnits = expandedRows + prospectiveMetrics + scheduleCoverageEntries`
+
+These are conservative M1 admission bounds, not an execution of the M3 formulas.
+Oversize/invalid input fails explicitly; no truncation. Whole-unit scenario
+overrides retain their original unit constraints, observations cannot be overwritten
+as assumptions, and sensitivity requires ordered explicit low/base/high with the
+original declared base, not an invented percentage.
+
+### Unchanged Shared/history compatibility
+
+The pure `buildOperationalFoundationRecord` validates/rebuilds the foundation
+result, then uses unchanged `runRecordSchema` and `toRunInputRecord`.
+It preserves local decimal/unit semantics as bounded JSON, exact input snapshots,
+hashes, actor/createdAt metadata, versioned policies and explicit blocking gaps.
+The Shared confidence summary is null rather than a fabricated numeric conversion.
+This is a **storage-shape proof only**, not persistence, authorization or replay.
+Those capabilities remain deferred to M2/M4.
+
+Shared, Data Center, all five engines, Prisma, Map, Auth, routes, dependencies
+and workflows remain unchanged. The global boundary test changes only the exact
+`operational-feasibility/decimal.ts` allowlist for the existing decimal dependency;
+no general import or adapter capability is widened. The local AST guard tests
+side-effect/type/dynamic imports and prohibited capabilities explicitly.
+
+### Saved verification
+
+| Gate | Result |
+| --- | --- |
+| Operational M1 cases | **174/174 PASS**: 90 contracts/semantics, 32 decimal/time, 14 confidence, 10 bounds, 28 isolation |
+| Global engine boundaries | **18/18 PASS**; Operational + global focused coverage **192/192** within the final combined run |
+| Final related regression | **648/648 PASS**, 22 files, 15.14 s; 174 Operational + 235 Financial + 239 Shared/global cases, no skips |
+| Shared history compatibility | PASS; unchanged Run/Input schema validation, exact snapshot/hash repetition, local decimal JSON and no database writes |
+| TypeScript / scoped ESLint | PASS, zero warnings |
+| Production build | PASS on unchanged retry, 161/161 static pages; earlier failed advisory-interrupted executions retained |
+| Frozen runtime / dependency scope | PASS; only new Operational files/tests, one exact global-test exception and directly related docs |
+| Full regression | **NOT CLAIMED PASS**, historical accepted Competitor exceptions remain NOT PASS; broad suite not rerun |
+| Live Data Center / PostgreSQL Operational integration | **NOT STARTED**, intentionally outside M1; descriptor and storage-shape tests are not live authorization/persistence evidence |
+| CodeQL / Sonar | No new M1 scan claimed; exact-SHA final CodeQL planned for M5; Sonar DEFERRED / PENDING |
+
+The initial typecheck found the new descriptor guard used `SHA256` instead of
+the existing Shared `SHA-256` literal; only that new guard was corrected.
+A subsequent invalid-decimal schema-refinement guard preserves normal safeParse
+failures without throwing from a secondary arithmetic refinement. All final
+648 cases and the final production build include these corrections.
+
+Build executions again surfaced the **existing Next.js dependency security
+advisory** before exiting 1. The same unchanged command succeeded on retry,
+including after the final schema correction. Those failed receipts are not
+reclassified; successful compilation/CodeQL does not remediate dependency security.
+A separate dependency security upgrade remains recommended, not included here.
+Existing Map filesystem-tracing warnings remain unchanged.
+
+Saved session receipts: `operational-m1-focused-initial`,
+`operational-m1-focused-final`, `operational-m1-related-regression`,
+`operational-m1-final-regression`, `operational-m1-typecheck-final`,
+`operational-m1-eslint-final`, `operational-m1-build`,
+`operational-m1-build-retry`, `operational-m1-build-final` and
+`operational-m1-build-final-retry`. Generated Next type-declaration path changes
+were restored to the approved baseline, not included as a product change.
+
+**JENAN OPERATIONAL FEASIBILITY ENGINE — M1 CHECKPOINT FOR OWNER REVIEW.**
+**REAL-DATA OPERATIONAL FEASIBILITY ACCEPTANCE = BLOCKED / NOT VERIFIED.**
+**M2 NOT STARTED. Sonar DEFERRED / PENDING. No main merge or Final Tag.**
