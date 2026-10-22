@@ -26,9 +26,10 @@ defers final Sonar acceptance and final tags until all seven technical baselines
 4. Opportunity & Gap Engine ([contracts and M1 checkpoint](opportunity-gap-engine-v1.md);
    M0 APPROVED; M1 pure contracts/comparability/confidence/boundaries implemented at
    `ed531f1b10f1608f3f135a27a936228902c4f639`,
-   pending owner review; 119 M1 tests PASS; latest aggregate 1,971 PASS,
-   1 unchanged Competitor performance failure, 3 existing skips (earlier 1,966 PASS);
-   performance gate open; M2 NOT STARTED; real-data acceptance BLOCKED / NOT VERIFIED)
+   pending owner review; 119 M1 tests PASS; consolidated regression PASS:
+   saved aggregate 1,971 PASS plus the sole unchanged Competitor performance case
+   passing two targeted checks at 4.87 s / 4.81 s against 15 s; 3 existing skips;
+   no full-suite rerun; M2 NOT STARTED; real-data acceptance BLOCKED / NOT VERIFIED)
 5. Financial Feasibility Engine
 6. Operational Feasibility Engine
 7. Risk & Decision Engine

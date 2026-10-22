@@ -2,8 +2,8 @@
 
 ## 1. Status and authority
 
-**M0 APPROVED. M1 implemented; checkpoint pending owner review, with one frozen
-performance regression gate still open. M2 NOT STARTED.**
+**M0 APPROVED. M1 implemented; technical gates verified, pending owner review.
+M2 NOT STARTED.**
 The owner accepted Competitor technical closure and authorized this fourth engine's
 architecture/planning, then approved M0 and authorized M1 only. After clarification, the owner confirmed its actual Final
 Technical SHA as `eaa2d09374593d5677fc77c3efbc4f5a3e42e4a0`, not the earlier M4 commit.
@@ -266,10 +266,16 @@ only the subsequently authorized foundation; stop again before M2.
 
 ## 11. M1 checkpoint — pure contracts and comparison foundation
 
-**M1 IMPLEMENTED — PENDING OWNER REVIEW / PERFORMANCE GATE OPEN. M2 NOT STARTED.**
+**M1 IMPLEMENTED — TECHNICAL GATES VERIFIED / PENDING OWNER REVIEW. M2 NOT STARTED.**
 
 M1 implementation SHA: `ed531f1b10f1608f3f135a27a936228902c4f639`.
 Subsequent documentation-only SHA pinning does not change this implementation baseline.
+The earlier synchronized HEAD `2c10c42e8b64e407a5ce7a519c31030756159026`
+is its immediate child and changes only this document and `analysis-engines.md`
+to pin that implementation SHA. It is not a different runtime implementation.
+The final M1 review candidate is the dedicated branch HEAD including the subsequent
+documentation-only targeted-performance verification recorded below; the delivery
+report records its exact SHA and verifies Local/Remote/Desktop equality.
 
 ### Binding decisions
 
@@ -394,6 +400,8 @@ Synthetic fixtures only; no live opportunity dataset was read.
 | First full Opportunity + Shared/Spatial/Market/Competitor/Data Center unit regression | 1,966 PASS; 3 existing browser-only skips; 66 files; 87.24 s |
 | Final full regression, after six additional M1 integrity/limit cases | 1,971 PASS; 1 frozen Competitor performance failure; 3 existing skips; 66 files; 200.17 s |
 | Frozen Competitor acceptance isolated recheck | 1 PASS / 1 performance failure; 20,234.29 ms against unchanged 15,000 ms bound |
+| Owner-authorized targeted performance verification, 2026-10-22 | 2/2 independent runs PASS: 4,873.02 ms and 4,811.81 ms; unchanged 15,000 ms bound |
+| Consolidated regression status after targeted verification | PASS: all 1,972 non-skipped cases now have passing evidence; 3 existing browser-only skips; no full-suite rerun |
 | TypeScript | PASS |
 | Scoped ESLint, zero warnings | PASS |
 | Production Webpack build | PASS; 161/161 static generation tasks |
@@ -405,18 +413,40 @@ Evidence is retained outside the repository in session files
 `opportunity-m1-unit.log`, `opportunity-m1-build.log`,
 `opportunity-m1-unit-contended-results.json`,
 `opportunity-m1-competitor-performance-recheck.json`.
+Targeted verification: `opportunity-m1-targeted-perf-1.json` and
+`opportunity-m1-targeted-perf-2.json`.
 Generated build-only declaration changes were restored; no generated files committed.
 
-**Open gate, not an all-PASS closure:** the final full run measured the frozen
+**Historical performance failure, resolved by targeted verification:** the final full run measured the frozen
 Competitor 32-run acceptance at 20,683.70 ms versus its 15,000 ms limit; an isolated
 recheck still measured 20,234.29 ms. That same test passed in the earlier full run.
 Git diff confirms the Competitor runtime, acceptance test and fixtures are byte-for-byte
 unchanged from its accepted Final Technical SHA. Host CPU load was 71% when inspected,
 but the exact cause is not proven. No threshold was relaxed, assertion skipped,
 frozen code changed or external process stopped. All final Opportunity cases passed.
-Do not represent the latest aggregate regression as fully green or close this gate
-until the unchanged performance acceptance passes under an appropriate test window.
-M1 implementation is preserved for review, not declared CLOSED.
+On the owner's explicit targeted-only instruction, the exact failing test was run
+twice on the same Windows host/worktree, Node `v24.14.0`, Vitest `4.1.11`,
+same env-file, threads pool and one worker. Only its exact test name was selected;
+the other case in the file was filtered out, not disabled or modified.
+The 32-analysis measured work took **4,873.02 ms** then **4,811.81 ms**, both
+well below the unchanged **15,000 ms** assertion, with all determinism, identity,
+isolation and result-size assertions intact. The whole-file runner durations were
+5.87 s and 5.57 s respectively. No baseline code, threshold or machine setting changed.
+Host CPU load before the targeted window was 36%, versus 71% inspected during the
+prior failure window. This demonstrates environment-sensitive wall-clock behavior
+of unchanged code; it does not identify a specific external process or prove CPU load
+alone caused the earlier delay. No foreign process was stopped or inspected.
+The case runs **32 interleaved Competitor analyses**, not historical replay.
+
+Git diff against Competitor Final Technical SHA also confirms its runtime, Shared,
+Data Center, test fixtures, acceptance test, Vitest config and dependency manifests
+are unchanged. Opportunity is not imported by the targeted test. There is therefore
+no observed M1 code regression requiring reopening or modifying Competitor.
+**Full regression status = PASS (consolidated evidence, not a new full-suite run):**
+the saved final aggregate provides 1,971 passing cases, and the one remaining case
+now passed twice. The original aggregate failure and earlier failed isolated retry
+remain preserved above; they have not been relabeled as successful executions.
+M1 is ready for owner review, not automatically declared CLOSED.
 
 **REAL-DATA OPPORTUNITY & GAP ACCEPTANCE = BLOCKED / NOT VERIFIED.**
 This is not an M1 technical failure. Fixtures are never represented as production data.
