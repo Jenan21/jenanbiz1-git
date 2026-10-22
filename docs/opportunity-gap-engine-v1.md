@@ -268,6 +268,9 @@ only the subsequently authorized foundation; stop again before M2.
 
 **M1 IMPLEMENTED — PENDING OWNER REVIEW / PERFORMANCE GATE OPEN. M2 NOT STARTED.**
 
+M1 implementation SHA: `ed531f1b10f1608f3f135a27a936228902c4f639`.
+Subsequent documentation-only SHA pinning does not change this implementation baseline.
+
 ### Binding decisions
 
 - `DATA_GAP` is missing evidence or capability, never a market opportunity.
