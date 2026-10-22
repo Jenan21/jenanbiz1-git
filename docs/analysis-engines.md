@@ -23,7 +23,8 @@ defers final Sonar acceptance and final tags until all seven technical baselines
    `eaa2d09374593d5677fc77c3efbc4f5a3e42e4a0`;
    **TECHNICALLY COMPLETE — PENDING FINAL SONAR**, frozen;
    real-competitor acceptance BLOCKED / NOT VERIFIED)
-4. Opportunity & Gap Engine
+4. Opportunity & Gap Engine ([M0 proposal](opportunity-gap-engine-v1.md);
+   architecture/planning authorized; M0 FOR OWNER REVIEW; M1 NOT STARTED)
 5. Financial Feasibility Engine
 6. Operational Feasibility Engine
 7. Risk & Decision Engine
@@ -97,7 +98,12 @@ and is never modified by the engines. The engines are aggregated on their own li
   Freeze runtime/contracts except for an explicitly approved necessary shared change.
   The subsequent documentation-only closure pins that immutable technical SHA;
   it does not replace it. Local/Remote/Desktop must match the closure commit.
-  Real-competitor acceptance remains BLOCKED / NOT VERIFIED. Do not start engine four.
+  Real-competitor acceptance remains BLOCKED / NOT VERIFIED.
+  The owner subsequently accepted Competitor technical closure, explicitly confirmed
+  `eaa2d09374593d5677fc77c3efbc4f5a3e42e4a0` as its Final Technical SHA (the earlier
+  `f1a7f7da1c0873ccdeb8a6e99db8b1f8d5937974` is M4), and authorized Opportunity & Gap
+  M0 architecture/planning only. The M0 document is a proposal, not approval to start
+  M1 or merge/promote branches. All three accepted engine runtimes stay frozen.
   No main merge, final tag or Sonar attempt is authorized.
 
 - Spatial: **TECHNICALLY COMPLETE — PENDING FINAL SONAR**, not `FINAL CLOSED`.
