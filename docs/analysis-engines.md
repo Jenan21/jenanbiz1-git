@@ -78,9 +78,18 @@ defers final Sonar acceptance and final tags until all seven technical baselines
    exact-SHA CodeQL Actions + JavaScript/TypeScript PASS, zero new/open alerts;
    tested/scanned candidate `66afdfea4fd8e118c0833232fd95f673e00d6a33`,
    followed only by documentation closure;
-   **TECHNICALLY COMPLETE — PENDING FINAL SONAR**, M5 submitted for owner acceptance;
+   **TECHNICALLY COMPLETE — PENDING FINAL SONAR**, M5 owner-approved and frozen;
+   accepted documentation-only Final Technical SHA
+   `2eee9fd2bdb4445e30931070bff8fb0392113de8`, distinct from the tested/scanned SHA;
    real-data acceptance BLOCKED / NOT VERIFIED)
-6. Operational Feasibility Engine
+6. Operational Feasibility Engine ([M0 architecture review](operational-feasibility-engine-v1.md);
+   owner authorized M0 only after accepting Financial M5;
+   documentation-only proposal on `jenan-engines/operational-feasibility` from the
+   accepted Financial closure, no integration/main merge;
+   capacity/process/workforce/suppliers/inventory/quality/prerequisite evidence,
+   declared assumptions/scenarios only, no readiness/success score or final decision;
+   M0 awaiting review, M1 NOT STARTED;
+   real-data acceptance BLOCKED / NOT VERIFIED)
 7. Risk & Decision Engine
 
 An engine produces **documented facts and measurements** from governed data. It does not

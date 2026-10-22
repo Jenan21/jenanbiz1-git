@@ -8,7 +8,7 @@ M2 owner-approved / CLOSED at `166d48a8c689f18ccf6e70fa1accf654fb0fb0a0`,
 with four pre-existing Competitor PostgreSQL failures retained as NOT PASS.
 M3 owner-approved / CLOSED at `fc38b498aad426ecbd2a17c754b3b32ad7aacb30`.
 M4 owner-approved / CLOSED at `b6fb4a3f8d765f7ce3c43dfc5eec38cb099b9618`.
-M5 technical verification is complete, pending owner acceptance:
+M5 owner-approved / technically CLOSED on 2026-10-22:
 TECHNICALLY COMPLETE — PENDING FINAL SONAR.
 Real-data acceptance remains BLOCKED / NOT VERIFIED.**
 The owner approved engine four's final technical closure on 2026-10-22 and explicitly
@@ -883,6 +883,11 @@ Saved session logs: `financial-m5-pure-first`, `financial-m5-committed-acceptanc
 
 **REAL-DATA FINANCIAL FEASIBILITY ACCEPTANCE = BLOCKED / NOT VERIFIED.**
 **JENAN FINANCIAL FEASIBILITY ENGINE = TECHNICALLY COMPLETE — PENDING FINAL SONAR.**
-M5 is submitted for owner acceptance, not self-approved. The historical regression
+M5 was explicitly accepted by the owner on 2026-10-22. Accepted documentation-only
+closure SHA: `2eee9fd2bdb4445e30931070bff8fb0392113de8`; tested implementation
+and exact-SHA CodeQL remain `66afdfea4fd8e118c0833232fd95f673e00d6a33`.
+The approval message included a 41-character transcription of the closure SHA;
+Local/Remote/Desktop all verified the 40-character SHA recorded here.
+The historical regression
 exceptions and separate existing dependency-security advisory remain explicit.
 **Sonar DEFERRED / PENDING. No main/integration merge, final tag or sixth engine.**
