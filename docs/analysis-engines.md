@@ -89,14 +89,20 @@ defers final Sonar acceptance and final tags until all seven technical baselines
    capacity/process/workforce/suppliers/inventory/quality/prerequisite evidence,
    declared assumptions/scenarios only, no readiness/success score or final decision;
    M0 owner-approved at `136b36593a813c091704845a2bfc6d8d5165fe2e`;
-   M1 pure contracts/unit/time/decimal/states/confidence/bounds/hashes and
-   unchanged Shared history-shape compatibility implemented for checkpoint review;
+   M1 owner-approved / CLOSED at `45e8db5dc1525a8fd88c0dc4603a69f22c0e895e`,
+   pure contracts/unit/time/decimal/states/confidence/bounds/hashes and
+   unchanged Shared history-shape compatibility;
    174 Operational + 18 global cases PASS; final related execution
    648/648 PASS (174 Operational, 235 frozen Financial, 239 Shared/global);
    TypeScript / zero-warning scoped ESLint / production build PASS,
    existing dependency advisory retained and separate upgrade recommended;
-   no live Data Center integration, full operational calculations or persistence;
-   historical Full Regression remains NOT PASS; M2 NOT STARTED;
+   M2 governed read integration implemented for review: one exact source/version/
+   checksum, approvals/provenance/rights, scope/site/calendar/unit/method equality,
+   complete coverage and current authorization/no-existence-leak;
+   236 Operational + 18 global tests PASS, 710 related unit cases PASS;
+   23 Operational + 80 Data Center PostgreSQL cases PASS;
+   no latest/old-version substitution, actual operational calculations or persistence;
+   historical Full Regression remains NOT CLAIMED PASS; M3 NOT STARTED;
    real-data acceptance BLOCKED / NOT VERIFIED)
 7. Risk & Decision Engine
 

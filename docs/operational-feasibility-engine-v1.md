@@ -3,7 +3,9 @@
 ## 1. Authority, baseline and mandatory stop
 
 **M0 owner-approved at `136b36593a813c091704845a2bfc6d8d5165fe2e`.
-M1 implemented for checkpoint review only. M2 NOT STARTED.**
+M1 owner-approved / CLOSED at `45e8db5dc1525a8fd88c0dc4603a69f22c0e895e`.
+M2 governed exact-source validation implemented for checkpoint review only.
+M3 NOT STARTED.**
 The owner approved engine five and authorized Operational M0 only on 2026-10-22.
 Five of seven engines are now owner-accepted as
 **TECHNICALLY COMPLETE — PENDING FINAL SONAR**.
@@ -33,10 +35,11 @@ this architecture work neither remediates it nor treats CodeQL as dependency cle
 The isolated planning branch `jenan-engines/operational-feasibility` starts directly
 from the accepted Financial closure. No integration/main merge, final tag, Sonar,
 history rewrite or dependency install is authorized.
-M0 added no runtime scaffold. The owner subsequently authorized M1 pure contracts,
-semantics, confidence, bounds, hashes and storage compatibility only.
+M0 added no runtime scaffold. The owner subsequently approved M1 pure contracts,
+semantics, confidence, bounds, hashes and storage compatibility, and authorized
+M2 governed Data Center read integration only.
 The Financial branch and its Desktop archive remain at their accepted baseline.
-Stop after the M1 checkpoint for owner review; do not start M2 or engine seven.
+Stop after the M2 checkpoint for owner review; do not start M3 or engine seven.
 
 References: [execution master](../design-references/Jenan-PRO/EXECUTION_MASTER.md),
 the immutable three-archive library, and page 045
@@ -309,7 +312,7 @@ weights, work-unit policy and schema invariants must be explicit in M1, not inve
 silently. Future UI/orchestration or process optimization needs separate approval.
 
 **REAL-DATA OPERATIONAL FEASIBILITY ACCEPTANCE = BLOCKED / NOT VERIFIED.**
-**M0 owner-approved. M1 checkpoint evidence follows; M2 NOT STARTED.**
+**M0/M1 owner-approved. Their checkpoint evidence follows; M2 is recorded in section 12.**
 **Sonar = DEFERRED / PENDING. No main/integration merge or Final Tag.**
 
 ## 11. M1 checkpoint — pure foundation only
@@ -465,3 +468,148 @@ were restored to the approved baseline, not included as a product change.
 **JENAN OPERATIONAL FEASIBILITY ENGINE — M1 CHECKPOINT FOR OWNER REVIEW.**
 **REAL-DATA OPERATIONAL FEASIBILITY ACCEPTANCE = BLOCKED / NOT VERIFIED.**
 **M2 NOT STARTED. Sonar DEFERRED / PENDING. No main merge or Final Tag.**
+
+## 12. M2 checkpoint — governed Data Center reads and exact source validation
+
+The owner explicitly approved and CLOSED M1 at
+`45e8db5dc1525a8fd88c0dc4603a69f22c0e895e`, accepting its saved gates:
+174 Operational, 18 global boundaries, 192 focused coverage and 648 related
+regression cases PASS. The historical Full Regression is **NOT CLAIMED PASS**.
+Competitor gates remain frozen; its accepted historical failures are not repaired
+or relabeled here. The existing Next.js dependency-security advisory remains a
+separate debt, and CodeQL does not replace dependency remediation.
+
+### Integration and exact selection
+
+- Engine-local `data-port`, `datasets`, `data-sources` and the single
+  `adapters/data-center-provider` are added. The pure package does not export
+  the live adapter. No full operational calculations, persistence, replay,
+  source registration/write, schema, UI, Map or prior-engine dependency is added.
+- `prepareOperationalDataCenterInputs` accepts the model plus exactly one
+  explicit `{ sourceId, versionId, checksum }`. The new strict wrapper leaves
+  the accepted M1 model/request contract unchanged. It deliberately cannot
+  discover "best", latest or an arbitrary old model or combine models silently.
+- The adapter invokes only the unchanged governed `discoverDataCenterVersions`
+  and `readDataCenterVersionContent` APIs with an EXACT version and expected
+  checksum. Normal preparation performs one discovery and one content read.
+  Trusted organization scope adds an exact scope check before a direct read.
+- Data Center recomputes its full immutable-version checksum; this is not merely
+  a SHA of JSON content. The pure pipeline checks pinned source/version/checksum,
+  discovery/read metadata consistency and the returned recomputed-integrity
+  assertion. It separately captures `contentHash` for the exact returned bytes.
+- Missing, inaccessible, archived, superseded or unavailable pinned versions
+  remain unavailable. No fallback to a newer version or substitution of another
+  older version occurs. Exact historical replay is still deferred to M4; M2
+  does not bypass current Data Center publication policy to access old versions.
+
+### Governed operational dataset and compatibility
+
+`jenan.operational-feasibility.source-dataset/v1` under the proposed
+`operational-feasibility-model` type holds one complete model and an explicit
+local source-record register. It is separate from M1's pure dataset/storage proof:
+on-source evidence uses local IDs to avoid embedding the checksum inside the
+bytes it hashes. `bindOperationalDataset` resolves every value/schedule/requirement/
+scenario/sensitivity evidence ID to the selected exact input/version/checksum.
+No production type or source is registered by the implementation.
+
+- All local evidence IDs must resolve to unique records with reference,
+  description and date. Model approval records reviewer/date/rationale/evidence;
+  model/operand declarations, approvals and evidence records must predate model
+  approval/evaluation. Governed VERIFIED, non-AI evidence is required.
+- The published source ID, owner, ownership, license class/license, usagePolicy,
+  retrieval rights and mandatory attribution must be valid. Export restrictions,
+  provenance, freshness, quality, source scope and exact references remain in
+  validated input/result descriptors. Approval is a governed attestation, not
+  cryptographic identity verification or proof of external source authenticity.
+- Exact model equality after M1 normalization prevents overriding approved
+  targets, resource/unit definitions, productivity/method versions, role/calendar
+  assumptions, scenarios, evidence or interpretations in the submitted model.
+  PLAN stays PLAN; quotations do not become supplier commitments.
+- Geography/sector taxonomy/authority/version must match, source country/region
+  coverage must support the model, and explicit site coverage must contain its
+  exact site. Calendars/reporting periods must agree; no resampling, geography
+  substitution, time-unit inference or methodology substitution.
+- Source coverage explicitly declares COMPLETE/PARTIAL/NONE/UNKNOWN, inventory/
+  sample completeness, site IDs, period IDs and evidence. Ready requires complete
+  inventory coverage of every requested period, nonmissing operands and complete
+  schedules. Explicit evidenced zero remains distinct from null/missing.
+- M2 reuses M1 prerequisite diagnostics **without computing operating values**.
+  Unsupported networks remain NOT_SUPPORTED. Unit/resource/cohort incompatibility
+  and zero method denominators are NOT_COMPUTABLE. Missing/partial schedules,
+  missing operands, quotation/unknown commitments, incomplete receipt timing,
+  unknown applicability or absent declared scenarios keep preparation PARTIAL,
+  not numerical zero or operational readiness.
+- Expired/not-yet-effective sources are rejected. Stale/unknown freshness and
+  source age beyond the declared freshness window keep preparation PARTIAL,
+  even if a malformed port claims FRESH. Future metadata/record/approval dates
+  are rejected; legitimate future planned operating periods are not actuals.
+
+The preparation result contains status/reason/ready, normalized request, authorized
+source/record/input descriptors, restrictive rights/attribution, work counters,
+limitations and deterministic request/input/output hashes. `AVAILABLE` means only
+**exact approved inputs validated**, not a feasible project or completed operation.
+No operating metrics, Operational Score, success probability, AI/LLM, scraping,
+launch/investment recommendation, financial recalculation or persistence is exposed.
+
+### Current authorization, integrity and error behavior
+
+The server supplies actor, organization, specialty and mission context. The model
+cannot grant access. Existing current source scope, permission, organization
+membership, specialty/mission and explicit robot-grant policies are enforced on
+discovery and direct reads. Reusing a provider does not cache access approval:
+retrieval revocation, archive, membership suspension and robot-grant revocation
+are rechecked against current state.
+
+Hidden/absent source versions return the same NOT_AVAILABLE shape without content
+or metadata. Known integrity mismatches have explicit INTEGRITY_ERROR / checksum
+failure handling only after governed access. Robot-policy errors, unrelated
+Data Center errors and backend failures propagate; no broad catch converts them
+to success or cached data. Provider actor/context are copied at creation.
+
+M1 byte/work limits run before I/O. The port limits content to 200,000 characters,
+one exact discovery candidate and one content read. Local source records plus
+values/schedule rows/requirements are bounded to 10,000, with existing scenario,
+work/metric and 2 MiB preparation-output limits. Oversized requests/data and invalid
+contracts fail explicitly; no truncation or source combination.
+
+### Saved verification
+
+| Gate | Result |
+| --- | --- |
+| Operational M1–M2 unit/isolation cases | **236/236 PASS**: 90 contracts, 32 decimal, 14 confidence, 10 bounds, 29 isolation/registration, 55 source-validation and 6 provider cases |
+| Global engine boundaries | **18/18 PASS**; Operational plus global coverage **254/254 PASS** within the final runner |
+| Final related unit regression | **710/710 PASS**, 24 files, no skips: 236 Operational + 235 unchanged Financial + 239 Shared/global |
+| Operational synthetic PostgreSQL | **23/23 PASS**, including no-write exact preparation, real checksum tampering, no version substitution, source restrictions/revocations and compatibility |
+| PostgreSQL / Data Center regressions | **103/103 PASS** in six files: 23 Operational + 80 existing Data Center foundation/constraints/discovery/version-content/workflow cases; 99.97 s |
+| Frozen schema readiness | All **78 unchanged migrations** on owned disposable PostgreSQL **17.5**, PostGIS **3.5.2** installed; no new Operational spatial analysis or real-data acceptance claimed |
+| TypeScript / scoped zero-warning ESLint | PASS |
+| Production build | PASS on unchanged retry; initial build stopped on the existing Next.js dependency-security advisory, retained separately as security debt |
+| Post-build TypeScript / git diff --check | PASS; generated declaration paths restored; frozen runtime, Shared, Data Center, prior engines, Prisma and dependencies unchanged |
+| Owned validation environment cleanup | Completed: only the M2 scratch container and its anonymous volume removed; unrelated PostgreSQL container retained |
+| Full regression | **NOT CLAIMED PASS**; accepted historical Competitor exceptions remain unchanged; broad suite not rerun |
+| M3 / live calculations / persistence / replay | NOT STARTED |
+
+The first typecheck caught singular specialty/mission fields in the **new test
+fixture** instead of the existing plural `specialties`/`missionContexts` API.
+Only that fixture was corrected; final PostgreSQL and unit results include the
+correction. No frozen source/policy/schema or performance limit was changed.
+Owned DB fixtures roll back, assert their `se_operational_m2_*` database identity
+before mutation, and compare source/type/item/version/audit/event/usage/Run/Input
+counts across successful preparation to prove it writes nothing.
+
+Saved session receipts: `operational-m2-unit-initial`,
+`operational-m2-typecheck-initial`, `operational-m2-eslint-initial`,
+`operational-m2-db-initial`, `operational-m2-related-regression`,
+`operational-m2-migrations`, `operational-m2-db-final`,
+`operational-m2-unit-final`, `operational-m2-typecheck-final`,
+`operational-m2-eslint-final`, `operational-m2-build`,
+`operational-m2-build-retry` and `operational-m2-typecheck-postbuild`.
+
+The existing Next.js advisory recommends a security upgrade. No dependency was
+changed or warning suppressed in M2; the initial failed build remains a failed
+receipt, while the unchanged retry passed. CodeQL is not dependency remediation.
+Generated Next declaration-path drift was restored to the accepted baseline.
+
+**JENAN OPERATIONAL FEASIBILITY ENGINE — M2 CHECKPOINT FOR OWNER REVIEW.**
+**REAL-DATA OPERATIONAL FEASIBILITY ACCEPTANCE = BLOCKED / NOT VERIFIED.**
+**Sonar = DEFERRED / PENDING. M3 NOT STARTED. No Final Tag or main merge.**
