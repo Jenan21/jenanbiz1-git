@@ -91,6 +91,7 @@ describe("analysis engine boundaries", () => {
     const marketProviderPath = "market-demand/adapters/data-center-provider.ts";
     const competitorProviderPath = "competitor-analysis/adapters/data-center-provider.ts";
     const opportunityProviderPath = "opportunity-gap/adapters/data-center-provider.ts";
+    const financialProviderPath = "financial-feasibility/adapters/data-center-provider.ts";
     const opportunityHistoryAdapters = new Set([
       "opportunity-gap/adapters/run-persistence.ts", "opportunity-gap/adapters/run-service.ts",
       "opportunity-gap/adapters/replay-service.ts", "opportunity-gap/adapters/historical-data-center.ts",
@@ -110,12 +111,12 @@ describe("analysis engine boundaries", () => {
       "spatial/adapters/historical-data-center.ts",
     ]);
     const adapters = sources.filter((entry) => isAdapter(entry.path));
-    const databaseAdapters = adapters.filter((entry) => ![dataCenterProviderPath, marketProviderPath, competitorProviderPath, opportunityProviderPath].includes(entry.path) && !m5Adapters.has(entry.path) && !marketHistoryAdapters.has(entry.path) && !competitorHistoryAdapters.has(entry.path) && !opportunityHistoryAdapters.has(entry.path));
+    const databaseAdapters = adapters.filter((entry) => ![dataCenterProviderPath, marketProviderPath, competitorProviderPath, opportunityProviderPath, financialProviderPath].includes(entry.path) && !m5Adapters.has(entry.path) && !marketHistoryAdapters.has(entry.path) && !competitorHistoryAdapters.has(entry.path) && !opportunityHistoryAdapters.has(entry.path));
     const allowedAdapterPackages = new Set(["pg", "zod"]);
 
     it("exist only in Spatial's directory or the exact Market/Competitor/Opportunity adapter allowlists", () => {
       expect(adapters.length).toBeGreaterThan(0);
-      for (const adapter of adapters) expect(adapter.path.startsWith("spatial/adapters/") || [marketProviderPath, competitorProviderPath, opportunityProviderPath].includes(adapter.path) || marketHistoryAdapters.has(adapter.path) || competitorHistoryAdapters.has(adapter.path) || opportunityHistoryAdapters.has(adapter.path), adapter.path).toBe(true);
+      for (const adapter of adapters) expect(adapter.path.startsWith("spatial/adapters/") || [marketProviderPath, competitorProviderPath, opportunityProviderPath, financialProviderPath].includes(adapter.path) || marketHistoryAdapters.has(adapter.path) || competitorHistoryAdapters.has(adapter.path) || opportunityHistoryAdapters.has(adapter.path), adapter.path).toBe(true);
     });
 
     it("import only pg, zod and the engine's own tree: never Prisma, the application's database layer, Projects, the Map's service, the Data Center or the framework", () => {
@@ -184,7 +185,7 @@ describe("analysis engine boundaries", () => {
 
       it("exists, and no other adapter imports anything of the Data Center", () => {
         expect(provider).toBeDefined();
-        for (const adapter of adapters.filter((entry) => ![dataCenterProviderPath, marketProviderPath, competitorProviderPath, opportunityProviderPath].includes(entry.path) && !m5Adapters.has(entry.path) && !marketHistoryAdapters.has(entry.path) && !competitorHistoryAdapters.has(entry.path) && !opportunityHistoryAdapters.has(entry.path))) {
+        for (const adapter of adapters.filter((entry) => ![dataCenterProviderPath, marketProviderPath, competitorProviderPath, opportunityProviderPath, financialProviderPath].includes(entry.path) && !m5Adapters.has(entry.path) && !marketHistoryAdapters.has(entry.path) && !competitorHistoryAdapters.has(entry.path) && !opportunityHistoryAdapters.has(entry.path))) {
           expect(specifiersOf(adapter.text).filter((specifier) => specifier.startsWith("@/services/data-center")), adapter.path).toEqual([]);
         }
       });
@@ -205,9 +206,9 @@ describe("analysis engine boundaries", () => {
         expect(text).not.toMatch(/recordDataCenterUsage|\.(?:create|createMany|update|updateMany|upsert|delete|deleteMany)\s*\(/);
       });
 
-      it("confines Data Center read-service imports to the four named engine providers", () => {
+      it("confines Data Center read-service imports to the five named engine providers", () => {
         const importers = sources.filter((entry) => specifiersOf(entry.text).some((specifier) => readServices.includes(specifier))).map((entry) => entry.path);
-        expect(importers).toEqual([competitorProviderPath, marketProviderPath, opportunityProviderPath, dataCenterProviderPath]);
+        expect(importers).toEqual([competitorProviderPath, financialProviderPath, marketProviderPath, opportunityProviderPath, dataCenterProviderPath]);
       });
     });
   });

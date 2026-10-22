@@ -11,9 +11,13 @@ function problems(text: string, file = join(root, "probe.ts")) {
   const source = ts.createSourceFile(file, text, ts.ScriptTarget.Latest, true);
   const check = (specifier: string) => {
     if (specifier === "zod" || (specifier === "decimal.js" && file === join(root, "decimal.ts"))) return;
+    if (file === join(root, "data-port.ts") && specifier === "@/services/data-center/map-contract") return;
+    if (file === join(root, "adapters", "data-center-provider.ts") && [
+      "@/services/data-center/contracts", "@/services/data-center/discovery", "@/services/data-center/version-content",
+    ].includes(specifier)) return;
     if (specifier.startsWith(".")) {
       const path = resolve(dirname(file), specifier);
-      if (within(root, path) || within(shared, path)) return;
+      if ((within(root, path) && !within(join(root, "adapters"), path)) || within(shared, path)) return;
     }
     found.push(`Forbidden import ${specifier}`);
   };
@@ -31,14 +35,19 @@ function problems(text: string, file = join(root, "probe.ts")) {
   };
   visit(source); return found;
 }
-describe("Financial M1 isolation and strict pure foundation", () => {
-  it("has exactly seven pure files, no adapter and no production persistence", () => {
-    const files = readdirSync(root);
-    expect(files).toEqual(["confidence.ts", "contracts.ts", "decimal.ts", "index.ts", "model.ts", "request.ts", "semantics.ts"]);
+describe("Financial M2 isolation: exact governed read-only provider", () => {
+  it("has ten pure files and exactly one read adapter, no production persistence", () => {
+    const names = readdirSync(root);
+    expect(names).toEqual(["adapters", "confidence.ts", "contracts.ts", "data-port.ts", "data-sources.ts", "datasets.ts", "decimal.ts", "index.ts", "model.ts", "request.ts", "semantics.ts"]);
+    const files = names.filter((name) => name.endsWith(".ts"));
+    expect(readdirSync(join(root, "adapters"))).toEqual(["data-center-provider.ts"]);
     for (const name of files) {
       const file = join(root, name);
       expect(problems(readFileSync(file, "utf8"), file), relative(root, file)).toEqual([]);
     }
+    const adapter = join(root, "adapters", "data-center-provider.ts");
+    expect(problems(readFileSync(adapter, "utf8"), adapter)).toEqual([]);
+    expect(readFileSync(join(root, "index.ts"), "utf8")).not.toMatch(/adapters/);
   });
   it.each([
     'import "../spatial";', 'export * from "../market-demand";', 'type T = import("../competitor-analysis").CompetitorResult;',
@@ -54,8 +63,10 @@ describe("Financial M1 isolation and strict pure foundation", () => {
   });
   it("registers every Financial case at suite level", () => {
     const directory = join(process.cwd(), "tests", "unit");
-    for (const file of readdirSync(directory).filter((name) => /^financial-feasibility-.*\.test\.ts$/.test(name))) {
-      const source = ts.createSourceFile(file, readFileSync(join(directory, file), "utf8"), ts.ScriptTarget.Latest, true);
+    const files = readdirSync(directory).filter((name) => /^financial-feasibility-.*\.test\.ts$/.test(name)).map((name) => join(directory, name));
+    files.push(join(process.cwd(), "tests", "integration", "financial-feasibility-data-center.integration.test.ts"));
+    for (const file of files) {
+      const source = ts.createSourceFile(file, readFileSync(file, "utf8"), ts.ScriptTarget.Latest, true);
       const visit = (node: ts.Node, insideTest: boolean) => {
         const test = ts.isCallExpression(node) && /^it(?:\.each\([\s\S]*\))?$/.test(node.expression.getText(source));
         if (test) expect(insideTest, `Nested case in ${file}`).toBe(false);

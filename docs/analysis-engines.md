@@ -42,12 +42,19 @@ defers final Sonar acceptance and final tags until all seven technical baselines
    M0 APPROVED at `70eacc1a2c445af60f2a480bc096186083be371e`;
    M1 pure contracts/decimal/accounting/states/confidence/bounds/hashes implemented;
    152 own / 170 with global boundary tests PASS; frozen Shared unchanged;
-   M1 awaiting owner closure: earlier full unit regression 2,256 PASS + one unchanged
+   M1 owner-approved / CLOSED; tested implementation `329822e8865841418c3ef4e7ef89142a34552016`,
+   attribution documentation-only child `0aeb3e7de39beb069c29eb56eaa60bffdde795f1`;
+   earlier full unit regression 2,256 PASS + one unchanged
    Competitor timing failure retained; subsequent alternating A/B, three per SHA,
    all six PASS (baseline median 8,664.27 ms / M1 8,825.57 ms; delta +1.8617%);
    NO M1-ATTRIBUTABLE PERFORMANCE REGRESSION; prior timing failure tracked as
    PRE-EXISTING / ENVIRONMENT-SENSITIVE PERFORMANCE DEBT;
-   M2 NOT STARTED;
+   M2 implemented for checkpoint review: read-only exact published-model validation,
+   195 Financial / 213 with global boundary unit cases PASS, 22 Financial PostgreSQL PASS;
+   related unit regression 2,302 PASS + four skips (three existing, one accepted timing exclusion);
+   broader database regression NOT PASS: four unchanged Competitor failures also
+   reproduced on the pre-M2 SHA, not attributed to M2 or silently fixed;
+   TypeScript / zero-warning scoped ESLint / production build PASS; M3 NOT STARTED;
    real-data acceptance BLOCKED / NOT VERIFIED)
 6. Operational Feasibility Engine
 7. Risk & Decision Engine

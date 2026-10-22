@@ -3,8 +3,10 @@
 ## 1. Authority and stop
 
 **M0 APPROVED at `70eacc1a2c445af60f2a480bc096186083be371e`.
-M1 implemented; targeted A/B attribution finds NO M1-ATTRIBUTABLE PERFORMANCE
-REGRESSION. Await owner closure; earlier aggregate failure retained. M2 NOT STARTED.**
+M1 owner-approved / CLOSED after NO M1-ATTRIBUTABLE PERFORMANCE REGRESSION.
+Earlier failed aggregate retained. M2 implemented for checkpoint review only;
+four pre-existing Competitor PostgreSQL failures prevent an unqualified green
+broader regression claim. M3 NOT STARTED.**
 The owner approved engine four's final technical closure on 2026-10-22 and explicitly
 designated `10dcafcf27c45db8b371fa5b79ac9da6bc4f21a5` as its Final Technical SHA.
 Its code/test candidate `f9b44b849e6cec93631db20cbb9c2b795058e836` remains the
@@ -22,7 +24,7 @@ Four engines are **TECHNICALLY COMPLETE — PENDING FINAL SONAR**:
 
 Data Center stays frozen at `04d6148dfb875532404059adb55fcac8ee6913b2`.
 The original M0 was a documentation-only proposal. The owner subsequently approved
-it and authorized M1 only, recorded in section 11. No production-data acceptance,
+it and authorized M1, then M2 only, recorded in sections 11–13. No production-data acceptance,
 main/integration merge,
 final tag, Sonar, frozen engine/Shared/schema/Map/UI/Projects changes.
 
@@ -426,9 +428,11 @@ Saved session receipts use `financial-m1-*` JSON/log filenames, including
 `financial-m1-final`, `financial-m1-typecheck-final`, `financial-m1-eslint-final`
 and `financial-m1-build`.
 
+Historical checkpoint status before the subsequent attribution review:
 **M1 = IMPLEMENTED / NOT CLOSED. Full regression performance gate = NOT PASS.**
-Deliver a synchronized candidate checkpoint, not an accepted closed baseline.
-**M2 NOT STARTED. REAL-DATA FINANCIAL FEASIBILITY ACCEPTANCE = BLOCKED / NOT VERIFIED.**
+This failed execution is retained despite the owner's later M1 closure in section 13.
+At that historical checkpoint M2 had not started.
+**REAL-DATA FINANCIAL FEASIBILITY ACCEPTANCE = BLOCKED / NOT VERIFIED.**
 Sonar remains deferred; no main/integration merge or final tag.
 
 ## 12. M1 performance attribution A/B — 2026-10-22
@@ -476,11 +480,132 @@ under the earlier host conditions, nor prove a particular external root cause.
 Six samples are not a statistical equivalence proof or production SLA claim.
 The earlier aggregate remains failed; it is never relabeled a green execution.
 No runtime/configuration/threshold change or additional test execution was made
-for this attribution review. M1 closure now awaits the owner's review of this
-evidence; **M2 NOT STARTED**.
+for this attribution review. At delivery, M1 awaited owner review and M2 had not
+started. Subsequent owner approval is recorded below without rewriting those receipts.
 
 Saved session evidence: `financial-m1-ab-environment.json`,
 `financial-m1-ab-results.json`, `financial-m1-ab-summary.json`, and six
 `financial-m1-ab-{BASELINE,M1}-{1,2,3}.json/.log` receipts.
 The follow-up documentation-only SHA records the attribution result and is
 reported separately from the unchanged tested implementation candidate.
+
+## 13. M2 checkpoint — read-only exact financial source validation
+
+The owner **APPROVED / CLOSED M1** based on the bounded attribution review.
+Tested M1 implementation remains `329822e8865841418c3ef4e7ef89142a34552016`;
+the separate documentation-only child is
+`0aeb3e7de39beb069c29eb56eaa60bffdde795f1`, the pre-M2 baseline.
+The earlier failed full regression is not relabeled PASS.
+The owner authorized **M2 only**, with no financial calculations or M3.
+
+### Read contract and binding
+
+- Pure `FinancialDataPort` injects exact discovery and governed byte reads.
+  The sole live adapter imports only existing Data Center contracts, discovery
+  and version-content reader. Pure exports do not import the adapter.
+- `prepareFinancialDataCenterInputs` receives the actor, organization and access
+  context from the server, never from financial model fields. It discovers the
+  pinned ID and reads with its required checksum. Discovery and read metadata
+  must agree except `resolvedAt`; the existing reader recomputes the full
+  Data Center SHA-256 checksum. A separate content SHA-256 is not misrepresented
+  as that full version checksum.
+- M2 v1 deliberately accepts **one complete published model version** atomically.
+  No pin gives NOT_AVAILABLE; multiple pins give NOT_COMPUTABLE without I/O.
+  No arbitrary multi-source aggregation, guessed model selection, latest fallback
+  or runtime type registration. The unchanged M1 request remains more general.
+- Strict `jenan.financial-feasibility.dataset/v1` holds the financial model,
+  documented local evidence records, owner-approval attestation and coverage.
+  Type key: `financial-feasibility-model`; role: `financial.model-assumptions`.
+  Local record IDs bind to the actual read version/checksum/input ID after reading,
+  avoiding a circular checksum embedded inside its own content.
+- Every local evidence reference must resolve uniquely. The normalized bound
+  model must equal the submitted normalized request exactly. Caller-replaced
+  prices, revenue assumptions, schedules, scenarios or sensitivity values are
+  rejected, not blended with the published model.
+
+### Validation and access
+
+- Requires published governed data, VERIFIED non-AI evidence, matching source ID,
+  approved model and approved assumptions. Approval cannot predate declarations;
+  future approval/record/metadata dates are rejected. Future projection periods
+  remain legitimate explicitly declared assumptions, not realized activity.
+- `approvedBy` is a recorded **approval attestation** within governed published
+  content; it is not cryptographic identity verification or independent proof
+  of a natural person's approval. Existing Data Center publication/review and
+  current authorization are still required; no new approval authority is invented.
+- License, license class, usage policy and required attribution must be present.
+  Source/ownership/provenance/quality/freshness and restrictive export rights are
+  retained. Expired/not-yet-effective sources are rejected; stale/unknown freshness
+  is PARTIAL, not falsely current.
+- Exact sector/geography and explicit country/region source coverage are checked.
+  Currency, complete calendar, period, timing and accounting basis must agree;
+  there is no FX conversion, time resampling or financial arithmetic.
+- Missing/null assumptions, partial schedules or partial/unknown model coverage
+  cannot become ready or zero-valued results. Preparation returns explicit
+  AVAILABLE / PARTIAL / NO_COVERAGE / NOT_AVAILABLE / NOT_COMPUTABLE with reasons,
+  rights, inputs, provenance and deterministic request/input/output hashes.
+- Current retrieval, publication, permission, specialty/mission, organization
+  membership and robot grants remain enforced by the existing governed readers.
+  Organization scope is reapplied before a direct read. Hidden and absent
+  versions both return the same NOT_AVAILABLE shape, without exposing metadata.
+  Known checksum failures have an explicit integrity state; backend/policy errors
+  propagate rather than being swallowed.
+- One exact discovery/read in the normal path, bounded 200,000-character content,
+  combined records/rows <=10,000 and existing financial request/output size bounds.
+  No financial calculations, writes, persistence/replay, schema changes, network
+  collection, prior-engine imports, UI/Map/Projects wiring, main merge or tags.
+
+### Saved verification
+
+| Gate | Evidence |
+| --- | --- |
+| Financial unit / global boundaries | **195 Financial cases PASS; 213 including 18 global cases** |
+| Related engine/Data Center unit regression | **2,302 PASS; four skipped**, 77 files, 205.26 s: three existing browser-only skips plus the explicitly excluded, previously accepted frozen Competitor timing-debt case |
+| Financial synthetic PostgreSQL | **22/22 PASS**, fresh owned database, all **78 existing migrations**, rollback-only fixtures; final run 21.03 s |
+| Exact source/version/checksum | PASS, including caller hash mismatch, immutable-byte tamper rejection and superseded-version no fallback |
+| Approval/provenance/rights/license/usage | PASS, including unreviewed model/assumptions, wrong source, restrictive rights and resolved evidence records |
+| Currency/period/sector/coverage | PASS, including actual PostgreSQL mismatches, missing/partial inputs and out-of-coverage not interpreted as zero |
+| Current authorization / no existence leak | PASS, including hidden vs absent, required permission, retrieval revocation, archive, specialty/mission, suspended membership, trusted organization mismatch and revoked robot grant |
+| PostgreSQL / Data Center / PostGIS broader regression | **NOT PASS**: original 450-case execution had 445 PASS + five FAIL; one new test-registration error corrected, remaining four are unchanged Competitor cases |
+| Consolidated final DB coverage | **448 passing / 452 distinct cases, four frozen Competitor failures**: 426 unchanged cases passing in the broad run plus the final 22/22 Financial cases; not claimed as a new single all-green execution |
+| TypeScript / scoped ESLint | **PASS**, zero warnings |
+| Production Webpack build | **PASS**, compile 120 s; **161/161** static routes generated |
+| Diff / frozen runtime boundaries | PASS; no Data Center, Shared, prior engine, Map or Prisma runtime/schema changes |
+
+The original Financial PostgreSQL failure was a new test accidentally registered
+inside another case; both added cases were moved to suite level. The Financial
+AST registration guard now also inspects the integration file. The final unit
+regression and final 22-case DB execution include the corrected tests.
+An earlier version-creation fixture lacked required title/reason; it was corrected
+without changing Data Center. All earlier failed receipts remain historical failures.
+
+### Four frozen Competitor DB failures: bounded pre-M2 attribution
+
+Only the same four failing cases were rerun on pristine
+`0aeb3e7de39beb069c29eb56eaa60bffdde795f1`, in a disposable detached worktree
+with the same physical dependencies/generated Prisma client and Docker PostgreSQL.
+All four reproduced with the same failure signatures:
+
+1. Stored by-type selection replay: existing dataAvailability schema rejection.
+2. Unselected discovery-candidate reauthorization: same schema rejection.
+3. Out-of-force trace reauthorization: `EXPIRED_EFFECTIVE_PERIOD` on publication.
+4. Deterministic type/asOf selection: NO_COVERAGE instead of AVAILABLE.
+
+These are **PRE-EXISTING ON PRE-M2 BASELINE**, not attributed to Financial M2.
+Their fixture uses a fixed October instant with a live publication clock; date
+and selection sensitivity is visible, but this check does not claim to fully
+diagnose or repair the frozen engine. No frozen code/test/threshold was changed.
+This is separate from the owner-accepted M1 timing debt and requires explicit
+review rather than automatically extending that acceptance to new failures.
+The broader DB gate remains NOT PASS. **M2 is a review candidate, not CLOSED.**
+
+Saved session receipts: `financial-m2-unit-final`, `financial-m2-unit-regression`,
+`financial-m2-db-focused-final`, `financial-m2-db-focused.json`,
+`financial-m2-db-regression`, `financial-m2-db-baseline-final`,
+`financial-m2-db-baseline.json`, `financial-m2-typecheck-final`,
+`financial-m2-eslint-final` and `financial-m2-build`.
+Owned scratch databases and the baseline comparison worktree were removed.
+
+**REAL-DATA FINANCIAL FEASIBILITY ACCEPTANCE = BLOCKED / NOT VERIFIED.**
+Synthetic fixture success is not production financial-data acceptance.
+**M3 NOT STARTED. Sonar DEFERRED / PENDING; no final tag or main/integration merge.**
