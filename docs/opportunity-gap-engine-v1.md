@@ -2,9 +2,10 @@
 
 ## 1. Status and authority
 
-**M0 PROPOSAL FOR OWNER REVIEW. M1 NOT STARTED.**
+**M0 APPROVED. M1 implemented; checkpoint pending owner review, with one frozen
+performance regression gate still open. M2 NOT STARTED.**
 The owner accepted Competitor technical closure and authorized this fourth engine's
-architecture/planning only. After clarification, the owner confirmed its actual Final
+architecture/planning, then approved M0 and authorized M1 only. After clarification, the owner confirmed its actual Final
 Technical SHA as `eaa2d09374593d5677fc77c3efbc4f5a3e42e4a0`, not the earlier M4 commit.
 Competitor documentation closure: `4bb2e2c80026edda7f240c3a8a25f33b01166da2`.
 Competitor M4: `f1a7f7da1c0873ccdeb8a6e99db8b1f8d5937974`.
@@ -19,11 +20,12 @@ Three engines are **TECHNICALLY COMPLETE — PENDING FINAL SONAR**:
 
 Data Center remains frozen at `04d6148dfb875532404059adb55fcac8ee6913b2`.
 No frozen runtime/contract, Shared Core, Map, schema, UI or production data changes
-are authorized by this plan. No main merge, tag, Sonar or M1 implementation.
-Branch integration is a separate operation: no merge is performed during M0.
-Before implementation, confirm the accepted Competitor-to-engines-integration
-promotion and create the dedicated `jenan-engines/opportunity-gap` branch from that
-accepted integration point, preserving all three technical baselines.
+are authorized by this plan. No main merge, tag, Sonar or M2 implementation.
+The owner explicitly approved promoting Competitor into `jenan-engines/integration`
+without squash, followed by creating `jenan-engines/opportunity-gap` from that merge.
+The M0 proposal was preserved at `354ca7a` before branch preparation.
+Integration merge: `294b421563430a264df2e8f955eb344f2326e623`.
+All three accepted technical runtime baselines remain unchanged.
 
 ## 2. Purpose and non-goals
 
@@ -177,13 +179,13 @@ limitations and confidence caps; never upgrade them to observed gap.
 Independent explainable evidence-quality policy using unchanged Shared infrastructure.
 **Not a probability, opportunity strength or investment score.**
 
-Proposed factor maxima (100 total), for owner review before M1:
+Approved factor maxima (100 total), implemented in M1:
 source quality 15; measurement/definition quality 15; comparability 20;
 geographic/sector coverage 15; temporal alignment/freshness 10; completeness 10;
 provenance/rights 10; benchmark/rule applicability 5.
-Proposed band thresholds: HIGH >=80, MEDIUM >=60, LOW >=40.
-M1 must define evidence-backed point rules per factor and active policy validation;
-this table alone does not authorize arbitrary point assignment.
+Approved band thresholds: HIGH >=80, MEDIUM >=60, LOW >=40.
+The M1 checkpoint below defines evidence-backed point rules and active validation;
+this table alone never authorizes arbitrary point assignment.
 
 Derived final confidence must not exceed the weakest necessary input, both score and
 band. Required unknown/contradictory inputs block a signal/calculation, not merely
@@ -247,7 +249,7 @@ Actual authorized need, serviceable supply, provision, benchmark applicability,
 scope compatibility and measurable gaps remain NOT VERIFIED. Lack of visibility
 does not prove that the Data Center lacks data.
 
-Review before M1:
+Owner-approved M0 decisions:
 
 1. Approve separate DATA_GAP / BENCHMARK_GAP / DEMAND_SUPPLY_GAP / OPPORTUNITY_SIGNAL;
    no ranking, investment recommendation or composite opportunity percentage.
@@ -259,5 +261,161 @@ Review before M1:
 5. Approve the proposed phase split and the separate integration/branch preparation
    before M1. No integration merge is implied by this documentation draft.
 
-**STOP AFTER M0. No implementation, registration, migration, tests/build, network
-collection, main/integration merge, tag, Sonar or M1 start is performed by this plan.**
+The original M0 stopped before implementation. The following M1 checkpoint records
+only the subsequently authorized foundation; stop again before M2.
+
+## 11. M1 checkpoint — pure contracts and comparison foundation
+
+**M1 IMPLEMENTED — PENDING OWNER REVIEW / PERFORMANCE GATE OPEN. M2 NOT STARTED.**
+
+### Binding decisions
+
+- `DATA_GAP` is missing evidence or capability, never a market opportunity.
+- `BENCHMARK_GAP` requires an exact versioned policy, authority, justification,
+  original source/version/hash/record, applicability scope and period, and validity.
+- `DEMAND_SUPPLY_GAP` eligibility requires identical units, definition, period,
+  geography, sector, cohort, universe, adjustment and methodology. Incompatibility
+  returns `NOT_COMPUTABLE`, not a conversion, allocation, proxy or inferred value.
+- Total need and serviceable capacity differ from already-served/unmet need,
+  normative targets, contextual indicators and competitor entity/location counts.
+  Even compatible operands establish eligibility only, not an unmet-demand claim.
+- `OPPORTUNITY_SIGNAL` is an explanatory deterministic rule outcome. The M1
+  taxonomy mapper distinguishes explicit false from insufficient/incompatible evidence;
+  it does not implement or approve a rule. Governed rule evaluation belongs to M3.
+- No composite Opportunity Score, investment advice, success probability, revenue/
+  profit forecast, network, AI/LLM, scraping or direct previous-engine imports.
+- Missing required evidence blocks/limits a conclusion; no guessed default or zero.
+
+### Final M1 contracts
+
+Pure directory: `services/analysis-engines/opportunity-gap/`; six files only:
+`model.ts`, `request.ts`, `comparison.ts`, `confidence.ts`, `contracts.ts`, `index.ts`.
+No adapters, registry change, database/schema, domain datastore, routes or UI.
+
+- Request: `jenan.opportunity-gap.request/v1`.
+  Explicit scope, quantity definition, analyses, exact role/version/hash pins,
+  nullable versioned benchmark/rule policy and separately pinned history.
+  No discovery selector or latest-version fallback is implemented in M1.
+  The canonical evaluation instant participates in the request hash. Actor, run ID,
+  environment and timing are separate trusted context, not request permissions.
+- Fact: `jenan.opportunity-gap.fact/v1`.
+  Role, explicit measurement boundary, observed/normative/contextual class, finite
+  value/null, Shared quantity semantics, coverage, documented versioned method,
+  exact source-record evidence, benchmark authority when applicable and limitations.
+  Estimated facts/derived comparisons are rejected in this base-fact contract.
+  Method identity must agree with the semantics' versioned methodology.
+- Metric/finding: `jenan.opportunity-gap.metric/v1` and
+  `jenan.opportunity-gap.finding/v1`.
+  Preserve state, scope, method, input/fact/metric references, original evidence,
+  confidence/null, limitations and (findings) explicit provenance/rights.
+- Result: `jenan.opportunity-gap.result/v1`, engine version `1.0.0-m1`.
+  Shared-compatible envelope, canonical request/evidence, separate findings,
+  input descriptors, availability, gaps, attribution, intersected rights and three
+  deterministic hashes. No extra application keys or executable formulas.
+- Detailed states: `COMPUTED / PARTIAL / NO_COVERAGE / NOT_AVAILABLE /
+  NOT_COMPUTABLE`. Shared platform/availability semantics remain unchanged.
+  The comparison guard's `COMPUTED` says **eligibility was checked**, not that a gap
+  exists. Partial comparisons cannot establish definitive positive/negative signals.
+
+`buildOpportunityFoundationResult` is explicitly a **diagnostic M1 envelope**,
+not the future analytics runner. Each analysis receives one null/
+`NOT_COMPUTABLE` diagnostic and one `DATA_GAP`, with the bilingual
+`OPPORTUNITY_ANALYTICS_DEFERRED` gap. No business predicate is evaluated and no
+numeric gap or supported market signal can be emitted by this version.
+Finding/metric confidence is therefore null; the independent confidence calculator
+is implemented and tested separately, ready for eligible M3 calculations.
+The M1 validator reconstructs the complete deterministic diagnostic envelope,
+rejecting rehashed invented values, findings, availability, policies or lineage.
+This preserves a truthful output contract without prematurely implementing M3.
+
+Dataset roles/typeKeys remain proposals from section 4; none are registered.
+Typed in-memory evidence is not a read authorization, dataset checksum verification,
+source authentication or production acceptance. These are M2 obligations.
+Arbitrary upstream engine-run inputs are rejected pending an approved trusted resolver.
+No identity resolution is attempted; independent fact IDs remain independent even
+when they reference one source record. Duplicate IDs/conflicting exact hashes reject.
+
+### opportunity-confidence-v1
+
+Reuses unchanged Shared heuristic policy and breakdown validators.
+
+| Factor | Documented M1 points |
+| --- | --- |
+| Source quality, 15 | `floor(15 * measured quality)`; unavailable quality 0 |
+| Measurement/definition, 15 | documented 15, limited 5; unsupported blocks |
+| Comparability, 20 | exact 20; incompatible/unknown blocks |
+| Geography/sector, 15 | complete 15, partial 5, unknown 0; none blocks |
+| Temporal/freshness, 10 | still-fresh at explicit evaluation time 10; stale 3, unknown 0 |
+| Completeness, 10 | inventory 10, sample 3, unknown 0 |
+| Provenance/rights, 10 | documented analysis permission and classified license 10; undeclared license 5 |
+| Benchmark/rule applicability, 5 | documented 5; unknown/not applicable blocks |
+
+Denied/unverified analysis usage, missing provenance/license/usage policy, expired or
+future source metadata, future quality assessment, estimated/conflicted evidence,
+or an insufficient required operand block scoring with an explicit reason.
+For each factor the weakest required input wins, using input ID as a stable tie-break.
+Any supplied operand confidence bounds each factor to
+`floor(factor maximum * operand score / 100)`; therefore derived score cannot exceed
+the weakest operand score, even for a different Shared confidence policy.
+Separate LOW/MEDIUM operand caps preserve the weakest band independently of score.
+Partial/unknown inventory/coverage, stale/unknown freshness, limited method,
+unverified evidence and undeclared license cap at LOW; unmeasured quality caps at MEDIUM.
+Partial confidence describes a subset only, never a market-wide conclusion.
+**Confidence is evidence quality, not opportunity strength or project success.**
+
+### Integrity, bounds and compatibility
+
+- <=32 exact role/version pins including history; <=10,000 typed facts;
+  <=500 metrics/findings combined; 2 MiB canonical JSON; 20,000 cost-unit budget.
+  Rule evaluation count is zero in M1; the proposed <=100 rule bound belongs to M3.
+- Stable ordering of pins, analyses, inputs, facts, source evidence and limitations.
+  Request hash includes evaluation time; output hash excludes only existing Shared
+  volatile execution metadata. Changed fact content changes output hash.
+- Every input matches requested exact version/hash and role pins.
+  Fact evidence resolves to those exact descriptors; no fallback or silent truncation.
+- Rights/attribution follow Shared intersection rules, including restricted sources
+  and fail-closed no-input behavior.
+- Diagnostic envelopes pass unchanged Shared envelope and pure Run/Input record
+  validation. M1 performs **no persistence or historical replay**.
+- Shared, Spatial, Market, Competitor, Data Center and Map files are unchanged.
+  Dedicated AST tests actively reject prior engines, live providers, DB/store calls,
+  network/AI packages, hidden clock/randomness and dynamic imports.
+
+### Verification evidence
+
+Synthetic fixtures only; no live opportunity dataset was read.
+
+| Gate | Result |
+| --- | --- |
+| Opportunity foundation/comparison/confidence/boundaries | Final 119/119 PASS (55 + 37 + 27); initial focused run 113/113 PASS |
+| First full Opportunity + Shared/Spatial/Market/Competitor/Data Center unit regression | 1,966 PASS; 3 existing browser-only skips; 66 files; 87.24 s |
+| Final full regression, after six additional M1 integrity/limit cases | 1,971 PASS; 1 frozen Competitor performance failure; 3 existing skips; 66 files; 200.17 s |
+| Frozen Competitor acceptance isolated recheck | 1 PASS / 1 performance failure; 20,234.29 ms against unchanged 15,000 ms bound |
+| TypeScript | PASS |
+| Scoped ESLint, zero warnings | PASS |
+| Production Webpack build | PASS; 161/161 static generation tasks |
+| `git diff --check` | PASS before documentation closure; repeated at commit |
+| New PostgreSQL integration/persistence | Not applicable to pure M1; no DB/schema/provider changes |
+
+Evidence is retained outside the repository in session files
+`opportunity-m1-focused.json`, `opportunity-m1-unit-results.json`,
+`opportunity-m1-unit.log`, `opportunity-m1-build.log`,
+`opportunity-m1-unit-contended-results.json`,
+`opportunity-m1-competitor-performance-recheck.json`.
+Generated build-only declaration changes were restored; no generated files committed.
+
+**Open gate, not an all-PASS closure:** the final full run measured the frozen
+Competitor 32-run acceptance at 20,683.70 ms versus its 15,000 ms limit; an isolated
+recheck still measured 20,234.29 ms. That same test passed in the earlier full run.
+Git diff confirms the Competitor runtime, acceptance test and fixtures are byte-for-byte
+unchanged from its accepted Final Technical SHA. Host CPU load was 71% when inspected,
+but the exact cause is not proven. No threshold was relaxed, assertion skipped,
+frozen code changed or external process stopped. All final Opportunity cases passed.
+Do not represent the latest aggregate regression as fully green or close this gate
+until the unchanged performance acceptance passes under an appropriate test window.
+M1 implementation is preserved for review, not declared CLOSED.
+
+**REAL-DATA OPPORTUNITY & GAP ACCEPTANCE = BLOCKED / NOT VERIFIED.**
+This is not an M1 technical failure. Fixtures are never represented as production data.
+Sonar remains DEFERRED / PENDING; no final tag or main merge.
+Stop for M1 review; do not begin M2 automatically.
