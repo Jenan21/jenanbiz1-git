@@ -4,7 +4,8 @@
 
 **M0 APPROVED. M1 accepted at `473e0e2957525a504ff02c229d2f048ed1de0857`.
 M2 CLOSED at `2568b77c618912ca1fb41c157dfa7380ade525ee`.
-M3 implemented; all gates PASS, checkpoint pending owner review. M4 NOT STARTED.**
+M3 CLOSED at `839eca0bc6ac3386cfa6cc457ef540ee9d17565f`.
+M4 implemented; full-regression timing gate BLOCKED / NOT PASS. M5 NOT STARTED.**
 The owner accepted Competitor technical closure and authorized this fourth engine's
 architecture/planning, then approved M0 and authorized M1 only. After clarification, the owner confirmed its actual Final
 Technical SHA as `eaa2d09374593d5677fc77c3efbc4f5a3e42e4a0`, not the earlier M4 commit.
@@ -24,6 +25,7 @@ No frozen runtime/contract, Shared Core, Map, schema, UI or production data chan
 are authorized by this plan. No main merge, tag or Sonar.
 The owner subsequently accepted M2 and authorized M3 calculations only, then explicitly
 approved the limited positive-difference signal policy described in section 13.
+The owner subsequently closed M3 and authorized M4 persistence/exact replay only.
 The owner explicitly approved promoting Competitor into `jenan-engines/integration`
 without squash, followed by creating `jenan-engines/opportunity-gap` from that merge.
 The M0 proposal was preserved at `354ca7a` before branch preparation.
@@ -657,7 +659,9 @@ explicitly authorized M3 only.
 
 ## 13. M3 checkpoint — deterministic calculations and opportunity signals
 
-**M3 IMPLEMENTED; ALL GATES PASS — PENDING OWNER REVIEW. M4 NOT STARTED.**
+**M3 APPROVED / CLOSED. Final SHA: `839eca0bc6ac3386cfa6cc457ef540ee9d17565f`.**
+Local, remote and isolated Desktop archive HEADs matched at owner acceptance.
+The M3 stop was respected; M4 began only after explicit approval.
 
 ### Authority and public entry points
 
@@ -785,4 +789,161 @@ PostgreSQL. Real Saudi Map regressions do not establish Opportunity real-data ac
 No Shared, Data Center, Map, Spatial, Market or Competitor runtime change; no schema,
 migration, new datastore, network collection, scraping, AI/LLM, profit forecast,
 investment recommendation or Opportunity Score. No persistence/history save/replay
-service, main merge, final tag or Sonar. **Stop for M3 review; M4 NOT STARTED.**
+service, main merge, final tag or Sonar in M3. The owner subsequently approved M3
+and authorized M4 only.
+
+## 14. M4 checkpoint — persistence, exact historical replay and reproducibility
+
+**M4 IMPLEMENTED — NOT CLOSED. Full-regression timing gate NOT PASS. M5 NOT STARTED.**
+
+### Accepted boundary and architecture
+
+M3 accepted SHA: `839eca0bc6ac3386cfa6cc457ef540ee9d17565f`.
+M4 adds one pure `run-history` module and four narrowly allowlisted adapters:
+`run-service`, `run-persistence`, `historical-data-center` and `replay-service`.
+The existing Data Center provider, M1/M2 preparation and M3 arithmetic remain
+unchanged. No Shared implementation, database schema or migration is modified.
+Persistence uses existing `AnalysisEngineRun` / `AnalysisEngineRunInput` tables,
+not a new Opportunity datastore. The pure index never exports live adapters.
+
+Entry points:
+
+- `runOpportunityAnalysisPersisted(request, actor, context)` validates trusted server
+  execution/access context, captures governed M2 exact reads, runs M3 unchanged,
+  constructs the Shared record, reauthorizes evidence and atomically saves the run
+  and all input rows. A save error propagates; it never returns a successful result.
+- `readOpportunityRun(runId, actor)` filters by engine plus owner/actor kind or current
+  human admin in the lookup itself. Foreign and absent runs share a generic
+  `OpportunityHistoryUnavailable`. It validates columns/snapshots, exact evidence,
+  current rights and complete result reproduction before returning cached history.
+- `replayOpportunityAnalysis(runId, actor)` uses a RepeatableRead transaction, current
+  authorization and exact historical rows; returns the fully reconstructed result.
+  No discovery service, latest-version selection, history write or fallback.
+
+### Run/Input/Output and source retention
+
+The append-only Shared run contains the full normalized request and M3 output,
+request/input/output hashes, engine version `1.0.0-m3`, evaluation instant, timing,
+owner/robot principal, subject, confidence summary, gap counts and cost. Historical
+arithmetic is supported only at that exact contract/version; no silent upgrade.
+
+Each Shared input row stores the exact version ID/checksum and full governed input
+descriptor, Data Center source/type/version IDs, original source-record provenance,
+usage intent and a separately calculated **SHA-256 of content bytes**. The content
+digest is not confused with the Data Center full-version checksum.
+
+Run runtime `jenan.opportunity-gap.run-history/v1` contains the trusted specialty/
+mission/organization authorization context plus the ordered exact read transcript.
+It retains discovery DTOs, exact requested version/hash, read status, original
+metadata, content kind, integrity response and source bytes. This is a bounded
+historical snapshot in the existing Shared record, not a new source store.
+Storing original bytes permits rejection of manipulated facts or a transcript
+that still happens to have a syntactically valid result hash.
+
+Runtime/transcript is independently bounded to 2 MiB and <=64 operations (32 pins,
+each exact discovery/read). Request/result retain existing 2 MiB bounds. Excess is
+rejected rather than dropping provenance. A source-unavailable result is preserved
+as such: later publication cannot fill a historically missing operand.
+
+### Exact historical authorization and replay
+
+1. Lookup the run using current owner/admin restrictions; no revealing second
+   existence query.
+2. Validate Shared record, engine version, all duplicated columns, snapshot values,
+   hashes, confidence summary and immutable M3 reconstruction.
+3. Reauthorize **every retained reference**, including discovery metadata and
+   malformed/uncovered/excluded inputs, not only operands used in calculations.
+4. Query the original Data Center version ID directly. Apply current source scope,
+   organization membership/required permission, robot grants/mission assignment,
+   specialty/mission restrictions, retrieval permission, archive/conflict checks.
+5. Recheck declared license/class, usage policy, export/attribution and ownership.
+   Changed rights fail closed; do not serve stale cached rights or silently broaden
+   them. These checks also apply to human admins where rights/archives are concerned.
+6. Recompute the existing Data Center full-version checksum from actual stored
+   columns/upstream refs; require the originally captured version number/hash.
+   Compare original stored content bytes with the retained read response.
+7. Feed the validated transcript through M2 preparation and unchanged M3 calculations
+   at the original request, policies and evaluation instant. This is an in-memory
+   exact transcript port, **not live discovery**. Require the same operation order,
+   query pins, number of calls, all three hashes and complete canonical result.
+8. Return the recomputed result. No writes and no selection of replacement versions.
+
+Historical supersession or temporal expiry does not upgrade the run: arithmetic
+uses the original evaluation instant and exact bytes. Current archive, access,
+retrieval or license-policy revocation still prevents access. Originally missing
+versions stay missing even if newly published. A checksum/byte/column/transcript/
+output mismatch is an explicit integrity failure, never an empty successful result.
+An integrity hash proves consistency, not caller authorization; production capture
+must originate in the trusted governed adapter, never arbitrary client JSON.
+
+### Atomicity, append-only behavior and failure/recovery
+
+- One nested Shared `create` saves Run and Input rows in a RepeatableRead transaction;
+  no update/upsert/delete and no Data Center usage/audit/write path.
+- Existing DB append-only triggers protect both tables against update/delete.
+  Duplicate run IDs fail rather than overwrite or masquerade as a new successful run.
+- Real DB tests inject a failing nested Input insert in a scratch-only savepoint,
+  prove no partial Run/Input rows remain, then retry the same ID successfully.
+- Invalid execution and backend/save failures propagate; a pre-result exception
+  does not fabricate a successful result or partial history. This M4 surface does
+  not introduce a separate failed-before-result history format.
+- Corruption tests temporarily disable exact named immutability triggers only inside
+  disposable test transactions and restore them in `finally`; production adapters
+  contain no such capability. No production database is reset or written.
+
+### Verification
+
+| Gate | Evidence |
+| --- | --- |
+| Focused pure history and boundary tests | Initial 71/71 PASS |
+| Focused real PostgreSQL | Initial 38/38 PASS, 29.48 s; final expanded Opportunity coverage **41/41 PASS** |
+| Opportunity unit cases | **252/252 PASS**, including 17 history cases and four additional boundary probes |
+| Full current unit regression | **NOT PASS**: 2,104 PASS + one unchanged Competitor 15 s timing failure; 3 existing browser-only skips |
+| Full PostgreSQL/Data Center/PostGIS regression | **430/430 PASS**, 14 files, 499.90 s, one complete green execution (389 unchanged baseline + 41 Opportunity) |
+| TypeScript / scoped ESLint | **PASS**, zero warnings |
+| Production Webpack build | **PASS**, compile 42 s, static generation **161/161** in 11.0 s |
+| `git diff --check` | **PASS**, repeated before commit |
+
+Added coverage: durable committed history read/replay across separate real
+transactions; exact old versions after new publication/expiry; independently pinned
+historical periods; missing evidence stays missing; actor/owner isolation; current
+license/retrieval/attribution/export/private scope; organization membership;
+specialty/mission context; robot-grant revocation; retained excluded metadata;
+version bytes, result/hash/input-column/transcript corruption; duplicate IDs;
+atomic nested-insert failure/retry; database append-only triggers; invalid execution.
+
+An AST test-registration guard caught three newly added cases accidentally nested
+under another case before the final database regression. They were moved to suite
+level. The earlier full-unit attempt is retained as failed evidence, not relabeled
+as a green run.
+
+The final unit aggregate then passed the corrected registration guard and all
+Opportunity cases, but the unchanged frozen Competitor 32-interleaved-analysis case
+took **19,219.47 ms** against its unchanged **15,000 ms** threshold. Its first targeted
+retry took **17,136.85 ms** and also failed. No Competitor runtime, test, fixture,
+threshold or machine setting was changed. Host CPU load observed after the aggregate
+was 59%; this is evidence of possible contention, not proof of a specific cause.
+After the complete database regression, the second and final bounded targeted retry
+took **19,999.02 ms** and also failed. Therefore **Full regression = NOT PASS**.
+Although this same unchanged case passed in the first M4 unit attempt (which failed
+the AST registration guard), current passing timing evidence has not been established.
+No further repeated full suites or threshold changes were used to force acceptance.
+All failing executions remain saved and must not be described as green.
+
+Both fresh owned application scratch databases applied all **78 existing migrations**
+and were confirmed dropped: `se_opportunity_m4_c414c0502411` (focused) and
+`se_opportunity_m4_fef057953c63` (full regression). The unchanged Spatial harness
+used disposable copies of its Saudi Map template; the template was not modified.
+Saved logs/JSON use `opportunity-m4-*` session filenames. The temporary runner is
+removed before delivery, and generated build declaration changes are restored.
+The delivery SHA identifies one implementation/test/documentation checkpoint commit,
+**not an accepted closed baseline**. M4 requires review and resolution of the
+remaining timing gate; M5 is not authorized.
+
+### Real-data status and stop
+
+**REAL-DATA OPPORTUNITY & GAP ACCEPTANCE = BLOCKED / NOT VERIFIED.**
+Synthetic Opportunity fixtures on real PostgreSQL are not production acceptance.
+No Map, Data Center baseline, Shared or prior-engine runtime changes; no external
+network, scraping, AI/LLM, score or investment inference. No main merge or final tag.
+Sonar remains DEFERRED / PENDING. **Stop at M4 checkpoint; M5 NOT STARTED.**

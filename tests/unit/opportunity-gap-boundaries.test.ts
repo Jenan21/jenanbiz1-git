@@ -6,6 +6,13 @@ import { describe, expect, it } from "vitest";
 const root = resolve(process.cwd(), "services", "analysis-engines", "opportunity-gap");
 const shared = resolve(root, "..", "shared");
 const provider = join(root, "adapters", "data-center-provider.ts");
+const historyAllowed = new Map<string, string[]>([
+  ["run-persistence.ts", ["@/generated/prisma/client", "@/lib/db", "@/services/data-center/contracts", "@/services/data-center/policy"]],
+  ["historical-data-center.ts", ["@/generated/prisma/client", "@/lib/db", "@/lib/auth/authorization", "@/services/data-center/contracts", "@/services/data-center/policy", "@/services/data-center/version-checksum"]],
+  ["run-service.ts", ["@/services/data-center/contracts"]],
+  ["replay-service.ts", ["@/services/data-center/contracts", "@/generated/prisma/client", "@/lib/db"]],
+]);
+const historyImports = new Map([...historyAllowed].map(([name, allowed]) => [join(root, "adapters", name), new Set(allowed)]));
 const within = (directory: string, target: string) => target.startsWith(`${directory}${sep}`);
 const filesAt = (directory: string): string[] => readdirSync(directory, { withFileTypes: true }).flatMap((entry) =>
   entry.isDirectory() ? filesAt(join(directory, entry.name)) : entry.name.endsWith(".ts") ? [join(directory, entry.name)] : []);
@@ -16,9 +23,10 @@ function problems(text: string, file = join(root, "probe.ts")) {
     if (specifier === "zod") return;
     if (file === join(root, "data-port.ts") && specifier === "@/services/data-center/map-contract") return;
     if (file === provider && ["@/services/data-center/contracts", "@/services/data-center/discovery", "@/services/data-center/version-content"].includes(specifier)) return;
+    if (historyImports.get(file)?.has(specifier)) return;
     if (specifier.startsWith(".")) {
       const target = resolve(dirname(file), specifier);
-      if ((within(root, target) && !within(join(root, "adapters"), target)) || within(shared, target)) return;
+      if ((within(root, target) && (!within(join(root, "adapters"), target) || historyImports.has(file))) || within(shared, target)) return;
     }
     found.push(`Forbidden import ${specifier}`);
   };
@@ -32,17 +40,18 @@ function problems(text: string, file = join(root, "probe.ts")) {
     if (ts.isPropertyAccessExpression(node) && ["Date.now", "Math.random", "performance.now"].includes(node.getText(source))) found.push("Nondeterminism");
     if (ts.isNewExpression(node) && node.expression.getText(source) === "Date" && !node.arguments?.length) found.push("Hidden clock");
     if (ts.isCallExpression(node) && node.expression.getText(source) === "Date") found.push("Hidden clock");
-    if (ts.isCallExpression(node) && ts.isPropertyAccessExpression(node.expression) && ["create", "createMany", "update", "updateMany", "upsert", "delete", "deleteMany", "$queryRaw", "$executeRaw"].includes(node.expression.name.text)) found.push("Store capability");
+    if (ts.isCallExpression(node) && ts.isPropertyAccessExpression(node.expression) && ["create", "createMany", "update", "updateMany", "upsert", "delete", "deleteMany", "$queryRaw", "$executeRaw"].includes(node.expression.name.text)
+      && !(file === join(root, "adapters", "run-persistence.ts") && node.expression.getText(source) === "tx.analysisEngineRun.create")) found.push("Store capability");
     ts.forEachChild(node, visit);
   };
   visit(source);
   return found;
 }
-describe("Opportunity M2 isolation: one exact governed read provider, no persistence or prior-engine imports", () => {
+describe("Opportunity M4 isolation: exact read provider and bounded Shared history adapters", () => {
   it("has only own/Shared pure dependencies plus one tightly scoped read adapter", () => {
     const files = filesAt(root);
-    expect(files.length).toBe(11);
-    expect(readdirSync(join(root, "adapters"))).toEqual(["data-center-provider.ts"]);
+    expect(files.length).toBe(16);
+    expect(readdirSync(join(root, "adapters"))).toEqual(["data-center-provider.ts", "historical-data-center.ts", "replay-service.ts", "run-persistence.ts", "run-service.ts"]);
     expect(readFileSync(join(root, "index.ts"), "utf8")).not.toMatch(/adapters/);
     for (const file of files) expect(problems(readFileSync(file, "utf8"), file), relative(root, file)).toEqual([]);
   });
@@ -57,6 +66,10 @@ describe("Opportunity M2 isolation: one exact governed read provider, no persist
   ])("detects prohibited capability: %s", (text) => expect(problems(text).length).toBeGreaterThan(0));
   it("allows explicit deterministic dates and unchanged Shared helpers", () => {
     expect(problems('import { canonicalize } from "../shared/canonical"; new Date("2026-10-01T00:00:00.000Z");')).toEqual([]);
+  });
+  it.each(["historical-data-center.ts", "run-persistence.ts", "replay-service.ts", "run-service.ts"])("rejects foreign imports and arbitrary writes in %s", (name) => {
+    const file = join(root, "adapters", name);
+    for (const text of ['import "../../competitor-analysis";', 'import "@/services/data-center/service";', 'tx.dataCenterVersion.create({});', 'tx.analysisEngineRun.update({});', 'tx.$executeRaw("sql");']) expect(problems(text, file).length).toBeGreaterThan(0);
   });
   it.each(['import "@/lib/db";', 'import "@/services/data-center/service";', 'import "../../competitor-analysis";', 'tx.dataCenterUsage.create({});'])("rejects excess capabilities even in the adapter: %s", (text) => {
     expect(problems(text, provider).length).toBeGreaterThan(0);

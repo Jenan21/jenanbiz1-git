@@ -27,10 +27,11 @@ defers final Sonar acceptance and final tags until all seven technical baselines
    M0 APPROVED; M1 accepted at `473e0e2957525a504ff02c229d2f048ed1de0857`
    (runtime implementation `ed531f1b10f1608f3f135a27a936228902c4f639`);
    M2 CLOSED at `2568b77c618912ca1fb41c157dfa7380ade525ee`;
-   M3 deterministic calculations/signals implemented, all gates PASS, pending review;
-   231 Opportunity / 2,084 total unit PASS (+3 existing skips);
-   404/404 current PostgreSQL/Data Center/PostGIS cases PASS;
-   types/lint/build PASS; M4 NOT STARTED;
+   M3 CLOSED at `839eca0bc6ac3386cfa6cc457ef540ee9d17565f`;
+   M4 Shared history/exact replay implemented, NOT CLOSED:
+   252 Opportunity unit / 430 current DB regressions PASS;
+   full unit NOT PASS (one unchanged Competitor timing gate; 2,104 PASS +3 prior skips);
+   M5 NOT STARTED;
    real-data acceptance BLOCKED / NOT VERIFIED)
 5. Financial Feasibility Engine
 6. Operational Feasibility Engine

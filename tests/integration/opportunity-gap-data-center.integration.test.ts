@@ -20,7 +20,10 @@ import {
 } from "@/services/data-center/service";
 import { grantDataCenterRobotAccess, revokeDataCenterRobotAccess } from "@/services/data-center/robot-grants";
 import { analyzeOpportunityDataCenterInputs, createOpportunityDataCenterProvider, prepareOpportunityDataCenterInputs } from "@/services/analysis-engines/opportunity-gap/adapters/data-center-provider";
-import { findOpportunityCalculationProblems, opportunitySignalRule, type OpportunityDatasetRole, typeKeyByOpportunityRole } from "@/services/analysis-engines/opportunity-gap";
+import { findOpportunityCalculationProblems, opportunitySignalRule, OpportunityHistoryUnavailable, type OpportunityDatasetRole, typeKeyByOpportunityRole } from "@/services/analysis-engines/opportunity-gap";
+import { runOpportunityAnalysisPersisted } from "@/services/analysis-engines/opportunity-gap/adapters/run-service";
+import { readOpportunityRun } from "@/services/analysis-engines/opportunity-gap/adapters/run-persistence";
+import { replayOpportunityAnalysis } from "@/services/analysis-engines/opportunity-gap/adapters/replay-service";
 import { opportunityDataset } from "../unit/support/opportunity-data-fixtures";
 import { opportunityRequest } from "../unit/support/opportunity-gap-fixtures";
 
@@ -81,6 +84,247 @@ const user = async (tx: DbExecutor): Promise<DataCenterActor> => {
   const row = await tx.user.create({ data: { email: `opportunity-reader-${randomUUID()}@example.test`, status: "ACTIVE" } });
   return { id: row.id, kind: "HUMAN", systemRole: "USER" };
 };
+function historyContext() {
+  const { evaluatedAt } = trusted();
+  return {
+    runId: `opportunity-m4-${randomUUID()}`, evaluatedAt, createdAt: evaluatedAt, environment: "test" as const,
+    timing: { startedAt: evaluatedAt, finishedAt: evaluatedAt, durationMs: 0 },
+  };
+}
+describe.skipIf(!enabled)("Opportunity M4 persistence and exact replay, synthetic PostgreSQL evidence only", () => {
+  it("commits Run/Input/Output and replays durably in a separate real transaction", async () => {
+    const actual = context.actual as typeof db;
+    const setup = await actual.$transaction(async (tx) => {
+      context.tx = tx;
+      try {
+        const row = await tx.user.create({ data: { email: `m4-durable-${randomUUID()}@example.test`, status: "ACTIVE", systemRole: "ADMIN" } });
+        const actor: DataCenterActor = { id: row.id, systemRole: "ADMIN", kind: "HUMAN" };
+        for (const key of Object.values(typeKeyByOpportunityRole)) if (!await tx.dataCenterType.findUnique({ where: { key } })) {
+          await registerDataCenterType({ key, label: "Synthetic Opportunity", layer: "DATA", requiresIndependentReview: false }, actor);
+        }
+        return { actor, ...await fixture(actor) };
+      } finally { context.tx = null; }
+    }, { timeout: 90_000 });
+    const result = await runOpportunityAnalysisPersisted(setup.req, setup.actor, historyContext());
+    const row = await actual.analysisEngineRun.findUniqueOrThrow({ where: { runId: result.runId }, include: { inputs: true } });
+    expect(row.result).toEqual(result); expect(row.inputs).toHaveLength(2);
+    expect(row.inputs.map((input) => input.dataCenterVersionId).sort()).toEqual(setup.req.data.roles.map((pin) => pin.versionId).sort());
+    expect(row.inputs.every((input) => input.contentHash?.length === 64 && input.dataCenterSourceId === setup.s.id)).toBe(true);
+    expect(await replayOpportunityAnalysis(result.runId, setup.actor)).toEqual(result);
+  });
+  it("saves exact hashes, provenance and rights and replays without writes", async () => {
+    await isolated(async (tx, actor) => {
+      const { req } = await fixture(actor); const before = await counts(tx);
+      const result = await runOpportunityAnalysisPersisted(req, actor, historyContext());
+      expect(await counts(tx)).toEqual({ ...before, runs: before.runs + 1, inputs: before.inputs + 2 });
+      const stored = await readOpportunityRun(result.runId, actor);
+      expect(stored.record.outputHash).toBe(result.determinism.outputHash);
+      expect(stored.record.inputsHash).toBe(result.determinism.inputsHash);
+      expect(stored.record.requestHash).toBe(result.determinism.requestHash);
+      const afterSave = await counts(tx);
+      expect(await replayOpportunityAnalysis(result.runId, actor)).toEqual(result);
+      expect(await counts(tx)).toEqual(afterSave);
+    });
+  });
+  it("replays exact old bytes after a newer publication and temporal expiry; no latest fallback", async () => {
+    await isolated(async (tx, actor) => {
+      const { req, items, s } = await fixture(actor);
+      const result = await runOpportunityAnalysisPersisted(req, actor, historyContext());
+      const revised = opportunityDataset(); revised.sourceId = s.id; revised.rows[0]!.value = 500;
+      const next = await createDataCenterVersion({ itemId: items[0]!.id, title: "Newer synthetic value", content: JSON.stringify(revised),
+        evidenceStatus: "VERIFIED", reason: "Synthetic historical replay", provenance: [{ kind: "DOCUMENT", reference: "fixture:m4-new", label: "Synthetic only" }] }, actor);
+      await publish(items[0]!.id, actor);
+      await tx.dataCenterSource.update({ where: { id: s.id }, data: { freshnessDays: 1 } });
+      const before = await counts(tx);
+      expect(await replayOpportunityAnalysis(result.runId, actor)).toEqual(result);
+      expect((await readOpportunityRun(result.runId, actor)).record.inputs.some((input) => input.refId === next.id)).toBe(false);
+      expect(await counts(tx)).toEqual(before);
+    });
+  });
+  it("replays independent historical periods and all four exact versions", async () => {
+    await isolated(async (tx, actor) => {
+      const { req, s } = await fixture(actor);
+      req.analyses.push("HISTORICAL_CHANGE"); const scope = structuredClone(req.scope);
+      scope.time = { kind: "INTERVAL", id: "2026-08", startDate: "2026-08-01", endDate: "2026-09-01", frequency: "MONTHLY", calendar: "GREGORIAN", timeZone: "Asia/Riyadh" };
+      req.historical = { scope, versions: [] };
+      for (const role of ["need.observations", "supply.capacity"] as const) {
+        const content = opportunityDataset(role); content.sourceId = s.id; content.scope = structuredClone(scope);
+        content.rows[0]!.semantics.time = structuredClone(scope.time);
+        if (role === "need.observations") content.rows[0]!.value = 80;
+        const item = await dataset(actor, s.id, role, { content: JSON.stringify(content) });
+        req.historical.versions.push({ role, versionId: item.version.id, checksum: item.version.checksum });
+      }
+      const result = await runOpportunityAnalysisPersisted(req, actor, historyContext());
+      expect(result.results[0]!.metrics.find((metric) => metric.key === "historical_change.demand_supply_gap")?.value).toBe(20);
+      expect((await readOpportunityRun(result.runId, actor)).record.inputs).toHaveLength(4);
+      const before = await counts(tx);
+      expect(await replayOpportunityAnalysis(result.runId, actor)).toEqual(result);
+      expect(await counts(tx)).toEqual(before);
+    });
+  });
+  it("does not replace originally absent evidence when it becomes available later", async () => {
+    await isolated(async (_tx, actor) => {
+      const { req, items } = await fixture(actor);
+      const next = await createDataCenterVersion({ itemId: items[1]!.id, title: "Unpublished capacity", content: items[1]!.version.content,
+        evidenceStatus: "VERIFIED", reason: "Synthetic missing snapshot", provenance: [{ kind: "DOCUMENT", reference: "fixture:missing", label: "Synthetic only" }] }, actor);
+      req.data.roles[1] = { role: "supply.capacity", versionId: next.id, checksum: next.checksum };
+      const result = await runOpportunityAnalysisPersisted(req, actor, historyContext());
+      await publish(items[1]!.id, actor);
+      expect(await replayOpportunityAnalysis(result.runId, actor)).toEqual(result);
+      expect(result.results[0]!.metrics.find((metric) => metric.key === "current.demand_supply_gap")?.value).toBeNull();
+    });
+  });
+  it("hides foreign history exactly like missing history even when inputs are public", async () => {
+    await isolated(async (tx, admin) => {
+      const { req } = await fixture(admin); const owner = await user(tx); const foreign = await user(tx);
+      const result = await runOpportunityAnalysisPersisted(req, owner, historyContext());
+      expect(await replayOpportunityAnalysis(result.runId, owner)).toEqual(result);
+      for (const id of [result.runId, "absent-opportunity-run"]) {
+        await expect(readOpportunityRun(id, foreign)).rejects.toEqual(new OpportunityHistoryUnavailable());
+        await expect(replayOpportunityAnalysis(id, foreign)).rejects.toEqual(new OpportunityHistoryUnavailable());
+      }
+    });
+  });
+  it.each(["retrieval", "license", "usage", "export", "attribution", "private"] as const)("blocks cached history after current %s rights change", async (variant) => {
+    await isolated(async (tx, admin) => {
+      const { req, s } = await fixture(admin); const owner = await user(tx);
+      const result = await runOpportunityAnalysisPersisted(req, owner, historyContext());
+      const changes = variant === "retrieval" ? { allowRetrieval: false } : variant === "license" ? { license: "Changed license" }
+        : variant === "usage" ? { usagePolicy: "Changed usage" } : variant === "export" ? { allowExport: true }
+        : variant === "attribution" ? { attribution: "Changed attribution" } : { scope: "PRIVATE" as const };
+      await tx.dataCenterSource.update({ where: { id: s.id }, data: changes });
+      await expect(readOpportunityRun(result.runId, owner)).rejects.toBeInstanceOf(OpportunityHistoryUnavailable);
+      await expect(replayOpportunityAnalysis(result.runId, owner)).rejects.toBeInstanceOf(OpportunityHistoryUnavailable);
+    });
+  });
+  it("rechecks archive status", async () => {
+    await isolated(async (_tx, actor) => {
+      const { req, items } = await fixture(actor); const result = await runOpportunityAnalysisPersisted(req, actor, historyContext());
+      await transitionDataCenterItem({ itemId: items[0]!.id, status: "ARCHIVED", reason: "Synthetic historical archive" }, actor);
+      await expect(replayOpportunityAnalysis(result.runId, actor)).rejects.toBeInstanceOf(OpportunityHistoryUnavailable);
+    });
+  });
+  it("retains specialty/mission authorization context for historical versions", async () => {
+    await isolated(async (_tx, actor) => {
+      const s = await source(actor); const req = opportunityRequest(); req.data.roles = [];
+      for (const role of ["need.observations", "supply.capacity"] as const) {
+        const item = await dataset(actor, s.id, role, { specialties: ["clinic"], missionContexts: ["study"] });
+        req.data.roles.push({ role, versionId: item.version.id, checksum: item.version.checksum });
+      }
+      const result = await runOpportunityAnalysisPersisted(req, actor, { ...historyContext(), specialty: "clinic", missionContext: "study" });
+      expect(result.inputs).toHaveLength(2);
+      expect((await readOpportunityRun(result.runId, actor)).runtime.replayAuthorizationContext).toEqual({ specialty: "clinic", missionContext: "study" });
+      expect(await replayOpportunityAnalysis(result.runId, actor)).toEqual(result);
+    });
+  });
+  it("reauthorizes retained source metadata even when malformed data was excluded from calculation", async () => {
+    await isolated(async (tx, admin) => {
+      const { req, s } = await fixture(admin); const owner = await user(tx);
+      const invalid = await dataset(admin, s.id, "need.observations", { content: '{"notAnOpportunityDataset":true}' });
+      req.data.roles[0] = { role: "need.observations", versionId: invalid.version.id, checksum: invalid.version.checksum };
+      const result = await runOpportunityAnalysisPersisted(req, owner, historyContext());
+      expect(result.inputs).toHaveLength(1);
+      expect(await replayOpportunityAnalysis(result.runId, owner)).toEqual(result);
+      await tx.dataCenterSource.update({ where: { id: s.id }, data: { allowRetrieval: false } });
+      await expect(replayOpportunityAnalysis(result.runId, owner)).rejects.toBeInstanceOf(OpportunityHistoryUnavailable);
+    });
+  });
+  it("propagates invalid execution without inventing a successful run or partial history", async () => {
+    await isolated(async (tx, actor) => {
+      const before = await counts(tx);
+      await expect(runOpportunityAnalysisPersisted({ invented: true }, actor, historyContext())).rejects.toThrow();
+      expect(await counts(tx)).toEqual(before);
+    });
+  });
+  it("rechecks organization membership and required permission for historical inputs", async () => {
+    await isolated(async (tx, admin) => {
+      const { req, s } = await fixture(admin); const owner = await user(tx);
+      const org = await tx.organization.create({ data: { name: "Synthetic historical org", slug: `opportunity-m4-${randomUUID()}` } });
+      const member = await tx.organizationMember.create({ data: { userId: owner.id, organizationId: org.id, isOwner: true, status: "ACTIVE" } });
+      await tx.dataCenterSource.update({ where: { id: s.id }, data: { scope: "ORGANIZATION", organizationId: org.id } });
+      const result = await runOpportunityAnalysisPersisted(req, owner, { ...historyContext(), organizationId: org.id });
+      expect(await replayOpportunityAnalysis(result.runId, owner)).toEqual(result);
+      await tx.organizationMember.update({ where: { id: member.id }, data: { status: "SUSPENDED" } });
+      await expect(replayOpportunityAnalysis(result.runId, owner)).rejects.toBeInstanceOf(OpportunityHistoryUnavailable);
+    });
+  });
+  it("rechecks current robot grant and assignment on historical replay", async () => {
+    await isolated(async (tx, admin) => {
+      const { req, s } = await fixture(admin);
+      const robot = await tx.robot.create({ data: { slug: `m4-${randomUUID()}`, name: "Synthetic M4 robot" } });
+      const mission = await tx.mission.create({ data: { name: "Synthetic M4 mission", assignedRobots: { connect: { id: robot.id } } } });
+      const principal = await user(tx);
+      const actor: DataCenterActor = { id: principal.id, kind: "AI", systemRole: "ADMIN", robotId: robot.id, roleKey: "analyst", specialty: "opportunity", missionId: mission.id };
+      const grant = await grantDataCenterRobotAccess({ robotId: robot.id, sourceId: s.id, principalId: principal.id, roleKey: "analyst", specialty: "opportunity", missionId: mission.id,
+        expiresAt: new Date(Date.now() + 86_400_000).toISOString(), reason: "Synthetic M4 grant" }, admin);
+      const result = await runOpportunityAnalysisPersisted(req, actor, historyContext());
+      expect(await replayOpportunityAnalysis(result.runId, actor)).toEqual(result);
+      await revokeDataCenterRobotAccess({ grantId: grant.id, reason: "Synthetic M4 revoke" }, admin);
+      await expect(replayOpportunityAnalysis(result.runId, actor)).rejects.toBeInstanceOf(OpportunityHistoryUnavailable);
+    });
+  });
+  it("detects changed historical source bytes without falling back", async () => {
+    await isolated(async (tx, actor) => {
+      const { req, items } = await fixture(actor); const result = await runOpportunityAnalysisPersisted(req, actor, historyContext());
+      await tx.$executeRaw`ALTER TABLE "DataCenterVersion" DISABLE TRIGGER "DataCenterVersion_immutable"`;
+      try { await tx.dataCenterVersion.update({ where: { id: items[0]!.version.id }, data: { content: "tampered" } }); }
+      finally { await tx.$executeRaw`ALTER TABLE "DataCenterVersion" ENABLE TRIGGER "DataCenterVersion_immutable"`; }
+      await expect(replayOpportunityAnalysis(result.runId, actor)).rejects.toMatchObject({ reason: "VERSION_CHECKSUM" });
+    });
+  });
+  it.each(["output", "transcript", "input-column"] as const)("detects stored %s corruption", async (variant) => {
+    await isolated(async (tx, actor) => {
+      const { req } = await fixture(actor); const result = await runOpportunityAnalysisPersisted(req, actor, historyContext());
+      if (variant === "input-column") {
+        await tx.$executeRaw`ALTER TABLE "AnalysisEngineRunInput" DISABLE TRIGGER "AnalysisEngineRunInput_append_only"`;
+        try { await tx.analysisEngineRunInput.updateMany({ where: { runId: result.runId }, data: { contentHash: "c".repeat(64) } }); }
+        finally { await tx.$executeRaw`ALTER TABLE "AnalysisEngineRunInput" ENABLE TRIGGER "AnalysisEngineRunInput_append_only"`; }
+      } else {
+        await tx.$executeRaw`ALTER TABLE "AnalysisEngineRun" DISABLE TRIGGER "AnalysisEngineRun_append_only"`;
+        try {
+          if (variant === "output") await tx.analysisEngineRun.update({ where: { runId: result.runId }, data: { outputHash: "c".repeat(64) } });
+          else await tx.analysisEngineRun.update({ where: { runId: result.runId }, data: { runtime: { contract: "jenan.opportunity-gap.run-history/v1", replayAuthorizationContext: {}, transcript: [] } } });
+        } finally { await tx.$executeRaw`ALTER TABLE "AnalysisEngineRun" ENABLE TRIGGER "AnalysisEngineRun_append_only"`; }
+      }
+      await expect(replayOpportunityAnalysis(result.runId, actor)).rejects.toThrow();
+    });
+  });
+  it("rejects duplicate Run IDs without overwriting an accepted run", async () => {
+    await isolated(async (tx, actor) => {
+      const { req } = await fixture(actor); const ctx = historyContext(); const result = await runOpportunityAnalysisPersisted(req, actor, ctx);
+      const before = await counts(tx);
+      await tx.$executeRawUnsafe("SAVEPOINT opportunity_duplicate");
+      await expect(runOpportunityAnalysisPersisted(req, actor, ctx)).rejects.toThrow();
+      await tx.$executeRawUnsafe("ROLLBACK TO SAVEPOINT opportunity_duplicate");
+      expect(await counts(tx)).toEqual(before);
+      expect(await replayOpportunityAnalysis(result.runId, actor)).toEqual(result);
+    });
+  });
+  it("rolls back a failed nested Input insertion and allows a clean retry", async () => {
+    await isolated(async (tx, actor) => {
+      const { req } = await fixture(actor); const ctx = historyContext(); const before = await counts(tx);
+      await tx.$executeRawUnsafe("SAVEPOINT opportunity_atomic");
+      await tx.$executeRawUnsafe(`CREATE FUNCTION opportunity_m4_reject_input() RETURNS trigger LANGUAGE plpgsql AS $$ BEGIN RAISE EXCEPTION 'Synthetic M4 input failure'; END $$`);
+      await tx.$executeRawUnsafe(`CREATE TRIGGER opportunity_m4_reject_input BEFORE INSERT ON "AnalysisEngineRunInput" FOR EACH ROW EXECUTE FUNCTION opportunity_m4_reject_input()`);
+      await expect(runOpportunityAnalysisPersisted(req, actor, ctx)).rejects.toThrow();
+      await tx.$executeRawUnsafe("ROLLBACK TO SAVEPOINT opportunity_atomic");
+      expect(await counts(tx)).toEqual(before);
+      const result = await runOpportunityAnalysisPersisted(req, actor, ctx);
+      expect(await replayOpportunityAnalysis(result.runId, actor)).toEqual(result);
+    });
+  });
+  it.each(["AnalysisEngineRun", "AnalysisEngineRunInput"] as const)("keeps %s append-only at the database boundary", async (table) => {
+    await isolated(async (tx, actor) => {
+      const { req } = await fixture(actor); const result = await runOpportunityAnalysisPersisted(req, actor, historyContext());
+      await tx.$executeRawUnsafe("SAVEPOINT opportunity_append");
+      await expect(tx.$executeRawUnsafe(`UPDATE "${table}" SET "runId" = "runId" WHERE "runId" = $1`, result.runId)).rejects.toThrow();
+      await tx.$executeRawUnsafe("ROLLBACK TO SAVEPOINT opportunity_append");
+      await expect(tx.$executeRawUnsafe(`DELETE FROM "${table}" WHERE "runId" = $1`, result.runId)).rejects.toThrow();
+      await tx.$executeRawUnsafe("ROLLBACK TO SAVEPOINT opportunity_append");
+      expect(await replayOpportunityAnalysis(result.runId, actor)).toEqual(result);
+    });
+  });
+});
 afterAll(async () => { if (enabled) await (context.actual as typeof db).$disconnect(); });
 describe.skipIf(!enabled)("Opportunity M2 real PostgreSQL, disposable rollback fixtures only", () => {
   it("M3 computes exact governed differences/signals without writes or history persistence", async () => {
