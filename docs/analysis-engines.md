@@ -38,8 +38,13 @@ defers final Sonar acceptance and final tags until all seven technical baselines
    exact-SHA CodeQL JavaScript/TypeScript + Actions PASS, zero new/open alerts;
    **TECHNICALLY COMPLETE — PENDING FINAL SONAR**, owner-approved and frozen;
    real-data acceptance BLOCKED / NOT VERIFIED)
-5. Financial Feasibility Engine ([M0 architecture review](financial-feasibility-engine-v1.md);
-   M0 PROPOSED, planning only; M1 NOT STARTED;
+5. Financial Feasibility Engine ([contracts and checkpoints](financial-feasibility-engine-v1.md);
+   M0 APPROVED at `70eacc1a2c445af60f2a480bc096186083be371e`;
+   M1 pure contracts/decimal/accounting/states/confidence/bounds/hashes implemented;
+   152 own / 170 with global boundary tests PASS; frozen Shared unchanged;
+   M1 NOT CLOSED: full unit regression 2,256 PASS + one unchanged Competitor timing
+   failure (21,017.00 ms vs 15,000 ms; two targeted retries also fail);
+   M2 NOT STARTED;
    real-data acceptance BLOCKED / NOT VERIFIED)
 6. Operational Feasibility Engine
 7. Risk & Decision Engine

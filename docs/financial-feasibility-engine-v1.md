@@ -2,7 +2,9 @@
 
 ## 1. Authority and stop
 
-**M0 PROPOSED — awaiting owner review. M1 NOT STARTED.**
+**M0 APPROVED at `70eacc1a2c445af60f2a480bc096186083be371e`.
+M1 implemented as a review candidate; NOT CLOSED because the frozen Competitor
+performance regression gate remains NOT PASS. M2 NOT STARTED.**
 The owner approved engine four's final technical closure on 2026-10-22 and explicitly
 designated `10dcafcf27c45db8b371fa5b79ac9da6bc4f21a5` as its Final Technical SHA.
 Its code/test candidate `f9b44b849e6cec93631db20cbb9c2b795058e836` remains the
@@ -19,8 +21,9 @@ Four engines are **TECHNICALLY COMPLETE — PENDING FINAL SONAR**:
 | Opportunity & Gap | `10dcafcf27c45db8b371fa5b79ac9da6bc4f21a5` |
 
 Data Center stays frozen at `04d6148dfb875532404059adb55fcac8ee6913b2`.
-This is a documentation-only proposal, not financial runtime implementation,
-production-data acceptance, or authorization for M1. No main/integration merge,
+The original M0 was a documentation-only proposal. The owner subsequently approved
+it and authorized M1 only, recorded in section 11. No production-data acceptance,
+main/integration merge,
 final tag, Sonar, frozen engine/Shared/schema/Map/UI/Projects changes.
 
 Planning branch `jenan-engines/financial-feasibility` starts from the accepted
@@ -276,4 +279,154 @@ Any material deviation requires another review, not silent implementation.
 No production financial data/assumptions were queried or accepted. Not having
 queried them does not prove the Data Center lacks them.
 **REAL-DATA OPPORTUNITY & GAP ACCEPTANCE = BLOCKED / NOT VERIFIED** remains unchanged.
-**Sonar = DEFERRED / PENDING. No final tag. No main merge. M1 NOT STARTED.**
+**Sonar = DEFERRED / PENDING. No final tag. No main merge.**
+The original M0 stopped here. M1 below records only the separately authorized work.
+
+## 11. M1 checkpoint — pure financial foundation
+
+### Binding owner decisions and scope
+
+The owner approved M0 and authorized **M1 only** on the synchronized
+`70eacc1a2c445af60f2a480bc096186083be371e` baseline.
+Revenue assumptions must be explicit and documented, never inferred from population,
+competitors or demand. Both requested NPV and IRR are blocked until complete flows,
+an explicit period discount rate and compatible timing are available. IRR does not
+mathematically need an external discount rate, but this model gate implements the
+owner's stricter explicit-input requirement; no rate is guessed.
+Ambiguous/nonconventional IRR never selects an arbitrary root. Break-even needs
+documented fixed costs and a positive compatible contribution margin.
+Cash requirement is a measurement only; confidence describes evidence/methodology,
+not a success probability. Missing financial values are null, never default zero.
+
+Seven pure files under `services/analysis-engines/financial-feasibility`:
+`decimal.ts`, `model.ts`, `request.ts`, `semantics.ts`, `confidence.ts`,
+`contracts.ts`, `index.ts`. No adapter, network, source I/O, database writes,
+schema, UI, Projects/Map connection, upstream-engine imports or M2 execution.
+The planning branch continues from accepted engine four without a promotion merge.
+
+### Implemented contracts and semantics
+
+- Strict `jenan.financial-feasibility.request/v1` / `result/v1`, with result phase
+  `M1_FOUNDATION` and engine `1.0.0-m1`.
+- Versioned geography/sector, currency/price basis/base date, t0, ordered complete
+  monthly/annual periods, cash-flow/timing basis, exact version/checksum pins,
+  declared assumption register, evidence, accounting/cash schedules, valuation
+  prerequisites, explicit scenario overrides and sensitivity disclosures.
+- Assumptions retain author/time, approval, rationale, methodology, limitations,
+  source record and exact version/hash. Scenario/sensitivity changes also require
+  author/time/rationale/evidence. Future declarations and conflicting evidence
+  input-ID/version identities are rejected.
+- Request-supported currencies in this v1 foundation: SAR/USD/EUR/AED/QAR (2 minor
+  units), JPY (0), KWD/BHD/OMR (3). Unsupported currencies fail explicitly; no FX.
+- Exact pinned dependency `decimal.js@10.6.0`, isolated cloned arithmetic context,
+  34 significant digits, HALF_EVEN. Inputs are plain decimal strings with at most
+  18 integer/16 fractional digits; internally retained arithmetic results allow
+  up to 34 significant digits and 64 fractional places. No binary money arithmetic.
+  Inputs with excess scale/magnitude, division by zero and arithmetic overflow fail
+  explicitly. Reporting alone rounds to the declared currency's minor units.
+  Global Decimal configuration cannot affect the isolated arithmetic context.
+- The package/lock change adds only the new exact dependency. Existing dependency
+  versions remain unchanged. npm replaced this worktree's former node_modules
+  junction with a local dependency installation; the original workspace files
+  were not staged, edited or reset.
+- Separate accounting and cash timing; revenue is either an explicitly declared
+  monetary schedule or compatible declared sales quantity x price.
+  A monetary amount/physical quantity cannot be consumed twice across line items;
+  a price may be reused across distinct quantities. Accounting and cash-only
+  assumptions cannot silently substitute for each other.
+- Complete empty schedules require explicit no-applicable-items declarations and
+  evidence, covering t0 and every model period. Absent/incomplete schedules block
+  only dependent metric readiness. Direct-cash prerequisites do not subtract
+  working capital again; accrual-bridge prerequisites explicitly require it.
+- Readiness checks implement fixed-cost/price/unit compatibility, positive
+  contribution, complete cash schedules, rate >-1, IRR policy presence,
+  end-period valuation timing, and separately declared initial cash/reserve/
+  committed financing. They do not calculate break-even, cash requirements or NPV.
+- `classifyFinancialIrrCashFlows` checks only an explicitly supplied candidate
+  cash-flow sign pattern: multiple sign changes => `AMBIGUOUS_IRR` and
+  `NON_CONVENTIONAL_CASH_FLOWS`; no root is solved or selected in M1.
+  The versioned future bisection configuration is explicit, bounded and immutable:
+  [-0.9999, 100], 256 iterations, rate tolerance 1e-12 and normalized residual
+  tolerance 1e-10. M3 must still test the actual numerical algorithm.
+- States: COMPUTED / PARTIAL / ESTIMATED / NO_COVERAGE / NOT_AVAILABLE /
+  NOT_COMPUTABLE. Monetary/rate/quantity/period result contracts enforce nulls for
+  valueless states and specific blocking numerical reason codes.
+  Every M1 result is diagnostic: **all metrics are null / NOT_COMPUTABLE with
+  M1_CALCULATIONS_DEFERRED**, plus actual missing/incompatible-input reasons.
+  No synthetic fixture result is presented as an implemented financial forecast.
+
+### Confidence, limits, hashes and unchanged-storage proof
+
+`financial-confidence-v1/1.0.0` uses explainable **bands, not a new numeric score**:
+three factors (source evidence, completeness/freshness, assumption review), with
+the weakest factor determining the band. HIGH source evidence requires all
+necessary inputs VERIFIED and measured quality >=0.8. Lower/unknown evidence or
+nonfresh/incomplete inputs cap at LOW. Owner-approved assumed projections cap at
+MEDIUM; unreviewed assumptions cap at LOW. Unknown/mismatched source references,
+missing values or blocked methods have null confidence. Factors/policy are stored
+and reconstructable; no probability, success or investment meaning is attached.
+All diagnostic M1 metrics retain null confidence because calculation is deferred.
+
+Bounds: <=32 versions, <=120 monthly or <=30 annual periods, <=1,000 total line
+items, <=10 scenarios including base, <=20 one-at-a-time sensitivity drivers with
+three explicit points, <=10,000 expanded rows, <=500 metrics, <=2 MiB JSON and
+20,000 cost units. Conservative work estimation includes IRR iterations even when
+IRR is requested only by a sensitivity target. Some valid-size models can exceed
+the combined work budget and are rejected, never silently truncated.
+
+Canonical normalization sorts unordered identities, evidence references, analyses,
+pins, scenarios/overrides and coverage; meaningful chronological periods stay ordered.
+Decimal spelling normalizes, including negative zero. Hashes preserve full financial
+assumptions, schedules, provenance, rights and policy versions; run ID/timing are
+excluded from output hashing. Full reconstruction rejects forged/rehashed results.
+
+**Shared remains unchanged.** `buildFinancialFoundationRecord` is a pure
+storage-shape proof, not a persistence/authorization API. It validates the financial
+result then uses the existing Shared `runRecordSchema` and `toRunInputRecord`.
+The round-trip test preserves all decimal strings in generic JSON and matches
+request/result/input hashes; no cast to a numeric Shared monetary metric.
+Existing tables need no M1 migration. Actual durable saves/access/replay remain M4.
+Input descriptors here are trusted test/server values; M1 does not claim live
+source authorization or Data Center byte/checksum validation implemented before M2.
+
+### Verification and unresolved gate
+
+| Gate | Saved evidence |
+| --- | --- |
+| Final Financial unit cases | **152/152 PASS**: contracts 67, decimal 42, confidence 15, isolation/registration 28 |
+| Financial plus unchanged global boundaries | **170/170 PASS**, five files, 9.00 s |
+| Full engine/Data Center unit regression | **NOT PASS**: 2,256 passing, one frozen Competitor timing failure, three prior skips, 75 files, 224.81 s |
+| TypeScript | **PASS** after final runtime changes |
+| Scoped ESLint | **PASS**, zero warnings, repeated after final test correction |
+| Production Webpack build | **PASS**, compile 3.9 min; static generation **161/161** |
+| `git diff --check` | **PASS**, including staged new files before checkpoint commit |
+| Database | No new DB execution: M1 has no persistence/adapter/schema changes. Engine-four saved 445-case consolidated DB acceptance remains unchanged, not claimed as newly run Financial acceptance |
+
+The failing unchanged scenario is:
+`Competitor M5 bounded synthetic acceptance > keeps 32 interleaved complete
+analyses deterministic and isolates source/result mutation`.
+Aggregate actual **21,017.00 ms**, required **<15,000 ms**.
+Exactly two targeted rechecks on this host/Node v24.14.0/current worktree/config:
+**20,031.69 ms FAIL**, then **18,344.51 ms FAIL**.
+No build/type/lint job ran concurrently with these targeted rechecks.
+The frozen Competitor code/test/config, other four engine runtimes, Shared,
+Data Center and Prisma are unchanged against accepted M0 baseline.
+The M4 history shows this timing gate was environment-sensitive, but these three
+current failures do **not** establish a current passing gate or prove a particular
+external cause. No threshold was raised and no frozen engine was reopened.
+No repeated full suite or unlimited timing retries were used to force acceptance.
+
+The final focused run also covers two locally tightened contract guards and a
+suite-level registration guard added after the aggregate. An intermediate focused
+run caught the sensitivity-budget test nested in another test; it was moved to
+suite level, and final **170/170 PASS** explicitly includes it. Earlier failed
+receipts are preserved, not relabeled as green.
+Saved session receipts use `financial-m1-*` JSON/log filenames, including
+`financial-m1-regression`, `financial-m1-targeted-perf-1/2`,
+`financial-m1-final`, `financial-m1-typecheck-final`, `financial-m1-eslint-final`
+and `financial-m1-build`.
+
+**M1 = IMPLEMENTED / NOT CLOSED. Full regression performance gate = NOT PASS.**
+Deliver a synchronized candidate checkpoint, not an accepted closed baseline.
+**M2 NOT STARTED. REAL-DATA FINANCIAL FEASIBILITY ACCEPTANCE = BLOCKED / NOT VERIFIED.**
+Sonar remains deferred; no main/integration merge or final tag.

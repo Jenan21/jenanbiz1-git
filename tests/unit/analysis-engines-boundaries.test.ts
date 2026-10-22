@@ -34,7 +34,8 @@ describe("analysis engine boundaries", () => {
         if (specifier.startsWith(".")) {
           expect(resolve(dirname(source.file), specifier).startsWith(root), `${source.path} imports ${specifier}`).toBe(true);
         } else {
-          expect(allowedPackages.has(specifier) || allowedAbsolute.has(specifier), `${source.path} imports ${specifier}`).toBe(true);
+          const financialDecimal = source.path === "financial-feasibility/decimal.ts" && specifier === "decimal.js";
+          expect(allowedPackages.has(specifier) || allowedAbsolute.has(specifier) || financialDecimal, `${source.path} imports ${specifier}`).toBe(true);
         }
       }
     }
