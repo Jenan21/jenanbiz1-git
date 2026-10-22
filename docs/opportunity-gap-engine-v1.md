@@ -5,7 +5,11 @@
 **M0 APPROVED. M1 accepted at `473e0e2957525a504ff02c229d2f048ed1de0857`.
 M2 CLOSED at `2568b77c618912ca1fb41c157dfa7380ade525ee`.
 M3 CLOSED at `839eca0bc6ac3386cfa6cc457ef540ee9d17565f`.
-M4 implemented; targeted performance gate PASS, pending owner closure. M5 NOT STARTED.**
+M4 CLOSED at `93a9f9de18d2aeb916396198c9ca4df7bb24c575`.
+M5 APPROVED — TECHNICALLY COMPLETE — PENDING FINAL SONAR.
+Owner-accepted Final Technical SHA: `10dcafcf27c45db8b371fa5b79ac9da6bc4f21a5`
+(documentation-only closure of scanned code/test SHA
+`f9b44b849e6cec93631db20cbb9c2b795058e836`).**
 The owner accepted Competitor technical closure and authorized this fourth engine's
 architecture/planning, then approved M0 and authorized M1 only. After clarification, the owner confirmed its actual Final
 Technical SHA as `eaa2d09374593d5677fc77c3efbc4f5a3e42e4a0`, not the earlier M4 commit.
@@ -1070,10 +1074,14 @@ Scratch databases dropped:
 
 ### Exact-SHA CodeQL and versioned closure
 
-**Final Technical SHA: `f9b44b849e6cec93631db20cbb9c2b795058e836`.**
+**Scanned code/test SHA: `f9b44b849e6cec93631db20cbb9c2b795058e836`.**
 This commit contains all acceptance tests and locally verified artifacts.
 The follow-up closure commit changes only documentation to record the completed
 scan and final delivery; it does not substitute an unscanned technical candidate.
+The owner subsequently approved M5 and explicitly designated that documentation-only
+closure, `10dcafcf27c45db8b371fa5b79ac9da6bc4f21a5`, as the accepted Final Technical
+SHA. The exact-SHA scan target above remains unchanged. Engine four is frozen;
+only engine five's M0 architecture/planning is now authorized.
 
 Existing unchanged `codeql.yml` was manually dispatched on the Opportunity branch:
 [CodeQL run 39760768528](https://github.com/Jenan21/jenanbiz1-git/actions/runs/39760768528).

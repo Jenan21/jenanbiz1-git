@@ -33,11 +33,14 @@ defers final Sonar acceptance and final tags until all seven technical baselines
    255 Opportunity unit / 273 with global boundaries PASS;
    430 accepted DB regressions plus 15 fresh committed acceptance cases PASS;
    full unit consolidated PASS (2,108 distinct cases; +3 prior skips);
-   Final Technical SHA `f9b44b849e6cec93631db20cbb9c2b795058e836`;
+   Owner-accepted Final Technical SHA `10dcafcf27c45db8b371fa5b79ac9da6bc4f21a5`
+   (documentation closure; scanned code/test SHA `f9b44b849e6cec93631db20cbb9c2b795058e836`);
    exact-SHA CodeQL JavaScript/TypeScript + Actions PASS, zero new/open alerts;
-   **TECHNICALLY COMPLETE — PENDING FINAL SONAR**, frozen pending owner review;
+   **TECHNICALLY COMPLETE — PENDING FINAL SONAR**, owner-approved and frozen;
    real-data acceptance BLOCKED / NOT VERIFIED)
-5. Financial Feasibility Engine
+5. Financial Feasibility Engine ([M0 architecture review](financial-feasibility-engine-v1.md);
+   M0 PROPOSED, planning only; M1 NOT STARTED;
+   real-data acceptance BLOCKED / NOT VERIFIED)
 6. Operational Feasibility Engine
 7. Risk & Decision Engine
 
