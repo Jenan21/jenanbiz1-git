@@ -7,8 +7,9 @@ M1 CLOSED after NO M1-ATTRIBUTABLE PERFORMANCE REGRESSION.
 M2 owner-approved / CLOSED at `166d48a8c689f18ccf6e70fa1accf654fb0fb0a0`,
 with four pre-existing Competitor PostgreSQL failures retained as NOT PASS.
 M3 owner-approved / CLOSED at `fc38b498aad426ecbd2a17c754b3b32ad7aacb30`.
-M4 persistence and exact historical replay are implemented for checkpoint review
-only; real-data acceptance remains BLOCKED / NOT VERIFIED.**
+M4 owner-approved / CLOSED at `b6fb4a3f8d765f7ce3c43dfc5eec38cb099b9618`.
+M5 final technical acceptance is in progress; real-data acceptance remains
+BLOCKED / NOT VERIFIED.**
 The owner approved engine four's final technical closure on 2026-10-22 and explicitly
 designated `10dcafcf27c45db8b371fa5b79ac9da6bc4f21a5` as its Final Technical SHA.
 Its code/test candidate `f9b44b849e6cec93631db20cbb9c2b795058e836` remains the
@@ -26,7 +27,7 @@ Four engines are **TECHNICALLY COMPLETE — PENDING FINAL SONAR**:
 
 Data Center stays frozen at `04d6148dfb875532404059adb55fcac8ee6913b2`.
 The original M0 was a documentation-only proposal. The owner subsequently approved
-it and authorized M1–M4 separately, recorded in sections 11–15. No production-data acceptance,
+it and authorized M1–M5 separately, recorded in sections 11–16. No production-data acceptance,
 main/integration merge,
 final tag, Sonar, frozen engine/Shared/schema/Map/UI/Projects changes.
 
@@ -755,5 +756,100 @@ its anonymous volume were removed after validation; unrelated containers were
 not changed. Source-control sync is reported with the checkpoint SHA.
 
 **REAL-DATA FINANCIAL FEASIBILITY ACCEPTANCE = BLOCKED / NOT VERIFIED.**
-**M4 is a checkpoint candidate, not owner-closed. M5 NOT STARTED.
-Sonar DEFERRED / PENDING; no final tag or main/integration merge.**
+**M4 owner-approved / CLOSED at `b6fb4a3f8d765f7ce3c43dfc5eec38cb099b9618`.
+The owner authorized M5 only. Sonar DEFERRED / PENDING; no final tag or
+main/integration merge.**
+
+## 16. M5 final technical acceptance
+
+M5 adds acceptance tests only; Financial arithmetic/history/adapters, Shared,
+Data Center, previous engines, Map, Prisma schema/migrations and UI are unchanged
+from the owner-approved M4 baseline. No sixth engine is started.
+
+### Additional acceptance coverage
+
+- Thirty-two interleaved complete, explicitly approved synthetic financial
+  analyses, including scenarios/sensitivity, have identical deterministic
+  hashes, bounded output and independently mutable results. Revenue and price
+  are declared inputs, never inferred. The existing 15-second batch bound
+  is retained.
+- Sixteen full transcript reproductions use original captured bytes and do
+  not call live discovery/read. Oversized requests fail before I/O. An explicit
+  complete zero-activity schedule can cover the full 120-month horizon; missing
+  financial data is not converted to zero.
+- Eight durably committed runs at concurrency four and sixteen durable replays
+  at concurrency four exercise the actual database transaction boundaries,
+  without the rollback/proxy harness. Both retain the prior acceptance bounds:
+  maximum operation below 15 seconds and batch below 30 seconds.
+- Four concurrent executions of the same Run ID yield exactly one committed
+  Run/Input pair and three explicit `P2002` conflicts, without overwrites.
+- A real nested Input CHECK failure leaves no Run or orphan Input. Removing
+  only the owned scratch fault permits retrying the same unsaved Run ID.
+- Concurrent foreign/missing history lookups and replays return the same
+  `FinancialHistoryUnavailable`. Every batch checks unchanged Data Center
+  source/item/version/type/usage/audit/event/quality counts.
+- All new durable fixtures are guarded to an owned `se_financial_m5_*` scratch
+  database. Existing Financial source/history and frozen Data Center/PostGIS
+  tests run on a separate owned migrated database.
+
+### Local verification
+
+| Gate | Saved result |
+| --- | --- |
+| Financial M1–M5 unit regression | **235/235 PASS**, including four new M5 acceptance cases |
+| Global engine boundaries | **18/18 PASS**; Financial plus global coverage **253/253 PASS** inside the final consolidated execution |
+| Consolidated unit regression | **3,349 PASS / 11 skipped**, 204 files PASS and one skipped file, 430.17 s; not an unrestricted Full Regression |
+| Financial PostgreSQL M2 / M4 / M5 | **22 + 27 + 5 = 54 cases PASS** across the related DB and separate committed-acceptance executions |
+| Related Financial / Data Center / PostGIS | **254/254 PASS in ten files**, plus **5/5** new committed M5 cases; consolidated **259 passing DB cases**, not one 259-case execution |
+| Real PostgreSQL / PostGIS | **17.5 / 3.5.2**; both owned application databases migrated with all **78 unchanged migrations**; read-only adapters and synthetic spatial tests active |
+| Persistence / exact replay / recovery | PASS, including original old assumptions after newer publication, tampering, append-only triggers, true committed race and nested rollback/retry |
+| Current authorization / no existence leak | PASS, including permission, membership, robot grant, retrieval/rights, archive and concurrent foreign/missing lookups/replays |
+| TypeScript / zero-warning scoped ESLint | PASS, including post-production-build typecheck |
+| Production build | **PASS on unchanged retry**, 161/161 static pages; first execution retained as failed due to existing Next.js dependency security advisory |
+| Patch formatting / frozen runtime scope | PASS; only the two new Financial acceptance test files and these two directly related docs changed |
+| Exact-SHA CodeQL | Pending dispatch of the pushed code/test candidate; not claimed PASS yet |
+
+The 11 unit skips comprise ten existing opt-in/environment/browser skips and
+the explicitly excluded, owner-accepted Competitor timing-debt case. Financial
+and global boundary cases have no skips. PostGIS tests create/drop their own
+separate Map-schema scratch databases and read-only roles.
+
+The first production-build command completed compilation and page generation
+but exited 1 with `SecurityFatalError`, recommending an upgrade of the existing
+Next.js **16.4.0** dependency. Repeating the same unchanged command exited 0.
+The earlier failure is not erased; a successful build is not proof of dependency
+security. A separate Next.js security update is recommended. M5 does not modify
+the manifest/lockfile, suppress this advisory, or claim it has remediated it.
+Existing Map filesystem-tracing warnings also remain unchanged.
+
+### Measured synthetic performance
+
+The local focused pure run and the consolidated regression both passed without
+raising thresholds. The committed DB measurements use actual transactions,
+not mocked persistence or a wrapping rollback transaction.
+
+| Scenario | Count / concurrency | Total ms | p50 / p95 / max ms | Required bounds |
+| --- | --- | --- | --- | --- |
+| Complete financial analyses, focused | 32 interleaved | 1,420.85 | Batch only | <15,000 |
+| Complete analyses, consolidated regression | 32 interleaved | 3,001.34 | Batch only | <15,000 |
+| Original transcript reproduction, consolidated | 16 interleaved | 1,452.21 | Batch only | <15,000 |
+| Committed complete financial runs | 8 / 4 | 2,593.45 | 1,028.70 / 1,579.11 / 1,579.11 | Each <15,000; total <30,000 |
+| Committed exact historical replay | 16 / 4 | 1,938.21 | 477.79 / 574.06 / 574.06 | Each <15,000; total <30,000 |
+
+Committed throughput: **3.0847 runs/s** and **8.2550 replays/s**. These small
+synthetic acceptance batches are not a production capacity/SLA claim.
+
+Historical Full Regression remains **NOT PASS**, with the owner-accepted
+Competitor timing debt and four pre-M2 Competitor PostgreSQL failures unchanged.
+The final unit regression explicitly excludes only the accepted Competitor
+32-interleaved timing case; it must not be called an unrestricted all-green
+Full Regression. No frozen test, code, schema or performance limit is changed.
+
+Saved session logs: `financial-m5-pure-first`, `financial-m5-committed-acceptance`,
+`financial-m5-db-regression`, `financial-m5-migrations-regression`,
+`financial-m5-migrations-acceptance`, `financial-m5-typecheck-initial`,
+`financial-m5-eslint`, `financial-m5-unit-regression`, `financial-m5-build`,
+`financial-m5-build-retry` and `financial-m5-typecheck-final`.
+
+**REAL-DATA FINANCIAL FEASIBILITY ACCEPTANCE = BLOCKED / NOT VERIFIED.**
+**Sonar DEFERRED / PENDING. No main/integration merge, final tag or sixth engine.**

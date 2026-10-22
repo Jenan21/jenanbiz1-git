@@ -61,13 +61,22 @@ defers final Sonar acceptance and final tags until all seven technical baselines
    production build PASS; M3 owner-approved / CLOSED at
    `fc38b498aad426ecbd2a17c754b3b32ad7aacb30`;
    M4 atomic existing-table Run/Input/Output history and exact original-model replay
-   implemented for checkpoint review, without changing M3 arithmetic/Shared/Data Center;
+   owner-approved / CLOSED at `b6fb4a3f8d765f7ce3c43dfc5eec38cb099b9618`,
+   without changing M3 arithmetic/Shared/Data Center;
    231 Financial + 18 global boundary unit tests PASS; 27 M4 PostgreSQL history
    + 22 M2 source-validation cases PASS; 78 unchanged migrations and PostGIS 3.5;
    current authorization, rollback/retry, append-only and tamper detection verified;
    TypeScript / zero-warning scoped ESLint / production build PASS;
    four Competitor DB failures remain NOT PASS; no broad regression rerun;
-   M5 NOT STARTED; real-data acceptance BLOCKED / NOT VERIFIED)
+   M5 local technical acceptance PASS: 235 Financial + 18 global unit cases;
+   consolidated unit execution 3,349 PASS / 11 skipped, including the explicitly
+   excluded accepted Competitor timing case; historical Full Regression NOT PASS;
+   254 related Financial/Data Center/PostGIS database regressions + five committed
+   acceptance cases PASS, including concurrency/replay/race/recovery/no-leak;
+   TypeScript / zero-warning scoped ESLint / production build / diff PASS;
+   existing Next.js security advisory retained, separate dependency update recommended;
+   exact-SHA CodeQL and final synchronization pending;
+   real-data acceptance BLOCKED / NOT VERIFIED)
 6. Operational Feasibility Engine
 7. Risk & Decision Engine
 
