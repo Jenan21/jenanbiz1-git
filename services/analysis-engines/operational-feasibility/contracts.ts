@@ -76,6 +76,9 @@ function buildCore(rawRequest: unknown, rawInputs: unknown, rawContext: Operatio
     if (!referencesAvailable) reasons.push("INPUT_NOT_AVAILABLE");
     if (request.normalized.values.some((v) => v.approval !== "OWNER_APPROVED")) reasons.push("APPROVAL_REQUIRED");
     for (const kind of scheduleRequirements[analysis]) {
+      if (kind === "CYCLE_TIME" && request.normalized.calculationSemantics?.resources.length
+        && request.normalized.calculationSemantics.resources.every((r) => r.productivity.kind === "NET_RATE")) continue;
+      if (kind === "LABOR_TIME" && request.normalized.calculationSemantics?.workforce.length) continue;
       const schedule = request.normalized.schedules.find((s) => s.kind === kind);
       if (!schedule || schedule.completeness === "MISSING") { reasons.push("MISSING_REQUIRED_SCHEDULE"); continue; }
       if (schedule.completeness !== "COMPLETE" || schedule.coveredPeriodIds.length !== request.normalized.periods.length) reasons.push("INCOMPLETE_COVERAGE");
@@ -95,12 +98,14 @@ function buildCore(rawRequest: unknown, rawInputs: unknown, rawContext: Operatio
       const resources = request.normalized.schedules.find((s) => s.kind === "RESOURCE_TIME");
       for (const stage of request.normalized.network.stages) for (const period of request.normalized.periods) {
         const resourceRows = resources?.rows.filter((row) => row.periodId === period.id && row.entityId === stage.poolId) ?? [];
+        const declaredRate = request.normalized.calculationSemantics?.resources.find((r) => r.stageId === stage.id
+          && r.periodId === period.id && r.productivity.kind === "NET_RATE");
         const cycleRows = cycles?.rows.filter((row) => {
           const value = request.normalized.values.find((v) => v.id === row.valueId);
           return row.periodId === period.id && value?.unit.kind === "TIME_PER_UNIT"
             && value.unit.poolId === stage.poolId && value.unit.entity === stage.outputId;
         }) ?? [];
-        if (resourceRows.length !== 1 || cycleRows.length !== 1) reasons.push("INCOMPATIBLE_RESOURCE");
+        if (resourceRows.length !== 1 || !declaredRate && cycleRows.length !== 1) reasons.push("INCOMPATIBLE_RESOURCE");
       }
     }
     if (analysis === "QUALITY") {

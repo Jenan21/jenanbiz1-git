@@ -16,7 +16,8 @@ function sortEvidence<T extends { inputId: string; versionId: string; sourceReco
   return [...unique.values()].sort((a, b) => compareText(canonicalize(a), canonicalize(b)));
 }
 export function operationalWork(request: OperationalRequest) {
-  const baseRows = request.values.length + request.schedules.reduce((n, s) => n + s.rows.length, 0) + request.requirements.entries.length;
+  const baseRows = request.values.length + request.schedules.reduce((n, s) => n + s.rows.length, 0) + request.requirements.entries.length
+    + (request.calculationSemantics?.resources.length ?? 0) + (request.calculationSemantics?.workforce.length ?? 0);
   const multiplier = 1 + request.scenarios.length + 3 * request.sensitivity.length;
   const expandedRows = (baseRows + request.network.stages.length * request.periods.length) * multiplier;
   const metrics = request.analyses.length * request.periods.length * multiplier;
@@ -53,6 +54,10 @@ export function normalizeOperationalRequest(raw: unknown, evaluatedAt: string) {
   }
   for (const point of request.sensitivity) {
     point.low = normalizeOperationalDecimal(point.low); point.base = normalizeOperationalDecimal(point.base); point.high = normalizeOperationalDecimal(point.high);
+  }
+  if (request.calculationSemantics) {
+    request.calculationSemantics.resources.sort((a, b) => compareText(canonicalize([a.stageId, a.periodId]), canonicalize([b.stageId, b.periodId])));
+    request.calculationSemantics.workforce.sort((a, b) => compareText(canonicalize([a.roleId, a.periodId]), canonicalize([b.roleId, b.periodId])));
   }
   const work = operationalWork(request);
   if (work.baseRows > operationalBounds.items || work.expandedRows > operationalBounds.expandedRows

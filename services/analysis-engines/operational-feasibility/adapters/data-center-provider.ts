@@ -3,7 +3,8 @@ import { discoverDataCenterVersions } from "@/services/data-center/discovery";
 import { readDataCenterVersionContent } from "@/services/data-center/version-content";
 import { operationalTimestamp } from "../model";
 import { operationalDiscoverySchema, type OperationalDataPort } from "../data-port";
-import { prepareOperationalData } from "../data-sources";
+import { calculateOperationalData, prepareOperationalData } from "../data-sources";
+import type { OperationalContext } from "../contracts";
 
 export interface OperationalProviderContext {
   evaluatedAt: string; specialty?: string; missionContext?: string; organizationId?: string;
@@ -42,4 +43,10 @@ export function createOperationalDataCenterProvider(trustedActor: DataCenterActo
 }
 export function prepareOperationalDataCenterInputs(request: unknown, actor: DataCenterActor, context: OperationalProviderContext) {
   return prepareOperationalData(createOperationalDataCenterProvider(actor, context), request, context.evaluatedAt);
+}
+export function calculateOperationalDataCenterInputs(
+  request: unknown, actor: DataCenterActor, context: OperationalContext,
+  scope: Omit<OperationalProviderContext, "evaluatedAt"> = {},
+) {
+  return calculateOperationalData(createOperationalDataCenterProvider(actor, { ...scope, evaluatedAt: context.evaluatedAt }), request, context);
 }

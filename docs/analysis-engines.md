@@ -96,13 +96,23 @@ defers final Sonar acceptance and final tags until all seven technical baselines
    648/648 PASS (174 Operational, 235 frozen Financial, 239 Shared/global);
    TypeScript / zero-warning scoped ESLint / production build PASS,
    existing dependency advisory retained and separate upgrade recommended;
-   M2 governed read integration implemented for review: one exact source/version/
+   M2 owner-approved / CLOSED at `3728dcafff7f797dcefddb0dd3f0da9118314b7e`;
+   governed read integration: one exact source/version/
    checksum, approvals/provenance/rights, scope/site/calendar/unit/method equality,
    complete coverage and current authorization/no-existence-leak;
    236 Operational + 18 global tests PASS, 710 related unit cases PASS;
    23 Operational + 80 Data Center PostgreSQL cases PASS;
-   no latest/old-version substitution, actual operational calculations or persistence;
-   historical Full Regression remains NOT CLAIMED PASS; M3 NOT STARTED;
+   no latest/old-version substitution;
+   M3 deterministic calculations implemented for review, with explicit source-approved
+   loss/productivity/labor semantics, simple serial capacity/load, workforce/FTE,
+   committed supply, signed inventory/reorder, observed quality, evidence gaps
+   and declared scenarios/sensitivity; no score, success odds or final decision;
+   330 Operational + 18 global tests PASS, 804 related unit cases PASS;
+   24 Operational + 80 Data Center PostgreSQL cases PASS;
+   TypeScript / zero-warning ESLint / production build / diff-check PASS,
+   initial Next.js advisory build failure retained and unchanged retry passed;
+   no persistence/replay; historical Full Regression remains NOT CLAIMED PASS;
+   M4 NOT STARTED; Sonar DEFERRED / PENDING;
    real-data acceptance BLOCKED / NOT VERIFIED)
 7. Risk & Decision Engine
 

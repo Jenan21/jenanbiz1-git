@@ -26,3 +26,13 @@ export function convertOperationalTime(value: string, from: "MINUTE" | "HOUR", t
 export function roundOperationalDecimal(value: string) {
   return bounded(decimal(value).toDecimalPlaces(operationalDecimalPolicy.reportingScale));
 }
+export function operationalArithmetic(operation: "ADD" | "SUBTRACT" | "MULTIPLY" | "DIVIDE" | "MIN" | "MAX", left: string, right: string) {
+  const a = decimal(left); const b = decimal(right);
+  if (operation === "DIVIDE" && b.isZero()) throw new RangeError("Operational zero denominator");
+  return bounded(operation === "ADD" ? a.plus(b) : operation === "SUBTRACT" ? a.minus(b)
+    : operation === "MULTIPLY" ? a.times(b) : operation === "DIVIDE" ? a.dividedBy(b)
+      : operation === "MIN" ? Arithmetic.min(a, b) : Arithmetic.max(a, b));
+}
+export function wholeOperationalDecimal(value: string, direction: "UP" | "DOWN") {
+  return bounded(decimal(value).toDecimalPlaces(0, direction === "UP" ? Decimal.ROUND_CEIL : Decimal.ROUND_FLOOR));
+}

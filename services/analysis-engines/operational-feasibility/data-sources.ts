@@ -5,7 +5,8 @@ import { operationalDiscoverySchema, operationalReadSchema, type OperationalData
 import { bindOperationalDataset, OPERATIONAL_MODEL_TYPE_KEY, operationalPreparationRequestSchema, operationalSourceDatasetSchema, type OperationalSourceDataset } from "./datasets";
 import { operationalInputSchema, type OperationalInput, type OperationalRequest } from "./model";
 import { ensureOperationalSize, normalizeOperationalRequest, operationalBounds } from "./request";
-import { buildOperationalFoundationResult } from "./contracts";
+import { buildOperationalFoundationResult, operationalContextSchema, type OperationalContext } from "./contracts";
+import { assertOperationalCalculationBudget, calculateOperational } from "./calculations";
 
 export type OperationalPreparationStatus = "AVAILABLE" | "PARTIAL" | "NO_COVERAGE" | "NOT_AVAILABLE" | "NOT_COMPUTABLE" | "NOT_SUPPORTED";
 interface ValidatedModel {
@@ -114,4 +115,16 @@ export async function prepareOperationalData(port: OperationalDataPort, raw: unk
     || model.schedules.some((s) => s.completeness !== "COMPLETE" || model.periods.some((p) => !s.coveredPeriodIds.includes(p.id)))
     || diagnostic.metrics.some((m) => m.reasons.some((r) => r !== "M1_CALCULATIONS_DEFERRED"))) return finish("PARTIAL", "MODEL_INPUTS_INCOMPLETE_OR_STALE", validated);
   return finish("AVAILABLE", "EXACT_APPROVED_MODEL_VALIDATED", validated);
+}
+
+export async function calculateOperationalData(port: OperationalDataPort, raw: unknown, rawContext: OperationalContext) {
+  const context = operationalContextSchema.parse(rawContext);
+  ensureOperationalSize(raw);
+  assertOperationalCalculationBudget(operationalPreparationRequestSchema.parse(raw).model, context.evaluatedAt);
+  const preparation = await prepareOperationalData(port, raw, context.evaluatedAt);
+  const result = preparation.ready && preparation.validated
+    ? calculateOperational(preparation.validated.model, preparation.inputs, context) : null;
+  const output = { preparation, result };
+  ensureOperationalSize(output);
+  return output;
 }

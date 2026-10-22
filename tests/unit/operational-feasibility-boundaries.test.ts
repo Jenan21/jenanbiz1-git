@@ -34,9 +34,9 @@ function problems(text: string, file = join(root, "probe.ts")) {
   };
   visit(source); return found;
 }
-describe("Operational M2 confines I/O to the exact governed read adapter", () => {
-  it("retains pure contracts and only one read adapter, with no operating calculations or storage", () => {
-    expect(readdirSync(root)).toEqual(["adapters", "confidence.ts", "contracts.ts", "data-port.ts", "data-sources.ts", "datasets.ts", "decimal.ts", "index.ts", "model.ts", "request.ts"]);
+describe("Operational M3 confines I/O to the exact governed read adapter", () => {
+  it("retains pure calculations and only one read adapter, without storage", () => {
+    expect(readdirSync(root)).toEqual(["adapters", "calculations.ts", "confidence.ts", "contracts.ts", "data-port.ts", "data-sources.ts", "datasets.ts", "decimal.ts", "index.ts", "model.ts", "request.ts"]);
     for (const name of readdirSync(root).filter((name) => name.endsWith(".ts"))) {
       const file = join(root, name);
       expect(problems(readFileSync(file, "utf8"), file), name).toEqual([]);

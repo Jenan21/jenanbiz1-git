@@ -86,6 +86,23 @@ const disclosure = {
   author: shortTextSchema, declaredAt: operationalTimestamp, rationale: shortTextSchema,
   evidence: z.array(operationalEvidenceSchema).min(1).max(32),
 };
+const calculationSemanticsSchema = z.object({
+  resources: z.array(z.object({
+    stageId: identifierSchema, periodId: identifierSchema,
+    scheduledValueId: identifierSchema, setupValueId: identifierSchema, unavailableValueId: identifierSchema,
+    lossAccounting: z.literal("COMPLETE_NONOVERLAPPING"),
+    productivity: z.discriminatedUnion("kind", [
+      z.object({ kind: z.literal("CYCLE_TIME"), valueId: identifierSchema }).strict(),
+      z.object({ kind: z.literal("NET_RATE"), valueId: identifierSchema }).strict(),
+    ]),
+  }).strict()).max(1000),
+  workforce: z.array(z.object({
+    roleId: identifierSchema, outputId: identifierSchema, periodId: identifierSchema,
+    laborPerUnitValueId: identifierSchema, fixedTimeValueId: identifierSchema,
+    method: z.enum(["CONTINUOUS_FTE", "HOMOGENEOUS_FULL_TIME"]),
+    allocation: z.literal("COMPLETE_NONOVERLAPPING"),
+  }).strict()).max(1000),
+}).strict();
 export const operationalRequestSchema = z.object({
   contract: z.literal(OPERATIONAL_REQUEST_CONTRACT), subject: identifierSchema,
   scope: z.object({ geography: quantityDimensionsSchema.shape.geography, sector: quantityDimensionsSchema.shape.sector }).strict(),
@@ -113,6 +130,7 @@ export const operationalRequestSchema = z.object({
     ...disclosure, id: identifierSchema, valueId: identifierSchema,
     low: operationalDecimalSchema, base: operationalDecimalSchema, high: operationalDecimalSchema,
   }).strict()).max(20),
+  calculationSemantics: calculationSemanticsSchema.optional(),
 }).strict().superRefine((request, context) => {
   const fail = (message: string) => context.addIssue({ code: "custom", message });
   const unique = (ids: string[]) => new Set(ids).size === ids.length;
@@ -128,6 +146,24 @@ export const operationalRequestSchema = z.object({
   const periodIds = new Set(request.periods.map((p) => p.id));
   for (const value of request.values) if (!periodIds.has(value.periodId) || value.siteId !== request.siteId) fail("Operand period/site mismatch");
   const byId = new Map(request.values.map((v) => [v.id, v]));
+  if (request.calculationSemantics) {
+    const { resources, workforce } = request.calculationSemantics;
+    if (!unique(resources.map((r) => JSON.stringify([r.stageId, r.periodId])))
+      || !unique(workforce.map((r) => JSON.stringify([r.roleId, r.periodId])))) fail("Duplicate resource or role/period calculation");
+    const references = [
+      ...resources.flatMap((r) => [r.scheduledValueId, r.setupValueId, r.unavailableValueId, r.productivity.valueId]),
+      ...workforce.flatMap((r) => [r.laborPerUnitValueId, r.fixedTimeValueId]),
+    ];
+    if (!unique(references)) fail("Calculation operands cannot be allocated twice");
+    if (references.some((id) => !byId.has(id))
+      || resources.some((r) => !periodIds.has(r.periodId) || !request.network.stages.some((s) => s.id === r.stageId))
+      || workforce.some((r) => !periodIds.has(r.periodId))) fail("Unknown calculation operand, stage or period");
+    const scheduleKinds = new Map(request.schedules.flatMap((s) => s.rows.map((r) => [r.valueId, s.kind] as const)));
+    if (resources.some((r) => scheduleKinds.has(r.setupValueId) || scheduleKinds.has(r.unavailableValueId))
+      || workforce.some((r) => scheduleKinds.has(r.laborPerUnitValueId) || scheduleKinds.has(r.fixedTimeValueId))) {
+      fail("Dedicated loss/labor operands cannot also be consumed by another schedule");
+    }
+  }
   for (const schedule of request.schedules) {
     if (schedule.coveredPeriodIds.some((id) => !periodIds.has(id))) fail("Unknown coverage period");
     for (const row of schedule.rows) {

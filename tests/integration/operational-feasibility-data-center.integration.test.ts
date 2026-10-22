@@ -17,8 +17,9 @@ import type { DataCenterActor } from "@/services/data-center/contracts";
 import { createDataCenterItem, createDataCenterSource, createDataCenterVersion, registerDataCenterType, reviewDataCenterItem, transitionDataCenterItem } from "@/services/data-center/service";
 import { grantDataCenterRobotAccess, revokeDataCenterRobotAccess } from "@/services/data-center/robot-grants";
 import { bindOperationalDataset, OPERATIONAL_MODEL_TYPE_KEY } from "@/services/analysis-engines/operational-feasibility";
-import { createOperationalDataCenterProvider, prepareOperationalDataCenterInputs } from "@/services/analysis-engines/operational-feasibility/adapters/data-center-provider";
+import { calculateOperationalDataCenterInputs, createOperationalDataCenterProvider, prepareOperationalDataCenterInputs } from "@/services/analysis-engines/operational-feasibility/adapters/data-center-provider";
 import { operationalDataset, operationalReference } from "../unit/support/operational-data-fixtures";
+import { operationalCalculationDataset } from "../unit/support/operational-calculation-fixtures";
 
 const enabled = process.env.OPERATIONAL_DATABASE_TESTS === "1";
 const rollback = new Error("ROLLBACK_OPERATIONAL_M2_SCRATCH_ONLY");
@@ -27,7 +28,7 @@ async function isolated(run: (tx: DbExecutor, actor: DataCenterActor) => Promise
   try {
     await (context.actual as typeof db).$transaction(async (tx) => {
       const identity = await tx.$queryRaw<{ name: string }[]>`SELECT current_database() AS name`;
-      if (!/^se_operational_m2_[a-f0-9]{12}$/.test(identity[0]?.name ?? "")) throw new Error("Operational M2 requires its own disposable migrated database");
+      if (!/^se_operational_m[23]_[a-f0-9]{12}$/.test(identity[0]?.name ?? "")) throw new Error("Operational M2/M3 requires its own disposable migrated database");
       context.tx = tx;
       try {
         const user = await tx.user.create({ data: { email: `operational-m2-${randomUUID()}@example.test`, status: "ACTIVE", systemRole: "ADMIN" } });
@@ -79,7 +80,7 @@ const counts = async (tx: DbExecutor) => ({
   versions: await tx.dataCenterVersion.count(), audits: await tx.auditLog.count(), events: await tx.dataCenterEvent.count(),
   usages: await tx.dataCenterUsage.count(), runs: await tx.analysisEngineRun.count(), inputs: await tx.analysisEngineRunInput.count(),
 });
-describe.skipIf(!enabled)("Operational M2 governed reads on owned scratch PostgreSQL, no operational calculations", () => {
+describe.skipIf(!enabled)("Operational M2/M3 governed reads/calculations on owned scratch PostgreSQL, no writes", () => {
   afterAll(async () => { if (enabled) await (context.actual as typeof db).$disconnect(); });
   it("validates exact source/version/checksum, local provenance and rights without writes", async () => {
     await isolated(async (tx, admin) => {
@@ -92,6 +93,26 @@ describe.skipIf(!enabled)("Operational M2 governed reads on owned scratch Postgr
       expect(result.rights.allowExport).toBe(false); expect(result.attribution[0]!.required).toBe(true);
       expect(result.validated!.contentHash).toMatch(/^[a-f0-9]{64}$/); expect(result).not.toHaveProperty("metrics");
       expect(result.realDataAcceptance).toBe("BLOCKED / NOT VERIFIED"); expect(await counts(tx)).toEqual(before);
+    });
+  });
+  it("calculates the approved exact published model without writes, then rechecks source revocation", async () => {
+    await isolated(async (tx, admin) => {
+      const { request, s } = await fixture(admin, { change(dataset) {
+        const sample = operationalCalculationDataset(); dataset.model = sample.model; dataset.coverage = sample.coverage;
+      } });
+      const reader = await user(tx); const before = await counts(tx);
+      const evaluatedAt = trusted().evaluatedAt;
+      const run = { runId: "operational-m3-db", evaluatedAt, environment: "test" as const,
+        timing: { startedAt: evaluatedAt, finishedAt: evaluatedAt, durationMs: 0 } };
+      const result = await calculateOperationalDataCenterInputs(request, reader, run);
+      expect(result.preparation.ready).toBe(true);
+      expect(result.result!.metrics.find((m) => m.key === "capacity_gap")!.value).toBe("20");
+      expect(result.result!.metrics.find((m) => m.key === "labor_requirement")!.value).toBe("30");
+      expect(result.result!.metrics.find((m) => m.key === "inventory_projected_balance")!.value).toBe("-10");
+      expect(await counts(tx)).toEqual(before);
+      await tx.dataCenterSource.update({ where: { id: s.id }, data: { allowRetrieval: false } });
+      const revoked = await calculateOperationalDataCenterInputs(request, reader, run);
+      expect(revoked.result).toBeNull(); expect(revoked.preparation.status).toBe("NOT_AVAILABLE");
     });
   });
   it("rejects caller checksum mismatch before any content read", async () => {

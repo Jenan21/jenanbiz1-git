@@ -4,8 +4,9 @@
 
 **M0 owner-approved at `136b36593a813c091704845a2bfc6d8d5165fe2e`.
 M1 owner-approved / CLOSED at `45e8db5dc1525a8fd88c0dc4603a69f22c0e895e`.
-M2 governed exact-source validation implemented for checkpoint review only.
-M3 NOT STARTED.**
+M2 owner-approved / CLOSED at `3728dcafff7f797dcefddb0dd3f0da9118314b7e`.
+M3 deterministic calculations implemented for checkpoint review only.
+M4 NOT STARTED.**
 The owner approved engine five and authorized Operational M0 only on 2026-10-22.
 Five of seven engines are now owner-accepted as
 **TECHNICALLY COMPLETE — PENDING FINAL SONAR**.
@@ -37,9 +38,10 @@ from the accepted Financial closure. No integration/main merge, final tag, Sonar
 history rewrite or dependency install is authorized.
 M0 added no runtime scaffold. The owner subsequently approved M1 pure contracts,
 semantics, confidence, bounds, hashes and storage compatibility, and authorized
-M2 governed Data Center read integration only.
+M2 governed Data Center read integration, then explicitly closed M2 and authorized
+M3 deterministic operational calculations only on 2026-10-23.
 The Financial branch and its Desktop archive remain at their accepted baseline.
-Stop after the M2 checkpoint for owner review; do not start M3 or engine seven.
+Stop after the M3 checkpoint for owner review; do not start M4 or engine seven.
 
 References: [execution master](../design-references/Jenan-PRO/EXECUTION_MASTER.md),
 the immutable three-archive library, and page 045
@@ -613,3 +615,162 @@ Generated Next declaration-path drift was restored to the accepted baseline.
 **JENAN OPERATIONAL FEASIBILITY ENGINE — M2 CHECKPOINT FOR OWNER REVIEW.**
 **REAL-DATA OPERATIONAL FEASIBILITY ACCEPTANCE = BLOCKED / NOT VERIFIED.**
 **Sonar = DEFERRED / PENDING. M3 NOT STARTED. No Final Tag or main merge.**
+
+## 13. M3 checkpoint — deterministic operational calculations
+
+The owner approved and CLOSED M2 at
+`3728dcafff7f797dcefddb0dd3f0da9118314b7e`. All M2 gates and the synchronized
+Local/Remote/Desktop baseline were accepted. This checkpoint implements M3 only;
+the historical M1/M2 sections above retain their milestone-specific evidence.
+M4 persistence/replay/recovery and M5 final technical acceptance are not started.
+
+### Explicit, governed calculation semantics
+
+The accepted M1 contract did not distinguish scheduled time from setup/unavailable
+time, or aggregate labor time from labor-per-unit plus fixed labor. M3 therefore
+adds an optional, strict engine-local `calculationSemantics` field to the existing
+model, without changing the meaning of any legacy value or schedule:
+
+- Resource entries pin one stage/period, scheduled resource-time operand,
+  dedicated setup/unavailable operands and a declared
+  `COMPLETE_NONOVERLAPPING` loss-accounting attestation. A positive cycle-time
+  operand or explicit net-good-output rate is selected, never inferred.
+- Workforce entries pin role/output/period, explicit labor-time-per-output
+  and fixed labor time, complete nonoverlapping allocation, and either continuous
+  FTE or homogeneous full-time staffing semantics. Available qualified hours and
+  productive hours/FTE remain explicit schedules; headcount is not an input.
+- Every referenced operand must exist; stage/period identities are checked.
+  Duplicated calculation allocations and reuse of dedicated losses/fixed labor
+  as another schedule's consumption are rejected. Dimensional compatibility is
+  checked before arithmetic. Missing semantics return NOT_COMPUTABLE, never
+  assumed zero losses, a workday duration, a staffing calendar or productivity.
+- Legacy M1/M2 requests without the field remain valid. Their original foundation
+  result/hashes and accepted tests are preserved; M3-dependent metrics remain
+  unavailable until the missing semantics are supplied in an approved version.
+- The optional field flows through the existing source dataset's model shape,
+  full-version checksum, binding and exact normalized model equality. It is not
+  a caller-side override. The same read-only adapter now exposes
+  `calculateOperationalDataCenterInputs`; no second adapter or source registry
+  is added. Server actor/context and current M2 authorization are still required.
+
+`calculateOperationalData` performs strict request/size/work/output planning
+before I/O, then runs the unchanged governed source-preparation gates. Only
+AVAILABLE/ready input preparation executes calculations. Partial, stale,
+unavailable or incompatible preparation returns an explicit preparation state
+and `result: null`; it never returns computed zero or cached source content.
+The pure `calculateOperational` entry point supports synthetic validation and
+per-metric gaps; it does not provide authorization or attest real source approval.
+
+### Implemented formulas and interpretation
+
+| Calculation | Implemented behavior |
+| --- | --- |
+| Net Resource Time | Explicit scheduled resource-minutes minus separately declared setup and unavailable minutes; negative remainder is NOT_COMPUTABLE, not clamped |
+| Stage Capacity | Net minutes divided by positive minutes/good-output-unit, or net minutes multiplied by explicit compatible net output rate; exact minute/hour conversion only |
+| Effective Output | NET_GOOD_OUTPUT capacity, floored only for explicitly indivisible deliverables; no second multiplication by observed/assumed quality yield |
+| Simple Serial Bottleneck | Minimum comparable serial stage capacity; all exact tied stage IDs retained; unsupported topology/shared pool/mixed output/gross-or-unknown loss basis remains NOT_SUPPORTED |
+| Required Resource Time | Declared PLAN target multiplied by explicit compatible stage cycle requirement; no demand/sales inference |
+| Capacity Gap / Spare Capacity | Positive part of target minus deliverable serial capacity / capacity minus target |
+| Load Ratio | Required resource minutes divided by positive net available minutes, times 100; overload above 100 retained; zero capacity can yield a computable gap but no numeric load ratio |
+| Labor Requirement | Explicit target times declared labor-hours/unit plus explicit fixed labor-hours, by role/period; no machine-time-to-labor conversion |
+| FTE / Staffing | Required hours divided by explicit positive productive hours/FTE; hours gap and continuous FTE gap use declared qualified availability; staff units ceil only for homogeneous full-time method |
+| Supplier Shortfall | Positive part of declared consumption minus usable dated committed supply; quotations/unknown commitment status block a complete shortfall instead of becoming supply |
+| Inventory Balance / Shortage | Opening usable stock plus dated usable receipts plus signed adjustments minus consumption; exact signed balance carried between contiguous periods; any supplied later opening must reconcile |
+| Inventory Outputs | Receipts, consumption, signed projected balance and positive projected shortage are separate; negative balance means projected backlog/net requirement, not physical negative stock |
+| Reorder Threshold | Explicit consumption rate times compatible calendar-day/working-day lead time plus explicit safety stock; no optimal order or procurement recommendation |
+| Observed Yield / Rejection Ratio | Accepted/inspected and rejected/inspected times 100, with positive same-cohort observed counts and accepted + rejected = inspected |
+| Prerequisite Gaps | Declared missing/expired/conflicted findings and evidence, with gap count only when applicability is complete; no readiness score or compliance certification |
+| Scenarios / Sensitivity | Only named independent overrides and explicit one-at-a-time low/base/high points; original base model retained, failing/null points preserved, no Cartesian sweep or invented variation |
+
+Complete evidenced empty schedules can explicitly state no applicable items.
+An absent row in another incomplete/undeclared schedule is not zero. Material
+definitions, resource pools, roles, time bases, reporting calendars and inspection
+cohorts cannot be silently substituted. Period-end supply/inventory arithmetic
+does not establish intraperiod service or delivery availability.
+
+Continuous arithmetic retains the existing locally cloned precision-34,
+HALF_EVEN decimal context. `exactValue` means the unreported result in that
+versioned decimal context, not an infinite-precision rational number; `value`
+uses six-place reporting. No intermediate reporting rounding precedes gap,
+load, bottleneck or inventory comparisons. Overflow fails explicitly.
+
+### Result, confidence, hashes and limits
+
+The new `jenan.operational-feasibility.calculation-result/v1` result identifies
+engine version `1.0.0-m3` and phase `M3_CALCULATIONS`, separate from the accepted
+M1 foundation result. Each metric contains method/version, exact/reported value
+or null, dimensional unit, site/period/entity/variant, operand and assumption IDs,
+exact input/version/checksum/source-record evidence, evidence-quality confidence,
+reasons, limitations and any limiting stages. Rights/required attribution remain
+derived from retained exact inputs. Approved plans remain assumption-based
+ESTIMATED outputs; observed quality remains an OBSERVED_RATIO.
+
+Confidence uses the unchanged weakest-factor policy over essential source
+descriptors, not unrelated inputs, and never means operational success.
+Unavailable metrics have null values and confidence. Prerequisite findings
+remain evidence findings, not invented numeric confidence.
+
+Normalized request/input/output hashes are deterministic. Output hashes exclude
+only run ID and execution timing, retaining evaluatedAt and method/policy versions.
+`validateOperationalCalculationResult` fully recomputes and compares semantics,
+not just a caller-provided hash; changing a metric and recomputing its hash still
+fails validation. Input collection ordering is normalized; serial stage order
+and chronological periods remain meaningful.
+
+The existing limits are not raised: 1,000 combined base items (now also counting
+calculation entries), 10,000 expanded rows, 500 scalar metrics/findings,
+20,000 work units and 2 MiB payloads. Exact expanded output/finding planning
+runs before source I/O. Actual metric/operand/schedule/evidence work is additionally
+metered against the same 20,000-unit budget; exhaustion throws explicitly.
+No truncation, partial save, persistence, historical replay or recovery is added.
+
+### Saved verification
+
+| Gate | Result |
+| --- | --- |
+| New deterministic M3 calculation cases | **94/94 PASS** |
+| Operational M1–M3 unit/isolation regression | **330/330 PASS** |
+| Global engine boundaries | **18/18 PASS**; combined Operational/global **348/348 PASS** within final related runner |
+| Final related unit regression | **804/804 PASS**, 25 files, no skips: 330 Operational + 235 unchanged Financial + 239 Shared/global |
+| Operational PostgreSQL M2/M3 | **24/24 PASS**, including real published-model calculations/no writes and current retrieval revocation |
+| PostgreSQL / Data Center related regression | **104/104 PASS**, six files: 24 Operational + 80 unchanged Data Center cases; **71.76 s** |
+| PostgreSQL / PostGIS / schema | PostgreSQL **17.5**, PostGIS **3.5.2**, all **78 unchanged migrations** applied to owned disposable DB |
+| TypeScript / post-build TypeScript | PASS |
+| Scoped ESLint with zero warnings | PASS |
+| Production build | PASS on unchanged retry; initial dependency-advisory failure retained separately |
+| git diff --check / frozen paths | PASS; no Shared, prior-engine, Data Center runtime, Prisma, Map, UI, workflow or dependency changes |
+| Historical Full Regression | **NOT CLAIMED PASS**; accepted Competitor timing/database exceptions retained, broad suite not rerun |
+| CodeQL / Sonar | No new M3 scan claimed; final acceptance remains later; **Sonar DEFERRED / PENDING** |
+| Owned validation DB cleanup | Completed; only M3 container and its anonymous volume removed, unrelated PostgreSQL retained |
+
+Hand-checked results include stages 240/180 against target 200, bottleneck 180,
+gap 20, second-stage required time 400 and load 111.111111%; labor 30 hours,
+5 FTE and 6-hour staffing gap; supplier shortfall 10; inventory -10 / shortage 10;
+reorder threshold 14; observed yield/rejection 92%/8%. These are synthetic tests,
+not production data or real-data acceptance. Additional checks cover exact tied
+stages, minute/hour/rate methods, whole/continuous rounding, zero/missing inputs,
+unsupported networks, incompatible units/cohorts, signed multi-period inventory,
+scenario failure points, source-model mismatch, tampering and exact output/work
+limits before I/O. Existing PostgreSQL `pg` deprecation warning remains a warning,
+not a failed DB test or a newly fixed dependency.
+
+The initial npm test-script invocation found no optional local `.env`; validation
+used the existing Vitest configuration directly, with explicit scratch DB variables
+only for integration tests. New fixture registration/type issues were corrected
+before final passing receipts. No dependencies were installed or changed.
+The initial production build stopped on the already documented Next.js
+dependency-security advisory; the unchanged retry succeeded. A separate security
+upgrade remains recommended, and CodeQL is not dependency remediation.
+Generated Next declaration-path drift was restored before post-build typecheck.
+
+Saved session receipts: `operational-m3-focused-initial`,
+`operational-m3-focused-governed`, `operational-m3-focused-final`,
+`operational-m3-related-initial`, `operational-m3-unit-final`,
+`operational-m3-migrations`, `operational-m3-db-final`,
+`operational-m3-typecheck-final`, `operational-m3-typecheck-postbuild`,
+`operational-m3-eslint-final`, `operational-m3-build`,
+`operational-m3-build-retry`.
+
+**JENAN OPERATIONAL FEASIBILITY ENGINE — M3 CHECKPOINT FOR OWNER REVIEW.**
+**REAL-DATA OPERATIONAL FEASIBILITY ACCEPTANCE = BLOCKED / NOT VERIFIED.**
+**Sonar = DEFERRED / PENDING. M4 NOT STARTED. No Final Tag or main merge.**
