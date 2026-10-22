@@ -5,7 +5,7 @@
 **M0 APPROVED. M1 accepted at `473e0e2957525a504ff02c229d2f048ed1de0857`.
 M2 CLOSED at `2568b77c618912ca1fb41c157dfa7380ade525ee`.
 M3 CLOSED at `839eca0bc6ac3386cfa6cc457ef540ee9d17565f`.
-M4 implemented; full-regression timing gate BLOCKED / NOT PASS. M5 NOT STARTED.**
+M4 implemented; targeted performance gate PASS, pending owner closure. M5 NOT STARTED.**
 The owner accepted Competitor technical closure and authorized this fourth engine's
 architecture/planning, then approved M0 and authorized M1 only. After clarification, the owner confirmed its actual Final
 Technical SHA as `eaa2d09374593d5677fc77c3efbc4f5a3e42e4a0`, not the earlier M4 commit.
@@ -794,7 +794,7 @@ and authorized M4 only.
 
 ## 14. M4 checkpoint — persistence, exact historical replay and reproducibility
 
-**M4 IMPLEMENTED — NOT CLOSED. Full-regression timing gate NOT PASS. M5 NOT STARTED.**
+**M4 IMPLEMENTED — TARGETED PERFORMANCE GATE PASS; PENDING OWNER CLOSURE. M5 NOT STARTED.**
 
 ### Accepted boundary and architecture
 
@@ -898,7 +898,7 @@ must originate in the trusted governed adapter, never arbitrary client JSON.
 | Focused pure history and boundary tests | Initial 71/71 PASS |
 | Focused real PostgreSQL | Initial 38/38 PASS, 29.48 s; final expanded Opportunity coverage **41/41 PASS** |
 | Opportunity unit cases | **252/252 PASS**, including 17 history cases and four additional boundary probes |
-| Full current unit regression | **NOT PASS**: 2,104 PASS + one unchanged Competitor 15 s timing failure; 3 existing browser-only skips |
+| Full current unit regression | **PASS (consolidated evidence)**: saved 2,104 passing cases plus the sole timing case passing twice in the targeted review below; 3 existing browser-only skips. Not a new green aggregate execution. |
 | Full PostgreSQL/Data Center/PostGIS regression | **430/430 PASS**, 14 files, 499.90 s, one complete green execution (389 unchanged baseline + 41 Opportunity) |
 | TypeScript / scoped ESLint | **PASS**, zero warnings |
 | Production Webpack build | **PASS**, compile 42 s, static generation **161/161** in 11.0 s |
@@ -937,8 +937,50 @@ used disposable copies of its Saudi Map template; the template was not modified.
 Saved logs/JSON use `opportunity-m4-*` session filenames. The temporary runner is
 removed before delivery, and generated build declaration changes are restored.
 The delivery SHA identifies one implementation/test/documentation checkpoint commit,
-**not an accepted closed baseline**. M4 requires review and resolution of the
-remaining timing gate; M5 is not authorized.
+**not an accepted closed baseline**. The targeted review below resolves the timing
+gate with saved evidence; owner closure is still required and M5 is not authorized.
+
+### Targeted performance review — 2026-10-22
+
+The owner authorized only the failed performance scenario and at most two targeted
+rechecks, not another full suite or modifications to frozen engines/thresholds.
+Exactly two targeted invocations were performed on the same host/worktree, Node
+`v24.14.0`, existing Vitest/configuration and unchanged unit-only environment:
+
+`Competitor M5 bounded synthetic acceptance > keeps 32 interleaved complete analyses
+deterministic and isolates source/result mutation`
+
+Scenario: 32 interleaved analyses, 15 locations per run, with deterministic-result
+and mutation-isolation assertions. It is not historical replay.
+
+| Invocation | Actual bounded `totalMs` | Required threshold | Outcome |
+| --- | --- | --- | --- |
+| Targeted review 1 | **8,562.99 ms** | **<15,000 ms** | PASS |
+| Targeted review 2 | **8,260.77 ms** | **<15,000 ms** | PASS |
+
+The threshold measures scenario `totalMs`, not the whole Vitest process or test
+callback duration. Each invocation ran only this scenario; the other test in that
+file was excluded by the selector. No runtime/test/fixture/configuration/dependency
+or machine-setting changes were made. Git verified unchanged code/config against
+M4 implementation SHA `6218c885a56a78f70b6c9774365688e45cd16ae7`.
+
+**Targeted performance gate = PASS.** The timing failure is non-deterministic/
+environment-sensitive (flaky timing), not a consistently reproducible arithmetic
+or M4 functional failure. These results do not prove a specific external process
+or CPU contention was the exact cause. No frozen engine was reopened or modified.
+
+Saved evidence: `opportunity-m4-performance-review-1.json/.log` and
+`opportunity-m4-performance-review-2.json/.log`. Earlier failures remain preserved.
+Full regression now has consolidated passing evidence (2,104 previously passing
+cases plus this one case passing twice); the earlier aggregate execution itself
+remains failed. No full suite, database suite or build was rerun for this
+documentation-only verification checkpoint.
+
+The implementation SHA above is unchanged. The final review candidate is the
+documentation-only commit containing this verification, reported at delivery with
+matching local/remote/isolated Desktop archive HEADs. This explains the two SHAs
+without presenting an implementation commit and a different unexplained candidate.
+Await owner acceptance; **M5 NOT STARTED**.
 
 ### Real-data status and stop
 
