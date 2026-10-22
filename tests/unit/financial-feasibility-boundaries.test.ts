@@ -15,9 +15,16 @@ function problems(text: string, file = join(root, "probe.ts")) {
     if (file === join(root, "adapters", "data-center-provider.ts") && [
       "@/services/data-center/contracts", "@/services/data-center/discovery", "@/services/data-center/version-content",
     ].includes(specifier)) return;
+    const adapters: Record<string, string[]> = {
+      "historical-data-center.ts": ["@/generated/prisma/client", "@/lib/auth/authorization", "@/lib/db", "@/services/data-center/contracts", "@/services/data-center/policy", "@/services/data-center/version-checksum"],
+      "run-persistence.ts": ["@/generated/prisma/client", "@/lib/db", "@/services/data-center/contracts", "@/services/data-center/policy"],
+      "replay-service.ts": ["@/services/data-center/contracts"],
+      "run-service.ts": ["@/services/data-center/contracts", "@/services/data-center/policy"],
+    };
+    if (Object.entries(adapters).some(([name, allowed]) => file === join(root, "adapters", name) && allowed.includes(specifier))) return;
     if (specifier.startsWith(".")) {
       const path = resolve(dirname(file), specifier);
-      if ((within(root, path) && !within(join(root, "adapters"), path)) || within(shared, path)) return;
+      if ((within(root, path) && (!within(join(root, "adapters"), path) || within(join(root, "adapters"), file))) || within(shared, path)) return;
     }
     found.push(`Forbidden import ${specifier}`);
   };
@@ -30,23 +37,27 @@ function problems(text: string, file = join(root, "probe.ts")) {
     if (ts.isPropertyAccessExpression(node) && ["Date.now", "Math.random", "performance.now"].includes(node.getText(source))) found.push("Nondeterminism");
     if (ts.isNewExpression(node) && node.expression.getText(source) === "Date" && !node.arguments?.length) found.push("Hidden clock");
     if (ts.isCallExpression(node) && node.expression.getText(source) === "Date") found.push("Hidden clock");
-    if (ts.isCallExpression(node) && ts.isPropertyAccessExpression(node.expression) && ["create", "createMany", "update", "delete", "upsert", "$queryRaw", "$executeRaw"].includes(node.expression.name.text)) found.push("Store capability");
+    if (ts.isCallExpression(node) && ts.isPropertyAccessExpression(node.expression)
+      && ["create", "createMany", "update", "updateMany", "delete", "deleteMany", "upsert", "$queryRaw", "$executeRaw", "$queryRawUnsafe", "$executeRawUnsafe"].includes(node.expression.name.text)
+      && !(file === join(root, "adapters", "run-persistence.ts") && node.expression.getText(source) === "tx.analysisEngineRun.create")) found.push("Store capability");
     ts.forEachChild(node, visit);
   };
   visit(source); return found;
 }
 describe("Financial engine isolation: pure calculations and exact governed read-only provider", () => {
-  it("keeps calculation contracts pure and exactly one live read adapter, no persistence", () => {
+  it("keeps pure calculations isolated and restricts live M4 adapters to existing storage/read capabilities", () => {
     const names = readdirSync(root);
-    expect(names).toEqual(["adapters", "calculations.ts", "confidence.ts", "contracts.ts", "data-port.ts", "data-sources.ts", "datasets.ts", "decimal.ts", "index.ts", "model.ts", "request.ts", "semantics.ts"]);
+    expect(names).toEqual(["adapters", "calculations.ts", "confidence.ts", "contracts.ts", "data-port.ts", "data-sources.ts", "datasets.ts", "decimal.ts", "index.ts", "model.ts", "request.ts", "run-history.ts", "semantics.ts"]);
     const files = names.filter((name) => name.endsWith(".ts"));
-    expect(readdirSync(join(root, "adapters"))).toEqual(["data-center-provider.ts"]);
+    expect(readdirSync(join(root, "adapters"))).toEqual(["data-center-provider.ts", "historical-data-center.ts", "replay-service.ts", "run-persistence.ts", "run-service.ts"]);
     for (const name of files) {
       const file = join(root, name);
       expect(problems(readFileSync(file, "utf8"), file), relative(root, file)).toEqual([]);
     }
-    const adapter = join(root, "adapters", "data-center-provider.ts");
-    expect(problems(readFileSync(adapter, "utf8"), adapter)).toEqual([]);
+    for (const name of readdirSync(join(root, "adapters"))) {
+      const adapter = join(root, "adapters", name);
+      expect(problems(readFileSync(adapter, "utf8"), adapter), name).toEqual([]);
+    }
     expect(readFileSync(join(root, "index.ts"), "utf8")).not.toMatch(/adapters/);
   });
   it.each([
@@ -64,7 +75,9 @@ describe("Financial engine isolation: pure calculations and exact governed read-
   it("registers every Financial case at suite level", () => {
     const directory = join(process.cwd(), "tests", "unit");
     const files = readdirSync(directory).filter((name) => /^financial-feasibility-.*\.test\.ts$/.test(name)).map((name) => join(directory, name));
-    files.push(join(process.cwd(), "tests", "integration", "financial-feasibility-data-center.integration.test.ts"));
+    files.push(...readdirSync(join(process.cwd(), "tests", "integration"))
+      .filter((name) => /^financial-feasibility-.*\.test\.ts$/.test(name))
+      .map((name) => join(process.cwd(), "tests", "integration", name)));
     for (const file of files) {
       const source = ts.createSourceFile(file, readFileSync(file, "utf8"), ts.ScriptTarget.Latest, true);
       const visit = (node: ts.Node, insideTest: boolean) => {

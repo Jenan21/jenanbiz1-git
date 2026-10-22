@@ -6,8 +6,9 @@
 M1 CLOSED after NO M1-ATTRIBUTABLE PERFORMANCE REGRESSION.
 M2 owner-approved / CLOSED at `166d48a8c689f18ccf6e70fa1accf654fb0fb0a0`,
 with four pre-existing Competitor PostgreSQL failures retained as NOT PASS.
-M3 calculations are implemented for checkpoint review only; real-data acceptance
-remains BLOCKED / NOT VERIFIED.**
+M3 owner-approved / CLOSED at `fc38b498aad426ecbd2a17c754b3b32ad7aacb30`.
+M4 persistence and exact historical replay are implemented for checkpoint review
+only; real-data acceptance remains BLOCKED / NOT VERIFIED.**
 The owner approved engine four's final technical closure on 2026-10-22 and explicitly
 designated `10dcafcf27c45db8b371fa5b79ac9da6bc4f21a5` as its Final Technical SHA.
 Its code/test candidate `f9b44b849e6cec93631db20cbb9c2b795058e836` remains the
@@ -25,7 +26,7 @@ Four engines are **TECHNICALLY COMPLETE — PENDING FINAL SONAR**:
 
 Data Center stays frozen at `04d6148dfb875532404059adb55fcac8ee6913b2`.
 The original M0 was a documentation-only proposal. The owner subsequently approved
-it and authorized M1, then M2 only, recorded in sections 11–13. No production-data acceptance,
+it and authorized M1–M4 separately, recorded in sections 11–15. No production-data acceptance,
 main/integration merge,
 final tag, Sonar, frozen engine/Shared/schema/Map/UI/Projects changes.
 
@@ -667,4 +668,92 @@ Center reads/writes, prior-engine imports, UI, or database/schema changes.
 | Real-data financial acceptance | **BLOCKED / NOT VERIFIED** |
 
 No real financial-data acceptance is implied by synthetic calculation fixtures.
-**M4 NOT STARTED. Sonar DEFERRED / PENDING; no final tag or main/integration merge.**
+The owner subsequently **APPROVED / CLOSED M3** at
+`fc38b498aad426ecbd2a17c754b3b32ad7aacb30`, explicitly retaining the historical
+Full Regression NOT-PASS exception as not M3-attributable, and authorized M4 only.
+
+## 15. M4 checkpoint — atomic history and exact financial replay
+
+The accepted M3 implementation, remote branch and Desktop archive were verified
+at `fc38b498aad426ecbd2a17c754b3b32ad7aacb30` before implementation.
+M4 does not change M3 formulas or calculation version `1.0.0-m3`.
+The new engine-local history contract is
+`jenan.financial-feasibility.run-history/v1`. Existing Shared contracts, history
+tables/migrations, Data Center and all four prior engines remain unchanged.
+
+### Persistence and reproducibility
+
+- `runFinancialAnalysisPersisted` prepares the exact approved published model via
+  the existing read provider, calculates it, validates its captured discovery/read
+  transcript and persists one Run with nested Input rows in a RepeatableRead
+  transaction. Errors propagate; no successful result is returned on save failure.
+- The complete normalized model, original financial assumptions/schedules,
+  scenario/sensitivity disclosures, output and request/input/output hashes are
+  retained. Each Input repeats the exact source/version/checksum, original
+  descriptor, content-only hash, provenance and usage intent.
+- History records separately pin calculation, decimal, HALF_EVEN reporting and
+  confidence policies. Every original metric method/version and IRR solver policy
+  remains in the saved output/request. Financial per-metric confidence remains
+  in the output; no fabricated Shared numeric/confidence conversion is added.
+- `readFinancialRun` filters by engine and owner (or current trusted platform
+  admin) before lookup. Missing and foreign history share
+  `FinancialHistoryUnavailable`. The server supplies specialty, mission context
+  and organization scope; the model cannot grant these permissions.
+- Current source scope, retrieval rights, active membership, required permission,
+  robot grants/mission assignment, archive/publication state and license/usage/
+  attribution/export/ownership consistency are checked **before** recalculating
+  stored output. Backend errors are not converted to cached success.
+- Historical replay reads only the exact retained version ID. Supersession and
+  age alone do not replace that version; original freshness/evaluation metadata
+  is replayed, while current permissions and rights remain mandatory. An archived
+  or no-longer-published item is unavailable. Missing old versions never fall
+  back to a newer published model or newer financial assumptions.
+- The live version checksum is recomputed from its stored columns. Live content
+  must match the captured original bytes. Transcript validation redoes model
+  approval/binding and M3 arithmetic at the original evaluation time, then checks
+  the complete result and all repeated record/input metadata and hashes.
+- Replay returns the original result, not an upgraded result or a new history
+  write. The existing database append-only triggers remain enforced on both
+  Run and Input tables. A failed nested insert rolls back the entire run;
+  retry after rollback can use the same Run ID. A duplicate already-committed
+  ID fails explicitly without overwriting history or adding orphan Inputs.
+- v1 history deliberately stores only successfully prepared exact approved
+  models; rejected/unavailable preparation raises a typed error and writes no
+  run. It does not invent a partial numerical result or silently fill an input.
+
+### Saved M4 verification
+
+| Gate | Evidence |
+| --- | --- |
+| Financial M1–M4 unit / engine-local boundary cases | **231/231 PASS**, including **23** pure historical-contract cases |
+| Global engine boundaries | **18/18 PASS**; combined focused execution **249/249 PASS** |
+| Financial PostgreSQL persistence/replay | **27/27 PASS**, including committed durable history in a separate transaction, failed nested Input insert/rollback/retry and duplicate ID |
+| Financial M2 Data Center regression | **22/22 PASS**; combined isolated database execution **49/49 PASS** |
+| PostgreSQL / PostGIS schema readiness | All **78 unchanged migrations** applied on an owned disposable PostgreSQL 17 / PostGIS **3.5** database |
+| Exact historical replay | PASS after publishing different financial assumptions; original full result/versions retained without writes |
+| Current authorization / no existence leak | PASS: owner/admin/foreign/missing, retrieval/rights changes, archive, specialty/mission, trusted organization, suspended membership, removed required permission, revoked robot grant |
+| Integrity and append-only | PASS: result/request hash/Input hash/provenance/source-byte corruption, missing historical version despite a newer version, and all four Run/Input update/delete rejection paths |
+| TypeScript / zero-warning scoped ESLint | PASS |
+| Production build | PASS, isolated nonconnecting local `DATABASE_URL`; no production DB used |
+| Diff / frozen runtime boundaries | PASS; only Financial implementation, its tests, the narrow global test allowlist and related documentation changed |
+| Full regression | **NOT CLAIMED PASS**; accepted pre-existing Competitor exceptions remain unchanged, and the broad suite was not rerun |
+
+Early failed M4 test executions are retained as failed receipts. Their corrections
+were limited to fixtures: legal restricted-license/export transitions, removal of
+review/evidence references before deleting an owned scratch historical version,
+and settlement of its existing deferrable constraints. No Data Center constraint,
+schema, frozen engine, performance threshold or runtime formula was modified.
+The global boundary test allowlist was extended only for the four new Financial
+history adapters, each with an explicit package list; it does not widen pure-core
+or previous-engine access.
+
+Saved session receipts: `financial-m4-unit-final-verified`, `financial-m4-db-verified`,
+`financial-m4-migrations`, `financial-m4-build`, `financial-m4-typecheck-final-verified`
+and `financial-m4-eslint-final-verified`. They are synthetic technical evidence, not
+production financial-data acceptance. The owned disposable database container and
+its anonymous volume were removed after validation; unrelated containers were
+not changed. Source-control sync is reported with the checkpoint SHA.
+
+**REAL-DATA FINANCIAL FEASIBILITY ACCEPTANCE = BLOCKED / NOT VERIFIED.**
+**M4 is a checkpoint candidate, not owner-closed. M5 NOT STARTED.
+Sonar DEFERRED / PENDING; no final tag or main/integration merge.**

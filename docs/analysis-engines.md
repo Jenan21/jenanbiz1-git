@@ -56,10 +56,18 @@ defers final Sonar acceptance and final tags until all seven technical baselines
    reproduced on the pre-M2 SHA, not attributed to M2 or silently fixed;
    TypeScript / zero-warning scoped ESLint / production build PASS; M2 owner-approved
    / CLOSED at `166d48a8c689f18ccf6e70fa1accf654fb0fb0a0`;
-   M3 deterministic calculations implemented for checkpoint review, 208 Financial
+   M3 deterministic calculations implemented, 208 Financial
    unit/boundary cases PASS, TypeScript and zero-warning scoped ESLint PASS;
-   production build PASS; checkpoint closure pending; four Competitor DB failures
-   remain NOT PASS; real-data acceptance BLOCKED / NOT VERIFIED)
+   production build PASS; M3 owner-approved / CLOSED at
+   `fc38b498aad426ecbd2a17c754b3b32ad7aacb30`;
+   M4 atomic existing-table Run/Input/Output history and exact original-model replay
+   implemented for checkpoint review, without changing M3 arithmetic/Shared/Data Center;
+   231 Financial + 18 global boundary unit tests PASS; 27 M4 PostgreSQL history
+   + 22 M2 source-validation cases PASS; 78 unchanged migrations and PostGIS 3.5;
+   current authorization, rollback/retry, append-only and tamper detection verified;
+   TypeScript / zero-warning scoped ESLint / production build PASS;
+   four Competitor DB failures remain NOT PASS; no broad regression rerun;
+   M5 NOT STARTED; real-data acceptance BLOCKED / NOT VERIFIED)
 6. Operational Feasibility Engine
 7. Risk & Decision Engine
 
