@@ -7,10 +7,13 @@ M1 owner-approved / CLOSED at `45e8db5dc1525a8fd88c0dc4603a69f22c0e895e`.
 M2 owner-approved / CLOSED at `3728dcafff7f797dcefddb0dd3f0da9118314b7e`.
 M3 owner-approved / CLOSED at `d4396ca777a58a0ae2287cbe74e6c67aa2c49348`.
 M4 owner-approved / CLOSED at `efcb7135753e6071b9f0d8d74a0a4cfd45e6aa84`.
-M5 local final technical acceptance PASS; exact-SHA CodeQL / closure pending.**
+M5 final technical gates PASS, including exact-SHA CodeQL.
+TECHNICALLY COMPLETE — PENDING FINAL SONAR; owner closure review pending.**
 The owner approved engine five and authorized Operational M0 only on 2026-10-22.
 Five of seven engines are now owner-accepted as
 **TECHNICALLY COMPLETE — PENDING FINAL SONAR**.
+Operational is the sixth technically complete engine submitted for owner acceptance;
+Risk & Decision has not started.
 
 | Frozen engine | Owner-accepted technical baseline |
 | --- | --- |
@@ -977,7 +980,7 @@ production capacity/SLA, real-data validation or throughput guarantee.
 | TypeScript / post-build TypeScript / zero-warning scoped ESLint | PASS |
 | Production build | PASS on identical retry; initial existing Next.js advisory failure retained |
 | Historical Full Regression | **NOT CLAIMED PASS**; accepted frozen Competitor timing and pre-M2 DB debt unchanged |
-| Exact-SHA CodeQL | Pending tested implementation commit/push and exact-commit uploaded analysis |
+| Exact-SHA CodeQL | PASS on `93a0a952c8a97ec9e7563cf90f87a8f1f0651d5c`; both matrix jobs and both uploaded analyses verified |
 | Sonar | **DEFERRED / PENDING** |
 | Real-data acceptance | **BLOCKED / NOT VERIFIED** |
 
@@ -1004,3 +1007,43 @@ Saved session receipts: `operational-m5-pure-initial`, `operational-m5-typecheck
 `operational-m5-typecheck-postbuild`. The owned M5 container and anonymous data
 volume were removed after validation; the unrelated PostgreSQL was left running.
 No final tag, main/integration merge, Sonar execution or seventh engine is authorized.
+
+### Exact-SHA CodeQL and final technical closure
+
+**Tested M5 implementation/test candidate and exact-SHA CodeQL target:
+`93a0a952c8a97ec9e7563cf90f87a8f1f0651d5c`.**
+The subsequent final technical closure commit changes documentation only; it
+does not replace this tested/scanned SHA or claim a second code-test execution.
+All production source files remain byte-identical to accepted M4.
+
+[CodeQL run 39874077730](https://github.com/Jenan21/jenanbiz1-git/actions/runs/39874077730)
+was manually dispatched using the unchanged existing workflow on
+`jenan-engines/operational-feasibility`; headSha exactly matches the tested SHA.
+Both `javascript-typescript` and `actions` matrix jobs concluded SUCCESS.
+Uploaded code-scanning analysis IDs **2009540212** and **2009531339** respectively
+match that commit, have empty analysis errors and contain five / zero results.
+Branch alert inspection confirms **zero open, zero new alerts** and the same five
+previously dismissed baseline alerts (#2, #3, #9, #10, #14), all dismissed before
+this dispatch. M5 does not dismiss or remediate any finding. The existing Next.js
+dependency-security advisory remains a separate remediation item.
+The Ubuntu runner-image migration notice is informational, not an analysis error.
+
+Saved scan receipts: `operational-m5-codeql-watch.log`,
+`operational-m5-codeql-run.json`, `operational-m5-codeql-analyses.json` and
+`operational-m5-codeql-alerts.json`. An initial local receipt parser treated the
+Windows PowerShell JSON array as one object; explicit array enumeration corrected
+the receipt check without rerunning or changing the successful GitHub analysis.
+
+The tested implementation was committed and pushed to origin before dispatch.
+Final documentation is maintained as its separate child and synchronized to the
+existing clean detached Desktop archive; Local/Remote/Desktop exact HEAD equality
+is the final release receipt, never a substitute for the tested implementation SHA.
+Financial's branch/archive and the five accepted engines remain frozen.
+No UI/routes, real-data production acceptance, final tag, main/integration merge
+or Risk & Decision implementation is included.
+
+**JENAN OPERATIONAL FEASIBILITY ENGINE — M5 FINAL TECHNICAL CLOSURE REPORT.**
+**JENAN OPERATIONAL FEASIBILITY ENGINE = TECHNICALLY COMPLETE — PENDING FINAL SONAR.**
+**REAL-DATA OPERATIONAL FEASIBILITY ACCEPTANCE = BLOCKED / NOT VERIFIED.**
+**Sonar = DEFERRED / PENDING. Historical Full Regression = NOT CLAIMED PASS.**
+Stop for owner review before engine seven.

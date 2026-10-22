@@ -130,7 +130,13 @@ defers final Sonar acceptance and final tags until all seven technical baselines
    TypeScript / zero-warning ESLint / unchanged production-build retry PASS;
    original missing-DATABASE_URL unit failure and initial dependency-advisory
    build failure retained; separate dependency-security upgrade recommended;
-   exact-SHA CodeQL / final closure pending; Sonar DEFERRED / PENDING;
+   exact-SHA CodeQL PASS on tested implementation
+   `93a0a952c8a97ec9e7563cf90f87a8f1f0651d5c`, run `39874077730`,
+   both languages uploaded without analysis errors, zero open/new alerts,
+   five previously dismissed baseline alerts unchanged;
+   final closure documentation is a separate child, not the tested SHA;
+   **TECHNICALLY COMPLETE — PENDING FINAL SONAR**, owner acceptance pending;
+   Sonar DEFERRED / PENDING; no final tag, main merge or engine seven;
    real-data acceptance BLOCKED / NOT VERIFIED)
 7. Risk & Decision Engine
 
