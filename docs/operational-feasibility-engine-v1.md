@@ -5,8 +5,9 @@
 **M0 owner-approved at `136b36593a813c091704845a2bfc6d8d5165fe2e`.
 M1 owner-approved / CLOSED at `45e8db5dc1525a8fd88c0dc4603a69f22c0e895e`.
 M2 owner-approved / CLOSED at `3728dcafff7f797dcefddb0dd3f0da9118314b7e`.
-M3 deterministic calculations implemented for checkpoint review only.
-M4 NOT STARTED.**
+M3 owner-approved / CLOSED at `d4396ca777a58a0ae2287cbe74e6c67aa2c49348`.
+M4 persistence and exact historical replay implemented for checkpoint review only.
+M5 NOT STARTED.**
 The owner approved engine five and authorized Operational M0 only on 2026-10-22.
 Five of seven engines are now owner-accepted as
 **TECHNICALLY COMPLETE — PENDING FINAL SONAR**.
@@ -39,9 +40,10 @@ history rewrite or dependency install is authorized.
 M0 added no runtime scaffold. The owner subsequently approved M1 pure contracts,
 semantics, confidence, bounds, hashes and storage compatibility, and authorized
 M2 governed Data Center read integration, then explicitly closed M2 and authorized
-M3 deterministic operational calculations only on 2026-10-23.
+M3 deterministic operational calculations, then explicitly closed M3 and authorized
+M4 persistence and exact historical replay only on 2026-10-23.
 The Financial branch and its Desktop archive remain at their accepted baseline.
-Stop after the M3 checkpoint for owner review; do not start M4 or engine seven.
+Stop after the M4 checkpoint for owner review; do not start M5 or engine seven.
 
 References: [execution master](../design-references/Jenan-PRO/EXECUTION_MASTER.md),
 the immutable three-archive library, and page 045
@@ -774,3 +776,141 @@ Saved session receipts: `operational-m3-focused-initial`,
 **JENAN OPERATIONAL FEASIBILITY ENGINE — M3 CHECKPOINT FOR OWNER REVIEW.**
 **REAL-DATA OPERATIONAL FEASIBILITY ACCEPTANCE = BLOCKED / NOT VERIFIED.**
 **Sonar = DEFERRED / PENDING. M4 NOT STARTED. No Final Tag or main merge.**
+
+## 14. M4 checkpoint — atomic persistence and exact historical replay
+
+The owner approved and CLOSED M3 at
+`d4396ca777a58a0ae2287cbe74e6c67aa2c49348`, authorizing M4 only.
+The accepted calculation implementation, method IDs, version `1.0.0-m3`,
+decimal/rounding/confidence policies, contracts and arithmetic are unchanged.
+This milestone adds only engine-local history and adapters; M5 is not started.
+
+### Recorded evidence and atomic persistence
+
+- `run-history.ts` captures exactly one governed EXACT discovery and one expected-
+  checksum content read. It retains the original immutable source bytes, reference,
+  source/version/checksum, original operational model and approved assumptions,
+  schedules, loss/productivity/labor semantics, scenarios, sensitivity, approvals
+  and local source-record register. Missing/hidden sources remain unavailable;
+  partial/stale/incompatible preparation rejects explicitly, without saved guesses.
+- `buildOperationalRunRecord` validates the M3 result by full recomputation and
+  reproduces it through the saved source transcript before accepting a record.
+  No guessed runtime, current model or latest-version lookup substitutes for
+  original evidence. A calculation-only synthetic result cannot be persisted
+  as a governed run without a matching approved source transcript.
+- `jenan.operational-feasibility.run-history/v1` records trusted replay scope and
+  exact calculation, decimal, rounding and confidence policy versions. The current
+  supported calculation version remains `1.0.0-m3`; unknown engine/policy versions
+  fail, never silently upgrade. Canonical request/input/output hashes retain
+  original evaluatedAt; only run ID and execution timing are excluded from the
+  unchanged M3 output hash.
+- The existing `AnalysisEngineRun` result JSON is Output; no new Output table,
+  migration, foreign key or schema is added. Run/result plus all nested Input rows
+  commit in one RepeatableRead transaction. Inputs repeat exact version/source/
+  type/checksum, content SHA, original model provenance and declared usage intent.
+  All these repeated columns are checked again when read.
+- Current source authorization is checked again inside the persistence transaction,
+  not merely during preparation. Persisted actor identity must match the trusted
+  principal. Duplicate run IDs fail at the unchanged unique constraint without
+  overwrite; a three-way race commits exactly one Run/Input pair.
+- Failure inserting a nested Input rolls back the parent Run and its Output;
+  the same run ID can then be retried successfully. A later duplicate still fails.
+  There is no update/upsert/delete or cleanup compensation path in the adapter.
+  Existing append-only database triggers protect both Run and Input rows.
+
+### Exact historical replay and current authorization
+
+`replayOperationalAnalysis` reads history through a new transaction, applies owner/
+admin history filtering, and reauthorizes retained exact source references before
+validating or recomputing stored calculations. Foreign and nonexistent Run IDs
+produce the same `OperationalHistoryUnavailable` response, with no stored model
+or source metadata returned.
+
+The narrow `historical-data-center` adapter reads only the exact stored version
+ID. It recomputes the full unchanged Data Center immutable-version checksum,
+checks original source/type/item/layer/version number and compares retained bytes.
+It may read a superseded exact version when its parent item is still published
+and accessible; it never resolves latest or chooses any substitute version.
+Missing historical versions, changed bytes/checksums or inconsistent stored
+provenance/usage/columns fail explicitly.
+
+Current source scope, required permissions, organization membership, unresolved
+conflicts, retrieval rights, ownership, license/usage/export/attribution and trusted
+specialty/mission scope are enforced. Current robot grants must be unrevoked,
+unexpired and backed by current robot mission assignment. Stored evaluation time
+cannot revive a grant or membership. Changed rights conservatively make history
+unavailable; replay does not widen export rights or replace historical descriptors.
+
+After authorization and integrity checks, pure replay feeds only the original
+recorded discovery/content transcript back through M2/M3, with the original model,
+evaluatedAt and calculation policies. It recomputes the full result and compares
+canonical semantics, not just supplied hashes. A newer model or a changed source
+freshness window does not replace historical assumptions/confidence. Current
+authorization and historical evidence quality are deliberately distinct.
+
+Replay has no live latest discovery, Data Center write, audit/usage write,
+Run/Input insert, update or delete. PostgreSQL row counts are unchanged across
+replay. Backend failures propagate; there is no cached-success fallback.
+Checksums detect inconsistency but are not signatures against an administrator
+who can rewrite all records, source bytes and checksums consistently.
+
+### Bounds, isolation and verification
+
+Transcript operation count is exactly two, source content retains its existing
+200,000-character bound, and the canonical record plus expanded stored input
+provenance/usage envelope must fit the existing 2 MiB history limit. No calculation
+or performance threshold is raised. The only new live capabilities are four exact
+Operational history adapters, allowlisted by path and import in local/global tests;
+the pure index exports no adapter.
+
+| Gate | Saved result |
+| --- | --- |
+| New pure Operational history cases | **28/28 PASS** |
+| Operational M1-M4 unit/isolation cases | **358/358 PASS** |
+| Global engine boundaries | **18/18 PASS**; Operational/global coverage **376/376 PASS** within final related runner |
+| Final related unit regression | **832/832 PASS**, 26 files, no skips: 358 Operational + 235 unchanged Financial + 239 Shared/global |
+| M4 PostgreSQL history/recovery/access cases | **35/35 PASS**, targeted final runner **32.08 s** |
+| Operational M2/M3 + Data Center PostgreSQL regressions | **104/104 PASS**, six related regression files' results retained from the combined run; 24 Operational + 80 Data Center |
+| Atomic commit / duplicate race / rollback-retry / append-only | PASS, including real committed transactions and injected nested-input failure |
+| Original-version replay / tamper detection / no latest fallback | PASS |
+| Current authorization / no existence leak / read-only replay | PASS |
+| PostgreSQL / PostGIS / schema | PostgreSQL **17.5**, PostGIS **3.5.2**, **78 unchanged migrations** applied; no spatial acceptance claimed |
+| TypeScript / post-build TypeScript | PASS |
+| Scoped ESLint with zero warnings | PASS |
+| Production build | PASS on unchanged retry; initial existing Next.js advisory failure retained |
+| git diff --check / frozen boundaries | PASS; no Shared, prior-engine, Data Center runtime, Prisma, Map/UI, workflow or dependency changes |
+| Historical Full Regression | **NOT CLAIMED PASS**; accepted Competitor debt unchanged, broad suite not rerun |
+| Sonar / M5 | **DEFERRED / PENDING** / NOT STARTED; no new CodeQL scan claimed |
+
+The first expanded combined DB command failed only new M4 fixture checks:
+an attempted grant-expiry update was correctly rejected by the frozen immutable
+grant trigger, and two newly added tests were nested rather than registered.
+The fixture now advances only the test Date clock to verify actual grant expiry
+(restored in finally); no grant trigger/policy was changed. Test registration was
+corrected and checked by the existing AST guard. The targeted final history run
+passes all 35 collected cases. The six regression files had already passed;
+their saved 104 passing cases were not rerun. The earlier failed combined
+137-case command is retained as failed, **not relabeled a combined PASS**.
+Initial test-only type errors (required role key and conflict fixture fields)
+were corrected before final typecheck/DB receipts. No frozen implementation fix
+was needed.
+
+The inherited PostgreSQL driver deprecation warning remains a warning. The first
+production-build command stopped on the existing Next.js security advisory; the
+unchanged retry passed. A separate dependency-security upgrade remains recommended;
+CodeQL does not remediate vulnerable dependencies. Generated Next declaration-path
+drift was restored before post-build typecheck.
+
+Saved session receipts: `operational-m4-focused-initial`,
+`operational-m4-focused-final`, `operational-m4-unit-final`,
+`operational-m4-unit-final-2`, `operational-m4-migrations`,
+`operational-m4-db-initial`, `operational-m4-db-final` (failed combined command),
+`operational-m4-db-history-final`, `operational-m4-typecheck-final-2`,
+`operational-m4-typecheck-postbuild`, `operational-m4-eslint-final-2`,
+`operational-m4-build`, `operational-m4-build-retry`.
+Only the owned M4 disposable container and its anonymous volume were removed
+after verification; unrelated PostgreSQL was left running.
+
+**JENAN OPERATIONAL FEASIBILITY ENGINE — M4 CHECKPOINT FOR OWNER REVIEW.**
+**REAL-DATA OPERATIONAL FEASIBILITY ACCEPTANCE = BLOCKED / NOT VERIFIED.**
+**Sonar = DEFERRED / PENDING. M5 NOT STARTED. No Final Tag or main merge.**

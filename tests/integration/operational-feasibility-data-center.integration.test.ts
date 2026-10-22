@@ -28,7 +28,7 @@ async function isolated(run: (tx: DbExecutor, actor: DataCenterActor) => Promise
   try {
     await (context.actual as typeof db).$transaction(async (tx) => {
       const identity = await tx.$queryRaw<{ name: string }[]>`SELECT current_database() AS name`;
-      if (!/^se_operational_m[23]_[a-f0-9]{12}$/.test(identity[0]?.name ?? "")) throw new Error("Operational M2/M3 requires its own disposable migrated database");
+      if (!/^se_operational_m[234]_[a-f0-9]{12}$/.test(identity[0]?.name ?? "")) throw new Error("Operational M2-M4 requires its own disposable migrated database");
       context.tx = tx;
       try {
         const user = await tx.user.create({ data: { email: `operational-m2-${randomUUID()}@example.test`, status: "ACTIVE", systemRole: "ADMIN" } });

@@ -93,6 +93,10 @@ describe("analysis engine boundaries", () => {
     const opportunityProviderPath = "opportunity-gap/adapters/data-center-provider.ts";
     const financialProviderPath = "financial-feasibility/adapters/data-center-provider.ts";
     const operationalProviderPath = "operational-feasibility/adapters/data-center-provider.ts";
+    const operationalHistoryAdapters = new Set([
+      "operational-feasibility/adapters/run-persistence.ts", "operational-feasibility/adapters/run-service.ts",
+      "operational-feasibility/adapters/replay-service.ts", "operational-feasibility/adapters/historical-data-center.ts",
+    ]);
     const financialHistoryAdapters = new Set([
       "financial-feasibility/adapters/run-persistence.ts", "financial-feasibility/adapters/run-service.ts",
       "financial-feasibility/adapters/replay-service.ts", "financial-feasibility/adapters/historical-data-center.ts",
@@ -116,12 +120,12 @@ describe("analysis engine boundaries", () => {
       "spatial/adapters/historical-data-center.ts",
     ]);
     const adapters = sources.filter((entry) => isAdapter(entry.path));
-    const databaseAdapters = adapters.filter((entry) => ![dataCenterProviderPath, marketProviderPath, competitorProviderPath, opportunityProviderPath, financialProviderPath, operationalProviderPath].includes(entry.path) && !m5Adapters.has(entry.path) && !marketHistoryAdapters.has(entry.path) && !competitorHistoryAdapters.has(entry.path) && !opportunityHistoryAdapters.has(entry.path) && !financialHistoryAdapters.has(entry.path));
+    const databaseAdapters = adapters.filter((entry) => ![dataCenterProviderPath, marketProviderPath, competitorProviderPath, opportunityProviderPath, financialProviderPath, operationalProviderPath].includes(entry.path) && !m5Adapters.has(entry.path) && !marketHistoryAdapters.has(entry.path) && !competitorHistoryAdapters.has(entry.path) && !opportunityHistoryAdapters.has(entry.path) && !financialHistoryAdapters.has(entry.path) && !operationalHistoryAdapters.has(entry.path));
     const allowedAdapterPackages = new Set(["pg", "zod"]);
 
     it("exist only in Spatial's directory or the exact Market/Competitor/Opportunity adapter allowlists", () => {
       expect(adapters.length).toBeGreaterThan(0);
-      for (const adapter of adapters) expect(adapter.path.startsWith("spatial/adapters/") || [marketProviderPath, competitorProviderPath, opportunityProviderPath, financialProviderPath, operationalProviderPath].includes(adapter.path) || marketHistoryAdapters.has(adapter.path) || competitorHistoryAdapters.has(adapter.path) || opportunityHistoryAdapters.has(adapter.path) || financialHistoryAdapters.has(adapter.path), adapter.path).toBe(true);
+      for (const adapter of adapters) expect(adapter.path.startsWith("spatial/adapters/") || [marketProviderPath, competitorProviderPath, opportunityProviderPath, financialProviderPath, operationalProviderPath].includes(adapter.path) || marketHistoryAdapters.has(adapter.path) || competitorHistoryAdapters.has(adapter.path) || opportunityHistoryAdapters.has(adapter.path) || financialHistoryAdapters.has(adapter.path) || operationalHistoryAdapters.has(adapter.path), adapter.path).toBe(true);
     });
 
     it("import only pg, zod and the engine's own tree: never Prisma, the application's database layer, Projects, the Map's service, the Data Center or the framework", () => {
@@ -152,6 +156,10 @@ describe("analysis engine boundaries", () => {
 
     it("keeps Spatial M5 and Market M4 database adapters narrowly scoped to persistence and exact historical reads", () => {
       const permitted = new Map<string, Set<string>>([
+        ["operational-feasibility/adapters/run-persistence.ts", new Set(["@/generated/prisma/client", "@/lib/db", "@/services/data-center/contracts", "@/services/data-center/policy"])],
+        ["operational-feasibility/adapters/run-service.ts", new Set(["@/services/data-center/contracts", "@/services/data-center/policy"])],
+        ["operational-feasibility/adapters/replay-service.ts", new Set(["@/services/data-center/contracts"])],
+        ["operational-feasibility/adapters/historical-data-center.ts", new Set(["@/generated/prisma/client", "@/lib/auth/authorization", "@/lib/db", "@/services/data-center/contracts", "@/services/data-center/policy", "@/services/data-center/version-checksum"])],
         ["financial-feasibility/adapters/run-persistence.ts", new Set(["@/generated/prisma/client", "@/lib/db", "@/services/data-center/contracts", "@/services/data-center/policy"])],
         ["financial-feasibility/adapters/run-service.ts", new Set(["@/services/data-center/contracts", "@/services/data-center/policy"])],
         ["financial-feasibility/adapters/replay-service.ts", new Set(["@/services/data-center/contracts"])],
@@ -173,7 +181,7 @@ describe("analysis engine boundaries", () => {
         ["spatial/adapters/replay-service.ts", new Set(["zod", "@/services/data-center/contracts", "@/services/data-center/map-contract"])],
         ["spatial/adapters/historical-data-center.ts", new Set(["@/generated/prisma/client", "@/lib/auth/authorization", "@/lib/db", "@/services/data-center/contracts", "@/services/data-center/imports", "@/services/data-center/policy", "@/services/data-center/version-checksum"])],
       ]);
-      for (const adapter of adapters.filter((entry) => m5Adapters.has(entry.path) || marketHistoryAdapters.has(entry.path) || competitorHistoryAdapters.has(entry.path) || opportunityHistoryAdapters.has(entry.path) || financialHistoryAdapters.has(entry.path))) {
+      for (const adapter of adapters.filter((entry) => m5Adapters.has(entry.path) || marketHistoryAdapters.has(entry.path) || competitorHistoryAdapters.has(entry.path) || opportunityHistoryAdapters.has(entry.path) || financialHistoryAdapters.has(entry.path) || operationalHistoryAdapters.has(entry.path))) {
         for (const specifier of specifiersOf(adapter.text)) {
           if (specifier.startsWith(".")) expect(resolve(dirname(adapter.file), specifier).startsWith(root), `${adapter.path} imports ${specifier}`).toBe(true);
           else expect(permitted.get(adapter.path)?.has(specifier), `${adapter.path} imports ${specifier}`).toBe(true);
@@ -194,7 +202,7 @@ describe("analysis engine boundaries", () => {
 
       it("exists, and no other adapter imports anything of the Data Center", () => {
         expect(provider).toBeDefined();
-        for (const adapter of adapters.filter((entry) => ![dataCenterProviderPath, marketProviderPath, competitorProviderPath, opportunityProviderPath, financialProviderPath, operationalProviderPath].includes(entry.path) && !m5Adapters.has(entry.path) && !marketHistoryAdapters.has(entry.path) && !competitorHistoryAdapters.has(entry.path) && !opportunityHistoryAdapters.has(entry.path) && !financialHistoryAdapters.has(entry.path))) {
+        for (const adapter of adapters.filter((entry) => ![dataCenterProviderPath, marketProviderPath, competitorProviderPath, opportunityProviderPath, financialProviderPath, operationalProviderPath].includes(entry.path) && !m5Adapters.has(entry.path) && !marketHistoryAdapters.has(entry.path) && !competitorHistoryAdapters.has(entry.path) && !opportunityHistoryAdapters.has(entry.path) && !financialHistoryAdapters.has(entry.path) && !operationalHistoryAdapters.has(entry.path))) {
           expect(specifiersOf(adapter.text).filter((specifier) => specifier.startsWith("@/services/data-center")), adapter.path).toEqual([]);
         }
       });

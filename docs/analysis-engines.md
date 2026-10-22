@@ -103,7 +103,8 @@ defers final Sonar acceptance and final tags until all seven technical baselines
    236 Operational + 18 global tests PASS, 710 related unit cases PASS;
    23 Operational + 80 Data Center PostgreSQL cases PASS;
    no latest/old-version substitution;
-   M3 deterministic calculations implemented for review, with explicit source-approved
+   M3 owner-approved / CLOSED at `d4396ca777a58a0ae2287cbe74e6c67aa2c49348`;
+   deterministic calculations with explicit source-approved
    loss/productivity/labor semantics, simple serial capacity/load, workforce/FTE,
    committed supply, signed inventory/reorder, observed quality, evidence gaps
    and declared scenarios/sensitivity; no score, success odds or final decision;
@@ -111,8 +112,15 @@ defers final Sonar acceptance and final tags until all seven technical baselines
    24 Operational + 80 Data Center PostgreSQL cases PASS;
    TypeScript / zero-warning ESLint / production build / diff-check PASS,
    initial Next.js advisory build failure retained and unchanged retry passed;
-   no persistence/replay; historical Full Regression remains NOT CLAIMED PASS;
-   M4 NOT STARTED; Sonar DEFERRED / PENDING;
+   M4 atomic persistence/exact historical replay implemented for review;
+   original source/version/checksum/model/approvals/policies, current authorization,
+   no existence leak, append-only, duplicate protection and rollback/retry;
+   358 Operational + 18 global unit tests PASS, 832 related unit cases PASS;
+   35 targeted history PostgreSQL cases PASS plus saved 104 Operational/Data Center
+   regression cases PASS; earlier failed combined fixture run retained as failed;
+   no latest fallback or source assumption substitution, replay writes nothing;
+   historical Full Regression remains NOT CLAIMED PASS;
+   M5 NOT STARTED; Sonar DEFERRED / PENDING;
    real-data acceptance BLOCKED / NOT VERIFIED)
 7. Risk & Decision Engine
 
