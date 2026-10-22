@@ -54,8 +54,12 @@ defers final Sonar acceptance and final tags until all seven technical baselines
    related unit regression 2,302 PASS + four skips (three existing, one accepted timing exclusion);
    broader database regression NOT PASS: four unchanged Competitor failures also
    reproduced on the pre-M2 SHA, not attributed to M2 or silently fixed;
-   TypeScript / zero-warning scoped ESLint / production build PASS; M3 NOT STARTED;
-   real-data acceptance BLOCKED / NOT VERIFIED)
+   TypeScript / zero-warning scoped ESLint / production build PASS; M2 owner-approved
+   / CLOSED at `166d48a8c689f18ccf6e70fa1accf654fb0fb0a0`;
+   M3 deterministic calculations implemented for checkpoint review, 208 Financial
+   unit/boundary cases PASS, TypeScript and zero-warning scoped ESLint PASS;
+   production build PASS; checkpoint closure pending; four Competitor DB failures
+   remain NOT PASS; real-data acceptance BLOCKED / NOT VERIFIED)
 6. Operational Feasibility Engine
 7. Risk & Decision Engine
 

@@ -33,7 +33,11 @@ export type FinancialSourceRef = z.infer<typeof financialSourceRefSchema>;
 export const currencyMinorUnits = { SAR: 2, USD: 2, EUR: 2, AED: 2, QAR: 2, JPY: 0, KWD: 3, BHD: 3, OMR: 3 } as const;
 export const currencySchema = z.enum(["SAR", "USD", "EUR", "AED", "QAR", "JPY", "KWD", "BHD", "OMR"]);
 export function roundFinancialMoney(value: string, currency: z.infer<typeof currencySchema>) {
-  return roundFinancialDecimal(value, currencyMinorUnits[currencySchema.parse(currency)]);
+  const places = currencyMinorUnits[currencySchema.parse(currency)];
+  const rounded = roundFinancialDecimal(value, places);
+  if (places === 0) return rounded;
+  const [whole, fraction = ""] = rounded.split(".");
+  return `${whole}.${fraction.padEnd(places, "0")}`;
 }
 export const financialBasisSchema = z.object({
   currency: currencySchema, priceBasis: z.enum(["NOMINAL", "REAL"]), priceBaseDate: dateSchema,

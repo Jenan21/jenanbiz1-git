@@ -3,10 +3,11 @@
 ## 1. Authority and stop
 
 **M0 APPROVED at `70eacc1a2c445af60f2a480bc096186083be371e`.
-M1 owner-approved / CLOSED after NO M1-ATTRIBUTABLE PERFORMANCE REGRESSION.
-Earlier failed aggregate retained. M2 implemented for checkpoint review only;
-four pre-existing Competitor PostgreSQL failures prevent an unqualified green
-broader regression claim. M3 NOT STARTED.**
+M1 CLOSED after NO M1-ATTRIBUTABLE PERFORMANCE REGRESSION.
+M2 owner-approved / CLOSED at `166d48a8c689f18ccf6e70fa1accf654fb0fb0a0`,
+with four pre-existing Competitor PostgreSQL failures retained as NOT PASS.
+M3 calculations are implemented for checkpoint review only; real-data acceptance
+remains BLOCKED / NOT VERIFIED.**
 The owner approved engine four's final technical closure on 2026-10-22 and explicitly
 designated `10dcafcf27c45db8b371fa5b79ac9da6bc4f21a5` as its Final Technical SHA.
 Its code/test candidate `f9b44b849e6cec93631db20cbb9c2b795058e836` remains the
@@ -496,7 +497,11 @@ Tested M1 implementation remains `329822e8865841418c3ef4e7ef89142a34552016`;
 the separate documentation-only child is
 `0aeb3e7de39beb069c29eb56eaa60bffdde795f1`, the pre-M2 baseline.
 The earlier failed full regression is not relabeled PASS.
-The owner authorized **M2 only**, with no financial calculations or M3.
+The owner then authorized M2 only, with no financial calculations in that phase.
+M2 was subsequently **APPROVED / CLOSED** at
+`166d48a8c689f18ccf6e70fa1accf654fb0fb0a0`; its four pre-existing Competitor
+database failures remain a documented NOT-PASS exception, not a passing regression.
+The owner authorized **M3 calculations only** after approving M2.
 
 ### Read contract and binding
 
@@ -597,7 +602,8 @@ and selection sensitivity is visible, but this check does not claim to fully
 diagnose or repair the frozen engine. No frozen code/test/threshold was changed.
 This is separate from the owner-accepted M1 timing debt and requires explicit
 review rather than automatically extending that acceptance to new failures.
-The broader DB gate remains NOT PASS. **M2 is a review candidate, not CLOSED.**
+The broader DB gate remains NOT PASS. The owner accepted M2 with this explicitly
+retained pre-M2 exception; this does not convert the broader gate to PASS.
 
 Saved session receipts: `financial-m2-unit-final`, `financial-m2-unit-regression`,
 `financial-m2-db-focused-final`, `financial-m2-db-focused.json`,
@@ -608,4 +614,57 @@ Owned scratch databases and the baseline comparison worktree were removed.
 
 **REAL-DATA FINANCIAL FEASIBILITY ACCEPTANCE = BLOCKED / NOT VERIFIED.**
 Synthetic fixture success is not production financial-data acceptance.
-**M3 NOT STARTED. Sonar DEFERRED / PENDING; no final tag or main/integration merge.**
+**M3 checkpoint details follow in section 14. Sonar DEFERRED / PENDING; no final
+tag or main/integration merge.**
+
+## 14. M3 checkpoint — deterministic financial calculations
+
+M2 remains owner-approved / CLOSED at
+`166d48a8c689f18ccf6e70fa1accf654fb0fb0a0`. The M2 broader database regression
+remains NOT PASS because of the four reproduced, unchanged Competitor failures;
+that result is not relabeled and no Competitor code or threshold was changed.
+M3 adds pure deterministic calculations only. It does not add persistence, Data
+Center reads/writes, prior-engine imports, UI, or database/schema changes.
+
+### Calculation semantics
+
+- Sums and reports CapEx, OpEx and explicitly declared revenue; quantity-times-price
+  revenue is accepted only from explicit same-period, same-currency volume and price.
+  No population, demand, competitor, inferred price, or missing-value revenue is used.
+- Cash flow supports the declared direct-cash schedule and an accrual bridge that
+  adds depreciation back once, subtracts cash tax, CapEx and working-capital change,
+  and includes explicit disposal cash.
+- Gross, operating and net margins use explicit accounting schedules and are
+  NOT_COMPUTABLE for zero or negative revenue denominators. Single-product break-even
+  requires explicit fixed costs and positive contribution margin; whole units round up.
+- Simple payback is period-end only, with no interpolation; it reports the first
+  crossing and discloses any later cumulative deficit. No crossing is not presented
+  as a numeric payback.
+- NPV uses the complete t0-plus-equal-period cash-flow schedule and an explicit
+  compatible per-period discount rate. IRR reports no selected root for ambiguous/
+  nonconventional cash flows and uses only the bounded declared bisection policy.
+- Cash requirement is a measured reserve shortfall; residual financing counts only
+  explicitly committed financing and subtracts explicit debt payments/distributions.
+  It is not a financing recommendation.
+- Scenarios apply only declared overrides. Sensitivity compares explicit low/base/high
+  values one driver at a time; it neither ranks scenarios nor implies causality.
+- Monetary arithmetic uses the isolated 34-significant-digit HALF_EVEN decimal
+  policy; displayed money uses the currency minor-unit scale, with six-decimal
+  percentage/quantity reporting. Results carry method/version, assumption IDs,
+  evidence, confidence, rights and limitations. Hashes exclude run ID and timing.
+
+### Saved M3 verification
+
+| Gate | Result |
+| --- | --- |
+| Financial M1/M2/M3 unit and boundary tests | **208/208 PASS** |
+| Global engine-boundary regression | **18/18 PASS**; 226 total in the combined focused run |
+| TypeScript | **PASS** |
+| Scoped ESLint, zero warnings | **PASS** |
+| Production build | **PASS** with a nonconnecting local placeholder `DATABASE_URL` required for route initialization |
+| Full regression | **NOT CLAIMED PASS**; the previously accepted four Competitor DB failures remain documented |
+| PostgreSQL/Data Center | **NOT RUN for M3**: no DB/source integration changed and Docker is unavailable; M2 evidence remains separate |
+| Real-data financial acceptance | **BLOCKED / NOT VERIFIED** |
+
+No real financial-data acceptance is implied by synthetic calculation fixtures.
+**M4 NOT STARTED. Sonar DEFERRED / PENDING; no final tag or main/integration merge.**

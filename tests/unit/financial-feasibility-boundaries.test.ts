@@ -35,10 +35,10 @@ function problems(text: string, file = join(root, "probe.ts")) {
   };
   visit(source); return found;
 }
-describe("Financial M2 isolation: exact governed read-only provider", () => {
-  it("has ten pure files and exactly one read adapter, no production persistence", () => {
+describe("Financial engine isolation: pure calculations and exact governed read-only provider", () => {
+  it("keeps calculation contracts pure and exactly one live read adapter, no persistence", () => {
     const names = readdirSync(root);
-    expect(names).toEqual(["adapters", "confidence.ts", "contracts.ts", "data-port.ts", "data-sources.ts", "datasets.ts", "decimal.ts", "index.ts", "model.ts", "request.ts", "semantics.ts"]);
+    expect(names).toEqual(["adapters", "calculations.ts", "confidence.ts", "contracts.ts", "data-port.ts", "data-sources.ts", "datasets.ts", "decimal.ts", "index.ts", "model.ts", "request.ts", "semantics.ts"]);
     const files = names.filter((name) => name.endsWith(".ts"));
     expect(readdirSync(join(root, "adapters"))).toEqual(["data-center-provider.ts"]);
     for (const name of files) {

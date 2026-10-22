@@ -140,7 +140,7 @@ const byId = <T extends { id: string }>(values: T[]) => [...values].sort((a, b) 
 const sortRefs = <T>(values: T[]) => [...new Map(values.map((entry) => [canonicalize(entry), entry])).values()].sort((a, b) => compareText(canonicalize(a), canonicalize(b)));
 export function financialWorkUnits(request: FinancialRequest): number {
   const rows = request.assumptions.length + request.schedules.reduce((sum, schedule) => sum + schedule.entries.length, 0);
-  const executions = 1 + request.scenarios.length + 3 * request.sensitivity.length;
+  const executions = 1 + request.scenarios.length + 3 * request.sensitivity.reduce((sum, driver) => sum + driver.targets.length, 0);
   const usesIrr = request.analyses.includes("IRR") || request.sensitivity.some((driver) => driver.targets.includes("IRR"));
   const solver = usesIrr ? (request.valuation?.solver?.maxIterations ?? 256) * (request.basis.periods.length + 1) : 0;
   const work = executions * (rows + request.basis.periods.length * request.analyses.length + solver) + request.data.versions.length;

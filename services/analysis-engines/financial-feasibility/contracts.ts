@@ -39,7 +39,7 @@ export const financialMetricSchema = z.object({
   if (valued !== (metric.value !== null) || valued !== (metric.confidence !== null)) fail("Value/confidence exist exactly for valued financial states");
   if (valued === (metric.interpretation === "UNAVAILABLE")) fail("Interpretation must reflect value availability");
   if (!valued && !metric.reasons.length) fail("Unavailable values require a specific reason, never hidden zero");
-  if (valued && (!metric.assumptionIds.length || !metric.evidence.length)) fail("Computed finances require explicit operands and evidence");
+  if (valued && !metric.evidence.length) fail("Computed finances require explicit evidence, including evidenced empty schedules");
   if (valued && metric.unit.kind === "QUANTITY" && metric.unit.salesUnit === null) fail("A computed quantity needs its explicit sales unit");
   if (metric.unit.kind === "MONEY" && metric.unit.currency !== metric.basis.currency) fail("Metric currency must match its explicit financial basis");
   if (metric.status === "ESTIMATED" && metric.interpretation !== "ASSUMPTION_BASED_PROJECTION") fail("Estimated results cannot be observed facts");
