@@ -3,8 +3,8 @@
 ## 1. Authority and stop
 
 **M0 APPROVED at `70eacc1a2c445af60f2a480bc096186083be371e`.
-M1 implemented as a review candidate; NOT CLOSED because the frozen Competitor
-performance regression gate remains NOT PASS. M2 NOT STARTED.**
+M1 implemented; targeted A/B attribution finds NO M1-ATTRIBUTABLE PERFORMANCE
+REGRESSION. Await owner closure; earlier aggregate failure retained. M2 NOT STARTED.**
 The owner approved engine four's final technical closure on 2026-10-22 and explicitly
 designated `10dcafcf27c45db8b371fa5b79ac9da6bc4f21a5` as its Final Technical SHA.
 Its code/test candidate `f9b44b849e6cec93631db20cbb9c2b795058e836` remains the
@@ -430,3 +430,57 @@ and `financial-m1-build`.
 Deliver a synchronized candidate checkpoint, not an accepted closed baseline.
 **M2 NOT STARTED. REAL-DATA FINANCIAL FEASIBILITY ACCEPTANCE = BLOCKED / NOT VERIFIED.**
 Sonar remains deferred; no main/integration merge or final tag.
+
+## 12. M1 performance attribution A/B — 2026-10-22
+
+The owner authorized exactly three runs per SHA of the single frozen Competitor
+32-interleaved-complete-analyses scenario, not another full regression or any
+Competitor/threshold change:
+
+- Baseline: `70eacc1a2c445af60f2a480bc096186083be371e`.
+- M1 candidate: `329822e8865841418c3ef4e7ef89142a34552016`.
+- Alternating order: baseline/M1, baseline/M1, baseline/M1.
+- Same disposable worktree path for both SHAs, switching detached HEAD between
+  invocations; same physical node_modules, Node v24.14.0, Vitest 4.1.11,
+  unchanged config/test/fixtures and explicit unit-only DATABASE_URL.
+  No dependency reinstall or build/typecheck/database load during the comparison.
+- This is a host Node unit benchmark, not a Docker/database test. Neither SHA
+  accesses a container; the container environment was not changed or recreated.
+- The benchmark, Competitor/Shared implementation and Vitest config have no diff
+  between the two SHAs. The declared decimal dependency is present in the common
+  installed environment for both, avoiding an installation/environment confound.
+  This isolates source-SHA attribution under that environment; it is not a separate
+  comparison of historical dependency installation layouts.
+- Actual durations below are the benchmark's measured `totalMs`, not total process
+  or assertion-callback time. Exactly one test executed per invocation; the other
+  case was excluded by the test-name selector.
+
+| Round | Baseline actual ms | M1 actual ms | Unchanged gate |
+| --- | --- | --- | --- |
+| 1 | 8,664.2656 | 8,875.6072 | Both PASS, <15,000 ms |
+| 2 | 8,636.0165 | 8,450.2192 | Both PASS, <15,000 ms |
+| 3 | 9,329.5042 | 8,825.5706 | Both PASS, <15,000 ms |
+| Median | **8,664.2656** | **8,825.5706** | **6/6 PASS** |
+
+`delta = (M1 median - baseline median) / baseline median * 100 = +1.8617%`.
+Baseline range is 8,636.02–9,329.50 ms; M1 range is 8,450.22–8,875.61 ms.
+The small median difference is within the observed overlapping sample spread;
+both variants pass the original gate on every sample. There is no evidence of a
+material M1 source-attributable slowdown in this bounded comparison.
+
+**NO M1-ATTRIBUTABLE PERFORMANCE REGRESSION.**
+The earlier frozen timing failure is tracked as
+**PRE-EXISTING / ENVIRONMENT-SENSITIVE PERFORMANCE DEBT**, not a Financial defect.
+The three current baseline passes do not establish that the baseline failed
+under the earlier host conditions, nor prove a particular external root cause.
+Six samples are not a statistical equivalence proof or production SLA claim.
+The earlier aggregate remains failed; it is never relabeled a green execution.
+No runtime/configuration/threshold change or additional test execution was made
+for this attribution review. M1 closure now awaits the owner's review of this
+evidence; **M2 NOT STARTED**.
+
+Saved session evidence: `financial-m1-ab-environment.json`,
+`financial-m1-ab-results.json`, `financial-m1-ab-summary.json`, and six
+`financial-m1-ab-{BASELINE,M1}-{1,2,3}.json/.log` receipts.
+The follow-up documentation-only SHA records the attribution result and is
+reported separately from the unchanged tested implementation candidate.

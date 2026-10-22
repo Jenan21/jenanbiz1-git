@@ -42,8 +42,11 @@ defers final Sonar acceptance and final tags until all seven technical baselines
    M0 APPROVED at `70eacc1a2c445af60f2a480bc096186083be371e`;
    M1 pure contracts/decimal/accounting/states/confidence/bounds/hashes implemented;
    152 own / 170 with global boundary tests PASS; frozen Shared unchanged;
-   M1 NOT CLOSED: full unit regression 2,256 PASS + one unchanged Competitor timing
-   failure (21,017.00 ms vs 15,000 ms; two targeted retries also fail);
+   M1 awaiting owner closure: earlier full unit regression 2,256 PASS + one unchanged
+   Competitor timing failure retained; subsequent alternating A/B, three per SHA,
+   all six PASS (baseline median 8,664.27 ms / M1 8,825.57 ms; delta +1.8617%);
+   NO M1-ATTRIBUTABLE PERFORMANCE REGRESSION; prior timing failure tracked as
+   PRE-EXISTING / ENVIRONMENT-SENSITIVE PERFORMANCE DEBT;
    M2 NOT STARTED;
    real-data acceptance BLOCKED / NOT VERIFIED)
 6. Operational Feasibility Engine
