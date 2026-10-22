@@ -28,11 +28,12 @@ defers final Sonar acceptance and final tags until all seven technical baselines
    (runtime implementation `ed531f1b10f1608f3f135a27a936228902c4f639`);
    M2 CLOSED at `2568b77c618912ca1fb41c157dfa7380ade525ee`;
    M3 CLOSED at `839eca0bc6ac3386cfa6cc457ef540ee9d17565f`;
-   M4 Shared history/exact replay implemented, pending owner closure:
-   252 Opportunity unit / 430 current DB regressions PASS;
-   full unit consolidated PASS (2,104 saved passing cases plus the sole timing case
-   passing twice at 8,562.99/8,260.77 ms against unchanged 15,000 ms; +3 prior skips);
-   M5 NOT STARTED;
+   M4 CLOSED at `93a9f9de18d2aeb916396198c9ca4df7bb24c575`;
+   M5 final acceptance in progress, no runtime changes:
+   255 Opportunity unit / 273 with global boundaries PASS;
+   430 accepted DB regressions plus 15 fresh committed acceptance cases PASS;
+   full unit consolidated PASS (2,108 distinct cases; +3 prior skips);
+   exact-SHA CodeQL and final synchronization pending;
    real-data acceptance BLOCKED / NOT VERIFIED)
 5. Financial Feasibility Engine
 6. Operational Feasibility Engine

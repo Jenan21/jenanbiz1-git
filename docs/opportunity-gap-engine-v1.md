@@ -988,4 +988,90 @@ Await owner acceptance; **M5 NOT STARTED**.
 Synthetic Opportunity fixtures on real PostgreSQL are not production acceptance.
 No Map, Data Center baseline, Shared or prior-engine runtime changes; no external
 network, scraping, AI/LLM, score or investment inference. No main merge or final tag.
-Sonar remains DEFERRED / PENDING. **Stop at M4 checkpoint; M5 NOT STARTED.**
+Sonar remains DEFERRED / PENDING. The M4 checkpoint stopped here pending owner review.
+
+## 15. M5 — Final Technical Acceptance & Closure
+
+### Authority, scope and baseline
+
+The owner explicitly **CLOSED M4** at
+`93a9f9de18d2aeb916396198c9ca4df7bb24c575` and authorized M5 only.
+Local, remote Opportunity branch and clean isolated Desktop archive were verified
+at that exact SHA before M5. The owner accepted the two saved timing passes and
+explicitly waived another full regression solely to re-establish M4.
+
+M5 adds acceptance tests and this documentation, not engine runtime behavior.
+Map, Data Center, Shared, Spatial, Market and Competitor runtime/schema/workflows
+remain unchanged. No production fixtures, data registry changes, routes or UI.
+No engine five, main merge, final tag or Sonar execution.
+
+### Final acceptance implementation
+
+- Three pure acceptance cases: 32 interleaved four-source complete calculations
+  (data coverage, demand/supply, benchmark and both approved deterministic signals);
+  16 exact in-memory transcript reconstructions with live ports deliberately disabled;
+  and >2 MiB request rejection before any source I/O.
+- Exact expected arithmetic, input count, deterministic hashes, result byte bound,
+  request/source/result mutation isolation and blocked real-data status are asserted,
+  not only successful function return values.
+- Five committed PostgreSQL acceptance cases: eight persisted full-source runs at
+  concurrency four, sixteen exact persisted replays at concurrency four, four racing
+  duplicate IDs (one success and three explicit unique-key failures), real nested
+  child insertion failure/atomic rollback/same-ID recovery, and eight concurrent
+  foreign/missing read/replay requests returning the same unavailable error.
+- Each committed case verifies Run/Input row deltas and unchanged Data Center source,
+  item, version, type, usage, audit, event and quality counts. Full cached results
+  and replays are compared, including the restrictive no-export rights.
+- The database acceptance file is opt-in and refuses any database not matching
+  `se_opportunity_m5_[a-f0-9]{12}` before fixture creation or test-only DDL.
+  The injected child failure uses a validated generated UUID-derived run ID and
+  an exactly named constraint removed in `finally`. Production has no such path.
+- The AST suite-level registration guard now includes the new acceptance file.
+
+### Evidence and measurable gates
+
+| Gate | Evidence |
+| --- | --- |
+| Opportunity unit tests | **255/255 PASS**, including three new M5 acceptance cases |
+| Opportunity plus global engine-boundary selection | **273/273 PASS**, nine files, 13.61 s |
+| Full unit regression | **PASS, consolidated evidence**: 2,104 saved passing M4 cases + the sole frozen timing case accepted after two targeted passes + three new M5 cases = 2,108 distinct passes; three existing browser-only skips. No new aggregate execution claimed. |
+| Full PostgreSQL / Data Center / PostGIS baseline | Saved accepted **430/430 PASS**, 14 files, 499.90 s; includes 41 Opportunity exact-history/tamper/access/append-only cases and the unchanged real-Saudi Spatial harness. Not unnecessarily rerun. |
+| New committed Opportunity acceptance | **5/5 PASS**, 27.14 s process / 22.64 s test suite |
+| Frozen Competitor committed acceptance, freshly rerun unchanged | **5/5 PASS**, 30.48 s process |
+| Frozen Market committed acceptance, freshly rerun unchanged | **5/5 PASS**, 15.64 s process |
+| Combined distinct database coverage | **445 distinct PASS**, consolidated baseline plus 15 targeted committed acceptance cases, not one aggregate execution |
+| New fresh databases | Each applied all **78 existing migrations**, then confirmed dropped |
+| TypeScript / scoped ESLint | **PASS**, zero warnings |
+| Production Webpack build | **PASS**, compile 79 s; static generation **161/161** |
+| `git diff --check` | **PASS** before technical checkpoint commit |
+| CodeQL security-extended | Exact technical-SHA scan and alert comparison pending; not yet a passed gate |
+
+| Scenario | Count / concurrency | Total | p50 | p95 / max | Gate |
+| --- | --- | --- | --- | --- | --- |
+| Pure four-source calculations | 32 interleaved | 1,899.45 ms | n/a | n/a | <15,000 ms total: PASS |
+| Pure exact transcript replay | 16 interleaved | 388.92 ms | n/a | n/a | <15,000 ms total: PASS |
+| Committed Opportunity runs | 8 / 4 | 5,929.48 ms | 2,411.25 ms | 3,607.91 ms | <15,000 ms each / <30,000 ms batch: PASS |
+| Committed Opportunity replays | 16 / 4 | 4,620.62 ms | 1,125.63 ms | 1,377.39 ms | <15,000 ms each / <30,000 ms batch: PASS |
+| Frozen Competitor runs / replays | 8 / 4; 16 / 4 | 6,879.31 / 7,756.50 ms | 3,319.80 / 1,857.86 ms | 3,584.99 / 2,402.62 ms | Same unchanged gates: PASS |
+| Frozen Market runs / replays | 8 / 4; 16 / 4 | 3,250.07 / 2,900.03 ms | 1,298.89 / 701.14 ms | 1,943.22 / 787.63 ms | Same unchanged gates: PASS |
+
+The per-operation/batch thresholds follow the accepted Market/Competitor M5
+bounded acceptance prior art; they were not raised after a failure. These are
+small synthetic workload measurements, **not production capacity/SLA claims**.
+The database acceptance measurements ran while final type/lint checks were also
+active on the same host; all gates passed without retries or environment changes.
+
+Scratch databases dropped:
+`se_opportunity_m5_13895a76ba21`, `se_competitor_m5_bd0bfe14efc9`,
+`se_market_m5_c25e01ff5538`. Saved session receipts:
+`opportunity-m5-unit-results.json`, `opportunity-m5-unit.log`,
+`opportunity-m5-db-{opportunity,competitor,market}.json`,
+`opportunity-m5-db-acceptance.log`, and `opportunity-m5-build.log`.
+
+### Status and stop
+
+M5 local acceptance gates above pass; exact-SHA CodeQL and final synchronization
+are still required before technical completion can be declared.
+**REAL-DATA OPPORTUNITY & GAP ACCEPTANCE = BLOCKED / NOT VERIFIED.**
+All new database content is explicitly synthetic despite using real PostgreSQL.
+**Sonar = DEFERRED / PENDING.** No engine five before owner approval of M5.

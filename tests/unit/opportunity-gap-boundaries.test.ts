@@ -78,6 +78,7 @@ describe("Opportunity M4 isolation: exact read provider and bounded Shared histo
     const unit = join(process.cwd(), "tests", "unit");
     const files = readdirSync(unit).filter((name) => /^opportunity-gap-.*\.test\.ts$/.test(name)).map((name) => join(unit, name));
     files.push(join(process.cwd(), "tests", "integration", "opportunity-gap-data-center.integration.test.ts"));
+    files.push(join(process.cwd(), "tests", "integration", "opportunity-gap-acceptance.integration.test.ts"));
     for (const file of files) {
       const source = ts.createSourceFile(file, readFileSync(file, "utf8"), ts.ScriptTarget.Latest, true);
       const visit = (node: ts.Node, insideTest: boolean) => {
