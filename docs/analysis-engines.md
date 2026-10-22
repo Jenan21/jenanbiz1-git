@@ -13,8 +13,18 @@ defers final Sonar acceptance and final tags until all seven technical baselines
    M4 CLOSED at `d2ef88e`; M5 accepted; Final Technical SHA
    `c54d647838c1ce10730277f3977abc4980c3715d`;
    **TECHNICALLY COMPLETE — PENDING FINAL SONAR**, frozen)
-3. Competitor Analysis Engine (M0 planning only authorized; implementation requires review)
-4. Opportunity & Gap Engine
+3. Competitor Analysis Engine ([contracts and checkpoints](competitor-analysis-engine-v1.md);
+   M0 APPROVED at `88858341da8c016617cb380775e5aef12a0b244b`;
+   M1 CLOSED at `bde54c6d53a4062bb1edf7223d83328e98f34c6b`;
+   M2 CLOSED at `f8d974c206e25af32bc18472d94ad32eefbcb8c4`;
+   M3 CLOSED at `54c5c0fc02414b23087a08e47b747524b758556c`;
+   M4 CLOSED at `f1a7f7da1c0873ccdeb8a6e99db8b1f8d5937974`;
+   M5 final technical gates PASS; Final Technical SHA
+   `eaa2d09374593d5677fc77c3efbc4f5a3e42e4a0`;
+   **TECHNICALLY COMPLETE — PENDING FINAL SONAR**, frozen;
+   real-competitor acceptance BLOCKED / NOT VERIFIED)
+4. Opportunity & Gap Engine ([M0 proposal](opportunity-gap-engine-v1.md);
+   architecture/planning authorized; M0 FOR OWNER REVIEW; M1 NOT STARTED)
 5. Financial Feasibility Engine
 6. Operational Feasibility Engine
 7. Risk & Decision Engine
@@ -46,10 +56,55 @@ and is never modified by the engines. The engines are aggregated on their own li
   repository findings remain unchanged. Status: **TECHNICALLY COMPLETE — PENDING
   FINAL SONAR**, not FINAL CLOSED. Real-demand acceptance remains BLOCKED / NOT VERIFIED.
   Freeze the engine; stop for explicit approval before any necessary shared modification.
-- The owner authorized Competitor Architecture & Implementation Plan / M0 only,
-  then explicitly approved a Market-to-integration merge commit without squash and
-  a `jenan-engines/competitor-analysis` planning branch. No main merge, final tag,
-  Sonar attempt or Competitor implementation is authorized.
+- The owner authorized Competitor Architecture & Implementation Plan / M0,
+  explicitly approved a Market-to-integration merge without squash and the isolated
+  `jenan-engines/competitor-analysis` branch, then APPROVED revised M0 at
+  `88858341da8c016617cb380775e5aef12a0b244b` and authorized **M1 only**.
+  M1 was accepted and CLOSED at `bde54c6d53a4062bb1edf7223d83328e98f34c6b`;
+  the owner separately authorized M2, accepted and CLOSED it at
+  `f8d974c206e25af32bc18472d94ad32eefbcb8c4`, then authorized **M3 only**.
+  M2 adds read-only Data Center integration
+  and strict source/dataset/identity/coverage checks, with no Data Center writes,
+  persistence, Map/UI/Projects connection, or direct Spatial/Market dependency.
+  Real competitor acceptance remains BLOCKED / NOT VERIFIED, independently of
+  synthetic PostgreSQL test success. M3 adds pure versioned analytics over those same
+  authorized exact reads, preserving the M1 result validator and Shared Core.
+  Missing approved spatial facts produce explicit null / NOT_COMPUTABLE gaps.
+  Final M3 gates: 1,812 unit PASS (+3 existing browser-only skips), 357 database PASS,
+  final focused Competitor database rerun 16/16 PASS, TypeScript, zero-warning ESLint
+  and production build PASS. M3 introduced no persistence/replay; historical count
+  comparison is not replay. The owner then accepted and CLOSED M3 at
+  `54c5c0fc02414b23087a08e47b747524b758556c` and authorized **M4 only**.
+  M4 adds atomic append-only persistence in the existing Shared Run/Input tables,
+  owner/admin lookup and exact historical replay with current source/rights/organization/
+  robot access checks. Even retained discovery-candidate and excluded-version trace
+  metadata is reauthorized. No rediscovery, new dataset, schema, Data Center write,
+  Map connection or frozen engine change is introduced. M3 arithmetic remains version
+  `1.0.0-m3`; historical execution is never silently upgraded.
+  M4 gates: 1,851 unit PASS (+3 existing browser-only skips), 394 database PASS,
+  including 53 Competitor cases; all 78 migrations on fresh databases; TypeScript,
+  zero-warning scoped ESLint, production build and diff checks PASS.
+  The owner accepted and CLOSED M4 at `f1a7f7da1c0873ccdeb8a6e99db8b1f8d5937974`
+  and authorized M5 final technical acceptance only. M5 adds synthetic acceptance
+  tests, not runtime changes: 1,853 unit PASS (+3 existing browser-only skips),
+  399 database PASS across 15 files, all 78 migrations on fresh disposable databases,
+  committed concurrency/replay/duplicate-ID/rollback/recovery acceptance, TypeScript,
+  zero-warning scoped ESLint and production build PASS. Final Technical SHA
+  **`eaa2d09374593d5677fc77c3efbc4f5a3e42e4a0`** passed exact-SHA CodeQL
+  [39689010268](https://github.com/Jenan21/jenanbiz1-git/actions/runs/39689010268)
+  for javascript-typescript and actions (security-extended), with zero open/new
+  alerts and the five pre-existing dismissed repository findings unchanged.
+  Competitor: **TECHNICALLY COMPLETE — PENDING FINAL SONAR**, not FINAL CLOSED.
+  Freeze runtime/contracts except for an explicitly approved necessary shared change.
+  The subsequent documentation-only closure pins that immutable technical SHA;
+  it does not replace it. Local/Remote/Desktop must match the closure commit.
+  Real-competitor acceptance remains BLOCKED / NOT VERIFIED.
+  The owner subsequently accepted Competitor technical closure, explicitly confirmed
+  `eaa2d09374593d5677fc77c3efbc4f5a3e42e4a0` as its Final Technical SHA (the earlier
+  `f1a7f7da1c0873ccdeb8a6e99db8b1f8d5937974` is M4), and authorized Opportunity & Gap
+  M0 architecture/planning only. The M0 document is a proposal, not approval to start
+  M1 or merge/promote branches. All three accepted engine runtimes stay frozen.
+  No main merge, final tag or Sonar attempt is authorized.
 
 - Spatial: **TECHNICALLY COMPLETE — PENDING FINAL SONAR**, not `FINAL CLOSED`.
 - Final Technical Engine SHA (M7):
@@ -118,6 +173,15 @@ An engine reaches anything outside its own tree only through an adapter: a direc
   calculations, bounded source/row/method evidence and strict result revalidation.
   The provider itself still writes no run/input/usage/audit data. M4 adds separate internal
   adapters below; Shared Core, Spatial and Data Center remain unchanged.
+- **Competitor's M2 read-only Data Center provider** has its own exact allowlist:
+  discovery, version-content and pure actor/error vocabulary, plus its own engine
+  modules. It reuses the existing metadata DTO through a pure port; no Map resolver,
+  driver, database, registration, usage/audit write or Spatial/Market import.
+  Exact pins never fall back; current actor/robot and trusted organization/specialty/
+  mission restrictions are retained. Strict entity/location/source-record datasets
+  and versioned category/coverage validation prepare evidence only, not M3 analytics.
+  The frozen registry is unchanged; proposed type entries exist only in rolled-back
+  synthetic integration fixtures. Real competitor acceptance is BLOCKED / NOT VERIFIED.
 - **Spatial M5 run persistence and historical replay adapters** have explicit, narrow exceptions for
   Prisma and the application database. The persistence adapter inserts run/input rows only; the
   historical reader performs one exact-version read and applies Data Center source-scope,
@@ -139,7 +203,7 @@ An engine reaches anything outside its own tree only through an adapter: a direc
   History lookup is owner/platform-admin scoped and reauthorizes inputs before returning
   stored evidence; hidden/missing runs use the same unavailable error.
 
-Neither is re-exported by the engine's index, and neither may read the environment, the clock or
+These adapters are not re-exported by the engine's index, and may not read the environment, the clock or
 the network. An adapter never imports Projects or the Map's service. The pure core talks to an
 adapter through a port (an interface), so the place where the computation runs, or the way the
 Data Center is reached, can change without changing the contracts.
