@@ -2,8 +2,8 @@
 
 ## 1. Status and authority
 
-**M0 APPROVED. M1 implemented; technical gates verified, pending owner review.
-M2 NOT STARTED.**
+**M0 APPROVED. M1 accepted at `473e0e2957525a504ff02c229d2f048ed1de0857`.
+M2 implemented; checkpoint pending owner review. M3 NOT STARTED.**
 The owner accepted Competitor technical closure and authorized this fourth engine's
 architecture/planning, then approved M0 and authorized M1 only. After clarification, the owner confirmed its actual Final
 Technical SHA as `eaa2d09374593d5677fc77c3efbc4f5a3e42e4a0`, not the earlier M4 commit.
@@ -20,7 +20,7 @@ Three engines are **TECHNICALLY COMPLETE — PENDING FINAL SONAR**:
 
 Data Center remains frozen at `04d6148dfb875532404059adb55fcac8ee6913b2`.
 No frozen runtime/contract, Shared Core, Map, schema, UI or production data changes
-are authorized by this plan. No main merge, tag, Sonar or M2 implementation.
+are authorized by this plan. No main merge, tag, Sonar or M3 implementation.
 The owner explicitly approved promoting Competitor into `jenan-engines/integration`
 without squash, followed by creating `jenan-engines/opportunity-gap` from that merge.
 The M0 proposal was preserved at `354ca7a` before branch preparation.
@@ -266,7 +266,8 @@ only the subsequently authorized foundation; stop again before M2.
 
 ## 11. M1 checkpoint — pure contracts and comparison foundation
 
-**M1 IMPLEMENTED — TECHNICAL GATES VERIFIED / PENDING OWNER REVIEW. M2 NOT STARTED.**
+**M1 ACCEPTED at `473e0e2957525a504ff02c229d2f048ed1de0857`.**
+The owner subsequently authorized M2 only; the original M1 evidence below is retained.
 
 M1 implementation SHA: `ed531f1b10f1608f3f135a27a936228902c4f639`.
 Subsequent documentation-only SHA pinning does not change this implementation baseline.
@@ -446,9 +447,204 @@ no observed M1 code regression requiring reopening or modifying Competitor.
 the saved final aggregate provides 1,971 passing cases, and the one remaining case
 now passed twice. The original aggregate failure and earlier failed isolated retry
 remain preserved above; they have not been relabeled as successful executions.
-M1 is ready for owner review, not automatically declared CLOSED.
+M1 was presented for owner review, not automatically declared CLOSED.
+The owner's subsequent authorization to start M2 accepts this reviewed baseline.
 
 **REAL-DATA OPPORTUNITY & GAP ACCEPTANCE = BLOCKED / NOT VERIFIED.**
 This is not an M1 technical failure. Fixtures are never represented as production data.
 Sonar remains DEFERRED / PENDING; no final tag or main merge.
-Stop for M1 review; do not begin M2 automatically.
+The M1 stop was respected; M2 began only after explicit owner authorization.
+
+## 12. M2 checkpoint — Data Center integration and source/version validation
+
+**M2 IMPLEMENTED — PENDING OWNER REVIEW. M3 NOT STARTED.**
+
+### Scope and entry points
+
+- `prepareOpportunityData(port, request, evaluatedAt)` is the pure preparation service.
+- `createOpportunityDataCenterProvider(actor, context)` is the only live adapter.
+- `prepareOpportunityDataCenterInputs(request, actor, context)` connects preparation
+  to that adapter. It does not run calculations, business rules, persistence or replay.
+- The pure index exports DTOs/preparation only, never the live adapter.
+- Current engine-result M1 contracts and diagnostic behavior remain unchanged.
+  Preparation has its own `jenan.opportunity-gap.preparation/v1`, version `1.0.0-m2`.
+- Existing Data Center discovery and exact-content services enforce source scope,
+  organization permissions, robot grants, specialty/mission, publication and retrieval
+  rights. There is no direct SQL/Prisma/driver, write, new store or alternate source.
+- Actor, evaluation instant, organization and specialty/mission context are trusted
+  server parameters captured when constructing the provider. Request fields cannot
+  grant permissions or select another actor/organization.
+
+### Exact source/version selection and integrity
+
+The approved request's exact role/version/checksum pins are authoritative. M2 performs
+**EXACT discovery only**, one requested version per call, followed by a read of that
+same version and checksum. It does not implement optional type-based discovery,
+latest-version selection or fallback. Missing required need/capacity or provision/
+benchmark roles produce explicit `NOT_AVAILABLE / EXACT_PIN_REQUIRED`, without I/O
+to guess another source. Historical input groups are separately pinned and checked;
+missing corresponding roles remain explicit, never borrowed from current inputs.
+
+The provider delegates full stored-version checksum recomputation to the existing
+Data Center reader. That checksum includes content and immutable stored metadata,
+not simply `sha256(content)`. Preparation independently checks the returned
+`recomputed: true` integrity DTO, the requested/stored checksum, exact version ID,
+and discovery/read metadata equality, excluding only `resolvedAt`.
+An additional SHA-256 digest of the exact content bytes is retained separately;
+it is not mislabeled as the Data Center version checksum. Repeated exact version
+reads in one preparation cannot change metadata/content silently.
+
+Hidden, unauthorized, unpublished, superseded, expired/withdrawn and nonexistent
+versions use the governed Data Center unavailable behavior. No hidden reference,
+content, rights metadata or reason for denial is returned. The caller's own
+requested pin remains in its source slot. Organization-scoped reads recheck scope
+before invoking the existing reader. Integrity errors remain distinct for authorized
+reads; policy/backend/programming faults propagate rather than become empty success.
+
+### Dataset and provenance contract
+
+Strict `jenan.opportunity-gap.dataset/v1` requires:
+
+- role and actual Data Center `sourceId`;
+- exact quantity definition and versioned geography/sector/cohort/metric definition/
+  method/universe/adjustment plus reporting period/time-zone;
+- scoped coverage status, inventory/sample/unknown completeness and source evidence;
+- nonempty documented source-record inventory (`id`, original `reference`,
+  `description`, canonical `recordedAt`);
+- typed fact rows and explicit limitations.
+
+Rows reuse the M1 fact fields, but evidence names **local source-record IDs**.
+Benchmark rows likewise name a local authority-source record. After exact checksum
+validation, the adapter-independent binder attaches the actual input ID, version ID
+and checksum. This avoids an impossible checksum self-reference inside the bytes
+being checksummed. Fact IDs are version-namespaced; no entity/fact deduplication or
+speculative merging occurs. Duplicate local row/source identities and unresolved
+source/coverage evidence reject. Benchmark source evidence must occur among row
+evidence; the benchmark policy, applicability and validity are checked explicitly.
+
+The dataset source must match Data Center metadata. Each row must match its dataset's
+declared role, scope, definition and method, and pass all unchanged M1 fact semantics.
+A benchmark remains normative, contextual data cannot become demand, and observations
+cannot become estimates/derived comparisons. Local provenance, exact source/version/
+hash and full governed metadata are retained. JSON schema validity alone does not
+authenticate a source: only the server-governed provider supplies production inputs.
+
+Final M2 role/type mapping (not registered in production):
+
+| Role | Expected exact typeKey |
+| --- | --- |
+| `need.observations` | `opportunity-need-observations` |
+| `supply.capacity` | `opportunity-supply-capacity` |
+| `provision.observations` | `opportunity-provision-observations` |
+| `benchmarks.targets` | `opportunity-benchmarks` |
+| `context.indicators` | `opportunity-context-indicators` |
+| `dimensions.dictionary` | `opportunity-dimensions` |
+
+No Data Center baseline/registry changes are made. Integration tests register these
+types only in rolled-back transactions on disposable, freshly migrated PostgreSQL.
+Production ingestion/registration requires separately governed approved sources.
+
+### Rights, semantic and coverage validation
+
+- Preserve source ownership, license/class, usage policy, retrieval/export flags,
+  mandatory attribution, evidence status, quality assessment, freshness and coverage.
+  Nonempty license/usage policy and governed retrieval are required; M2 does not
+  invent legal interpretation beyond these declared policies.
+- Refuse conflicted/estimated/generated evidence, invalid/future metadata or source
+  records, expired/out-of-force sources and future reporting periods.
+- Unit/measure-kind/subject mismatch returns `NOT_COMPUTABLE`.
+  Definition/method/cohort/universe/adjustment mismatch also blocks preparation.
+- Exact geography, sector and time scopes are required; a different scope produces
+  `NO_COVERAGE`. Conflicting country/declared region metadata is rejected.
+  Missing geographic metadata is not assumed worldwide.
+- Only complete inventory coverage can claim COMPLETE. A row cannot upgrade its
+  parent dataset coverage. Partial/unknown coverage retains limitations and yields
+  `PARTIAL`; source freshness is evaluated at the explicit instant, not trusted solely
+  from a `FRESH` label. Null/incomplete rows also prevent a complete-ready source.
+- Source slots preserve `AVAILABLE / PARTIAL / NO_COVERAGE / NOT_AVAILABLE /
+  NOT_COMPUTABLE` with explicit validation reasons. The preparation-level status and
+  `ready` flag summarize these slots; an empty request returns an explicit unavailable
+  reason and fail-closed export rights, not a fabricated zero or empty success.
+- Rights and attribution are intersected from retained input descriptors using
+  unchanged Shared helpers. Restricted input licenses stay nonexportable. Uncovered
+  retained sources also participate, so rights cannot be broadened by dropping them.
+- `ready` means source validation passed, **not** that a gap/opportunity was computed,
+  real-data acceptance passed, or a benchmark/rule is investment advice.
+
+No direct Spatial/Market/Competitor imports or upstream facts are introduced.
+No network collection, AI/LLM, scraping, Map/Projects access, Data Center writes,
+domain datastore, API/UI connection, calculations, opportunity score, persistence,
+historical replay or recommendation is implemented. Historical preparation is an
+exact authorized read under current policy, not M4 replay.
+
+### Bounds and determinism
+
+The unchanged request validator enforces <=32 exact pins including baseline and
+2 MiB canonical request JSON before I/O. Reads are bounded to 200,000 content
+characters each. Dataset shape is bounded and cumulative parsed rows **plus source
+records** must be <=10,000; exact 10,000 acceptance and 10,001 rejection are tested.
+The full preparation including its hashes must fit 2 MiB. Excess rejects explicitly,
+never truncates. Sequential bounded reads avoid unbounded fan-out/cross-products.
+No business rule evaluation or M3 work is performed.
+
+Stable normalized request/pin ordering, exact source snapshots, content hashes,
+bound evidence, evaluatedAt, rights, attribution, work counts and validation states
+participate in reproducibility hashes. Both current and historical evidence remain
+separate. Request/input/output hashes are stable under input-pin permutations.
+M2 makes no persistence or replay promise beyond deterministic exact preparation.
+
+### Tests and verification
+
+| Gate | Evidence |
+| --- | --- |
+| Opportunity unit tests | **169/169 PASS** across five files: foundation 55, confidence 37, boundaries 32, preparation 38, provider 7 |
+| Full unit regression | **2,022 PASS**, 3 existing browser-only skips; 68 files; 124.83 s |
+| Unchanged DB/Data Center/Shared/Spatial/Market/Competitor regression | **389/389 PASS**, 13 files, including real PostgreSQL/PostGIS and copied Saudi Map acceptance |
+| Final Opportunity PostgreSQL integration | **14/14 PASS**, 7.99 s; no skipped cases |
+| Consolidated distinct DB cases | **403/403 PASS**, 14 files, using saved baseline regression plus final focused M2 verification |
+| TypeScript | PASS |
+| ESLint | PASS, zero warnings |
+| Production Webpack build | PASS; 161/161 static generation tasks |
+| `git diff --check` | PASS; repeated before commit |
+
+The first combined DB attempt passed all 389 baseline cases but failed one new M2
+case because a test was accidentally registered inside another test callback.
+The organization case was moved to suite level, and an AST registration guard now
+checks all Opportunity unit/integration cases. The final **14/14** focused DB run
+passes the corrected registration and organization behavior. Therefore 403/403 is
+consolidated evidence, not a claim that the earlier failing aggregate was green.
+No frozen test/runtime or threshold was changed to fix this test setup error.
+Initial fixture-only setup failures (immutable corruption injection and missing
+revision evidence) were also corrected exclusively inside disposable test setup.
+
+PostgreSQL cases prove exact reads/no writes, wrong caller hashes, stored-content
+tamper detection, no fallback from unpublished/superseded versions, hidden/missing
+equivalence, current retrieval/archive checks, specialty/mission, organization
+scope/membership and robot grant revocation, malformed/source/unit/scope/partial
+payloads, and restricted rights/original record attribution. Counts before/after
+reads include types, sources, items, versions, audits, events, usage and Shared
+Run/Input rows. No writes occur. Corruption injection disables immutability only
+inside the owned rolled-back test transaction, then reenables it.
+
+Each fresh application scratch database applied all **78 existing migrations** and
+was dropped. Spatial tests copied the existing loopback Saudi Map template and
+used their unchanged read-only adapter/independent SQL checks; the template itself
+was not modified. Saved unit, DB and build JSON/log evidence is retained outside
+the repository under `opportunity-m2-*` session files.
+Production build-generated declaration changes were restored; no generated files
+or scratch runners are committed.
+
+### Real data, baseline safety and stop
+
+**REAL-DATA OPPORTUNITY & GAP ACCEPTANCE = BLOCKED / NOT VERIFIED.**
+No authorized production opportunity dataset or production query was supplied.
+Tests use synthetic fixtures even though the storage/permissions/checksums run on
+real PostgreSQL. Frozen Spatial real-map regression is not Opportunity real-data
+acceptance. Missing production access neither proves no coverage nor proves zero gap.
+
+Changed runtime is confined to the Opportunity directory (new port, dataset schema,
+preparation, one read adapter and pure exports). Existing M1 behavior is retained.
+Only the global unit architecture allowlist is extended for the exact new read
+provider; all previous adapter allowlists remain intact. Shared, Data Center, Map,
+Spatial, Market, Competitor runtimes and all schemas/migrations remain unchanged.
+No main merge, tag or Sonar. **Stop after this M2 checkpoint; M3 requires review.**

@@ -3,3 +3,6 @@ export * from "./request";
 export * from "./comparison";
 export * from "./confidence";
 export * from "./contracts";
+export * from "./data-port";
+export * from "./datasets";
+export * from "./data-sources";

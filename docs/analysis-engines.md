@@ -24,12 +24,12 @@ defers final Sonar acceptance and final tags until all seven technical baselines
    **TECHNICALLY COMPLETE — PENDING FINAL SONAR**, frozen;
    real-competitor acceptance BLOCKED / NOT VERIFIED)
 4. Opportunity & Gap Engine ([contracts and M1 checkpoint](opportunity-gap-engine-v1.md);
-   M0 APPROVED; M1 pure contracts/comparability/confidence/boundaries implemented at
-   `ed531f1b10f1608f3f135a27a936228902c4f639`,
-   pending owner review; 119 M1 tests PASS; consolidated regression PASS:
-   saved aggregate 1,971 PASS plus the sole unchanged Competitor performance case
-   passing two targeted checks at 4.87 s / 4.81 s against 15 s; 3 existing skips;
-   no full-suite rerun; M2 NOT STARTED; real-data acceptance BLOCKED / NOT VERIFIED)
+   M0 APPROVED; M1 accepted at `473e0e2957525a504ff02c229d2f048ed1de0857`
+   (runtime implementation `ed531f1b10f1608f3f135a27a936228902c4f639`);
+   M2 exact governed Data Center reads/source-version validation implemented,
+   pending review; 169 Opportunity / 2,022 total unit PASS (+3 existing skips);
+   403 distinct consolidated database cases PASS (389 baseline + 14 final M2);
+   M3 NOT STARTED; real-data acceptance BLOCKED / NOT VERIFIED)
 5. Financial Feasibility Engine
 6. Operational Feasibility Engine
 7. Risk & Decision Engine
