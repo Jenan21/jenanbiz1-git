@@ -6,8 +6,8 @@
 M1 owner-approved / CLOSED at `45e8db5dc1525a8fd88c0dc4603a69f22c0e895e`.
 M2 owner-approved / CLOSED at `3728dcafff7f797dcefddb0dd3f0da9118314b7e`.
 M3 owner-approved / CLOSED at `d4396ca777a58a0ae2287cbe74e6c67aa2c49348`.
-M4 persistence and exact historical replay implemented for checkpoint review only.
-M5 NOT STARTED.**
+M4 owner-approved / CLOSED at `efcb7135753e6071b9f0d8d74a0a4cfd45e6aa84`.
+M5 local final technical acceptance PASS; exact-SHA CodeQL / closure pending.**
 The owner approved engine five and authorized Operational M0 only on 2026-10-22.
 Five of seven engines are now owner-accepted as
 **TECHNICALLY COMPLETE — PENDING FINAL SONAR**.
@@ -41,9 +41,10 @@ M0 added no runtime scaffold. The owner subsequently approved M1 pure contracts,
 semantics, confidence, bounds, hashes and storage compatibility, and authorized
 M2 governed Data Center read integration, then explicitly closed M2 and authorized
 M3 deterministic operational calculations, then explicitly closed M3 and authorized
-M4 persistence and exact historical replay only on 2026-10-23.
+M4 persistence and exact historical replay, then explicitly closed M4 and authorized
+M5 final technical acceptance only on 2026-10-23.
 The Financial branch and its Desktop archive remain at their accepted baseline.
-Stop after the M4 checkpoint for owner review; do not start M5 or engine seven.
+Stop after the M5 final technical closure report for owner review; do not start engine seven.
 
 References: [execution master](../design-references/Jenan-PRO/EXECUTION_MASTER.md),
 the immutable three-archive library, and page 045
@@ -914,3 +915,92 @@ after verification; unrelated PostgreSQL was left running.
 **JENAN OPERATIONAL FEASIBILITY ENGINE — M4 CHECKPOINT FOR OWNER REVIEW.**
 **REAL-DATA OPERATIONAL FEASIBILITY ACCEPTANCE = BLOCKED / NOT VERIFIED.**
 **Sonar = DEFERRED / PENDING. M5 NOT STARTED. No Final Tag or main merge.**
+
+M4 was subsequently explicitly accepted by the owner at
+`efcb7135753e6071b9f0d8d74a0a4cfd45e6aa84`, authorizing M5 only.
+The preceding checkpoint receipts remain historical, not replaced by M5.
+
+## 15. M5 final technical acceptance
+
+### Scope and deterministic load acceptance
+
+M5 adds tests and documentation only. Operational runtime/calculations/history,
+Shared, Data Center, Map, prior engines, Prisma, Auth/UI, workflows and dependencies
+remain unchanged from the accepted M4 baseline. No operational score, success
+probability, recommendation, AI/LLM, scraping or Projects integration is added.
+No production operational data or external source acceptance is claimed.
+
+The complete synthetic fixture exercises all base analyses, one explicitly declared
+target scenario and low/base/high cycle-time sensitivity: five variants and 135
+metrics per result. Hand-checked assertions include capacity gap 20, load
+111.111111%, labor 30 hours, FTE 5, staffing-hours gap 6, supplier shortfall 10,
+inventory balance -10/shortage 10, reorder threshold 14, observed yield 92%,
+rejection 8% and one documented prerequisite gap. The declared scenario gap is
+zero; the high cycle-time sensitivity gap is 110. No value is inferred.
+
+Four new pure cases test 32 interleaved complete analyses and mutation isolation,
+16 original-transcript reconstructions without live reads, pre-I/O 2 MiB rejection,
+and all 120 supported contiguous periods with explicitly zero required consumption
+and an attested no-applicable-commitments supplier schedule.
+Five new real committed PostgreSQL cases exercise eight runs at concurrency four,
+16 read-only replays at concurrency four, four duplicate-ID racers (one winner,
+three P2002 losers), a real nested-input constraint failure with atomic rollback
+and same-ID retry, and concurrent foreign/missing read/replay equivalence.
+Data Center source/item/version/type/usage/audit/event/quality row counts remain
+unchanged; Run/Input counts increase only by the exact committed operations.
+
+| Performance gate | Measured final receipt | Unchanged threshold |
+| --- | --- | --- |
+| 32 complete pure analyses | 1,389.453 ms total; 23.031 operations/s | <15,000 ms total |
+| 16 original-transcript replays | 817.5893 ms total | <15,000 ms total |
+| 8 committed runs, concurrency 4 | 6,491.1631 ms total; p50 3,124.9469 ms; p95/max 3,399.0417 ms; 1.232 operations/s | <30,000 ms total; <15,000 ms each |
+| 16 committed replays, concurrency 4 | 5,838.5258 ms total; p50 1,286.7218 ms; p95/max 2,191.7329 ms; 2.740 operations/s | <30,000 ms total; <15,000 ms each |
+
+These are bounded synthetic host/container acceptance measurements, not a
+production capacity/SLA, real-data validation or throughput guarantee.
+
+### Final local verification
+
+| Gate | Saved result |
+| --- | --- |
+| Operational M1-M5 unit regression | **362/362 PASS**, including four new M5 cases |
+| Global engine boundaries | **18/18 PASS**; combined Operational/global **380/380 PASS**, no skips |
+| Consolidated unit regression | **3,711 PASS / 11 skipped**, 214 passing files and one skipped file, 126.04 s; not unrestricted Full Regression |
+| Operational PostgreSQL M2/M3/M4 | **24 + 35 = 59/59 PASS**, one final related runner |
+| Operational committed M5 PostgreSQL | **5/5 PASS**, 24.69 s; Operational DB total **64 passing cases across two executions** |
+| Operational / Data Center / Spatial Data Center provider DB regression | **178/178 PASS**, eight files, 64.63 s; 59 Operational + 80 Data Center + 39 read-only Spatial provider |
+| Existing PostGIS adapter / synthetic spatial mechanics | **86/86 PASS**, two files, 30.11 s; no frozen implementation changes |
+| Consolidated related DB cases | **269 PASS across three executions** (178 + 86 + 5), not one combined 269-case run |
+| PostgreSQL / PostGIS / application schema | **17.5 / 3.5.2**; both owned application databases migrated with all **78 unchanged migrations** |
+| Persistence / replay / recovery / integrity | PASS, including original-version/assumptions/policies, tamper detection, append-only, no latest fallback, duplicate protection and real rollback/retry |
+| Current authorization / no existence leak | PASS, including historical rights/robot/org/permission checks and concurrent foreign/missing equivalence |
+| TypeScript / post-build TypeScript / zero-warning scoped ESLint | PASS |
+| Production build | PASS on identical retry; initial existing Next.js advisory failure retained |
+| Historical Full Regression | **NOT CLAIMED PASS**; accepted frozen Competitor timing and pre-M2 DB debt unchanged |
+| Exact-SHA CodeQL | Pending tested implementation commit/push and exact-commit uploaded analysis |
+| Sonar | **DEFERRED / PENDING** |
+| Real-data acceptance | **BLOCKED / NOT VERIFIED** |
+
+The 11 unit skips comprise ten existing environment/opt-in/browser skips and the
+single explicitly excluded owner-accepted frozen Competitor 32-analysis timing
+case. No Competitor test, threshold or implementation was changed. No unrestricted
+full DB regression or historical failure is relabeled PASS.
+
+The first broad unit invocation lacked DATABASE_URL and failed five import-time
+suites (3,689 cases had passed); that failed command is retained. The unchanged
+runner with a nonconnecting build-only DATABASE_URL passed all 3,711 cases above.
+This was environment setup, not an engine code fix. The initial production build
+stopped on the already known Next.js dependency-security advisory; the unchanged
+retry passed. A separate dependency-security upgrade remains recommended; CodeQL
+is not dependency remediation. Generated Next declaration-path drift was restored.
+The existing pg client-query deprecation remains a warning, not a new failure.
+
+Saved session receipts: `operational-m5-pure-initial`, `operational-m5-typecheck-initial`,
+`operational-m5-migrate`, `operational-m5-regression-migrations`,
+`operational-m5-committed-acceptance`, `operational-m5-db-regression`,
+`operational-m5-unit-regression` (failed environment setup),
+`operational-m5-unit-regression-configured`, `operational-m5-postgis-regression`,
+`operational-m5-eslint`, `operational-m5-build`, `operational-m5-build-retry` and
+`operational-m5-typecheck-postbuild`. The owned M5 container and anonymous data
+volume were removed after validation; the unrelated PostgreSQL was left running.
+No final tag, main/integration merge, Sonar execution or seventh engine is authorized.

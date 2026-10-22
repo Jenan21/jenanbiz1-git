@@ -112,7 +112,8 @@ defers final Sonar acceptance and final tags until all seven technical baselines
    24 Operational + 80 Data Center PostgreSQL cases PASS;
    TypeScript / zero-warning ESLint / production build / diff-check PASS,
    initial Next.js advisory build failure retained and unchanged retry passed;
-   M4 atomic persistence/exact historical replay implemented for review;
+   M4 atomic persistence/exact historical replay owner-approved / CLOSED at
+   `efcb7135753e6071b9f0d8d74a0a4cfd45e6aa84`;
    original source/version/checksum/model/approvals/policies, current authorization,
    no existence leak, append-only, duplicate protection and rollback/retry;
    358 Operational + 18 global unit tests PASS, 832 related unit cases PASS;
@@ -120,7 +121,16 @@ defers final Sonar acceptance and final tags until all seven technical baselines
    regression cases PASS; earlier failed combined fixture run retained as failed;
    no latest fallback or source assumption substitution, replay writes nothing;
    historical Full Regression remains NOT CLAIMED PASS;
-   M5 NOT STARTED; Sonar DEFERRED / PENDING;
+   M5 local final acceptance PASS, tests/docs only: 362 Operational + 18 global
+   unit cases; consolidated 3,711 PASS / 11 accepted/environment skips,
+   214 passing files + one skipped; 178 related PostgreSQL + 86 PostGIS +
+   5 committed acceptance cases PASS across three executions;
+   exact eight-run / sixteen-replay load, concurrency four, duplicate race,
+   atomic rollback/retry, read-only replay and no-existence-leak PASS;
+   TypeScript / zero-warning ESLint / unchanged production-build retry PASS;
+   original missing-DATABASE_URL unit failure and initial dependency-advisory
+   build failure retained; separate dependency-security upgrade recommended;
+   exact-SHA CodeQL / final closure pending; Sonar DEFERRED / PENDING;
    real-data acceptance BLOCKED / NOT VERIFIED)
 7. Risk & Decision Engine
 
