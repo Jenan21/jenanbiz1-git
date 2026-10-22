@@ -8,8 +8,9 @@ M2 owner-approved / CLOSED at `166d48a8c689f18ccf6e70fa1accf654fb0fb0a0`,
 with four pre-existing Competitor PostgreSQL failures retained as NOT PASS.
 M3 owner-approved / CLOSED at `fc38b498aad426ecbd2a17c754b3b32ad7aacb30`.
 M4 owner-approved / CLOSED at `b6fb4a3f8d765f7ce3c43dfc5eec38cb099b9618`.
-M5 final technical acceptance is in progress; real-data acceptance remains
-BLOCKED / NOT VERIFIED.**
+M5 technical verification is complete, pending owner acceptance:
+TECHNICALLY COMPLETE — PENDING FINAL SONAR.
+Real-data acceptance remains BLOCKED / NOT VERIFIED.**
 The owner approved engine four's final technical closure on 2026-10-22 and explicitly
 designated `10dcafcf27c45db8b371fa5b79ac9da6bc4f21a5` as its Final Technical SHA.
 Its code/test candidate `f9b44b849e6cec93631db20cbb9c2b795058e836` remains the
@@ -807,7 +808,7 @@ from the owner-approved M4 baseline. No sixth engine is started.
 | TypeScript / zero-warning scoped ESLint | PASS, including post-production-build typecheck |
 | Production build | **PASS on unchanged retry**, 161/161 static pages; first execution retained as failed due to existing Next.js dependency security advisory |
 | Patch formatting / frozen runtime scope | PASS; only the two new Financial acceptance test files and these two directly related docs changed |
-| Exact-SHA CodeQL | Pending dispatch of the pushed code/test candidate; not claimed PASS yet |
+| Exact-SHA CodeQL | **PASS**, Actions and JavaScript/TypeScript; both uploaded analyses match `66afdfea4fd8e118c0833232fd95f673e00d6a33`, no analysis errors/warnings and **zero new/open alerts** |
 
 The 11 unit skips comprise ten existing opt-in/environment/browser skips and
 the explicitly excluded, owner-accepted Competitor timing-debt case. Financial
@@ -839,6 +840,32 @@ not mocked persistence or a wrapping rollback transaction.
 Committed throughput: **3.0847 runs/s** and **8.2550 replays/s**. These small
 synthetic acceptance batches are not a production capacity/SLA claim.
 
+### Exact-SHA scan and source-control roles
+
+Tested M5 code/test candidate and exact-SHA CodeQL target:
+**`66afdfea4fd8e118c0833232fd95f673e00d6a33`**.
+
+[CodeQL workflow 39823202833](https://github.com/Jenan21/jenanbiz1-git/actions/runs/39823202833)
+completed successfully for that exact head SHA:
+
+- Actions job `119979586705`, 49 seconds; analysis `2006997719`,
+  category `/language:actions`, zero results.
+- JavaScript/TypeScript job `119979587005`, 2 minutes 27 seconds; analysis
+  `2007010365`, category `/language:javascript-typescript`, five existing
+  dismissed findings, **zero new/open alerts**. The five dismissals already
+  existed before dispatch; M5 adds no dismissals.
+- Both analyses have empty error/warning fields. GitHub's Ubuntu image
+  migration annotation is informational, not a code finding.
+
+The final closure commit is a **documentation-only child** of this candidate.
+Its different SHA identifies saved closure evidence, not another runtime/test
+implementation. No code/test change follows the tested/scanned candidate.
+The final report supplies the closure SHA after push and equality verification
+of Local HEAD, remote branch HEAD and the clean detached Desktop archive.
+
+The owned M5 container and anonymous data volume were removed after testing.
+The unrelated `jenanbiz-postgres` container remains healthy and untouched.
+
 Historical Full Regression remains **NOT PASS**, with the owner-accepted
 Competitor timing debt and four pre-M2 Competitor PostgreSQL failures unchanged.
 The final unit regression explicitly excludes only the accepted Competitor
@@ -849,7 +876,13 @@ Saved session logs: `financial-m5-pure-first`, `financial-m5-committed-acceptanc
 `financial-m5-db-regression`, `financial-m5-migrations-regression`,
 `financial-m5-migrations-acceptance`, `financial-m5-typecheck-initial`,
 `financial-m5-eslint`, `financial-m5-unit-regression`, `financial-m5-build`,
-`financial-m5-build-retry` and `financial-m5-typecheck-final`.
+`financial-m5-build-retry`, `financial-m5-typecheck-final`,
+`financial-m5-typecheck-restored-generated-file`, `financial-m5-codeql-watch`,
+`financial-m5-codeql-run.json`, `financial-m5-codeql-analyses.json` and
+`financial-m5-codeql-alerts.json`.
 
 **REAL-DATA FINANCIAL FEASIBILITY ACCEPTANCE = BLOCKED / NOT VERIFIED.**
+**JENAN FINANCIAL FEASIBILITY ENGINE = TECHNICALLY COMPLETE — PENDING FINAL SONAR.**
+M5 is submitted for owner acceptance, not self-approved. The historical regression
+exceptions and separate existing dependency-security advisory remain explicit.
 **Sonar DEFERRED / PENDING. No main/integration merge, final tag or sixth engine.**

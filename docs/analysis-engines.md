@@ -75,7 +75,10 @@ defers final Sonar acceptance and final tags until all seven technical baselines
    acceptance cases PASS, including concurrency/replay/race/recovery/no-leak;
    TypeScript / zero-warning scoped ESLint / production build / diff PASS;
    existing Next.js security advisory retained, separate dependency update recommended;
-   exact-SHA CodeQL and final synchronization pending;
+   exact-SHA CodeQL Actions + JavaScript/TypeScript PASS, zero new/open alerts;
+   tested/scanned candidate `66afdfea4fd8e118c0833232fd95f673e00d6a33`,
+   followed only by documentation closure;
+   **TECHNICALLY COMPLETE — PENDING FINAL SONAR**, M5 submitted for owner acceptance;
    real-data acceptance BLOCKED / NOT VERIFIED)
 6. Operational Feasibility Engine
 7. Risk & Decision Engine
