@@ -1044,7 +1044,7 @@ No engine five, main merge, final tag or Sonar execution.
 | TypeScript / scoped ESLint | **PASS**, zero warnings |
 | Production Webpack build | **PASS**, compile 79 s; static generation **161/161** |
 | `git diff --check` | **PASS** before technical checkpoint commit |
-| CodeQL security-extended | Exact technical-SHA scan and alert comparison pending; not yet a passed gate |
+| CodeQL security-extended | **PASS** for JavaScript/TypeScript and Actions on the exact technical SHA below; no analysis errors/warnings and zero new/open alerts |
 
 | Scenario | Count / concurrency | Total | p50 | p95 / max | Gate |
 | --- | --- | --- | --- | --- | --- |
@@ -1068,10 +1068,44 @@ Scratch databases dropped:
 `opportunity-m5-db-{opportunity,competitor,market}.json`,
 `opportunity-m5-db-acceptance.log`, and `opportunity-m5-build.log`.
 
+### Exact-SHA CodeQL and versioned closure
+
+**Final Technical SHA: `f9b44b849e6cec93631db20cbb9c2b795058e836`.**
+This commit contains all acceptance tests and locally verified artifacts.
+The follow-up closure commit changes only documentation to record the completed
+scan and final delivery; it does not substitute an unscanned technical candidate.
+
+Existing unchanged `codeql.yml` was manually dispatched on the Opportunity branch:
+[CodeQL run 39760768528](https://github.com/Jenan21/jenanbiz1-git/actions/runs/39760768528).
+Its recorded `headSha` exactly matches the technical SHA:
+
+| Category | Analysis ID | Rules | Raw results | Outcome |
+| --- | --- | --- | --- | --- |
+| JavaScript / TypeScript | `2003842967` | 103 | 5 | PASS, empty error/warning |
+| Actions | `2003834707` | 23 | 0 | PASS, empty error/warning |
+
+Both jobs and the overall run completed successfully. Before/after repository alert
+snapshots contain the same five previously dismissed and six fixed alerts:
+**zero new alerts, zero open alerts**. Five raw JavaScript findings are not falsely
+reported as zero raw findings or new Opportunity defects. No dismissed alert was
+created, dismissed or edited during this work.
+Receipts: `opportunity-m5-codeql-alerts-before.json`,
+`opportunity-m5-codeql-alerts-after.json`, `opportunity-m5-codeql-analyses.json`,
+`opportunity-m5-codeql-run.json`.
+
 ### Status and stop
 
-M5 local acceptance gates above pass; exact-SHA CodeQL and final synchronization
-are still required before technical completion can be declared.
+**OPPORTUNITY & GAP ENGINE = TECHNICALLY COMPLETE — PENDING FINAL SONAR.**
+All M5 technical gates pass. No runtime or schema change was required.
 **REAL-DATA OPPORTUNITY & GAP ACCEPTANCE = BLOCKED / NOT VERIFIED.**
 All new database content is explicitly synthetic despite using real PostgreSQL.
 **Sonar = DEFERRED / PENDING.** No engine five before owner approval of M5.
+
+Delivery uses the pushed documentation-only closure HEAD for Local = Remote =
+clean isolated Desktop archive; the exact hash is recorded in the delivery report
+rather than attempting a self-referencing commit SHA. The technical SHA above stays
+fixed. The central Desktop's unrelated dirty Auth checkout is not staged, switched
+or modified (HEAD `874cd98699594f42e896628d2df3427af95fab6a`, tracked binary-diff
+SHA-256 `83e10f1393233c158909908404f41f697ef5ccd0bcd920b171d69cd9f8e546f6`
+preserved). Remote main/integration remain at their pre-M5 SHAs.
+No final tag or main merge, and stop here for owner review.
