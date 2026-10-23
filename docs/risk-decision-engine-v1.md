@@ -4,8 +4,11 @@
 
 **M0 owner-approved on 2026-10-23 at
 `2f11937a98a8a1b0940a99f0b887c48d0aadee47`.
-M1 pure foundation implemented for owner checkpoint review only.
-M2 NOT STARTED. No live integration, upstream recalculation or risk interpretation.**
+M1 owner-approved / CLOSED on 2026-10-23; final tested implementation commit:
+`396095c1795a79d2f67bfb698d40c5ab09b26fdc`.
+M2 authorized for exact governed reads only; capability investigation stopped
+at the frozen Data Center boundary pending owner approval.
+No M2 adapter, live integration, upstream recalculation or risk interpretation.**
 
 Six of seven engines are owner-approved as **TECHNICALLY COMPLETE — PENDING FINAL
 SONAR**. Engine seven starts on `jenan-engines/risk-decision` directly from the
@@ -601,3 +604,59 @@ Saved session logs: `risk-m1-focused-initial`, `risk-m1-focused-2`,
 **REAL-DATA RISK & DECISION ACCEPTANCE = BLOCKED / NOT VERIFIED.**
 **Historical Full Regression = NOT CLAIMED PASS. Sonar = DEFERRED / PENDING.**
 **STOP BEFORE M2. No Final Tag or main/integration merge.**
+
+## 15. Owner M1 closure and M2 capability stop gate (2026-10-23)
+
+The owner approved **M1 / CLOSED** at final implementation SHA
+`396095c1795a79d2f67bfb698d40c5ab09b26fdc`, accepting all section 14 gates.
+Local, origin `jenan-engines/risk-decision` and the Desktop Risk archive were
+verified clean and equal at that SHA before the M2 capability investigation.
+Any subsequent documentation-only child records this approval; it does not
+replace the tested M1 implementation SHA or claim additional runtime validation.
+The section 14 review/stop marker above is the historical M1 checkpoint.
+
+### Verified capability gap, not an implementation failure
+
+M2 was authorized for exact retained-output reads, current authorization,
+version/method/hash and compatibility validation, without upstream execution,
+Risk persistence/replay or a final decision.
+
+The architecture's mandatory section 3 stop gate is now active:
+
+- Data Center's public [exact content reader](../services/data-center/version-content.ts)
+  checks `version.number === version.item.publishedVersion`. It intentionally
+  rejects superseded historical versions; replacing a retained run's original
+  version with the current publication is forbidden.
+- Its [retrieval authorization filter](../services/data-center/retrieval.ts)
+  exposes the published/in-force predicate, but the complete version-permission
+  filter is private. [Source scope](../services/data-center/policy.ts) alone
+  does not cover `requiredPermission`, specialty and mission-context restrictions.
+  Copying that private filter into Risk would violate the approved no-policy-copy
+  boundary. Removing publication/time predicates from the published filter would
+  also be a policy bypass, not a supported historical authorization API.
+- Historical authorization implementations exist in the frozen upstream engine
+  adapters, not as a shared governed historical Data Center capability. Importing
+  them would cross the approved no-production-import boundary.
+- Existing [Operational history reads](../services/analysis-engines/operational-feasibility/adapters/run-persistence.ts)
+  call `validateOperationalRunRecord`, which rebuilds the record and reproduces
+  the calculation transcript. The [Spatial replay service](../services/analysis-engines/spatial/adapters/replay-service.ts)
+  calls `runSpatialAnalysis`. Neither is a permissible Risk evidence reader.
+
+**M2 capability gate = BLOCKED / OWNER APPROVAL REQUIRED.**
+No frozen files, runtime modules, tests, dependencies or database records were
+changed. No tests were rerun for this documentation-only investigation; the saved
+M1 receipts remain unchanged. No M2 authorization/no-existence-leak/live-read,
+native method/compatibility, PostgreSQL or CodeQL PASS is claimed.
+Map historical lineage remains a separate unproven M2 gate, not implicitly
+cleared by finding the Data Center blocker.
+
+The proposed approval scope is a narrowly additive, read-only exact historical
+Data Center authorization/read capability that reuses the single existing
+permission policy, preserves published-reader behavior, rechecks current
+source/version rights and grants, and returns the same unavailable response for
+hidden and absent references. No engine recalculation, schema change, automatic
+action or widening of caller access is authorized by this proposal.
+Do not implement the frozen-boundary extension until the owner explicitly agrees.
+
+**M3 NOT STARTED. REAL-DATA RISK & DECISION ACCEPTANCE = BLOCKED / NOT VERIFIED.**
+**Historical Full Regression = NOT CLAIMED PASS. Sonar = DEFERRED / PENDING.**

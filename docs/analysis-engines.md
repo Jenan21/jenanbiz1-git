@@ -147,7 +147,8 @@ defers final Sonar acceptance and final tags until all seven technical baselines
    or direct prior-engine imports; evidence-backed risks, explicit unknowns,
    conflicts/dependencies, declared scenario mappings and rule-by-rule decisions;
    no success probability, opaque score, invented likelihood or automatic launch;
-   M1 pure contracts/semantics/policy foundation implemented for review only;
+   M1 owner-approved / CLOSED on 2026-10-23; tested final implementation
+   `396095c1795a79d2f67bfb698d40c5ab09b26fdc`;
    exactly six engine slots, native version/hash manifest, explicit unknowns,
    no default likelihood/severity or confidence-to-failure conversion;
    decision null, empty findings/outcomes, no current authorization claimed;
@@ -155,7 +156,9 @@ defers final Sonar acceptance and final tags until all seven technical baselines
    300 Risk + 18 global cases PASS; related 1,136/1,136 PASS, 31 files, no skips;
    TypeScript / zero-warning scoped ESLint / unchanged production-build retry PASS;
    original test-only failures and inherited Next.js advisory build failure retained;
-   no adapter/live integration, no UI/schema/dependency changes; M2 NOT STARTED;
+   M2 exact-read capability investigation blocked at the frozen Data Center
+   historical-authorization boundary; owner approval required before extension;
+   no M2 adapter/live integration or UI/schema/dependency changes; M3 NOT STARTED;
    real-data acceptance BLOCKED / NOT VERIFIED; Sonar DEFERRED / PENDING)
 
 The first six engines produce **documented facts and measurements** from governed data;
