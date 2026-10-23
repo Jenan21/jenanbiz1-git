@@ -378,6 +378,38 @@ source information returned by retrieval, rather than looking up a moving
 "latest" record when regenerating an old report. A later draft must not be
 mistaken for a published revision.
 
+### Governed exact historical reads (owner-approved Risk M2 exception, 2026-10-23)
+
+`readHistoricalDataCenterVersionContent` in
+[`historical-version.ts`](../services/data-center/historical-version.ts) is an
+additive, server-side, read-only capability. It requires an exact source ID,
+version ID and checksum; it has no latest mode, substitute version or HTTP route.
+The current source-scope, organization/version permission, robot-grant,
+specialty/mission, retrieval and unresolved-conflict filters are reused through
+`accessibleVersionWhere`. The existing published reader adds its unchanged
+temporal eligibility and current published-version checks on top of that same
+policy. No authorization logic is copied into a consumer.
+
+A historical version must have an actual immutable `PUBLISHED` lifecycle event
+for its item/version number: a lower version number alone does not certify an
+unpublished draft. Its stored checksum is recomputed before content is returned.
+The historical reader retains original effective/expiry dates without treating
+them as current eligibility, returns current source rights and attribution, and
+does not fabricate a current-publication Map reference. Consumers must still
+validate historical coverage, approvals and compatibility for their own purpose.
+
+Current authorization is evaluated on every invocation. Hidden, absent,
+unpublished, wrong-source and currently inaccessible versions return the same
+`HISTORICAL_VERSION_NOT_AVAILABLE` / 404; integrity failures are only exposed
+after authorized lookup and proof of publication. No usage/audit/history writes
+occur. This exception changes no Map historical behavior, frozen engine, Shared
+module, database schema, API or dependency. It is reusable by future governed
+historical consumers, not a Risk-only policy fork.
+
+Focused PostgreSQL verification: eight new historical cases plus the 38 existing
+published-reader cases = **46/46 PASS**, all isolated and rolled back. This is
+capability evidence, not completion or real-data certification of Risk M2.
+
 Semantic retrieval is a pluggable provider capability. A missing provider
 must return an explicit unavailable state; it must not silently claim that
 keyword results are semantic results. PostgreSQL keyword retrieval needs no

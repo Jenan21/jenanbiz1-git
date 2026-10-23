@@ -21,14 +21,12 @@ async function permissionFilter(actor: DataCenterActor, tx: DbExecutor = db): Pr
     })),
   ] };
 }
-export async function accessiblePublishedVersionWhere(actor: DataCenterActor, input: DataCenterContextRequest = {}, tx: DbExecutor = db): Promise<Prisma.DataCenterVersionWhereInput> {
+/** Shared current access/conflict policy for retained versions; exact publication and temporal eligibility are consumer-specific. */
+export async function accessibleVersionWhere(actor: DataCenterActor, input: DataCenterContextRequest = {}, tx: DbExecutor = db): Promise<Prisma.DataCenterVersionWhereInput> {
   const scope = await sourceScopeWhere(actor, tx);
   return {
     AND: [
       await permissionFilter(actor, tx),
-      { OR: [{ expiresAt: null }, { expiresAt: { gt: new Date() } }] },
-      { OR: [{ effectiveFrom: null }, { effectiveFrom: { lte: new Date() } }] },
-      { OR: [{ effectiveTo: null }, { effectiveTo: { gt: new Date() } }] },
     ],
     item: {
       status: { not: "ARCHIVED" }, publishedVersion: { not: null }, source: { AND: [scope, { allowRetrieval: true }, ...(input.organizationId ? [{ organizationId: input.organizationId }] : [])] },
@@ -40,6 +38,15 @@ export async function accessiblePublishedVersionWhere(actor: DataCenterActor, in
     ...(input.specialty ? { specialties: { has: input.specialty } } : { specialties: { isEmpty: true } }),
     ...(input.missionContext ? { missionContexts: { has: input.missionContext } } : { missionContexts: { isEmpty: true } }),
   };
+}
+export async function accessiblePublishedVersionWhere(actor: DataCenterActor, input: DataCenterContextRequest = {}, tx: DbExecutor = db): Promise<Prisma.DataCenterVersionWhereInput> {
+  const authorized = await accessibleVersionWhere(actor, input, tx);
+  return { ...authorized, AND: [
+    ...(Array.isArray(authorized.AND) ? authorized.AND : authorized.AND ? [authorized.AND] : []),
+    { OR: [{ expiresAt: null }, { expiresAt: { gt: new Date() } }] },
+    { OR: [{ effectiveFrom: null }, { effectiveFrom: { lte: new Date() } }] },
+    { OR: [{ effectiveTo: null }, { effectiveTo: { gt: new Date() } }] },
+  ] };
 }
 export async function retrieveDataCenterContext(input: DataCenterContextRequest, actor: DataCenterActor) {
   const limit = Math.max(1, Math.min(100, Math.floor(input.limit || 20)));

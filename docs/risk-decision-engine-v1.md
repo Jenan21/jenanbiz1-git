@@ -6,8 +6,9 @@
 `2f11937a98a8a1b0940a99f0b887c48d0aadee47`.
 M1 owner-approved / CLOSED on 2026-10-23; final tested implementation commit:
 `396095c1795a79d2f67bfb698d40c5ab09b26fdc`.
-M2 authorized for exact governed reads only; capability investigation stopped
-at the frozen Data Center boundary pending owner approval.
+M2 authorized for exact governed reads only; owner approved the narrow historical
+Data Center capability exception on 2026-10-23. That capability is implemented;
+the independent Map retained-content proof gate awaits an owner scope decision.
 No M2 adapter, live integration, upstream recalculation or risk interpretation.**
 
 Six of seven engines are owner-approved as **TECHNICALLY COMPLETE — PENDING FINAL
@@ -435,6 +436,7 @@ then authorized M1 only. New milestone approval is required before M2.
 **REAL-DATA RISK & DECISION ACCEPTANCE = BLOCKED / NOT VERIFIED.**
 **REAL-DATA OPERATIONAL FEASIBILITY ACCEPTANCE = BLOCKED / NOT VERIFIED.**
 **Historical Full Regression = NOT CLAIMED PASS. Sonar = DEFERRED / PENDING.**
+
 **M0 ARCHITECTURE REVIEW ONLY. STOP BEFORE M1. No Final Tag or main merge.**
 
 The preceding M0 stop marker is the historical architecture checkpoint; M0 was
@@ -660,3 +662,79 @@ Do not implement the frozen-boundary extension until the owner explicitly agrees
 
 **M3 NOT STARTED. REAL-DATA RISK & DECISION ACCEPTANCE = BLOCKED / NOT VERIFIED.**
 **Historical Full Regression = NOT CLAIMED PASS. Sonar = DEFERRED / PENDING.**
+
+## 16. M2 limited Data Center exception and independent Map checkpoint
+
+The owner explicitly approved the section 15 Data Center exception on 2026-10-23,
+without authorizing changes to the six engines, Shared or Map historical behavior.
+Section 15 is retained as the preceding investigation, not an unresolved
+Data Center approval request.
+
+Implemented only the additive
+[`readHistoricalDataCenterVersionContent`](../services/data-center/historical-version.ts)
+capability and shared access-predicate extraction in
+[`retrieval.ts`](../services/data-center/retrieval.ts).
+The existing source/version permissions, robot grants, current rights,
+specialty/mission and conflict policy are reused, not copied. The published
+reader keeps its original temporal/publication eligibility. Historical reads
+require exact source/version/checksum and an actual original `PUBLISHED` event;
+skipped/unpublished drafts are not made accessible by their version number.
+Stored hashes are recomputed, original historical dates retained, and current
+source rights returned. Unavailable/hidden/absent versions share one 404.
+No writes, fallback, fabricated publication reference, schema/dependency/API
+change, previous-engine import or upstream recalculation was introduced.
+
+Saved focused PostgreSQL receipts:
+
+- `risk-m2-history-integration-initial.log`: **44 PASS / 1 FAIL**. The own robot
+  revocation test tried to set only `revokedAt`, violating the existing database
+  revocation constraint. Corrected the test to use the existing audited
+  `revokeDataCenterRobotAccess` service; no production revocation logic changed.
+- `risk-m2-history-integration-final.log`: **45/45 PASS** before the final
+  invalid-reference case was added.
+- `risk-m2-history-integration-validated.log`: **46/46 PASS**, one file, no skips,
+  **26.25 s**: eight new historical cases plus 38 unchanged published-reader
+  cases. Real migrated, dedicated PostgreSQL/PostGIS; transactions rolled back.
+- `risk-m2-history-typecheck.log` / `risk-m2-history-eslint.log`: PASS,
+  scoped lint zero warnings.
+- `risk-m2-history-build.log`: inherited Next.js dependency-advisory interruption,
+  retained as failed. `risk-m2-history-build-retry.log`: unchanged retry PASS.
+  Dependency remediation remains reserved for the final security campaign.
+- `risk-m2-history-typecheck-postbuild.log`: PASS after restoring generated
+  declaration-path drift. `git diff --check`: PASS. The dedicated test container
+  was stopped and removed; the unrelated existing PostgreSQL container untouched.
+
+### Independent Map evidence capability gate: not silently waived
+
+The existing Spatial
+[`buildMapLayerInput`](../services/analysis-engines/spatial/map-inputs.ts)
+deliberately persists `checksum: null` for ordinary Map layers, even registered
+ones. Its retained limitations explicitly say no layer content checksum exists.
+Only a boundary with a declared original digest may carry a checksum. A native
+output hash protects that recorded descriptor; it does not retrospectively hash
+the original layer contents.
+
+Map's [public published-release reader](../services/jenan-map/service.ts) checks
+the current publication pointer. Low-level `releaseById` and
+[layer enumeration](../services/jenan-map/layers.ts) are not, by themselves, a
+principal-aware exact historical content-integrity receipt. Spatial's dedicated
+historical adapter/replay logic cannot be imported or run by Risk.
+No claim is made that historical Map evidence is always unauthorized; the
+missing capability is an independent reusable proof satisfying Risk's approved
+current-authorization and exact-lineage requirements without upstream execution.
+
+**STOP for the Map evidence scope decision before implementing Risk's M2 adapter.**
+The owner can choose fail-closed rejection of outputs with unprovable Map lineage,
+or separately authorize a narrowly designed immutable-release/layer proof path.
+Neither option may invent an original checksum, silently use current Map content,
+rerun Spatial, weaken access, or modify Map historical behavior by default.
+
+**Risk M2 = BLOCKED / NOT COMPLETE.** Only the approved Data Center prerequisite
+has been implemented and tested. Six-engine governed reads, method/compatibility
+validation and Risk preparation have not been implemented or claimed PASS.
+No M2 risk evaluation, decision, persistence or replay exists. M1 remains closed
+at its separately recorded tested implementation SHA.
+
+**REAL-DATA RISK & DECISION ACCEPTANCE = BLOCKED / NOT VERIFIED.**
+**Historical Full Regression = NOT CLAIMED PASS. Sonar = DEFERRED / PENDING.**
+**M3 NOT STARTED. No Final Tag or main/integration merge.**

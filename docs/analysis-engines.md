@@ -156,8 +156,9 @@ defers final Sonar acceptance and final tags until all seven technical baselines
    300 Risk + 18 global cases PASS; related 1,136/1,136 PASS, 31 files, no skips;
    TypeScript / zero-warning scoped ESLint / unchanged production-build retry PASS;
    original test-only failures and inherited Next.js advisory build failure retained;
-   M2 exact-read capability investigation blocked at the frozen Data Center
-   historical-authorization boundary; owner approval required before extension;
+   owner-approved narrow Data Center historical-read capability implemented:
+   eight new + 38 published-reader PostgreSQL cases = 46/46 PASS;
+   M2 blocked at independent Map retained-lineage proof scope decision;
    no M2 adapter/live integration or UI/schema/dependency changes; M3 NOT STARTED;
    real-data acceptance BLOCKED / NOT VERIFIED; Sonar DEFERRED / PENDING)
 

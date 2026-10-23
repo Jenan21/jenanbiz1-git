@@ -18,10 +18,11 @@ vi.mock("@/lib/db", async (importOriginal) => {
 });
 import { db } from "@/lib/db";
 import { createDataCenterItem, createDataCenterSource, createDataCenterVersion, reviewDataCenterItem, transitionDataCenterItem } from "@/services/data-center/service";
-import { grantDataCenterRobotAccess } from "@/services/data-center/robot-grants";
+import { grantDataCenterRobotAccess, revokeDataCenterRobotAccess } from "@/services/data-center/robot-grants";
 import { recordDataCenterQualityAssessment } from "@/services/data-center/quality";
 import { resolveDataCenterMapReference } from "@/services/data-center/map-resolver";
 import { readDataCenterVersionContent } from "@/services/data-center/version-content";
+import { readHistoricalDataCenterVersionContent } from "@/services/data-center/historical-version";
 import type { DataCenterActor } from "@/services/data-center/contracts";
 
 const enabled = process.env.DATA_CENTER_DATABASE_TESTS === "1";
@@ -74,6 +75,111 @@ const NOT_FOUND = { code: "PUBLISHED_VERSION_NOT_FOUND", status: 404 };
 const failure = async (work: Promise<unknown>) => { try { await work; } catch (error) { return error as { code: string; status: number; message: string }; } throw new Error("expected the read to fail"); };
 
 afterAll(async () => { if (enabled) await (context.actual as typeof db).$disconnect(); });
+
+describe.skipIf(!enabled)("governed exact historical Data Center capability (Risk M2 exception)", () => {
+  const historical = (sourceId: string, versionId: string, expectedChecksum: string, actor: DataCenterActor, extra = {}) =>
+    readHistoricalDataCenterVersionContent({ sourceId, versionId, expectedChecksum, ...extra }, actor, context.tx as DbExecutor);
+  const unavailable = { code: "HISTORICAL_VERSION_NOT_AVAILABLE", status: 404 };
+  it("reads the exact superseded bytes and original publication, without changing the published reader or writing history", async () => {
+    await isolated(async (tx, admin) => {
+      const source = await platformSource(admin);
+      const first = await dataset(tx, admin, source.id, { content: geojson("historical") });
+      const second = await createDataCenterVersion({ itemId: first.id, title: "New version", content: geojson("current"), evidenceStatus: "ESTIMATED", reason: "Update" }, admin);
+      await publish(first.id, admin);
+      const before = [await tx.auditLog.count(), await tx.dataCenterEvent.count(), await tx.dataCenterUsage.count()];
+      const retained = await historical(source.id, first.version.id, first.version.checksum, admin);
+      expect(retained).toMatchObject({ versionId: first.version.id, number: 1, sourceId: source.id, content: geojson("historical"),
+        checksum: first.version.checksum, currentAuthorization: "AUTHORIZED", integrity: { recomputed: true } });
+      expect(retained).not.toHaveProperty("publication.publishedVersion");
+      expect(await failure(read(first.version.id, admin))).toMatchObject(NOT_FOUND);
+      expect((await read(second.id, admin)).content).toBe(geojson("current"));
+      expect([await tx.auditLog.count(), await tx.dataCenterEvent.count(), await tx.dataCenterUsage.count()]).toEqual(before);
+    });
+  });
+  it("never serves a draft that was skipped on publication, or substitutes another version/source/checksum", async () => {
+    await isolated(async (tx, admin) => {
+      const source = await platformSource(admin);
+      const first = await dataset(tx, admin, source.id);
+      const draft = await createDataCenterVersion({ itemId: first.id, title: "Unpublished", content: geojson("draft"), evidenceStatus: "ESTIMATED", reason: "Draft" }, admin);
+      const third = await createDataCenterVersion({ itemId: first.id, title: "Published third", content: geojson("third"), evidenceStatus: "ESTIMATED", reason: "Replace draft" }, admin);
+      await publish(first.id, admin);
+      expect(await failure(historical(source.id, draft.id, draft.checksum, admin))).toMatchObject(unavailable);
+      expect(await failure(historical("different-source", first.version.id, first.version.checksum, admin))).toMatchObject(unavailable);
+      expect(await failure(historical(source.id, "absent", first.version.checksum, admin))).toMatchObject(unavailable);
+      expect(await failure(historical(source.id, third.id, first.version.checksum, admin))).toMatchObject({ code: "HISTORICAL_VERSION_INTEGRITY_MISMATCH", status: 409 });
+    });
+  });
+  it("makes hidden and absent versions indistinguishable even with an incorrect checksum", async () => {
+    await isolated(async (tx, admin) => {
+      const owner = await user(tx); const outsider = await user(tx);
+      const source = await createDataCenterSource({ name: "Private historical", kind: "MANUAL", scope: "PRIVATE", owner: "Owner", license: "Internal" }, { ...owner, systemRole: "ADMIN" });
+      const item = await dataset(tx, admin, source.id);
+      const hidden = await failure(historical(source.id, item.version.id, "f".repeat(64), outsider));
+      const absent = await failure(historical(source.id, "absent", "f".repeat(64), outsider));
+      expect(hidden).toMatchObject(unavailable); expect(absent).toMatchObject(unavailable);
+      expect(hidden.message).toBe(absent.message);
+      expect((await historical(source.id, item.version.id, item.version.checksum, owner)).versionId).toBe(item.version.id);
+    });
+  });
+  it("rechecks current source rights on every read and retains historical dates rather than substituting current data", async () => {
+    await isolated(async (tx, admin) => {
+      const source = await platformSource(admin);
+      const item = await dataset(tx, admin, source.id, { effectiveFrom: ago(10).toISOString(), sourcePublishedAt: ago(12).toISOString() });
+      expect((await historical(source.id, item.version.id, item.version.checksum, admin)).sourcePublishedAt).toBe(item.version.sourcePublishedAt?.toISOString());
+      await tx.dataCenterSource.update({ where: { id: source.id }, data: { usagePolicy: "Changed current rights" } });
+      expect((await historical(source.id, item.version.id, item.version.checksum, admin)).rights.usagePolicy).toBe("Changed current rights");
+      await tx.dataCenterSource.update({ where: { id: source.id }, data: { allowRetrieval: false } });
+      expect(await failure(historical(source.id, item.version.id, item.version.checksum, admin))).toMatchObject(unavailable);
+    });
+  });
+  it("uses the same current organization/version permissions and specialty/mission restrictions", async () => {
+    await isolated(async (tx, admin) => {
+      const org = await tx.organization.create({ data: { name: "Historical org", slug: `historical-${randomUUID()}` } });
+      const reader = await user(tx);
+      const permission = await tx.permission.upsert({ where: { key: "data-center.read" }, update: {}, create: { key: "data-center.read" } });
+      const role = await tx.role.create({ data: { name: "Historical reader", key: `historical-${randomUUID()}`, organizationId: org.id, permissions: { create: [{ permissionId: permission.id }] } } });
+      const membership = await tx.organizationMember.create({ data: { organizationId: org.id, userId: reader.id, roleId: role.id, status: "ACTIVE" } });
+      const source = await createDataCenterSource({ name: "Historical org source", kind: "MANUAL", scope: "ORGANIZATION", organizationId: org.id, owner: "Org", license: "Internal" }, admin);
+      const item = await dataset(tx, admin, source.id, { requiredPermission: "data-center.read", specialties: ["health"], missionContexts: ["study"] });
+      expect(await failure(historical(source.id, item.version.id, item.version.checksum, reader))).toMatchObject(unavailable);
+      const access = { specialty: "health", missionContext: "study" };
+      expect((await historical(source.id, item.version.id, item.version.checksum, reader, access)).versionId).toBe(item.version.id);
+      expect(await failure(historical(source.id, item.version.id, item.version.checksum, reader, { ...access, organizationId: "other-org" }))).toMatchObject(unavailable);
+      await tx.organizationMember.update({ where: { id: membership.id }, data: { status: "SUSPENDED" } });
+      expect(await failure(historical(source.id, item.version.id, item.version.checksum, reader, access))).toMatchObject(unavailable);
+    });
+  });
+  it("rechecks robot grants and mission assignment on every call, with no existence leak after revocation", async () => {
+    await isolated(async (tx, admin) => {
+      const robot = await tx.robot.create({ data: { name: "Historical analyst", slug: `historical-${randomUUID()}` } });
+      const mission = await tx.mission.create({ data: { name: "Historical study", assignedRobots: { connect: { id: robot.id } } } });
+      const principal = await user(tx);
+      const actor: DataCenterActor = { ...principal, kind: "AI", robotId: robot.id, roleKey: "analyst", specialty: "health", missionId: mission.id };
+      const source = await platformSource(admin); const item = await dataset(tx, admin, source.id);
+      expect(await failure(historical(source.id, item.version.id, item.version.checksum, actor))).toMatchObject(unavailable);
+      const grant = await grantDataCenterRobotAccess({ sourceId: source.id, robotId: robot.id, principalId: actor.id, roleKey: "analyst", specialty: "health", missionId: mission.id, reason: "Exact history", expiresAt: new Date(Date.now() + DAY).toISOString() }, admin);
+      expect((await historical(source.id, item.version.id, item.version.checksum, actor)).versionId).toBe(item.version.id);
+      await revokeDataCenterRobotAccess({ grantId: grant.id, reason: "Revoke current access" }, admin);
+      const hidden = await failure(historical(source.id, item.version.id, item.version.checksum, actor));
+      const absent = await failure(historical(source.id, "absent", item.version.checksum, actor));
+      expect(hidden).toMatchObject(unavailable); expect(hidden.message).toBe(absent.message);
+    });
+  });
+  it("rejects stored content tampering only after access and exact historical publication checks", async () => {
+    await isolated(async (tx, admin) => {
+      const source = await platformSource(admin); const item = await dataset(tx, admin, source.id);
+      await withoutImmutability(tx, "DataCenterVersion", () => tx.$executeRaw`UPDATE "DataCenterVersion" SET "content" = 'tampered' WHERE "id" = ${item.version.id}`);
+      expect(await failure(historical(source.id, item.version.id, item.version.checksum, admin))).toMatchObject({ code: "HISTORICAL_VERSION_INTEGRITY_MISMATCH", status: 409 });
+    });
+  });
+  it("rejects malformed historical references explicitly before attempting a read", async () => {
+    await isolated(async (_tx, admin) => {
+      for (const extra of [{ sourceId: "" }, { versionId: "" }, { expectedChecksum: "not-a-hash" }, { latest: true }]) {
+        expect(await failure(historical("source", "version", "a".repeat(64), admin, extra))).toMatchObject({ code: "INVALID_HISTORICAL_VERSION_REQUEST", status: 400 });
+      }
+    });
+  });
+});
 
 describe.skipIf(!enabled)("readDataCenterVersionContent on real PostgreSQL (always rolled back)", () => {
   // ----------------------------------------------------------------------------------------------------------------- the content
