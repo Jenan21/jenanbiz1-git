@@ -2,8 +2,10 @@
 
 ## 1. Authority, accepted baseline and mandatory stop
 
-**Owner authorization on 2026-10-23: M0 Architecture & Implementation Plan ONLY.
-M0 submitted for review. M1 NOT STARTED. No engine scaffold or runtime changes.**
+**M0 owner-approved on 2026-10-23 at
+`2f11937a98a8a1b0940a99f0b887c48d0aadee47`.
+M1 pure foundation implemented for owner checkpoint review only.
+M2 NOT STARTED. No live integration, upstream recalculation or risk interpretation.**
 
 Six of seven engines are owner-approved as **TECHNICALLY COMPLETE — PENDING FINAL
 SONAR**. Engine seven starts on `jenan-engines/risk-decision` directly from the
@@ -72,7 +74,8 @@ No Projects/UI/API/worker wiring is proposed within M0-M5 engine implementation.
 -> comparability/evidence checks -> deterministic rules and condition evaluation
 -> explainable conditional decision -> own atomic history -> own exact replay`.
 
-Proposed folder: `services/analysis-engines/risk-decision`; **not created in M0**.
+Engine folder: `services/analysis-engines/risk-decision`, created in M1 only;
+M0 created no runtime scaffold.
 The pure core imports only its own modules and unchanged Shared primitives.
 No direct, dynamic, type-only or transitive imports from prior-engine packages.
 No previous run/replay/validation service is called as an upstream data provider.
@@ -94,7 +97,9 @@ Verified constraints from existing code:
    decision, dimensioned decimal claims or likelihood evidence by themselves.
    Use strict engine-local schemas; do not cast into incompatible Shared metrics.
 5. A prior-engine run is not a Data Center version. Do not forge a DATA_CENTER
-   input/ref kind for it or add an unsupported Shared enum/Prisma foreign key.
+   input/ref kind for it or add a Shared enum/Prisma foreign key. M1 inspection
+   confirmed that Shared already supports `ENGINE_RUN` / `ENGINE_OUTPUT` /
+   `ANALYSIS_ENGINE`; use those existing primitives, not a custom fake DC input.
 
 Proposed ports: `RiskPolicyPort` for exact governed Data Center policy content,
 and `UpstreamRunSnapshotPort` for exact authorized stored Run/Input projections.
@@ -103,8 +108,8 @@ imports, upstream replay or upstream calculation. It uses current platform
 principal/access policy and existing governed source APIs; never caller-asserted
 authorization, run ownership alone, or a privileged unfiltered bulk read.
 The approved decision model is a real Data Center input; original run references
-and lineage live in the Risk-local result/runtime, alongside original source refs.
-Shared generic Run/Input JSON storage is reused unchanged.
+use existing ENGINE_RUN descriptors, with full local pins/projections/lineage in
+the Risk result/runtime. Shared generic Run/Input JSON storage is reused unchanged.
 
 **M1/M2 stop gate:** prove a read-only path for every supported upstream contract
 and its transitive current rights, including historical versions and Map lineage.
@@ -226,11 +231,14 @@ optimization, exchange-rate conversion or inferred unit/calendar conversion.
 Compare source values with declared compatible decimal semantics; retain original
 values and rounding. Never recompute an unavailable exactValue from rounded output.
 A threshold boundary sensitive to missing precision is UNKNOWN.
-Propose a Risk-local clone of the existing decimal dependency, precision 34 and
-HALF_EVEN, for finite bounded decimal parsing/comparison only; do not mutate the
-global context or import Financial/Operational arithmetic. Numeric JSON claims
-retain their original representation and precision limitations; conversion to a
-decimal comparison value does not create greater measurement accuracy.
+M0 proposed a local decimal dependency clone. M1 uses a smaller exact comparison
+implementation instead: validated base-10 strings, sign/integer length/fraction
+comparison, at most 18 integer digits, 34 significant digits and scale 64.
+It performs no arithmetic or rounding, never converts through JS Number, preserves
+original claim values and records `NONE_PRESERVE_UPSTREAM` rounding. Thus no decimal
+package import, global context mutation, Shared change or global allowlist change
+is needed. Numeric native JSON values retain their original precision limitations;
+M2 projection must not fabricate additional exactness from their string form.
 
 Examples, conditional on approved rule applicability and compatible inputs:
 
@@ -416,13 +424,180 @@ Operational test/CodeQL receipts are retained without rerunning or relabeling th
 M0 validation is the documentation diff/scope and repository/archive synchronization;
 no runtime/build/security-scan PASS is claimed for this unimplemented engine.
 
-Owner review must approve the proposed conditional decision vocabulary/precedence,
-evidence-only likelihood/severity model, read-only exact upstream adapter boundary,
-explicit six-role applicability, supported rule language and bounds before M1.
-These are proposed architecture choices, not silently finalized product policy.
-If approval changes them, revise M0 before implementation.
+The owner approved the conditional decision vocabulary/precedence, evidence-only
+likelihood/severity model, read-only exact upstream adapter boundary, explicit
+six-role applicability, supported rule language and bounds at the M0 SHA above,
+then authorized M1 only. New milestone approval is required before M2.
 
 **REAL-DATA RISK & DECISION ACCEPTANCE = BLOCKED / NOT VERIFIED.**
 **REAL-DATA OPERATIONAL FEASIBILITY ACCEPTANCE = BLOCKED / NOT VERIFIED.**
 **Historical Full Regression = NOT CLAIMED PASS. Sonar = DEFERRED / PENDING.**
 **M0 ARCHITECTURE REVIEW ONLY. STOP BEFORE M1. No Final Tag or main merge.**
+
+The preceding M0 stop marker is the historical architecture checkpoint; M0 was
+subsequently approved. The current mandatory stop is the M1 checkpoint below.
+
+## 14. M1 checkpoint: contracts, semantics and policy foundation
+
+**JENAN RISK & DECISION ENGINE — M1 CHECKPOINT FOR OWNER REVIEW.**
+M1 changes only six new pure Risk modules, four own test files, one own fixture
+and directly related documentation. Shared, Data Center, Map, the six prior
+engines, Prisma, Auth/UI, API/worker wiring, workflows and dependencies remain
+unchanged. No adapter, database/network access, source/type registration, current
+authorization claim, production decision or M2 implementation was added.
+
+### Implemented contract surfaces
+
+- `semantics.ts`: categories, evidenced/conditional/gap/conflict kinds, assessment
+  and condition states, decision vocabulary, exact scope/basis/UTC-millisecond
+  periods, disclosures/approvals, event-bound impact/likelihood, evidence quality,
+  severity prerequisites and conservative comparability diagnostics.
+- `policy.ts`: finite typed PRESENT/STATE/EQ/NE/GT/GTE/LT/LTE/IN/ALL/ANY rules;
+  dimensioned decimal thresholds, reference uniqueness, acyclic rules/dependencies,
+  explicit condition applicability and BLOCK/REVISE disposition, action templates,
+  complete unique declared severity cells and native confidence mappings.
+- `snapshots.ts`: exact six-engine compatibility manifest, engine/run/request/
+  result/hash/content pins and retained-envelope integrity inspection; no native
+  engine imports, replay or arithmetic validators.
+- `request.ts`: exactly six unique role slots, PINNED/MISSING/evidenced
+  NOT_APPLICABLE, exact claim selectors, explicit scenario maps, approval/period
+  checks, normalization, expanded DAG work accounting and deterministic request hash.
+- `contracts.ts`: strict claim/snapshot contracts, exact source/ENGINE_RUN
+  descriptor bindings, claim scope/key/entity/variant matching, source-lineage
+  checks, rights ceilings and attribution preservation, M1-only result/hashes
+  and unchanged Shared Run/Input storage compatibility builder.
+- `index.ts`: pure exports only, no adapter or side-effect capability.
+
+The foundation result is always `M1_FOUNDATION` / `COMPLETED_WITH_GAPS`,
+`decision: null`, empty findings/conditionOutcomes, `automaticAction: false`,
+`humanReview: NOT_REQUESTED`, `currentAuthorization: NOT_CHECKED_M1` and
+`sourceValidation: DEFERRED_M2`. It retains explicit reasons
+`M1_INTERPRETATION_DEFERRED` and `M2_AUTHORIZATION_NOT_STARTED`.
+No M1 input, including all six synthetic outputs, can generate a launch decision,
+confirmed risk, success percentage, opaque score or implied source authorization.
+
+The standalone condition-state classifier encodes the approved policy truth table
+only; it does not extract/evaluate claims or produce an engine decision. It
+requires exactly one declared outcome per condition, refuses a positive/negative
+definite condition with missing/partial/conflicted evidence, prevents unapproved
+applicability waivers, forbids vacuous all-optional/all-waived policies and keeps
+the approved precedence: NOT_SUPPORTED, known BLOCK failure, unresolved required
+evidence/conflict, REVISE failure, then all required conditions satisfied.
+Known outcomes remain available to the caller; the M1 result does not call this
+classifier or pretend to have evaluated them.
+
+### Evidence, likelihood/severity and precision safeguards
+
+Native unavailable states carry null, not zero; explicit zero is preserved.
+ESTIMATED cannot become OBSERVED. Evidence gaps/data-quality/dependency gaps do
+not carry an adverse event impact, likelihood or severity. Conditional risks retain
+assumptions; conflicts identify at least two claims. Assessed severity requires
+impact/likelihood for the same event/horizon and exact site/scenario scope, plus
+the exact approved matrix/version and matching cell. No matrix/default band is
+inserted. Numeric likelihood requires an explicit scale, range, methodology,
+population/source date and approval evidence; observed frequency needs a positive
+denominator and remains distinct from a supported probability.
+
+Cross-policy confidence has no implicit mapping: undeclared native mappings return
+NOT_COMPARABLE/null with a reason and preserve components. Explicit mappings cannot
+upgrade a known native evidence band. Repeated lineage cannot raise confidence;
+weakest essential mapped evidence is retained, never averaged into a probability.
+Comparability reports exact site/geography/sector/period/scenario/unit/currency/
+price/cash-flow/timing/cohort/method differences without declaring a business conflict.
+
+M1's exact string comparator intentionally replaces the proposed Decimal clone:
+no arithmetic or rounding is needed, and exact decimal order requires no new
+dependency or frozen global-boundary exception. It handles signs, signed zero,
+trailing zeros, tiny fractions and values beyond Number's integer precision.
+Nonfinite/scientific/oversized/malformed inputs are rejected explicitly. Monetary
+bases require currency, price and cash-flow basis; no unit/calendar/FX inference.
+
+### Native output compatibility and its limitations
+
+Test fixtures generate real synthetic outputs from **all six unchanged engines**,
+then exercise the local manifest/integrity inspector against their retained
+Run/Input envelopes. Test-only engine imports are not production Risk imports.
+The inspector verifies row/native/pin identity, exact supported versions/contracts,
+request/input/output/content hashes and native request/input/timing/environment
+consistency. Shared recipes omit only their existing volatile/default fields;
+Financial/Operational recipes preserve their native decimal request/result rules.
+Spatial's request does not duplicate evaluatedAt; its result envelope supplies the
+exact pinned evaluation time. Financial/Operational M1 foundation phases are
+rejected as calculation evidence even though Financial shares its result contract.
+
+This is **ENVELOPE_HASHES_ONLY**, explicitly **NOT_CHECKED** current authorization.
+It is not native business-semantic recalculation, digital signature verification,
+an authenticated M2 upstream reader or proof against consistent administrator
+rewrites. The M1 projected snapshots are pure synthetic contract values, not
+accepted caller substitutes for a retained production record. M2 must obtain
+exact originals through current-authorized, read-only access before extraction.
+The historical six-engine permission/Map lineage capability proof remains an M2
+integration stop gate; if it needs frozen changes, stop for approval.
+
+### Bounds, hashes and storage compatibility
+
+All request/result/foundation-record envelopes use the existing 2 MiB canonical
+JSON ceiling; the expanded stored `{record,inputHistory}` is checked too.
+Before recursive canonicalization, a bounded traversal rejects cycles, nesting
+beyond 64 levels, more than 200,000 JSON nodes and excessive string/key bytes.
+The six-slot, 24-pin, four-scenario, 1,000-claim, 200-rule/condition, 500-edge/action,
+128-unique-lineage and 20,000-work bounds remain explicit. Actual M1 request work
+includes repeated composite-rule expansion per condition/scenario, not merely
+unique DAG nodes; snapshot/claim/lineage work is additionally charged by the result.
+Cycles, duplicate native aliases, unresolved references and excess work/bytes
+fail before an interpretation or storage builder can pretend to succeed.
+The proposed 8 MiB aggregate native read ceiling remains a future M2 I/O bound,
+not an M1 live-read/performance claim.
+
+requestHash binds normalized policy/slots/selectors and evaluatedAt; inputsHash
+binds exact descriptors and projected snapshots/lineage; outputHash retains all
+policy/evidence/rights/evaluatedAt semantics and excludes only runId/timing.
+No input mutation or hidden clock/network/randomness. Validation reconstructs the
+M1 foundation only, never a previous engine's result.
+Shared `ENGINE_RUN` descriptors and real policy DC input fit unchanged Run/Input
+schemas. Confidence summary stays null rather than fabricating a Shared numeric
+summary. Record creation time cannot precede evaluation. These are storage-shape
+proofs only: atomic DB persistence and historical replay remain M4.
+
+### Saved validation receipts
+
+| Gate | Saved result |
+| --- | --- |
+| Risk M1 strict unit/semantic/policy/native-version/boundary cases | **300/300 PASS** |
+| Global engine boundaries | **18/18 PASS**, unchanged; Risk/global focused coverage **318/318 PASS** inside final related runner |
+| Related regression | **1,136/1,136 PASS**, 31 files, no skips, **73.61 s**: 300 Risk + 362 Operational + 235 Financial + 239 Shared/global |
+| Native inventory | All six real synthetic output contracts/hash recipes PASS; no runtime prior-engine imports/recalculation |
+| Exact measurable limits | 20,000 expanded request units accepted / 20,001 rejected; 1,000 claims accepted / 1,001 rejected; 128 distinct lineage accepted / 129 rejected; exact 2 MiB canonical bytes accepted / next byte rejected; 64 nesting levels / 200,000 nodes accepted, next level/node rejected; cycles and oversized expanded history rejected |
+| Shared Run/Input compatibility / serialization / hash tampering | PASS; existing ENGINE_RUN/DC descriptors, no Shared/schema changes |
+| TypeScript / zero-warning scoped ESLint | PASS, including final post-build TypeScript after declaration-path restoration |
+| git diff --check / frozen boundaries | PASS; only six Risk modules, four Risk tests, one test fixture and these two documentation files changed |
+| Production build | PASS on identical retry; original existing Next.js advisory failure retained |
+| PostgreSQL / live Data Center / current authorization | NOT RUN / NOT CLAIMED; deliberately deferred beyond M1 |
+| CodeQL | No M1 scan claimed; exact-SHA acceptance remains a future M5 gate |
+| Historical Full Regression | **NOT CLAIMED PASS**; no frozen Competitor rerun/threshold change |
+| Sonar / real-data acceptance | **DEFERRED / PENDING** / **BLOCKED / NOT VERIFIED** |
+
+Initial own test syntax errors were corrected before final typecheck. The next
+focused run had one Spatial request-clock assumption failure (the local inspector
+was corrected to the actual existing contract); no Spatial code changed. An
+expanded own lineage-bound test initially indexed a sorted snapshot array by
+position; it was corrected to find the exact run ID. The failed intermediate
+commands remain failed; the earlier 1,135-case passing execution is retained and
+the final 1,136-case execution above includes the added structural JSON bound.
+Both production-build validation rounds stopped first on the pre-existing Next.js
+advisory; each unchanged retry passed. Security remediation remains reserved for the owner's final campaign,
+not disguised as a Risk/CodeQL fix. Generated Next declaration-path drift restored.
+
+Saved session logs: `risk-m1-focused-initial`, `risk-m1-focused-2`,
+`risk-m1-focused-3`, `risk-m1-related-unit` (failed intermediate),
+`risk-m1-related-unit-final`, `risk-m1-typecheck-initial`,
+`risk-m1-typecheck-final`, `risk-m1-typecheck-final-2`, `risk-m1-eslint`,
+`risk-m1-eslint-final`, `risk-m1-build`, `risk-m1-build-retry`,
+`risk-m1-unit-structural-final`, `risk-m1-typecheck-prebuild`,
+`risk-m1-eslint-structural-final`, `risk-m1-build-structural-final`,
+`risk-m1-build-structural-retry`, `risk-m1-typecheck-postbuild`.
+
+**JENAN RISK & DECISION ENGINE — M1 CHECKPOINT FOR OWNER REVIEW.**
+**REAL-DATA RISK & DECISION ACCEPTANCE = BLOCKED / NOT VERIFIED.**
+**Historical Full Regression = NOT CLAIMED PASS. Sonar = DEFERRED / PENDING.**
+**STOP BEFORE M2. No Final Tag or main/integration merge.**

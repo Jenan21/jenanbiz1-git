@@ -140,14 +140,22 @@ defers final Sonar acceptance and final tags until all seven technical baselines
    distinct from the tested/scanned SHA above;
    Sonar DEFERRED / PENDING; no final tag or main merge;
    real-data acceptance BLOCKED / NOT VERIFIED)
-7. Risk & Decision Engine ([M0 architecture review](risk-decision-engine-v1.md);
-   M0 planning only, owner review required before M1;
+7. Risk & Decision Engine ([architecture and checkpoints](risk-decision-engine-v1.md);
+   M0 owner-approved at `2f11937a98a8a1b0940a99f0b887c48d0aadee47`;
    isolated `jenan-engines/risk-decision` from accepted Operational closure;
    exact authorized stored outputs of all six engines, no upstream recalculation
    or direct prior-engine imports; evidence-backed risks, explicit unknowns,
    conflicts/dependencies, declared scenario mappings and rule-by-rule decisions;
    no success probability, opaque score, invented likelihood or automatic launch;
-   no runtime, UI, schema or dependency changes in M0;
+   M1 pure contracts/semantics/policy foundation implemented for review only;
+   exactly six engine slots, native version/hash manifest, explicit unknowns,
+   no default likelihood/severity or confidence-to-failure conversion;
+   decision null, empty findings/outcomes, no current authorization claimed;
+   existing Shared ENGINE_RUN/Input storage compatibility, no frozen edits;
+   300 Risk + 18 global cases PASS; related 1,136/1,136 PASS, 31 files, no skips;
+   TypeScript / zero-warning scoped ESLint / unchanged production-build retry PASS;
+   original test-only failures and inherited Next.js advisory build failure retained;
+   no adapter/live integration, no UI/schema/dependency changes; M2 NOT STARTED;
    real-data acceptance BLOCKED / NOT VERIFIED; Sonar DEFERRED / PENDING)
 
 The first six engines produce **documented facts and measurements** from governed data;
