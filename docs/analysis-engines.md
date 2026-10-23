@@ -192,11 +192,16 @@ defers final Sonar acceptance and final tags until all seven technical baselines
    original Next.js advisory interruption remains recorded separately;
    no frozen-engine/Shared/Map/Data Center/UI/schema/dependency changes;
    M4 owner-approved / CLOSED at `ac3c3afd7370000cfbb08be64a0d7c8933daebc9`;
-   M5 final technical acceptance adds tests/documentation only:
+   M5 final technical acceptance completed with tests/documentation only:
    full Risk/global units 469/469 and full PostgreSQL 71/71 PASS, no skips,
    including seven genuine committed-transaction concurrency/isolation/load/
-   rollback/retry cases; exact-SHA CodeQL and final closure recorded in the
-   Risk checkpoint, without reopening frozen production modules;
+   rollback/retry cases; tested implementation / exact-SHA CodeQL
+   `80038136f607ef57f50b08b38b3a0387fdaa4012`,
+   successful JavaScript/TypeScript + Actions scan, zero open branch/Risk alerts,
+   five historical dismissals unchanged; separate documentation-only closure
+   child recorded in final report, never substituted for the tested/scanned SHA;
+   **TECHNICALLY COMPLETE — PENDING FINAL SONAR**,
+   without reopening frozen production modules or tagging/merging main;
    real-data acceptance BLOCKED / NOT VERIFIED; Sonar DEFERRED / PENDING)
 
 The first six engines produce **documented facts and measurements** from governed data;

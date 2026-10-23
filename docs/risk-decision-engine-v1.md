@@ -14,9 +14,11 @@ M3 owner-approved / CLOSED at
 `310c97a23b610898e0562a5ba039b4a63443f1fe`.
 M4 owner-approved / CLOSED at
 `ac3c3afd7370000cfbb08be64a0d7c8933daebc9`.
-M5 final technical acceptance is authorized, without new functionality or
-redesign. Exact-tested-SHA CodeQL and the final closure receipt are required;
-Sonar remains deferred and no final tag or main/integration merge is authorized.**
+M5 final technical acceptance gates passed on exact tested/CodeQL SHA
+`80038136f607ef57f50b08b38b3a0387fdaa4012`, without new functionality or
+redesign. Engine seven is **TECHNICALLY COMPLETE — PENDING FINAL SONAR**;
+owner-facing closure is reported separately from the documentation-only child.
+No final tag or main/integration merge is authorized.**
 
 Six of seven engines are owner-approved as **TECHNICALLY COMPLETE — PENDING FINAL
 SONAR**. Engine seven starts on `jenan-engines/risk-decision` directly from the
@@ -1403,6 +1405,54 @@ The owned `jenan-risk-m5-check` container, including all committed synthetic
 history, was stopped and removed after the final database run. The unrelated
 existing `jenanbiz-postgres` container stayed running and untouched.
 
-Exact tested/CodeQL SHA and any separate documentation-only closure child are
-recorded after scanning. No final tag, main/integration merge, production
-deployment or real-data certification.
+### 20.4 Exact-SHA security acceptance and technical closure
+
+**Tested implementation / exact-SHA CodeQL:**
+`80038136f607ef57f50b08b38b3a0387fdaa4012`.
+
+CodeQL run [39896617282](https://github.com/Jenan21/jenanbiz1-git/actions/runs/39896617282)
+completed **SUCCESS** on that exact SHA, not on M4 or a later documentation
+receipt. Existing `security-extended` workflow, unchanged:
+
+| Uploaded analysis | Category | Commit | Result |
+| --- | --- | --- | --- |
+| `2010401789` | `/language:javascript-typescript` | `80038136f607ef57f50b08b38b3a0387fdaa4012` | SUCCESS, empty analysis error |
+| `2010398274` | `/language:actions` | `80038136f607ef57f50b08b38b3a0387fdaa4012` | SUCCESS, empty analysis error |
+
+The branch-scoped open-alert API returned **[]**: zero open alerts, including
+zero Risk & Decision alerts. JavaScript/TypeScript `results_count = 5` is **not**
+a zero-results claim: all five are existing dismissed historical findings,
+outside Risk, with unchanged dismissal timestamps and reasons. Actions has zero
+results. No findings were dismissed/reopened/edited in M5:
+
+| Historical alert | Existing state / reason |
+| --- | --- |
+| `14` | dismissed / won't fix |
+| `10` | dismissed / won't fix |
+| `9` | dismissed / false positive |
+| `3` | dismissed / false positive |
+| `2` | dismissed / false positive |
+
+Before/after alert snapshots, uploaded analysis metadata and the exact workflow
+receipt are retained in the session validation evidence. The read-only manual
+Risk security review reported no confirmed exploitable findings; it does not
+assert whole-platform security or replace dependency remediation.
+
+No production source changed between approved M4 and the tested M5 SHA.
+This final receipt is a **documentation-only closure child** of the tested M5
+commit; its own commit hash is reported after publication and must never replace
+the tested/CodeQL SHA above. The final report verifies:
+**Local HEAD = origin Risk branch HEAD = Desktop archive HEAD**, clean.
+No final tag, main/integration merge, production deployment or real-data
+certification was performed.
+
+**JENAN RISK & DECISION ENGINE = TECHNICALLY COMPLETE — PENDING FINAL SONAR.**
+**REAL-DATA RISK & DECISION ACCEPTANCE = BLOCKED / NOT VERIFIED.**
+**Historical Full Regression = NOT CLAIMED PASS.**
+**Sonar = DEFERRED / PENDING.**
+Next.js/dependency advisory remains independent security debt for the final
+campaign. No success probability, opaque final score, invented likelihood/
+severity, missing-evidence AI fill, latest fallback, source substitution,
+Map recalculation or automatic launch/investment/funding action was introduced.
+M5 technical acceptance is complete for owner review; no further implementation
+stage is started.
