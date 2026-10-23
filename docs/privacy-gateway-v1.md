@@ -1803,6 +1803,10 @@ re-identification risk; no publication authorization follows.
 The owner accepted all 744/744 focused tests and the quality gates above.
 The historical review-state text in 19.1 records the submission state only.
 M5 is authorized for final technical acceptance, not additional functionality.
+Exact approved M4 implementation baseline:
+`7909939f888ac3423dca527116c2c9378016b229`.
+The baseline was pushed only to `jenan-platform/privacy-gateway` and
+fast-forwarded into the Desktop Privacy archive.
 All TEST_ONLY, qualification, destruction-evidence and open bypass limitations
 remain unchanged. No merge, final tag or production deployment is authorized.
 
