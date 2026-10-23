@@ -1340,3 +1340,20 @@ Admin/Payments/UI integration, frozen engine/Map/Data Center/Shared change,
 schema/dependency change, Sonar, merge, tag or deployment.
 
 **M3 checkpoint for owner review. STOP before M4.**
+
+### 17.8 Owner closure and preserved source baseline
+
+M3 APPROVED / CLOSED by owner on 2026-10-23 with the results and limitations
+above unchanged. Exact approved M3 source baseline:
+`58a258c028d9295c2dea5c32c039fafa9c1a5c9b`.
+Its parent M2 baseline is `0611b414676ed9c5c59087fa6a4ef3be7b159863`.
+This documentation-only follow-up records the immutable M3 source SHA;
+it does not claim a new test run or a self-referential commit hash.
+The earlier local/uncommitted statements describe the submitted checkpoint
+before owner-authorized preservation, not the subsequent baseline commit.
+
+Before any M4 implementation, preserve this source plus this closure record
+on `jenan-platform/privacy-gateway` only and verify clean local, remote Privacy
+branch and Desktop Privacy archive HEAD equality. No main/integration merge,
+final tag or production deployment is authorized. If M4 requires Prisma/schema
+migration or a frozen-module change, STOP and obtain owner approval first.
