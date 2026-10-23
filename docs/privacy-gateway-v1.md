@@ -1815,3 +1815,254 @@ test volume were removed after validation. Restart fixture directories were
 removed by test teardown. No unrelated database/container was changed.
 The persisted final evidence records 744/744 passing with zero failures/skips;
 no test rerun was performed for this housekeeping/report confirmation.
+
+## 20. JENAN PRIVACY GATEWAY — M5 FINAL CHECKPOINT FOR OWNER REVIEW
+
+### 20.1 Status: BLOCKED / NOT APPROVED / NOT CLOSED
+
+M4 remains owner-approved/closed. Approved implementation baseline:
+`7909939f888ac3423dca527116c2c9378016b229`.
+Documentation closure HEAD: `2f8843e4daf9830f51740c15496bfd9fbe403f0c`.
+Before M5 work, Local HEAD = Remote Privacy branch HEAD = Desktop Privacy
+archive HEAD at that documentation closure; both worktrees were clean.
+Both commits were pushed only to `jenan-platform/privacy-gateway`.
+
+M5 stopped at a real build/security gate, not a functional acceptance.
+The production build exited 1 with:
+`SecurityFatalError: Your version of Next.js is affected by a known security vulnerability.`
+The build reported Next.js 16.4.0; the unchanged manifest specifies ^16.3.6.
+The log recommended upgrading and cited the npm bulk advisory endpoint,
+but did not identify an individual CVE/GHSA or severity. No severity or
+new Privacy-specific vulnerability is inferred from this message.
+This is inherited dependency security debt, not an authorized dependency
+remediation. No retry to bypass the advisory, suppression, dependency edit
+or automatic upgrade was attempted.
+
+The already-running full focused Privacy/global regression was explicitly
+stopped when this blocker was identified. It produced no completed final
+receipt: do not interpret its planned 756 cases as passed, nor reuse M4's
+744/744 receipt as an M5 rerun. Post-build TypeScript and remaining final
+acceptance are pending. No exact M5 candidate SHA has been created, because
+the owner required candidate creation after all tests. CodeQL was therefore
+not dispatched; there is no exact-SHA security acceptance claim.
+
+### 20.2 Completed preparation and bounded development evidence
+
+* A dedicated disposable PostgreSQL 17 database on loopback port 55449 was
+  used. Port 55439 belonged to another test container and was not reused,
+  stopped or altered. Production databases were not used.
+* Prisma validation/generation passed; all 80 migrations were present and
+  successfully applied in the owned isolated database.
+* Final pre-build TypeScript passed. Scoped ESLint passed with zero warnings.
+* Frozen runtime/schema/dependencies/workflow diff against the M4 closure
+  was unchanged. The generated Next type import drift was restored.
+* Selected development tests passed after test-harness corrections. Their
+  selectors intentionally skipped unrelated cases: they are not a no-skips
+  final regression. Early failures were an overstrict concurrent-cleanup
+  expectation and TEST_ONLY publication acknowledgement timestamps; only
+  test code was corrected.
+* New actual-process acceptance passed for process death after the external
+  synthetic publication effect, exact reconciliation without redispatch,
+  RAW denial, and process death after reference cleanup. Incomplete M1
+  evidence still ended DESTRUCTION_FAILED, with no destruction receipt.
+* Additional selected cases passed for ciphertext/AAD/key-reference tamper,
+  invalid scanner output, cross-job/package/client/organization grants,
+  manipulated verification receipt, and bounded concurrent admission,
+  publication and cleanup. No production functionality was added.
+* A point-in-time scan of all eight Privacy metadata tables inspected 702
+  rows, found zero synthetic RAW/PII/token/private-key sentinels, and zero
+  orphan admissions/inventory/receipts/work. This is a scoped sentinel test,
+  not a universal no-leakage certification.
+* Read-only security review reported no confirmed findings in its Privacy
+  scope. Existing architecture checks constrain runtime log/telemetry,
+  queue/transport and external-service activation. Final comprehensive
+  acceptance remains incomplete.
+* GitHub open CodeQL alert inventory before final acceptance returned zero.
+  This is not an analysis of a final M5 SHA and does not satisfy that gate.
+
+Recorded selected-development synthetic load (not a production SLA):
+
+| Workload | Admission/verification/cleanup | Publication/destruction |
+| --- | --- | --- |
+| Jobs / concurrency | 6 / 3 | 6 / 3 |
+| Organizations / clients | 2 / 3 | 6 / 6 |
+| Batch duration | 12,610 ms | 1,786 ms |
+| Job latency p50 / p95 (six samples) | 6,070 / 6,536 ms | 762 / 1,018 ms |
+| Process peak RSS | 343,547,904 bytes | 325,042,176 bytes |
+| Maximum metadata envelope | 17,843 bytes | 1,288 bytes |
+| Candidate / receipt envelope | 2,018 / 1,937 bytes | not separately measured |
+| Unexpected failures | 0 after harness correction | 0; 12 expected race rejections |
+
+Memory is the test worker's process high-water RSS, not aggregate child-process
+or database memory. Publication/destruction load used synthetic complete
+evidence fixtures; it is not physical wipe or production destruction proof.
+
+### 20.3 Exact pending M5 file scope
+
+Modified:
+
+* [Privacy document](privacy-gateway-v1.md)
+* [Durable PostgreSQL tests](../tests/integration/privacy-gateway-durable.integration.test.ts)
+* [Actual-process tests](../tests/integration/privacy-recovery.integration.test.ts)
+* [TEST_ONLY process entry](../tests/unit/support/privacy-recovery-process.ts)
+
+Added:
+
+* [Bounded final acceptance](../tests/integration/privacy-final-acceptance.integration.test.ts)
+* [TEST_ONLY restart publication/destruction workflow](../tests/unit/support/privacy-final-workflow.ts)
+* [Explicit isolated database allowlist](../tests/unit/support/privacy-isolated-database.ts)
+
+M5 changes remain local/uncommitted. The Desktop Git archive retains the
+approved M4 documentation closure, not these pending M5 test changes.
+The owned M5 PostgreSQL container and its exact anonymous volume were removed.
+All nine exact interrupted synthetic fixture directories were removed after
+their generated process configuration and test-key marker were inspected.
+Final documentation `git diff --check` passed; frozen runtime/schema,
+dependencies, workflows and generated Next imports remain unchanged.
+No unrelated resource was altered.
+
+All prior limits remain: storage/key broker/scanner/signing/authorization are
+TEST_ONLY; production KMS/storage/scanner and OS/native parser sandbox are not
+qualified. Sanitized != Anonymous. MANUAL_PRIVACY_REVIEW_REQUIRED means no
+SANITIZATION_VERIFIED. RAW_DESTROYED requires complete M1 evidence; otherwise
+DESTRUCTION_PENDING/DESTRUCTION_FAILED. Bypass inventory remains OPEN.
+Sonar final campaign was not run. No AI/LLM, external OCR, Projects/Admin UI,
+frozen engine/Map/Data Center semantic change, merge, final tag or deployment.
+
+**STOP: owner decision required for the inherited dependency/build security
+blocker. M5 has not passed final acceptance.**
+
+## 21. JENAN PRIVACY GATEWAY — M5 FINAL CHECKPOINT FOR OWNER REVIEW
+
+### 21.1 Authorized dependency exception and candidate preparation
+
+The owner subsequently authorized only `next = 16.4.2` and
+`eslint-config-next = 16.4.2`, both exact. This section supersedes section 20's
+build-blocked status; section 20 remains the truthful historical stop receipt.
+Approved M4 implementation baseline:
+`7909939f888ac3423dca527116c2c9378016b229`.
+M4 documentation closure baseline:
+`2f8843e4daf9830f51740c15496bfd9fbe403f0c`.
+Branch remains `jenan-platform/privacy-gateway`.
+
+Only package.json/package-lock.json changed for the dependency exception.
+The lock diff contains the two approved packages, @next/env, @next SWC platform
+packages and @next/eslint-plugin-next only. No unrelated lock entry changed.
+Physical installed manifests and lock both report 16.4.2; npm's first install
+left stale physical 16.4.0 manifests despite its metadata report, so `npm ci`
+restored the approved exact lock before any acceptance run.
+React/React DOM 19.3.0, TypeScript 5.9.3, Sentry 11.7.0, sharp 0.35.5 and
+Prisma 7.10.0 remain unchanged. Peer constraints are satisfied.
+The npm bulk advisory query for the installed Next 16.4.2 returned no entries
+at acceptance time. No suppression, forced build, security-rule/workflow
+change or dependency remediation outside the exception was used.
+
+Additional M5 files remain precisely the seven test/document files listed in
+20.3. No Privacy implementation, engine, Map, Data Center semantic contract,
+shared production contract, Prisma schema/migration, auth/routing semantics
+or CSP/security rule changed after the approved M4 baseline.
+
+### 21.2 Complete local acceptance receipts
+
+| Gate | Result |
+| --- | --- |
+| M1 foundation / architecture regression | 333/333 PASS |
+| M2 intake / architecture regression | 133/133 PASS |
+| M3 sanitization / architecture regression | 166/166 PASS |
+| M4 retained PostgreSQL / restart / architecture baseline | 92/92 PASS |
+| M5 added acceptance cases | 12/12 PASS |
+| Privacy total, M1-M5 | 736/736 PASS |
+| Global architecture boundaries | 20/20 PASS |
+| Full focused regression, 11 files | 756/756 PASS, zero failures/skips |
+| Auth/approval/password/OAuth/routing/security helpers, 13 files | 112/112 PASS, zero failures/skips |
+| Prisma validation/generation | PASS |
+| Isolated PostgreSQL 17, complete 80 migrations | PASS |
+| Pre-build TypeScript | PASS |
+| Scoped ESLint | PASS, zero warnings |
+| Production build, installed Next 16.4.2 | PASS, first upgraded attempt |
+| Post-build TypeScript | PASS |
+| Live production proxy/routing/CSP/nonce/browser smoke | PASS |
+| Frozen runtime/schema/workflows diff | UNCHANGED |
+| git diff --check | PASS |
+
+The full focused run completed in 1465.61 seconds. Retained M4 PostgreSQL tests
+plus the added publication/load case were 40/40; actual-process recovery plus
+the added publish/destroy response-loss case were 45/45; new bounded final
+acceptance was 10/10. M4 architecture remained 9/9.
+No engine functional suite or historical repository-wide regression was run.
+
+The real production server ran on loopback only, with account approval enabled.
+Home, /auth, /login, /register and /auth/forgot returned 200; each response had
+a distinct nonce bound into script markup. Unauthenticated /dashboard returned
+307 to sign-in. Hardening headers and absence of X-Powered-By were verified.
+Chromium hydrated login/register/forgot with zero page errors or CSP violations.
+A session-only smoke assertion initially checked unsafe-inline across all
+directives; it was corrected to check script-src, matching the unchanged
+existing policy's intentional inline styles. No security rule was changed.
+The temporary server was stopped after verification.
+
+### 21.3 PostgreSQL, adversarial, recovery and leakage acceptance
+
+The completed suites cover transactional state/evidence commit, revision/fence
+locking, concurrent/duplicate delivery, stale worker rejection, exact scoped
+artifact relationships, orphan prevention, append-only audit/receipts,
+RLS/role separation and current authorization. Cross-job/package/client/
+organization grants cannot advance the state.
+
+Synthetic adversarial fixtures cover malformed archives, expansion bombs,
+traversal/path collisions/Unicode ambiguity, unsupported formats, invalid/
+unavailable scanner states and timeouts, parser failure, corrupted ciphertext,
+wrong AAD/key reference, hash/policy/version/receipt tampering, audit rewriting,
+ambiguous publication and mismatched/incomplete destruction evidence.
+
+Actual fresh-process recovery covers intake, staging/key/object reservations,
+scan, extraction, RAW_READY, classification/sanitization, stable mappings and
+candidates, signed verification, publication response loss and destruction
+cleanup response loss. Exact reconciliation does not redispatch a publication.
+Stable token/candidate/receipt bytes, TTL, current revoked authorization,
+role-change separation and stale-worker denial are retained after restart.
+Reference cleanup without complete M1 evidence ends DESTRUCTION_FAILED, never
+a fabricated RAW_DESTROYED receipt.
+
+After the complete run, all eight Privacy metadata tables contained 1,587 rows:
+zero synthetic RAW/PII/token/private-key sentinels, and zero orphan admissions,
+inventory, receipts or work. Existing safe-error/audit tests and architecture
+checks also passed. This is scoped evidence, not universal leakage certification;
+no production telemetry/queue/transport activation was introduced.
+
+### 21.4 Final bounded synthetic concurrency/load
+
+| Metric | Admission/verify/cleanup | Publication/destruction |
+| --- | --- | --- |
+| Jobs / concurrency | 6 / 3 | 6 / 3 |
+| Organizations / clients | 2 / 3 | 6 / 6 |
+| Batch duration | 12,903 ms | 4,820 ms |
+| Job latency p50 / p95, six samples | 6,431 / 6,444 ms | 1,301 / 3,474 ms |
+| Worker process peak RSS | 247,967,744 bytes | 241,754,112 bytes |
+| Maximum metadata envelope | 17,843 bytes | 1,288 bytes |
+| Candidate / receipt envelope | 2,018 / 1,937 bytes | not separately measured |
+| Unexpected failures | 0 | 0; 12 expected race rejections |
+
+These are bounded synthetic acceptance results, not production SLA or capacity
+qualification. Memory is worker-process high-water RSS, not total child/DB
+memory. Publication/destruction load uses synthetic complete M1 evidence only;
+the separate actual-process path honestly rejects incomplete real attestation.
+
+### 21.5 Exact-SHA security gate and remaining limits
+
+All local gates above completed before candidate creation. The existing
+CodeQL workflow must analyze that exact candidate commit; its run ID/head SHA
+and final alert inventory will be recorded after completion. Pre-candidate
+open-alert inventory was zero, not a substitute for exact-SHA analysis.
+No finding may be dismissed merely to pass acceptance.
+
+Storage/key broker/scanner/signing/authorization adapters remain TEST_ONLY.
+Production KMS/storage/scanner and OS/native parser sandbox are NOT QUALIFIED.
+Sanitized != Anonymous. MANUAL_PRIVACY_REVIEW_REQUIRED means
+NO SANITIZATION_VERIFIED. RAW_DESTROYED requires complete M1 evidence;
+otherwise DESTRUCTION_PENDING/DESTRUCTION_FAILED. Bypass inventory remains
+OPEN. Sonar final campaign was not run. No AI/LLM, external OCR, Projects/Admin
+UI, frozen semantics change, merge, final tag or production deployment.
+
+**M5 submitted for owner review only after the exact-SHA security gate;
+not self-approved/closed. STOP: no merge, final tag or production deployment.**

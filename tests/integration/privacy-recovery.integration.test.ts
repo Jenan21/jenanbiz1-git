@@ -18,9 +18,9 @@ import { db } from "@/lib/db";
 import { privacyHash } from "@/services/privacy-gateway/policy";
 import { PrivacyRecovery } from "@/services/privacy-gateway/durable/recovery";
 import { privacyId } from "../unit/support/privacy-gateway-fixtures";
+import { assertPrivacyAcceptanceDatabase } from "../unit/support/privacy-isolated-database";
 
-const url = process.env.PRIVACY_M4_DATABASE_URL;
-if (url !== "postgresql://privacy_test:privacy_test@127.0.0.1:55439/privacy_m4_v3" || process.env.DATABASE_URL !== url) throw new Error("ISOLATED_CONFIGURATION_REQUIRED");
+const url = assertPrivacyAcceptanceDatabase(process.env.PRIVACY_M4_DATABASE_URL);
 const client = new PrismaClient({ adapter: new PrismaPg({ connectionString: url }) });
 const directories: string[] = [];
 afterAll(async () => {
@@ -73,6 +73,32 @@ async function fixture(admissionCrash = false, defaults: Record<string, unknown>
   return { root, ids, step, status, reach };
 }
 describe("M4 real process restart recovery from admission", () => {
+  it("M5 recovers actual-process death after publication effect and destruction cleanup without blind retry or false certification", async () => {
+    const f = await fixture(); await f.reach("SANITIZATION_VERIFIED");
+    for (const action of ["publication-enroll", "publication-authorize", "publication-claim"]) {
+      expect(await f.step(action)).toMatchObject({ code: 0 });
+    }
+    expect(await f.step("publication-dispatch", { crash: "PUBLISH_RESPONSE_LOST" })).toMatchObject({ code: 73 });
+    const before = await readFile(join(f.root, "publication.test-result.json"), "utf8");
+    expect(await client.privacyDurableReceipt.count({ where: { jobId: f.ids.jobId, kind: "PUBLICATION" } })).toBe(0);
+    expect(await f.step("publication-claim", { now: "2026-10-23T04:01:01.000Z" })).toMatchObject({ code: 0 });
+    expect(await f.step("publication-dispatch", { now: "2026-10-23T04:01:01.000Z" })).toMatchObject({ code: 1 });
+    expect(await f.step("publication-reconcile", { now: "2026-10-23T04:01:01.000Z" })).toMatchObject({ code: 0 });
+    expect(await readFile(join(f.root, "publication.test-result.json"), "utf8")).toBe(before);
+    const published = await client.privacyDurableJob.findUniqueOrThrow({ where: { id: f.ids.jobId } });
+    expect(published).toMatchObject({ publication: "SANITIZED_PUBLISHED", destruction: "DESTRUCTION_PENDING" });
+    expect(published.revokedAt).not.toBeNull();
+    expect(await f.step("deny-raw")).toMatchObject({ code: 1 });
+    expect(await f.step("destruction-claim", { now: "2026-10-23T04:01:01.000Z" })).toMatchObject({ code: 0 });
+    expect(await f.step("destruction-run", { now: "2026-10-23T04:01:01.000Z", crash: "DESTRUCTION_RESPONSE_LOST" })).toMatchObject({ code: 73 });
+    expect((await f.status()).cleanup).toBe("REFERENCE_CLEANED");
+    expect(await f.step("destruction-claim", { now: "2026-10-23T04:02:02.000Z" })).toMatchObject({ code: 0 });
+    expect(await f.step("destruction-run", { now: "2026-10-23T04:02:02.000Z" })).toMatchObject({ code: 0 });
+    const final = await client.privacyDurableJob.findUniqueOrThrow({ where: { id: f.ids.jobId } });
+    expect(final.destruction).toBe("DESTRUCTION_FAILED");
+    expect(await client.privacyDurableReceipt.count({ where: { jobId: f.ids.jobId, kind: "PUBLICATION" } })).toBe(1);
+    expect(await client.privacyDurableReceipt.count({ where: { jobId: f.ids.jobId, kind: "DESTRUCTION" } })).toBe(0);
+  }, 120_000);
   it("recovers a committed intake after the admitting process dies before acknowledgement", async () => {
     const f = await fixture(true);
     expect((await f.status()).state).toBe("INTAKE_ACCEPTED");

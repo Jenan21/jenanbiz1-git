@@ -16,11 +16,9 @@ import type { DurableCommand, DurableRuntime, EnrollBundle, GovernedArtifactStor
   PublicationPort, DestructionPort } from "@/services/privacy-gateway/durable/contracts";
 import { sanitizationFixture } from "../unit/support/privacy-sanitization-fixtures";
 import { privacyFixture, privacyId } from "../unit/support/privacy-gateway-fixtures";
+import { assertPrivacyAcceptanceDatabase } from "../unit/support/privacy-isolated-database";
 
-const testUrl = process.env.PRIVACY_M4_DATABASE_URL;
-if (testUrl !== "postgresql://privacy_test:privacy_test@127.0.0.1:55439/privacy_m4_v3" || process.env.DATABASE_URL !== testUrl) {
-  throw new Error("Privacy M4 tests require the explicitly isolated disposable database");
-}
+const testUrl = assertPrivacyAcceptanceDatabase(process.env.PRIVACY_M4_DATABASE_URL);
 const client = new PrismaClient({ adapter: new PrismaPg({ connectionString: testUrl }), omit: { user: { passwordHash: true } } });
 afterAll(async () => { await client.$disconnect(); await db.$disconnect(); });
 async function fixture() {
@@ -134,6 +132,60 @@ async function governed(f: Awaited<ReturnType<typeof fixture>>) {
 }
 
 describe("Privacy M4 isolated PostgreSQL durable lifecycle", () => {
+  it("M5 bounds six-job publication/destruction races across independent scopes and reports synthetic load", async () => {
+    const started = performance.now();
+    const rssBefore = process.memoryUsage().rss;
+    const latencies: number[] = [];
+    let expectedRaceRejections = 0;
+    const jobs: string[] = [];
+    const organizations = new Set<string>();
+    const clients = new Set<string>();
+    let maxEnvelopeBytes = 0;
+    for (let batch = 0; batch < 2; batch++) {
+      await Promise.all(Array.from({ length: 3 }, async () => {
+        const begin = performance.now();
+        const f = await fixture();
+        jobs.push(f.job.id); organizations.add(f.job.organizationId); clients.add(f.job.clientId);
+        maxEnvelopeBytes = Math.max(maxEnvelopeBytes, Buffer.byteLength(JSON.stringify(f.job)));
+        const authorize = f.command();
+        const authorized = await Promise.all([f.workflow.authorizePublication(authorize), f.workflow.authorizePublication(authorize)]);
+        expect(authorized[0]).toEqual(authorized[1]);
+        const worker = randomUUID();
+        const lease = await f.workflow.claim(f.command(authorized[0]), "PUBLICATION", worker);
+        const command = f.command(lease.job);
+        const race = await Promise.allSettled([f.workflow.publish(command, worker), f.workflow.publish(command, worker)]);
+        expect(race.some((result) => result.status === "fulfilled")).toBe(true);
+        expectedRaceRejections += race.filter((result) => result.status === "rejected").length;
+        expect(f.counts().dispatches).toBe(1);
+        const published = await f.store.read(f.job.id, f.destroyerId, "DESTROYER");
+        expect(published.publication).toBe("SANITIZED_PUBLISHED");
+        f.allowCleanup();
+        const destroyWorker = randomUUID();
+        const destruction = await f.workflow.claim(f.command(published, "DESTROYER"), "DESTRUCTION", destroyWorker);
+        const destroyCommand = f.command(destruction.job, "DESTROYER");
+        const cleanup = await Promise.allSettled([
+          f.workflow.destroy(destroyCommand, destroyWorker), f.workflow.destroy(destroyCommand, destroyWorker),
+        ]);
+        expect(cleanup.some((result) => result.status === "fulfilled")).toBe(true);
+        expectedRaceRejections += cleanup.filter((result) => result.status === "rejected").length;
+        expect(await client.privacyDurableReceipt.count({ where: { jobId: f.job.id, kind: "PUBLICATION" } })).toBe(1);
+        expect(await client.privacyDurableReceipt.count({ where: { jobId: f.job.id, kind: "DESTRUCTION" } })).toBe(1);
+        expect((await f.store.read(f.job.id, f.auditorId, "AUDITOR")).destruction).toBe("RAW_DESTROYED");
+        latencies.push(performance.now() - begin);
+      }));
+    }
+    expect(new Set(jobs).size).toBe(6); expect(organizations.size).toBe(6); expect(clients.size).toBe(6);
+    expect(maxEnvelopeBytes).toBeLessThan(64 * 1024);
+    latencies.sort((a, b) => a - b);
+    console.log("PRIVACY_M5_SYNTHETIC_PUBLICATION_LOAD", JSON.stringify({
+      qualification: "TEST_ONLY_NOT_PRODUCTION_SLA", jobs: 6, concurrency: 3,
+      organizations: organizations.size, clients: clients.size,
+      batchMs: performance.now() - started, p50Ms: latencies[2], p95Ms: latencies[5],
+      rssBefore, rssAfter: process.memoryUsage().rss, processPeakRssBytes: process.resourceUsage().maxRSS * 1024,
+      maxEnvelopeBytes, expectedRaceRejections, unexpectedFailures: 0,
+      destructionEvidence: "SYNTHETIC_COMPLETE_M1_FIXTURE_ONLY",
+    }));
+  }, 120_000);
   it("enrolls a real M2/M3 signed synthetic result with metadata only and survives coordinator recreation", async () => {
     const f = await fixture();
     expect(await f.restart().store.read(f.job.id, f.publisherId, "PUBLISHER")).toEqual(f.job);

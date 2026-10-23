@@ -13,13 +13,14 @@ import { m3References } from "@/services/privacy-gateway/sanitization/service";
 import { privacyHash, privacyPolicyContentHash } from "@/services/privacy-gateway/policy";
 import { recoveryRole, type RecoveryRuntime, type RecoveryCommand } from "@/services/privacy-gateway/durable/recovery-contracts";
 import type { PrivacyRole } from "@/services/privacy-gateway/contracts";
+import { assertPrivacyAcceptanceDatabase } from "./privacy-isolated-database";
 
 export type RestartConfig = { jobId: string; packageId: string; organizationId: string; clientId: string; attemptId: string;
   key: string; action?: string; crash?: string; revoked?: boolean; now?: string; workerId: string; scanFailure?: boolean;
   actorId?: string; changedRole?: PrivacyRole; scannerVersion?: string; failureReason?: "CANCELLED" | "ABANDONED";
   payload?: "PARSER_FAILURE" | "SANITIZATION_FAILURE" };
 export async function restartFixture(root: string, config: RestartConfig) {
-  if (process.env.DATABASE_URL !== "postgresql://privacy_test:privacy_test@127.0.0.1:55439/privacy_m4_v3") throw new Error("ISOLATED_CONFIGURATION_REQUIRED");
+  assertPrivacyAcceptanceDatabase(process.env.DATABASE_URL);
   const f = privacyFixture(); Object.assign(f.policy.pins, m3References());
   f.policy.pins.sanitization.hash = privacyPolicyContentHash(f.policy);
   const scope = { jobId: config.jobId, packageId: config.packageId, organizationId: config.organizationId, clientId: config.clientId };
@@ -52,12 +53,16 @@ export async function main() {
   const root = process.env.PRIVACY_RECOVERY_ROOT;
   if (!root) throw new Error("ISOLATED_CONFIGURATION_REQUIRED");
   const config: RestartConfig = JSON.parse(await readFile(join(root, "command.json"), "utf8"));
-  const { client, recovery, cmd, f, scope } = await restartFixture(root, config);
+  const runtimeFixture = await restartFixture(root, config);
+  const { client, recovery, cmd, f, scope } = runtimeFixture;
   const payload = () => config.payload ? new TextEncoder().encode(config.payload === "PARSER_FAILURE" ?
     `${new TextDecoder().decode(safeCsv())}\n"unterminated` :
     new TextDecoder().decode(safeCsv()).replaceAll("RENT", "UNSUPPORTED_PRIVATE_TEXT")) : safeCsv();
   try {
-    if (config.action === "admit") {
+    if (config.action?.startsWith("publication-") || config.action?.startsWith("destruction-")) {
+      const { finalWorkflow } = await import("./privacy-final-workflow");
+      await finalWorkflow(runtimeFixture, root, config);
+    } else if (config.action === "admit") {
       const bytes = payload();
       const { artifactChecksum } = await import("@/services/privacy-gateway/durable/recovery");
       await recovery.admit({ ...scope, ownerId: f.actor(10).id, purposeId: randomUUID(), usageBasisId: randomUUID(),
