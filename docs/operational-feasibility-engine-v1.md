@@ -8,12 +8,16 @@ M2 owner-approved / CLOSED at `3728dcafff7f797dcefddb0dd3f0da9118314b7e`.
 M3 owner-approved / CLOSED at `d4396ca777a58a0ae2287cbe74e6c67aa2c49348`.
 M4 owner-approved / CLOSED at `efcb7135753e6071b9f0d8d74a0a4cfd45e6aa84`.
 M5 final technical gates PASS, including exact-SHA CodeQL.
-TECHNICALLY COMPLETE — PENDING FINAL SONAR; owner closure review pending.**
+TECHNICALLY COMPLETE — PENDING FINAL SONAR; M5 owner-approved / CLOSED.**
 The owner approved engine five and authorized Operational M0 only on 2026-10-22.
-Five of seven engines are now owner-accepted as
+Six of seven engines are now owner-accepted as
 **TECHNICALLY COMPLETE — PENDING FINAL SONAR**.
-Operational is the sixth technically complete engine submitted for owner acceptance;
-Risk & Decision has not started.
+Operational was explicitly accepted by the owner on 2026-10-23. Its accepted
+documentation-only closure is `f2cb60f13508765795429d7b45447760f05e4ef1`;
+tested implementation / exact-SHA CodeQL remains
+`93a0a952c8a97ec9e7563cf90f87a8f1f0651d5c`.
+Risk & Decision is authorized for M0 architecture planning only on its own branch;
+no seventh-engine runtime implementation is authorized.
 
 | Frozen engine | Owner-accepted technical baseline |
 | --- | --- |
@@ -1047,3 +1051,11 @@ or Risk & Decision implementation is included.
 **REAL-DATA OPERATIONAL FEASIBILITY ACCEPTANCE = BLOCKED / NOT VERIFIED.**
 **Sonar = DEFERRED / PENDING. Historical Full Regression = NOT CLAIMED PASS.**
 Stop for owner review before engine seven.
+
+The owner subsequently approved engine six's technical closure on 2026-10-23,
+retaining the tested/scan SHA and documentation-only child above as separate
+receipts. Real-data acceptance, historical regression status and deferred Sonar
+are unchanged. The existing Next.js advisory must be addressed in the final
+security campaign, independently of CodeQL. No final tag or main merge is approved.
+Only Risk & Decision M0 architecture planning is now authorized; its review is
+recorded separately in [risk-decision-engine-v1.md](risk-decision-engine-v1.md).

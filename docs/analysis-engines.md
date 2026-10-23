@@ -135,14 +135,26 @@ defers final Sonar acceptance and final tags until all seven technical baselines
    both languages uploaded without analysis errors, zero open/new alerts,
    five previously dismissed baseline alerts unchanged;
    final closure documentation is a separate child, not the tested SHA;
-   **TECHNICALLY COMPLETE — PENDING FINAL SONAR**, owner acceptance pending;
-   Sonar DEFERRED / PENDING; no final tag, main merge or engine seven;
+   **TECHNICALLY COMPLETE — PENDING FINAL SONAR**, owner-approved / frozen;
+   accepted documentation-only closure `f2cb60f13508765795429d7b45447760f05e4ef1`,
+   distinct from the tested/scanned SHA above;
+   Sonar DEFERRED / PENDING; no final tag or main merge;
    real-data acceptance BLOCKED / NOT VERIFIED)
-7. Risk & Decision Engine
+7. Risk & Decision Engine ([M0 architecture review](risk-decision-engine-v1.md);
+   M0 planning only, owner review required before M1;
+   isolated `jenan-engines/risk-decision` from accepted Operational closure;
+   exact authorized stored outputs of all six engines, no upstream recalculation
+   or direct prior-engine imports; evidence-backed risks, explicit unknowns,
+   conflicts/dependencies, declared scenario mappings and rule-by-rule decisions;
+   no success probability, opaque score, invented likelihood or automatic launch;
+   no runtime, UI, schema or dependency changes in M0;
+   real-data acceptance BLOCKED / NOT VERIFIED; Sonar DEFERRED / PENDING)
 
-An engine produces **documented facts and measurements** from governed data. It does not
-decide. The interpretation of the facts belongs to the later engines, and the final decision
-to the Risk & Decision Engine. The Data Center is the source of truth for data, sources,
+The first six engines produce **documented facts and measurements** from governed data;
+they do not make a final project decision. Risk & Decision interprets their stored
+outputs under an explicit approved policy, producing a traceable conditional
+decision, not human approval or an automatic launch/investment action.
+The Data Center is the source of truth for data, sources,
 versions, rights and quality; the Map is read through a read-only port. No engine is linked to
 Projects yet, and no engine has a foreign key to Projects or to the `jenan_map` schema.
 
