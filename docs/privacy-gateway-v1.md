@@ -847,4 +847,16 @@ Data Center publication or physical/cryptographic destruction acceptance is
 claimed in M1. No Sonar or CodeQL claim, subscription, dependency change,
 production deployment, main merge, final tag or automatic M2 work.
 
-**M1 awaiting owner review. STOP before M2.**
+**M1 approved / closed by owner on 2026-10-23.**
+
+### 15.7 Approved baseline preservation
+
+Exact approved M0/M1 source baseline:
+`85c916ef38ffc24431ed3d0bfcbe5366459e6ad8`.
+Dedicated branch: `jenan-platform/privacy-gateway`.
+This documentation-only follow-up records that immutable source baseline.
+The previous local/uncommitted statement describes the submitted M1 checkpoint,
+not the subsequently authorized baseline preservation.
+Before M2, push this branch only, create the separate Desktop
+`JenanPRO/privacy-gateway` archive, and verify clean local/remote/archive HEADs.
+No main/integration merge or final tag is authorized.
