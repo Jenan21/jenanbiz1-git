@@ -197,4 +197,9 @@ export class PrivacySanitization {
     if (entry.reason || !entry.receipt || !entry.evidence || !entry.dataset) throw new SanitizationError("VERIFICATION_FAILED");
     return structuredClone({ dataset: entry.dataset, receipt: entry.receipt, evidence: entry.evidence });
   }
+  async durableCheckpoint(job: PrivacyJob, actorId: string) {
+    const verified = await this.verified(job, actorId);
+    const entry = await this.find(job, actorId);
+    return structuredClone({ ...verified, job: entry.job, policyHash: privacyHash(this.policy) });
+  }
 }

@@ -14,6 +14,7 @@ import { mediaOf, type IntakeDescriptor } from "./formats";
 type RecordEntry = {
   job: PrivacyJob; binding: Attempt; keys: string[]; objects: string[]; leafCount: number;
   actorId: string; revoked: boolean; busy: boolean; started: number; reservedBytes: number; cleanupScheduled: boolean; summary: IntakeSummary;
+  authority?: (actorId: string, role: "INTAKE" | "SANITIZER" | "VERIFIER") => Promise<void>;
 };
 const encode = (value: unknown) => new TextEncoder().encode(JSON.stringify(value));
 
@@ -40,6 +41,7 @@ export class EphemeralIntake {
       if (context.actor.id !== actorId) throw new IntakeError("AUTHORIZATION_DENIED");
       assertPrivacyRole(context.actor, context.grants, role, job.scope, this.now());
       assertJobRawAccess(job, context.actor, context.grants, this.now());
+      await this.records.get(job.scope.jobId)?.authority?.(actorId, role);
       return context;
     } catch { throw new IntakeError("AUTHORIZATION_DENIED"); }
   }
@@ -47,6 +49,15 @@ export class EphemeralIntake {
     if (entry.revoked) throw new IntakeError(entry.summary.failure ?? "CANCELLED");
     if (this.now() >= entry.job.rawExpiresAt) throw new IntakeError("EXPIRED");
     if (Date.parse(this.now()) - entry.started >= this.limits.processingMs + this.limits.scanMs) throw new IntakeError("PARSER_LIMIT_EXCEEDED");
+  }
+  async bindDurableAuthority(job: PrivacyJob, actorId: string,
+    authority: NonNullable<RecordEntry["authority"]>) {
+    const entry = this.records.get(job.scope.jobId);
+    if (!entry || !samePrivacyValue(entry.binding.scope, job.scope) ||
+      entry.binding.attemptId !== job.attemptId || entry.binding.fence !== job.fence) throw new IntakeError("AUTHORIZATION_DENIED");
+    if (entry.authority) return;
+    await this.authorize(entry.job, actorId, "VERIFIER");
+    entry.authority = authority;
   }
   private async checkpoint(entry: RecordEntry, actorId = entry.actorId, role: "INTAKE" | "SANITIZER" = "INTAKE") {
     this.assertLive(entry); const context = await this.authorize(entry.job, actorId, role); this.assertLive(entry);
@@ -212,6 +223,7 @@ export class EphemeralIntake {
         if (current.actor.id !== actorId) throw new IntakeError("AUTHORIZATION_DENIED");
         assertPrivacyRole(current.actor, current.grants, role, entry.job.scope, this.now());
         assertJobRawAccess(entry.job, current.actor, current.grants, this.now());
+        await entry.authority?.(actorId, role);
       } catch { throw new IntakeError("AUTHORIZATION_DENIED"); }
     };
     await check();

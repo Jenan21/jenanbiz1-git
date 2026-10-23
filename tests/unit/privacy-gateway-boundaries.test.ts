@@ -33,7 +33,7 @@ function violations(text: string, file = join(root, "probe.ts")) {
 }
 describe("Privacy M1 foundation capability boundaries", () => {
   it("preserves the five approved pure modules alongside isolated intake and sanitization directories", () => {
-    expect(readdirSync(root).sort()).toEqual(["audit.ts", "contracts.ts", "index.ts", "intake", "policy.ts", "sanitization", "states.ts"]);
+    expect(readdirSync(root).sort()).toEqual(["audit.ts", "contracts.ts", "durable", "index.ts", "intake", "policy.ts", "sanitization", "states.ts"]);
     for (const name of readdirSync(root).filter((name) => name.endsWith(".ts"))) {
       const file = join(root, name); const text = readFileSync(file, "utf8");
       expect(violations(text, file), name).toEqual([]);

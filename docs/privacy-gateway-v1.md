@@ -1357,3 +1357,457 @@ on `jenan-platform/privacy-gateway` only and verify clean local, remote Privacy
 branch and Desktop Privacy archive HEAD equality. No main/integration merge,
 final tag or production deployment is authorized. If M4 requires Prisma/schema
 migration or a frozen-module change, STOP and obtain owner approval first.
+
+## 18. M4 checkpoint: durable verified-onward lifecycle (historical partial scope accepted)
+
+### 18.1 Authority, baseline and exact scope
+
+The owner subsequently approved a limited additive Privacy persistence
+exception: new Privacy Prisma models, one dedicated additive migration and
+Privacy-only PostgreSQL constraints/indexes/roles/grants. This supersedes the
+earlier schema STOP only within that exception; it does not authorize editing
+existing engine, Map, Data Center, project, Shared or payment semantics.
+The pre-application design and exact DDL are recorded in
+[privacy-gateway-m4-persistence.md](privacy-gateway-m4-persistence.md).
+
+Approved M3 source: `58a258c028d9295c2dea5c32c039fafa9c1a5c9b`.
+Preserved M3 closure HEAD: `fc27c1495d7cb0f8526eeccf25e188404af4f3ee`.
+Before M4, local HEAD, remote `jenan-platform/privacy-gateway` HEAD and Desktop
+Privacy archive HEAD matched that closure HEAD with clean worktrees. A final
+read-only check still found all three HEADs equal; M4 changes are intentionally
+uncommitted pending owner review. No M4 closure SHA or clean M4 worktree is claimed.
+
+Added:
+
+* `docs/privacy-gateway-m4-persistence.md`
+* `prisma/migrations/20261023130000_privacy_gateway_durable/migration.sql`
+* `services/privacy-gateway/durable/contracts.ts`
+* `services/privacy-gateway/durable/store.ts`
+* `services/privacy-gateway/durable/workflow.ts`
+* `services/privacy-gateway/durable/verification.ts`
+* `services/privacy-gateway/durable/data-center.ts`
+* `tests/integration/privacy-gateway-durable.integration.test.ts`
+* `tests/unit/privacy-durable-boundaries.test.ts`
+
+Changed:
+
+* `prisma/schema.prisma` (four new Privacy models only)
+* `services/privacy-gateway/intake/staging.ts` (irreversible binding to an
+  authoritative durable RAW-read check for an enrolled intake)
+* `services/privacy-gateway/sanitization/service.ts` (current independent
+  verifier-only verified checkpoint export)
+* `tests/unit/privacy-gateway-boundaries.test.ts` (explicit isolated durable
+  directory inventory; pure foundation capability rules unchanged)
+* `docs/privacy-gateway-v1.md`
+
+### 18.2 Persistence, atomicity, audit and authorization
+
+Four independent tables hold job/scope/attempt/fence/revision metadata,
+ordered audit events, immutable receipt references and publication/destruction
+work. No RAW bytes, extracted text, PII, plaintext token mappings, key material,
+secrets, original sensitive names or parser errors are stored.
+There is no relation to, or mutation of, any existing Prisma model.
+The exact original generator/datasource/enums/models are tested unchanged
+against preserved M3.
+
+Row locks serialize commands. Revision compare-and-swap and immutable attempt/
+fence bindings reject stale workers. Idempotency includes action, intent,
+actor, attempt/fence and original revision; changing intent under a committed
+key is rejected. A retry of a completed publication returns the committed
+state without redispatch. Claims persist an expiring opaque worker lease;
+takeover changes worker ownership and revision, not the signed M3 fence.
+DISPATCH is durably reserved before an external publication operation.
+
+Audit events are append-only, sequenced, predecessor-hashed and bound to the
+committed job revision. Reads recompute the hash chain. DB triggers reject
+history UPDATE/DELETE and job/work DELETE; enforce legal state edges and
+immutable identity/intent; and require committed audit/receipt/work evidence.
+Receipts contain only opaque object refs, hash, kind, principal and time.
+Five new NOLOGIN roles have no automatically assigned memberships.
+RLS separates publication/destruction work and verification/publication/
+destruction receipts; role policies also constrain audit role/action.
+Tests use actual SET LOCAL ROLE and confirm no access to existing FileAsset
+records. Superuser/migration compromise is not covered by append-only claims.
+
+Every command re-reads current scoped authorization, including a second check
+before transaction commit. Enrollment requires a current independent verifier,
+valid M3 job/receipt/evidence and exact candidate/policy/pins. Publication
+excludes owner, verifier and every historical processor even after role changes.
+DB credentials do not grant RAW, key or human Data Center capability.
+
+### 18.3 Governed publication and reconciliation
+
+The new Privacy-owned adapter uses unchanged
+`createDataCenterItemInTransaction`. It requires an explicitly bound active
+human Data Center principal and restricted organization-scoped source, with
+export forbidden and an independently reviewed DATA type. It creates one
+allowlist JSON proposal as DRAFT with UNVERIFIED business evidence.
+Privacy verification does not imply business VERIFIED evidence.
+The adapter cannot invoke Data Center review, approval or publication.
+
+The proposal and its exact source/item/versionId/version/checksum association
+commit atomically. Normal existing human review/approval/publication must
+complete before a final Gateway publication receipt is accepted.
+Reconciliation requires that exact persisted version and checksum, correct
+source, current/published version numbers and PUBLISHED status. Receipt
+commit re-locks/rechecks the exact item and current authorization. There is
+no latest fallback, version substitution, auto-approval or duplicate creation.
+
+Timeout, lost response, partial acknowledgment and absent proof remain
+RECONCILIATION_REQUIRED. If an exact association is absent, the implemented
+adapter does not speculate that nothing was published or blindly recreate it.
+An expired publication lease also requires reconciliation, not redispatch.
+Tests exercise the real existing Data Center API through independent human
+review and prove one item/version after a lost creation response.
+
+### 18.4 RAW revocation, destruction and recovery
+
+Publication receipt, SANITIZED_PUBLISHED, durable RAW revocation and a
+destruction outbox intent commit atomically. The database trigger creates
+the destruction intent on first revocation. The actual enrolled M2 intake
+consults PostgreSQL before/after RAW reads/decryption/callback and cannot
+replace its bound authority. Stale sanitizer/verifier snapshots cannot reopen
+RAW. A missing/unavailable authority fails closed. Publisher has no RAW reader.
+
+Destruction leases/retries are durable. Provider failure records
+DESTRUCTION_FAILED; expiration/revocation schedules DESTRUCTION_PENDING.
+Final success requires the complete strict M1 destruction receipt and an
+authenticated strict M4 evidence envelope covering job/package/attempt/fence,
+inventory hash/count, cleanup attempt, receipt hash, opaque key/evidence refs
+and all eleven declared cleanup categories. Missing/partial/incorrect evidence
+cannot produce RAW_DESTROYED. Receipt and evidence are hash-addressed together.
+This acceptance model is not a claim that deleting one object or a key map is
+irreversible destruction.
+
+Recovery tests include coordinator recreation, duplicate commands, competing
+workers, expired leases, stale revisions/attempts/fences, revoked authorization,
+ambiguous publication, cleanup failure/retry and a real child-process exit
+mid-transaction. The latter rolls back uncommitted job/work changes without
+partial intent. A separate real PostgreSQL container restart preserved all
+four durable table counts (115 jobs / 306 events / 135 receipts / 70 work
+records, before = after that drill); the complete suite then passed again.
+
+### 18.5 Exact evidence and quality gates
+
+Synthetic fixtures only; no real customer data.
+
+| Gate | Result |
+| --- | --- |
+| M1 regression | 333/333 PASS |
+| M2 regression | 133/133 PASS |
+| M3 regression | 166/166 PASS |
+| Privacy M1-M3 | 632/632 PASS |
+| M4 PostgreSQL/functional/adversarial/recovery | 39/39 PASS |
+| M4 architecture/additive/frozen schema boundaries | 5/5 PASS |
+| M4 subtotal | 44/44 PASS |
+| Privacy M1-M4 focused total | 676/676 PASS |
+| Global analysis-engine boundaries | 20/20 PASS |
+| Complete focused command, 9 files | 696/696 PASS; zero failures/skips |
+| Prisma schema validation/generation | PASS |
+| Full baseline + additive migration deploy on isolated PostgreSQL 17 | PASS |
+| TypeScript | PASS |
+| Production build | PASS on bounded-worker retry |
+| Post-build TypeScript after restoring generated declaration drift | PASS |
+| Scoped ESLint | PASS, zero warnings |
+| git diff --check | PASS |
+| Frozen production diff outside the approved additive schema exception | UNCHANGED |
+
+Evidence logs live in the session workspace, not customer data storage:
+`privacy-m4-migrate-v3.log`, `privacy-m4-focused.log`,
+`privacy-m4-focused.json`, `privacy-m4-types.log`,
+`privacy-m4-build.log`, `privacy-m4-build-retry.log` and
+`privacy-m4-postbuild-types.log`.
+The first build compiled and completed its type phase but its page-data worker
+exited with Windows code 3221225477; that run is NOT claimed PASS.
+The successful retry used the existing NEXT_BUILD_CPUS=2 setting and explicitly
+disabled Sentry source-map upload/release credentials in the child environment.
+No production source/dependency/config change or warning suppression was used
+to obtain the pass. Existing Map filesystem-tracing warnings remain unrelated;
+zero warnings applies to scoped ESLint, not all existing build warnings.
+
+### 18.6 Explicit limits and activation blockers
+
+* Durability starts at authenticated SANITIZATION_VERIFIED enrollment. The
+  pre-verification M2/M3 parser registries are not persisted/rehydrated by M4.
+  This is not proof that the entire M1-M3 intake/parser pipeline has become
+  a restartable distributed processing system. Durable pre-verification
+  metadata/inventory and recovery therefore remain open M4 work, not an
+  owner-approved scope reduction or an implicit deferral to M5.
+* PostgreSQL and real Data Center transactional/lifecycle calls are exercised.
+  Tests use a disposable local database, never the production database.
+* RAW encryption/storage/key/scanner adapters remain the M2 TEST_ONLY
+  providers; no production qualification or OS/native parser sandbox is added.
+* Current grants/principal bindings are test-configured; the artifact/receipt
+  store is a TEST_ONLY map. Hash-pinned durable DB refs are not proof of a
+  production-durable object store, independently deployed RBAC or provider
+  inventory recovery.
+* Receipt signatures exercise real Ed25519 with TEST_ONLY in-memory keys,
+  not a production KMS/HSM or rotation/backup qualification.
+* Publication-port doubles are used in adversarial timeout/partial cases.
+  Separate tests use the actual governed Data Center adapter and service.
+* Destruction revoke/evidence providers are explicitly mocked. Synthetic
+  complete attestations test strict receipt acceptance; they do not prove
+  actual physical wipe, backup exclusion, native worker termination, permanent
+  key destruction or final RAW destruction for real data.
+* PostgreSQL lease/outbox recovery is implemented; no production scheduler,
+  cross-host parser orchestration, worker deployment, durable RAW inventory
+  provider or cleanup SLA certification is activated.
+* The section 15.5 ingress/bypass inventory remains OPEN. File upload,
+  Data Center import/command/create/version and project-analysis inputs are
+  neither rerouted nor disabled. M4 does not close any activation blocker.
+* No UI, Projects integration, AI/LLM, external OCR, production KMS/scanner,
+  payment/engine/Map/Shared change, Sonar final campaign, dependency change,
+  main merge, final tag or production deployment is activated.
+  The inherited Next.js advisory remains independent security debt.
+
+After all validation, the owned disposable PostgreSQL container and its exact
+anonymous test volume were removed. No unrelated container/database was changed.
+
+Sanitized != Anonymous. M3 uncertainty/unacceptable re-identification risk
+still means MANUAL_PRIVACY_REVIEW_REQUIRED -> NO SANITIZATION_VERIFIED,
+and therefore no publication authorization.
+
+**Partial M4 checkpoint only: not ready for full M4 closure. The verified-onward
+scope and the unimplemented pre-verification durability above must not be
+confused with full end-to-end durable M1-M3 processing. STOP before M5.**
+
+## 19. JENAN PRIVACY GATEWAY — M4 FINAL CHECKPOINT FOR OWNER REVIEW
+
+### 19.1 Baseline and delivery state
+
+M3 closure baseline: `fc27c1495d7cb0f8526eeccf25e188404af4f3ee`.
+M3 approved source: `58a258c028d9295c2dea5c32c039fafa9c1a5c9b`.
+Branch: `jenan-platform/privacy-gateway`.
+Local HEAD, remote Privacy branch HEAD and Desktop Privacy archive HEAD still
+match the M3 closure baseline. M4 has not been committed/pushed or declared
+APPROVED/CLOSED. Its twenty review files are persistent in the implementation
+worktree; the Desktop Git archive remains the clean M3 baseline.
+
+Section 18 records the accepted partial checkpoint, not the final result.
+This section supersedes its pre-verification durability gap for the tested,
+nonactivated reference configuration only. Owner review remains required.
+
+### 19.2 Exact M4 file inventory
+
+Modified (5):
+
+* [Privacy document](privacy-gateway-v1.md)
+* [Prisma schema](../prisma/schema.prisma)
+* [M2 staging authority](../services/privacy-gateway/intake/staging.ts)
+* [M3 durable checkpoint export](../services/privacy-gateway/sanitization/service.ts)
+* [Foundation architecture boundary inventory](../tests/unit/privacy-gateway-boundaries.test.ts)
+
+Added (15):
+
+* [Persistence design](privacy-gateway-m4-persistence.md)
+* [Verified-onward migration](../prisma/migrations/20261023130000_privacy_gateway_durable/migration.sql)
+* [Admission recovery migration](../prisma/migrations/20261023160000_privacy_admission_recovery/migration.sql)
+* [Durable contracts](../services/privacy-gateway/durable/contracts.ts)
+* [PostgreSQL store](../services/privacy-gateway/durable/store.ts)
+* [Governed workflow](../services/privacy-gateway/durable/workflow.ts)
+* [Verification authentication](../services/privacy-gateway/durable/verification.ts)
+* [Governed Data Center adapter](../services/privacy-gateway/durable/data-center.ts)
+* [Admission recovery contracts](../services/privacy-gateway/durable/recovery-contracts.ts)
+* [Admission recovery coordinator](../services/privacy-gateway/durable/recovery.ts)
+* [Durable PostgreSQL acceptance](../tests/integration/privacy-gateway-durable.integration.test.ts)
+* [Actual-process restart acceptance](../tests/integration/privacy-recovery.integration.test.ts)
+* [M4 architecture boundaries](../tests/unit/privacy-durable-boundaries.test.ts)
+* [TEST_ONLY encrypted restart objects/keys/signer](../tests/unit/support/privacy-restart-objects.ts)
+* [TEST_ONLY process entry/configuration](../tests/unit/support/privacy-recovery-process.ts)
+
+No dependency, frozen production module, existing Prisma model/enum/field,
+existing migration or Data Center semantic contract changed.
+
+### 19.3 Exact persistence and migration scope
+
+Two additive Privacy migrations create eight new models/tables only:
+PrivacyClientPackage, PrivacyAdmission, PrivacyInventoryArtifact,
+PrivacyAdmissionEvent, PrivacyDurableJob, PrivacyDurableEvent,
+PrivacyDurableReceipt and PrivacyDurableWork. Exact columns/DDL/Prisma additions
+are the linked schema/migrations; the preapplication design describes PK/FK,
+unique/index/state/role constraints. The schema beginning at `generator client`
+is byte-identical to M3 after newline normalization.
+
+The second migration adds package scope/purpose/basis, immutable policy/version
+and scanner-version pins, admission checkpoint, attempt/fence/CAS revision,
+five-claim incomplete-stage bound, leases, manifest/candidate/verification
+hashes, cleanup intent and safe failure. Inventory records exact opaque
+artifact/parent/job/package/client/organization/attempt/fence/object/key/version,
+kind/taint/checksum/size, scan state/hash/version and lifecycle state.
+Completed checksums and CLEAN evidence are immutable. Composite FKs prevent
+cross-job/organization/attempt linkage; unique refs and kind/ordinal prevent
+duplicates. Deferred package/admission/audit/evidence guards prevent orphan
+rows, incomplete inventory advancement and unsupported checkpoint jumps.
+
+Transactions commit reservations and audit atomically before external writes.
+Extraction child completion and exact manifest commit together before RAW_READY.
+Verification completes only with the exact signed artifact/hash/evidence.
+Stale revision, worker, lease, attempt/fence and conflicting idempotency keys
+are rejected. A matching committed command is replayed without another effect.
+DB stores no document bytes, extracted text, PII values, snippets, sensitive
+filenames, plaintext maps/keys/secrets or raw provider/parser errors.
+
+Isolated PostgreSQL 17 applied the complete 80-migration history successfully,
+including both final Privacy migrations. Disposable database only; no production
+database was used. There was no destructive change to an existing schema/table.
+
+### 19.4 Restart recovery coverage
+
+The durable path now covers:
+
+`INTAKE -> SCAN -> EXTRACT -> RAW_READY -> SANITIZE -> VERIFY -> PUBLISH -> DESTROY`
+
+DESTROY includes durable cleanup, failure/retry and evidence adjudication; it
+does **not** imply a certified real-data RAW_DESTROYED outcome.
+
+The restart suite launches fresh operating-system Node processes that recreate
+Prisma clients, authorized reference adapters and signers. It does not keep a
+process registry alive to carry RAW, keys, mappings or candidates between steps.
+AES-GCM object ciphertext and wrapped per-artifact keys survive through opaque
+references outside PostgreSQL. A missing key fails closed without replacement.
+Authenticated complete pending-file writes can be recovered; corrupt/incomplete
+ciphertext cannot become successful evidence. No OS power-loss/fsync durability
+qualification is claimed.
+
+Abrupt process-death checkpoints cover committed intake; staging; before/pending/
+after key and object writes; original-write-before-DB advancement; scan;
+scan-clean; extraction and extracted write; before RAW_READY; classification;
+sanitization; mapping/candidate writes; candidate-ready; verification and signed
+verification write. Recovery uses the existing reservation/attempt/fence and
+exact current authorization/pins, never a latest lookup or a new substitute key.
+
+Additional acceptance covers revoked authorization after restart, expired TTL
+while down, expired-lease takeover and stale workers/fences, concurrent duplicate
+delivery/replay, scanner-version substitution, parser/sanitization/signing/storage
+failure, abandoned/cancelled cleanup interrupted by process death, durable cleanup
+retry, and late key/object side effects before/after revocation.
+Mapping, candidate and signed receipt bytes are compared exactly across restart:
+no regenerated tokens, candidates or verification receipts. Sanitizer identity
+remains persisted; granting it VERIFIER after restart still fails separation
+of duties. M3 analytical fidelity/purpose-limited risk checks remain unchanged.
+
+### 19.5 Audit, publication, revocation and destruction evidence
+
+Admission audit stores ordered opaque actor/role/action/result, safe state,
+timestamp, command/intent/predecessor/event hashes. Normal roles cannot UPDATE
+or DELETE history; PostgreSQL enforces ordering and committed revision evidence.
+The reader recomputes the chain in a consistent transaction snapshot and
+rechecks current auditor authorization. Verified-onward audit/receipts retain
+their independent append-only/hash-chain protections. There are no RAW snippets,
+PII, map contents or raw parser errors in these records/log payloads.
+This is not protection against a database superuser disabling all safeguards.
+
+Publisher remains independent of owner/Sanitizer/Verifier, including role-change
+attempts. Authorization, exact scope/attempt/fence/revision, artifact availability,
+policy/version and signed receipt hashes, expiry/revocation are checked again
+at publication. Publisher DB inventory reads are RLS-limited to completed
+CANDIDATE/VERIFICATION; it has no admission mutation or RAW inventory visibility.
+Processing cannot finalize verification evidence; verification cannot mutate RAW
+or candidate inventory. NOLOGIN roles receive no automatic service membership.
+
+The real unchanged Data Center API creates a restricted organizational
+DRAFT/UNVERIFIED proposal. Existing independent human business review/approval/
+publication is mandatory. Exact release/source/item/version ID/version number/
+checksum persist atomically with the proposal association. Ambiguous result,
+timeout, partial acknowledgement or expired publication lease requires
+RECONCILIATION_REQUIRED; no blind duplicate dispatch or latest substitution.
+Exact reconciliation rechecks/locks the same item/version/checksum. Publication
+receipt, RAW revocation and destruction work commit atomically.
+
+The new end-to-end test resumes a persisted verified artifact, uses the actual
+governed Data Center lifecycle in the isolated database, recreates the coordinator,
+reconciles exact publication, denies RAW through a fresh process, and performs
+reference cleanup. Final candidate and signed verification survive cleanup;
+RAW original/extraction/mapping ciphertext and per-artifact key references do not.
+
+Destruction evidence acceptance still requires the complete strict M1 receipt
+plus M4 job/package/attempt/fence/inventory/count/key/cleanup-attempt/evidence
+references and all eleven categories. In the new reference-cleanup integration,
+that certification is intentionally unavailable: the durable outcome is
+DESTRUCTION_FAILED, never RAW_DESTROYED. The earlier synthetic complete-evidence
+tests exercise acceptance/retry/idempotency only, not physical-wipe certification.
+Receipt objects are hash-checked and restart-persistent in TEST_ONLY storage.
+
+### 19.6 Final gate results
+
+Synthetic data only. The complete final focused command ran once:
+
+| Gate | Final result |
+| --- | --- |
+| M1 functional/foundation + architecture | 299 + 34 = 333/333 PASS |
+| M2 intake + architecture | 119 + 14 = 133/133 PASS |
+| M3 sanitization + architecture | 147 + 19 = 166/166 PASS |
+| M1-M3 regression | 632/632 PASS |
+| M4 verified-onward PostgreSQL/functional/adversarial | 39/39 PASS |
+| M4 actual-process/restart/admission recovery | 44/44 PASS |
+| M4 architecture/additive/frozen boundaries | 9/9 PASS |
+| M4 subtotal | 92/92 PASS |
+| Complete Privacy M1-M4 | 724/724 PASS |
+| Global boundaries only | 20/20 PASS |
+| Focused total, 10 files | 744/744 PASS; zero failures/skips |
+| Prisma validation/generation; isolated PostgreSQL migrations | PASS |
+| TypeScript before build | PASS |
+| Scoped ESLint | PASS; zero warnings |
+| Production build | PASS on unchanged-code retry with explicit isolated DATABASE_URL |
+| Post-build TypeScript | PASS |
+| git diff --check | PASS |
+| Frozen production diff; original Prisma schema | UNCHANGED |
+
+Evidence is in the session workspace: `privacy-m4-final-focused.json`,
+`privacy-m4-final-focused.log`, `privacy-m4-recovery-migrate.log`,
+`privacy-m4-final-lint.log`, `privacy-m4-final-types.log`,
+`privacy-m4-final-build.log`, `privacy-m4-final-build-retry.log` and
+`privacy-m4-final-postbuild-types.log`. The first final build compiled/typechecked
+but failed page-data collection because its shell lacked DATABASE_URL; it is not
+counted as PASS. The unchanged-code retry explicitly used the isolated test URL,
+NEXT_BUILD_CPUS=2 and no Sentry upload/release credentials and passed.
+Existing unrelated Map tracing warnings remain; zero warnings refers to scoped
+ESLint. Only generated build declaration drift was restored before post-build
+types. No engine 1-7 functional/historical repository-wide suite was rerun.
+
+### 19.7 TEST_ONLY limitations, blockers and stop
+
+* Filesystem object/receipt storage, local master/wrapped keys and persistent
+  Ed25519 signer are restart-persistent synthetic providers, not production
+  KMS/HSM, storage, backup, rotation, cross-host or power-loss qualification.
+* Scanner returns controlled synthetic CLEAN/REJECTED/timeouts; no production
+  malware scanner, external OCR or OS/native parser sandbox is qualified.
+* Actor/grant/policy/binding sources and clock/process crash/failure hooks are
+  test-configured. DB constraints/grants/RLS and isolated Data Center operations
+  are real, but production identities, memberships, deployment and key grants
+  are not provisioned.
+* Publication-port timeout/partial/adversarial doubles remain TEST_ONLY; the
+  separate actual API test proves unchanged governance, not live publication.
+* Complete destruction attestations remain synthetic/mock. Reference/key-file
+  deletion is not physical wipe, backup erasure, final RAW destruction evidence,
+  customer-data certification or a production cleanup SLA.
+* Durable PostgreSQL leases/checkpoints/intents are implemented; no production
+  worker/scheduler or distributed orchestration qualification is activated.
+* All section 15.5 ingress/bypass blockers remain OPEN. M4 does not route,
+  disable or grant an exception to an existing ingress. Production activation
+  still requires every bypass to be governed, disabled or explicitly approved.
+* No Projects/Admin UI, AI/LLM, external OCR, Engines 1-7, Map, Shared, Payments,
+  existing project-analysis schema, existing ingestion or Data Center semantics
+  was changed. No platform bypass enforcement, production publication/KMS/storage/
+  scanner, final RAW certification, dependency change, Sonar campaign, main merge,
+  final tag or production deployment was activated. Next.js advisory remains
+  independent security debt.
+
+**Sanitized != Anonymous.**
+
+**MANUAL_PRIVACY_REVIEW_REQUIRED -> NO SANITIZATION_VERIFIED** on unsupported
+or uncertain detection, failed analytical fidelity or unacceptable supported
+re-identification risk; no publication authorization follows.
+
+**M4 APPROVED / CLOSED by the owner on 2026-10-23.**
+The owner accepted all 744/744 focused tests and the quality gates above.
+The historical review-state text in 19.1 records the submission state only.
+M5 is authorized for final technical acceptance, not additional functionality.
+All TEST_ONLY, qualification, destruction-evidence and open bypass limitations
+remain unchanged. No merge, final tag or production deployment is authorized.
+
+Final housekeeping: the owned recovery PostgreSQL container and its anonymous
+test volume were removed after validation. Restart fixture directories were
+removed by test teardown. No unrelated database/container was changed.
+The persisted final evidence records 744/744 passing with zero failures/skips;
+no test rerun was performed for this housekeeping/report confirmation.

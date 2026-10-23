@@ -1,3 +1,196 @@
+model PrivacyClientPackage {
+  id             String @id @db.Uuid
+  organizationId String @db.Uuid
+  clientId       String @db.Uuid
+  purposeId      String @db.Uuid
+  usageBasisId   String @db.Uuid
+  policyHash     String @db.Char(64)
+  pins           Json
+  createdAt      DateTime @db.Timestamptz(3)
+  expiresAt      DateTime @db.Timestamptz(3)
+  admissions     PrivacyAdmission[]
+  @@unique([id, organizationId, clientId])
+}
+
+model PrivacyAdmission {
+  id             String @id @db.Uuid
+  packageId      String @unique @db.Uuid
+  organizationId String @db.Uuid
+  clientId       String @db.Uuid
+  package        PrivacyClientPackage @relation(fields: [packageId, organizationId, clientId], references: [id, organizationId, clientId], onDelete: Restrict, onUpdate: NoAction)
+  attemptId      String @db.Uuid
+  fence          Int
+  revision       Int
+  ownerId        String @db.Uuid
+  sanitizerId    String? @db.Uuid
+  verifierId     String? @db.Uuid
+  state          String
+  media          String
+  scannerVersion String
+  stageAttempts  Int
+  policyHash     String @db.Char(64)
+  manifestHash   String? @db.Char(64)
+  candidateHash  String? @db.Char(64)
+  verificationHash String? @db.Char(64)
+  leaseOwner     String? @db.Uuid
+  leaseUntil     DateTime? @db.Timestamptz(3)
+  cleanup        String
+  failure        String?
+  revokedAt      DateTime? @db.Timestamptz(3)
+  createdAt      DateTime @db.Timestamptz(3)
+  expiresAt      DateTime @db.Timestamptz(3)
+  updatedAt      DateTime @db.Timestamptz(3)
+  artifacts      PrivacyInventoryArtifact[]
+  events         PrivacyAdmissionEvent[]
+  @@unique([id, packageId, organizationId, clientId, attemptId, fence])
+  @@index([cleanup, expiresAt])
+}
+
+model PrivacyInventoryArtifact {
+  id             String @id @db.Uuid
+  jobId          String @db.Uuid
+  packageId      String @db.Uuid
+  organizationId String @db.Uuid
+  clientId       String @db.Uuid
+  attemptId      String @db.Uuid
+  fence          Int
+  job            PrivacyAdmission @relation(fields: [jobId, packageId, organizationId, clientId, attemptId, fence], references: [id, packageId, organizationId, clientId, attemptId, fence], onDelete: Restrict, onUpdate: NoAction)
+  ordinal        Int
+  parentId       String? @db.Uuid
+  kind           String
+  taint          String
+  objectRef      String @unique @db.Uuid
+  keyRef         String @unique @db.Uuid
+  keyVersion     Int
+  cryptoVersion  String
+  checksum       String? @db.Char(64)
+  size           Int?
+  state          String
+  scan           String
+  scanHash       String? @db.Char(64)
+  scannerVersion String?
+  createdAt      DateTime @db.Timestamptz(3)
+  @@unique([jobId, kind, ordinal])
+  @@unique([id, jobId])
+}
+
+model PrivacyAdmissionEvent {
+  jobId          String @db.Uuid
+  revision       Int
+  job            PrivacyAdmission @relation(fields: [jobId], references: [id], onDelete: Restrict, onUpdate: NoAction)
+  key            String @db.Uuid
+  actorId        String @db.Uuid
+  role         String
+  result       String
+  action         String
+  state          String
+  intentHash     String @db.Char(64)
+  previousHash   String @db.Char(64)
+  hash           String @db.Char(64)
+  at             DateTime @db.Timestamptz(3)
+  @@id([jobId, revision])
+  @@unique([jobId, key])
+}
+
+model PrivacyDurableJob {
+  id               String @id @db.Uuid
+  organizationId   String @db.Uuid
+  clientId         String @db.Uuid
+  packageId        String @db.Uuid
+  attemptId        String @db.Uuid
+  ownerId          String @db.Uuid
+  sanitizerId      String @db.Uuid
+  processorIds     String[] @db.Uuid
+  verifierId       String @db.Uuid
+  fence            Int
+  revision         Int
+  processing       String
+  publication      String
+  destruction      String
+  policyHash       String @db.Char(64)
+  pinsHash         String @db.Char(64)
+  inventoryHash    String @db.Char(64)
+  inventoryCount   Int
+  artifactId       String @db.Uuid
+  objectRef        String @db.Uuid
+  artifactHash     String @db.Char(64)
+  verificationHash String @db.Char(64)
+  rawExpiresAt     DateTime @db.Timestamptz(3)
+  revokedAt        DateTime? @db.Timestamptz(3)
+  createdAt        DateTime @db.Timestamptz(3)
+  updatedAt        DateTime @db.Timestamptz(3)
+  events           PrivacyDurableEvent[]
+  receipts         PrivacyDurableReceipt[]
+  work             PrivacyDurableWork[]
+
+  @@unique([organizationId, clientId, packageId, attemptId])
+  @@unique([id, attemptId, fence])
+  @@index([rawExpiresAt])
+}
+
+model PrivacyDurableEvent {
+  jobId          String @db.Uuid
+  sequence       Int
+  revision       Int
+  job            PrivacyDurableJob @relation(fields: [jobId], references: [id], onDelete: Restrict, onUpdate: NoAction)
+  actorId        String @db.Uuid
+  role           String
+  action         String
+  result         String
+  intentHash     String @db.Char(64)
+  idempotencyKey String @db.Uuid
+  previousHash   String @db.Char(64)
+  eventHash      String @db.Char(64)
+  at             DateTime @db.Timestamptz(3)
+
+  @@id([jobId, sequence])
+  @@unique([jobId, idempotencyKey])
+  @@unique([jobId, eventHash])
+}
+
+model PrivacyDurableReceipt {
+  id        String @id @db.Uuid
+  jobId     String @db.Uuid
+  job       PrivacyDurableJob @relation(fields: [jobId], references: [id], onDelete: Restrict, onUpdate: NoAction)
+  kind      String
+  hash      String @db.Char(64)
+  objectRef String @db.Uuid
+  actorId   String @db.Uuid
+  at        DateTime @db.Timestamptz(3)
+
+  @@unique([jobId, kind])
+  @@unique([jobId, hash])
+}
+
+model PrivacyDurableWork {
+  id             String @id @db.Uuid
+  jobId          String @db.Uuid
+  job            PrivacyDurableJob @relation(fields: [jobId, attemptId, fence], references: [id, attemptId, fence], onDelete: Restrict, onUpdate: Restrict)
+  kind           String
+  intentHash     String @db.Char(64)
+  idempotencyKey String @db.Uuid
+  attemptId      String @db.Uuid
+  fence          Int
+  state          String
+  leaseOwner     String? @db.Uuid
+  leaseUntil     DateTime? @db.Timestamptz(3)
+  tries          Int
+  sourceId       String?
+  itemId         String?
+  versionId      String?
+  version        Int?
+  checksum       String? @db.Char(64)
+  failure        String?
+  evidenceRef    String? @db.Uuid
+  evidenceHash   String? @db.Char(64)
+  createdAt      DateTime @db.Timestamptz(3)
+  updatedAt      DateTime @db.Timestamptz(3)
+
+  @@unique([jobId, kind])
+  @@unique([jobId, idempotencyKey])
+  @@index([state, leaseUntil])
+}
+
 generator client {
   provider = "prisma-client"
   output   = "../generated/prisma"
