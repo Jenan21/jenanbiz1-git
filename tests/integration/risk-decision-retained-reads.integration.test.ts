@@ -1,4 +1,5 @@
 import { randomUUID } from "node:crypto";
+import { performance } from "node:perf_hooks";
 import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 import { z } from "zod";
 import type { DbExecutor } from "@/lib/db";
@@ -85,16 +86,19 @@ function selected(result: unknown, path = ""): { pointer: string; metric: Record
   }
   return null;
 }
-async function fixture(tx: DbExecutor, actor: DataCenterActor, mutatePolicy?: (policy: RiskReadPolicy) => void, missing?: RiskRunPin["engineKey"]) {
-  const source = await createDataCenterSource({ name: `Risk source ${randomUUID()}`, kind: "MANUAL", scope: "PLATFORM",
+async function fixture(tx: DbExecutor, actor: DataCenterActor, mutatePolicy?: (policy: RiskReadPolicy) => void, missing?: RiskRunPin["engineKey"],
+  options: { subject?: string; organizationId?: string } = {}) {
+  const scope = { ...riskScope, subject: options.subject ?? riskScope.subject };
+  const sourceScope = options.organizationId ? { scope: "ORGANIZATION" as const, organizationId: options.organizationId } : { scope: "PLATFORM" as const };
+  const source = await createDataCenterSource({ name: `Risk source ${randomUUID()}`, kind: "MANUAL", ...sourceScope,
     owner: "Synthetic owner", license: "Internal", licenseClass: "RESTRICTED", usagePolicy: "Test only; no export", allowExport: false,
   }, actor);
-  const request = riskFixture().request; request.claims = [];
+  const request = riskFixture().request; request.claims = []; request.scope = structuredClone(scope);
   const bindings: RiskReadPolicy["runs"] = [];
   const stored: Array<{ record: RunRecord; pin: RiskRunPin; references: Map<string, Awaited<ReturnType<typeof dataset>>> }> = [];
   for (const { record: original } of natives.values()) {
     const record = structuredClone(original); record.runId = `${record.engineKey}-${randomUUID()}`;
-    record.actor = { kind: "USER", id: actor.id }; record.subject = riskScope.subject;
+    record.actor = { kind: "USER", id: actor.id }; record.subject = scope.subject;
     const references = new Map<string, Awaited<ReturnType<typeof dataset>>>();
     for (const input of record.inputs.filter((input) => input.kind === "DATA_CENTER_VERSION")) {
       const data = await dataset(source.id, actor, JSON.stringify({ syntheticOriginalRef: input.refId }));
@@ -108,6 +112,7 @@ async function fixture(tx: DbExecutor, actor: DataCenterActor, mutatePolicy?: (p
     }
     record.inputs = record.inputs.map((input) => toRunInputRecord(input.snapshot));
     const rebind = (value: unknown): unknown => {
+      if (options.subject && value === riskScope.subject) return options.subject;
       if (Array.isArray(value)) return value.map(rebind);
       if (value === null || typeof value !== "object") return value;
       const row = object(value);
@@ -138,7 +143,7 @@ async function fixture(tx: DbExecutor, actor: DataCenterActor, mutatePolicy?: (p
       cashFlowBasis: money ? String(nativeBasis?.cashFlowBasis) : null,
       methodology: method?.success ? method.data : structuredClone(riskBasis.methodology) };
     const claim = metric ? { id: `claim-${key}`, runId: pin.runId, pointer: metric.pointer, nativeKey: String(metric.metric.key),
-      scope: { ...structuredClone(riskScope), siteId: String(metric.metric.siteId ?? riskScope.siteId) }, basis,
+      scope: { ...structuredClone(scope), siteId: String(metric.metric.siteId ?? scope.siteId) }, basis,
       variant: String(metric.metric.variant ?? "base"), entityId: String(metric.metric.entityId ?? "synthetic-entity") } : null;
     const coordinates = {
       project: ["/request/subject"], site: ["/request/scope/siteId", "/request/site/id"],
@@ -171,7 +176,7 @@ async function fixture(tx: DbExecutor, actor: DataCenterActor, mutatePolicy?: (p
   request.policy.rules = [{ id: "rule-1", operator: "PRESENT", claimId: "claim-financial-feasibility", rationale: "Preparation only, never evaluated" }];
   const policy: RiskReadPolicy = { contract: "jenan.risk-decision.read-policy/v1", policy: request.policy, scope: request.scope, runs: bindings };
   mutatePolicy?.(policy); parseRiskReadPolicy(policy);
-  const policySource = await createDataCenterSource({ name: `Risk policy ${randomUUID()}`, kind: "MANUAL", scope: "PLATFORM",
+  const policySource = await createDataCenterSource({ name: `Risk policy ${randomUUID()}`, kind: "MANUAL", ...sourceScope,
     owner: "Synthetic policy reviewer", license: "Internal", licenseClass: "RESTRICTED", usagePolicy: "Approved test mappings only", allowExport: false,
   }, actor);
   const governedPolicy = await dataset(policySource.id, actor, JSON.stringify(policy));
@@ -624,6 +629,154 @@ describe.skipIf(!enabled)("Risk M2 governed exact retained reads on PostgreSQL",
         evidenceStatus: "ESTIMATED", reason: "Superseding fixture" }, actor);
       await publish(f.governedPolicy.item.id, actor);
       expect(await f.interpret()).toEqual(original);
+    });
+  });
+
+  describe.skipIf(!enabled)("Risk M5 real committed-transaction concurrency and isolation", { timeout: 90_000 }, () => {
+    type Tenant = { actor: DataCenterActor; organizationId: string; data: Awaited<ReturnType<typeof fixture>> };
+    const tenants: Tenant[] = [];
+    beforeAll(async () => {
+      if (!enabled) return;
+      const actual = context.actual as typeof db;
+      for (let index = 0; index < 2; index++) {
+        await actual.$transaction(async (tx) => {
+          context.tx = tx;
+          try {
+            const user = await tx.user.create({ data: { email: `risk-m5-${randomUUID()}@example.test`, systemRole: "ADMIN", status: "ACTIVE" } });
+            const organization = await tx.organization.create({ data: { name: "Synthetic Risk M5 tenant", slug: `risk-m5-${randomUUID()}` } });
+            await tx.organizationMember.create({ data: { organizationId: organization.id, userId: user.id, isOwner: true, status: "ACTIVE" } });
+            const admin: DataCenterActor = { id: user.id, kind: "HUMAN", systemRole: "ADMIN" };
+            const data = await fixture(tx, admin, enableInterpretation, undefined,
+              { subject: `risk-m5-project-${index}`, organizationId: organization.id });
+            await tx.user.update({ where: { id: user.id }, data: { systemRole: "USER" } });
+            tenants.push({ actor: { ...admin, systemRole: "USER" }, organizationId: organization.id, data });
+          } finally { context.tx = null; }
+        }, { timeout: 60_000, maxWait: 10_000 });
+      }
+    }, 150_000);
+    const save = (tenant: Tenant, runId?: string) => persistRiskDecision(tenant.data.request, evaluatedAt, historyContext(runId),
+      tenant.actor, { organizationId: tenant.organizationId });
+    const read = (tenant: Tenant, runId: string) => readRiskDecision(runId, tenant.actor, { organizationId: tenant.organizationId });
+    it("commits four genuinely concurrent independent writes with exact complete inputs and no project/actor mixing", async () => {
+      expect(context.tx).toBeNull();
+      const records = await Promise.all([0, 1, 0, 1].map((index) => save(tenants[index]!)));
+      for (const [index, record] of records.entries()) {
+        const tenant = tenants[index % 2]!;
+        expect(record.subject).toBe(tenant.data.request.scope.subject);
+        expect(record.actor.id).toBe(tenant.actor.id);
+        expect((await read(tenant, record.runId)).record).toEqual(record);
+        expect(await db.analysisEngineRunInput.count({ where: { runId: record.runId } })).toBe(7);
+      }
+      expect(new Set(records.map((record) => record.runId)).size).toBe(4);
+    });
+    it("allows exactly one winner in a six-way same-ID race and returns safe duplicate failures without orphan inputs", async () => {
+      const tenant = tenants[0]!; const runId = `risk-m5-race-${randomUUID()}`;
+      const results = await Promise.allSettled(Array.from({ length: 6 }, () => save(tenant, runId)));
+      expect(results.filter((entry) => entry.status === "fulfilled")).toHaveLength(1);
+      for (const result of results) if (result.status === "rejected") {
+        expect(result.reason).toMatchObject({ code: "RISK_HISTORY_DUPLICATE", message: "RISK_HISTORY_DUPLICATE" });
+        expect(String(result.reason)).not.toMatch(/SELECT|INSERT|password|native|checksum|sourceId|project-/);
+      }
+      expect(await db.analysisEngineRun.count({ where: { runId } })).toBe(1);
+      expect(await db.analysisEngineRunInput.count({ where: { runId } })).toBe(7);
+      await expect(save(tenant, runId)).rejects.toMatchObject({ code: "RISK_HISTORY_DUPLICATE" });
+      expect((await read(tenant, runId)).record.runId).toBe(runId);
+    });
+    it("isolates simultaneous historical reads across users, projects and organization-context substitution", async () => {
+      const [a, b] = tenants; const parent = await save(a!);
+      const requests = [
+        read(b!, parent.runId), read(b!, "missing-risk-history"),
+        readRiskDecision(parent.runId, a!.actor, { organizationId: b!.organizationId }),
+        readRiskDecision("missing-risk-history", a!.actor, { organizationId: b!.organizationId }),
+      ];
+      for (const outcome of await Promise.allSettled(requests)) {
+        expect(outcome.status).toBe("rejected");
+        if (outcome.status === "rejected") expect(outcome.reason).toMatchObject({
+          code: "RISK_HISTORY_UNAVAILABLE", message: "RISK_HISTORY_UNAVAILABLE",
+        });
+      }
+      expect((await read(a!, parent.runId)).record).toEqual(parent);
+    });
+    it("preserves deterministic decisions under concurrent Risk-only reinterpretations and racing overwrite attempts", async () => {
+      const tenant = tenants[0]!; const parent = await save(tenant);
+      const before = await db.analysisEngineRun.findUnique({ where: { runId: parent.runId } });
+      const children = await Promise.all(Array.from({ length: 4 }, () => reinterpretRiskDecision(parent.runId,
+        { ...historyContext(), createdAt: "2026-12-02T00:00:00.000Z" }, tenant.actor, { organizationId: tenant.organizationId })));
+      expect(new Set(children.map((record) => record.runId)).size).toBe(4);
+      for (const child of children) {
+        expect(child.result).toEqual(parent.result); expect(child.outputHash).toBe(parent.outputHash);
+        expect(child.runtime).toMatchObject({ evaluatedAt, parent: { runId: parent.runId, recordHash: parent.runtime.recordHash } });
+        expect(await db.analysisEngineRunInput.count({ where: { runId: child.runId } })).toBe(8);
+      }
+      const writes = await Promise.allSettled([
+        db.analysisEngineRun.update({ where: { runId: parent.runId }, data: { subject: "overwrite" } }),
+        db.analysisEngineRun.delete({ where: { runId: parent.runId } }),
+        db.analysisEngineRunInput.updateMany({ where: { runId: parent.runId }, data: { refId: "overwrite" } }),
+      ]);
+      expect(writes.every((entry) => entry.status === "rejected")).toBe(true);
+      expect(await db.analysisEngineRun.findUnique({ where: { runId: parent.runId } })).toEqual(before);
+    });
+    it("rolls back a real server-side nested-input failure and retries the stable ID in a fresh transaction", async () => {
+      const tenant = tenants[0]!; const runId = `risk-m5-rollback-${randomUUID()}`;
+      await db.$executeRawUnsafe(`CREATE FUNCTION risk_m5_reject_input() RETURNS trigger LANGUAGE plpgsql AS $$
+        BEGIN IF NEW."runId" = '${runId}' THEN RAISE EXCEPTION 'synthetic M5 input failure'; END IF; RETURN NEW; END $$`);
+      await db.$executeRawUnsafe('CREATE TRIGGER risk_m5_reject_input BEFORE INSERT ON "AnalysisEngineRunInput" FOR EACH ROW EXECUTE FUNCTION risk_m5_reject_input()');
+      try {
+        await expect(save(tenant, runId)).rejects.toBeInstanceOf(Error);
+        expect(await db.analysisEngineRun.count({ where: { runId } })).toBe(0);
+        expect(await db.analysisEngineRunInput.count({ where: { runId } })).toBe(0);
+      } finally {
+        await db.$executeRawUnsafe('DROP TRIGGER risk_m5_reject_input ON "AnalysisEngineRunInput"');
+        await db.$executeRawUnsafe("DROP FUNCTION risk_m5_reject_input()");
+      }
+      expect((await save(tenant, runId)).runId).toBe(runId);
+      expect(await db.analysisEngineRunInput.count({ where: { runId } })).toBe(7);
+    });
+    it("bounds a 12-operation four-way read load and eight-way write load without drift or unbounded heap growth", async () => {
+      const tenant = tenants[0]!; const parent = await save(tenant);
+      const startHeap = process.memoryUsage().heapUsed; const durations: number[] = [];
+      const batchStart = performance.now();
+      for (let batch = 0; batch < 3; batch++) {
+        await Promise.all(Array.from({ length: 4 }, async () => {
+          const started = performance.now(); const output = await read(tenant, parent.runId);
+          durations.push(performance.now() - started); expect(output.record.result).toEqual(parent.result);
+        }));
+      }
+      const readsMs = performance.now() - batchStart;
+      const writesStart = performance.now();
+      const records = await Promise.all(Array.from({ length: 8 }, (_, index) => save(tenants[index % 2]!)));
+      const writesMs = performance.now() - writesStart;
+      const heapGrowth = Math.max(0, process.memoryUsage().heapUsed - startHeap);
+      expect(Math.max(...durations)).toBeLessThan(10_000);
+      expect(readsMs).toBeLessThan(30_000); expect(writesMs).toBeLessThan(30_000);
+      expect(heapGrowth).toBeLessThan(256 * 1024 * 1024);
+      for (const [index, record] of records.entries()) {
+        const sameTenant = records.filter((_, candidate) => candidate % 2 === index % 2);
+        expect(sameTenant.every((entry) => entry.outputHash === record.outputHash)).toBe(true);
+      }
+      console.info("RISK_M5_SYNTHETIC_LOAD", JSON.stringify({
+        reads: durations.length, readConcurrency: 4, readMaxMs: Math.round(Math.max(...durations)),
+        readBatchMs: Math.round(readsMs), writeConcurrency: 8, writeBatchMs: Math.round(writesMs),
+        heapGrowthBytes: heapGrowth, envelopeBytes: Buffer.byteLength(canonicalize(parent), "utf8"),
+      }));
+    });
+    it("reevaluates committed membership revocation and restoration on fresh historical reads without existence leakage", async () => {
+      const tenant = tenants[1]!; const parent = await save(tenant);
+      await db.organizationMember.update({ where: { organizationId_userId: { organizationId: tenant.organizationId, userId: tenant.actor.id } },
+        data: { status: "INVITED" } });
+      try {
+        await expect(read(tenant, parent.runId)).rejects.toMatchObject({ code: "RISK_HISTORY_UNAVAILABLE" });
+        await expect(read(tenant, "missing-risk-history")).rejects.toMatchObject({ code: "RISK_HISTORY_UNAVAILABLE" });
+        await expect(reinterpretRiskDecision(parent.runId, historyContext(), tenant.actor, { organizationId: tenant.organizationId }))
+          .rejects.toMatchObject({ code: "RISK_HISTORY_UNAVAILABLE" });
+      } finally {
+        await db.organizationMember.update({ where: { organizationId_userId: { organizationId: tenant.organizationId, userId: tenant.actor.id } },
+          data: { status: "ACTIVE" } });
+      }
+      expect((await read(tenant, parent.runId)).record).toEqual(parent);
+      const orphan = await db.$queryRaw<Array<{ count: bigint }>>`SELECT count(*) AS count FROM "AnalysisEngineRunInput" i
+        LEFT JOIN "AnalysisEngineRun" r ON r."runId" = i."runId" WHERE r."runId" IS NULL`;
+      expect(orphan[0]!.count).toBe(BigInt(0));
     });
   });
 });

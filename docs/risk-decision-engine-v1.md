@@ -12,8 +12,11 @@ fail-closed exclusion of unprovable Map lineage. M2 owner-approved / CLOSED at
 `c71bf1f8bccb4dd8fc03cc225182d66a8acd48eb`, with Local/origin/Desktop matching.
 M3 owner-approved / CLOSED at
 `310c97a23b610898e0562a5ba039b4a63443f1fe`.
-M4 implements atomic Risk history and separate exact historical reinterpretation
-for owner review only. M5 is not authorized or started.**
+M4 owner-approved / CLOSED at
+`ac3c3afd7370000cfbb08be64a0d7c8933daebc9`.
+M5 final technical acceptance is authorized, without new functionality or
+redesign. Exact-tested-SHA CodeQL and the final closure receipt are required;
+Sonar remains deferred and no final tag or main/integration merge is authorized.**
 
 Six of seven engines are owner-approved as **TECHNICALLY COMPLETE — PENDING FINAL
 SONAR**. Engine seven starts on `jenan-engines/risk-decision` directly from the
@@ -1252,3 +1255,154 @@ reported in full after push; no self-referencing substitute SHA or final tag.
 No M4 CodeQL claim. Next.js dependency-security advisory remains independent
 final-campaign debt, not cleared by CodeQL or a successful build retry.
 **M4 awaiting owner review. STOP before M5. No Final Tag or main/integration merge.**
+
+## 20. M5 final technical acceptance
+
+M4 was owner-approved / CLOSED at
+`ac3c3afd7370000cfbb08be64a0d7c8933daebc9`. Section 19 remains its original
+historical checkpoint. M5 introduces **tests and directly related documentation
+only**: no production Risk, upstream-engine, Map, Shared, Data Center, Prisma,
+dependency, UI or HTTP change.
+
+### 20.1 Final acceptance method
+
+The full Risk-owned M1-M4 unit suites and global architecture boundaries are
+rerun, together with all 64 accepted governed-read/history integration cases
+and seven new M5 acceptance cases. The new fixtures use two distinct synthetic
+projects, users and organizations, published exact native outputs and approved
+interpretation policies. Each non-admin user is an active owner of only its
+own organization. All data is synthetic; no production decision is certified.
+
+Earlier cases retain their rollback/savepoint isolation. The M5 cases
+deliberately **commit fixtures** on an owned disposable database and set the
+test executor override to null. Thus concurrency runs through real independent
+production adapter transactions, not multiple callbacks sharing one mock
+transaction. Tests do not remove append-only records; the entire owned test
+database container is removed after acceptance. Never run these cases on a
+shared or production database.
+
+Acceptance exercises:
+
+- Four simultaneous complete writes across two projects/users/organizations,
+  validating each actor/subject and all seven input rows.
+- Six simultaneous writes to one stable run ID: exactly one complete winner,
+  five explicit duplicates, no overwritten history or orphan inputs; subsequent
+  retry is also duplicate and the winner remains readable.
+- Concurrent cross-user and wrong-organization-context historical reads versus
+  nonexistent IDs return the identical public unavailable error.
+- Four simultaneous Risk-only children retain the exact original decision and
+  business output hash despite distinct child IDs and creation instants.
+  Racing Run update/delete and Input update attempts all fail, preserving the
+  original record.
+- A test-only PostgreSQL trigger rejects one designated run's nested input,
+  proving real server-side transaction rollback of both Run and Input. The
+  same ID succeeds on retry after removing that scoped test failure hook.
+  No production trigger/schema/migration is changed.
+- A synthetic bounded load runs 12 reads at concurrency four and eight writes
+  at concurrency eight; thresholds are **10 seconds per read**, **30 seconds
+  for each read/write batch**, and **256 MiB positive process heap growth**
+  over the batch. These are local synthetic acceptance ceilings, **not a
+  production SLA or a large-scale capacity certificate**. The test logs only
+  counts, elapsed time, memory delta and envelope byte size, never retained
+  evidence, project/user/source identifiers or credentials.
+- Committed membership withdrawal denies the next historical read and child
+  request just like an absent record; restoration permits exact original
+  reproduction. A database join verifies zero orphan input rows.
+
+Determinism remains the approved M3 interpretation with original evaluation
+instant, policy/method versions, exact retained evidence and canonical hashes.
+New child identity/actor/creation metadata intentionally changes its record hash,
+not the interpretation or business output. Existing pure-module architecture
+tests prohibit hidden clocks/randomness, model/network calls and upstream
+runtime imports. Missing/unprovable Map lineage remains `NOT_SUPPORTED`,
+never inferred risk or replacement data.
+
+### 20.2 Security scope and deferred items
+
+A read-only security review of accepted Risk production modules and immediate
+authorization interfaces found **no confirmed exploitable vulnerability**.
+It did not run tests or CodeQL and is not a substitute for their receipts.
+No Risk HTTP route/caller exists in the current app/services inventory, so
+Risk-specific same-origin/CSRF transport testing is **not applicable** in this
+milestone; platform HTTP/auth security is not relabeled as newly certified.
+Trusted-principal construction remains the future caller's responsibility.
+
+Risk uses no production logging of retained evidence. The denied/absent and
+duplicate acceptance cases assert public error codes/messages without source
+content, identifiers, raw SQL or credentials. Forced storage failures are
+deliberately propagated to the server caller, not converted into success;
+this milestone does not claim a new public HTTP error-mapping layer.
+
+CodeQL must scan the exact tested M5 candidate SHA with the existing
+`security-extended` JavaScript/TypeScript and Actions workflow. Existing
+dismissed historical alerts are snapshotted before and after the scan, without
+reopening, dismissing or relabeling them. Zero new/open Risk alerts is a
+separate gate from build and dependency security.
+
+**Sonar = DEFERRED / PENDING**: no subscription, plan, branch-analysis workflow
+or billing change is attempted. Branch-analysis availability is not newly
+asserted without a fresh service receipt. Next.js/dependency advisory remains
+independent final-security-campaign debt; neither CodeQL nor build retry clears it.
+**REAL-DATA RISK & DECISION ACCEPTANCE = BLOCKED / NOT VERIFIED.**
+**Historical Full Regression = NOT CLAIMED PASS**: this is the full Risk
+regression, not the historical repository-wide suite or a rerun/reopening of
+the six frozen engines.
+
+### 20.3 Final gate receipts
+
+| Gate | Final M5 result |
+| --- | --- |
+| Risk M1-M4 contracts/policy/interpretation/history units | **449/449 PASS** |
+| Global engine boundaries | **20/20 PASS** |
+| Full focused Risk/global unit regression, eight files | **469/469 PASS, no skips** |
+| Full PostgreSQL retained reads/history/final acceptance | **71/71 PASS, no skips** |
+| New independent-transaction concurrency/isolation/load cases | **7/7 PASS**, included in 71 |
+| TypeScript | PASS |
+| Scoped ESLint | PASS, zero warnings |
+| Production build | PASS on unchanged retry; initial advisory interruption retained |
+| Sequential post-build TypeScript | PASS |
+| Final git diff --check / frozen-production diff | PASS / unchanged |
+
+`risk-m5-unit.log`: **469/469** in **14.50 s**.
+`risk-m5-postgres-final.log`: **71/71** in **399.46 s** on the owned local
+synthetic PostgreSQL **17.5 / PostGIS 3.5.2**, with **78 unchanged completed
+migrations**. The slower complete run includes the original fixture setup,
+all retained-evidence/history gates, and committed concurrent acceptance cases.
+No test is skipped in either final receipt.
+
+Final local synthetic measured load:
+
+| Measurement | Observed | Ceiling |
+| --- | --- | --- |
+| Longest of 12 reads, concurrency four | **2,910 ms** | <10,000 ms/read |
+| Complete 12-read batch | **8,038 ms** | <30,000 ms |
+| Eight concurrent writes | **4,818 ms** | <30,000 ms |
+| Positive end-minus-start process heap delta | **0 bytes** | <256 MiB |
+| Complete representative history envelope | **73,219 bytes** | 2 MiB |
+
+The zero positive heap delta means the end heap was not above the start heap;
+it does **not** mean zero allocations, zero peak usage or a leak-proof
+production-capacity certificate. An earlier seven-case diagnostic recorded
+86,289,800 bytes positive heap growth, also below the same bound, with a
+1,753 ms slowest read and 2,910 ms eight-write batch. That diagnostic selected
+seven and deselected 64; only the final unfiltered 71/71 receipt above is
+acceptance. One initial TypeScript fixture check rejected a BigInt literal for
+the existing target; the test now uses `BigInt(0)` without changing tsconfig.
+
+`risk-m5-typecheck.log` and `risk-m5-eslint.log`: PASS, zero lint warnings.
+`risk-m5-build.log`: initial **FAIL** includes the inherited Next.js
+`SecurityFatalError`; `risk-m5-build-retry.log`: **PASS** on the identical
+unchanged command. Expected unavailable build-only database diagnostics and
+existing Map dynamic-import warnings are not Risk regressions and are not
+claimed fixed. No source/dependency modification occurred between attempts.
+Only generated Next declaration-path drift was restored before
+`risk-m5-typecheck-postbuild.log`: **PASS**. Final `git diff --check`: **PASS**.
+All production modules, including Risk itself, remain byte-identical to
+approved M4.
+The owned `jenan-risk-m5-check` container, including all committed synthetic
+history, was stopped and removed after the final database run. The unrelated
+existing `jenanbiz-postgres` container stayed running and untouched.
+
+Exact tested/CodeQL SHA and any separate documentation-only closure child are
+recorded after scanning. No final tag, main/integration merge, production
+deployment or real-data certification.
