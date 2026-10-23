@@ -10,8 +10,10 @@ M2 authorized for exact governed reads only; owner approved the narrow historica
 Data Center capability exception on 2026-10-23. The owner subsequently approved
 fail-closed exclusion of unprovable Map lineage. M2 owner-approved / CLOSED at
 `c71bf1f8bccb4dd8fc03cc225182d66a8acd48eb`, with Local/origin/Desktop matching.
-M3 interpretation is implemented for owner review only; no upstream recalculation,
-Risk persistence/replay or M4 work.**
+M3 owner-approved / CLOSED at
+`310c97a23b610898e0562a5ba039b4a63443f1fe`.
+M4 implements atomic Risk history and separate exact historical reinterpretation
+for owner review only. M5 is not authorized or started.**
 
 Six of seven engines are owner-approved as **TECHNICALLY COMPLETE — PENDING FINAL
 SONAR**. Engine seven starts on `jenan-engines/risk-decision` directly from the
@@ -1085,3 +1087,168 @@ match are reported after push. No tag, deployment or main/integration merge.
 Next.js dependency-security remediation remains independent final-campaign debt,
 not resolved by build retries or CodeQL.
 **M3 awaiting owner review. M4 NOT STARTED. No Final Tag or main/integration merge.**
+
+## 19. M4 checkpoint: atomic history and separate exact reinterpretation
+
+The owner closed M3 at `310c97a23b610898e0562a5ba039b4a63443f1fe` and
+authorized M4 only. The preceding section is the historical M3 checkpoint,
+not the current milestone status.
+
+### 19.1 Storage and interfaces
+
+Risk-owned `history.ts` defines the strict `jenan.risk-decision.history/v1`
+runtime contract, history version **1.0.0-m4**, explicit creation/timing/access
+context, and immutable parent hashes. It reuses the unchanged Shared Run/Input
+contract. The retained interpreter remains **1.0.0-m3**; decimal comparison
+remains `risk-exact-decimal-comparison-v1/1.0.0`, rounding
+`NONE_PRESERVE_UPSTREAM`, and confidence
+`NATIVE_EVIDENCE_QUALITY_ONLY_NO_COMMON_BAND_OR_PROBABILITY`.
+
+The server-only `adapters/run-history.ts` provides:
+
+- `persistRiskDecision(request, originalEvaluatedAt, context, actor, access)`:
+  current-authorized exact policy/native reads, M3 interpretation, full hash/
+  contract validation and nested Run/Input creation in **one repeatable-read
+  transaction**. No save when the approved interpreter is absent, any pinned
+  evidence is unavailable/tampered/incompatible, or the decision is null/rejected.
+- `readRiskDecision(runId, actor, access)`: exact owner/admin record selection,
+  current authorization of every retained policy/source, version/hash checks,
+  reconstruction of the complete original interpretation and metadata, then
+  disclosure. **Read writes nothing** to Run/Input/Data Center/Audit/Usage.
+- `reinterpretRiskDecision(parentRunId, newContext, actor, access)`: verifies and
+  reproduces the original, rereads its exact evidence using its **original
+  evaluatedAt**, then appends a separate record. Parent `runId`, `recordHash`
+  and `outputHash` are saved both in runtime lineage and an explicit ENGINE_RUN
+  parent descriptor. No overwrite, new policy selection, reevaluation at a new
+  evidence horizon, or implicit method migration.
+
+The trusted actor is never accepted from request JSON. Original actor metadata
+is preserved on historical reads; a child records its own authenticated actor.
+Subject/project and original site/geography/sector/period/scenario context remain
+in the exact normalized request. Creation timestamps and execution timing are
+explicit, canonical and mutually consistent; child creation cannot precede the
+parent or change environment. New creation context does not alter business output.
+Original specialty/mission/organization access context must be supplied exactly
+on reads; it is not silently restored as an authorization grant.
+
+Every record retains the entire M3 result: decision, reasons/explanation, original
+policy/approval/method, evidence references and native components, conditions,
+constraints/limitations, findings/risks, conflicts, gaps, uncertainty, planned
+mitigations, scenarios, upstream pins and lineage. The exact governed
+interpretation policy is retained by immutable DC version/checksum plus policy
+content hash, not by a latest-version pointer. Unsupported Map descriptors are
+references/status only, never hidden native output or fabricated evidence.
+
+### 19.2 Integrity, recovery and fail-closed semantics
+
+- Request hash: canonical normalized original Risk request.
+- Input hash: canonical sorted Risk input descriptors, including exact policy,
+  pinned native runs and the child parent descriptor where applicable.
+- Stored output hash: canonical **entire M3 result**. This deliberately differs
+  from the nested M3 `determinism.outputHash`, which hashes that result without
+  its `determinism` member. Both are checked; no upstream hash is reinterpreted.
+- Record hash: complete Shared RunRecord including actor, timing, context,
+  result, descriptors and versioned runtime, excluding only its own
+  `runtime.recordHash`. Equal original inputs produce equal business output;
+  a separate child has a different identity/record hash.
+- Whole history envelope is bounded at **2 MiB**, including JSON overhead;
+  existing depth/node and Shared bounds also apply, with no truncation.
+- DATA_CENTER_VERSION input columns additionally bind exact source/version,
+  raw UTF-8 content SHA-256, original provenance/ownership/rights and use intent.
+  They are checked separately on every authorized historical read.
+- Existing database append-only triggers protect Run and Input. The existing
+  run-ID primary key protects stable retry identities; no new request-hash
+  uniqueness rule prevents distinct interpretations of the same evidence.
+- Nested input failure rolls back its Run and every Input. A failed child leaves
+  its parent and upstream records untouched. Retrying the same explicit run ID
+  succeeds after rollback; an already saved ID raises an explicit duplicate error.
+
+Denied and absent records/sources are externally `RISK_HISTORY_UNAVAILABLE`;
+current authorization is evaluated before exposing integrity diagnostics.
+Authorized tampering raises `RISK_HISTORY_MISMATCH`. Unsupported historical
+versions or newly unprovable historical lineage raise
+`RISK_HISTORY_NOT_SUPPORTED`; no child or replacement evidence is returned.
+An already excluded Map lineage gap remains reproducibly excluded, with the
+same explainable `NOT_SUPPORTED` decision, rather than a manufactured risk.
+Superseding policy/source publication does not substitute for the original.
+Current license/usage changes fail closed rather than silently migrating rights.
+
+No historical reinterpretation executes Engines 1-6, recalculates Map, writes
+Data Center, changes the original record, or generates a score/probability or
+automatic launch/investment/funding action. The only production modifications
+are Risk-owned modules; M2 exact-read behavior is retained while its transaction
+executor is reused to avoid a nested transaction during atomic M4 operations.
+The read-only adapter guard remains strict. Only the specific new history adapter
+is allowed one nested Run/Input create call; SQL/update/delete/upsert and
+upstream-runtime imports remain prohibited.
+
+### 19.3 M4 validation and publication
+
+| Gate | M4 result |
+| --- | --- |
+| New pure history contract/hash/bounds cases | **34/34 PASS** |
+| Risk M1-M4 unit cases, including one new own-adapter guard | **449/449 PASS** |
+| Global engine boundaries, including one narrow history-adapter guard | **20/20 PASS** |
+| Focused total, eight files | **469/469 PASS, no skips** |
+| PostgreSQL retained reads/history/recovery, one file | **64/64 PASS, no skips** |
+| TypeScript | PASS |
+| Scoped ESLint | PASS, zero warnings |
+| Production Build | Initial inherited advisory interruption; unchanged retry PASS |
+| Sequential post-build TypeScript after generated-path restoration | PASS |
+| Final git diff --check | PASS |
+
+`risk-m4-unit-final.log`: 469 focused cases in **11.92 s**. Accepted M1-M3
+cases remain in that run; the previously accepted 19 global boundary cases
+are preserved and the new history capability has its own narrow twentieth gate.
+`risk-m4-pg-validated.log`: 64 cases in **210.82 s**, comprising the accepted
+29 M2/M3 cases and **35 new M4 integration cases**. They cover complete atomic
+persistence, original policy/native pins, shared-storage compatibility,
+read-no-write counts, separate deterministic children, parent immutability,
+stable-ID duplicates, nested-input rollback/retry, failed-child recovery,
+Run/Input update/delete rejection, current policy and source authorization,
+owner/absent indistinguishability, original versions after supersession,
+record/result/runtime/input/provenance/content tampering, unknown interpreter
+versions, newly unprovable historical lineage, license changes and invalid
+creation/environment context. No frozen engine is changed or recalculated.
+
+Environment: **PostgreSQL 17.5 / PostGIS 3.5.2 / 78 unchanged migrations**.
+All PostgreSQL fixtures are synthetic and rolled back on an isolated disposable
+database. PostGIS installation is an environment receipt, not a claim of native
+spatial calculation or real-data acceptance.
+
+`risk-m4-typecheck.log` and `risk-m4-eslint.log`: PASS, zero lint warnings.
+`risk-m4-build.log`: initial inherited Next.js advisory interruption **FAIL**;
+`risk-m4-build-retry.log`: identical unchanged production-build retry **PASS**.
+No advisory remediation, package upgrade or dependency clearance is claimed.
+Only generated declaration-path drift was restored before the sequential
+`risk-m4-typecheck-postbuild.log` **PASS** receipt. Final `git diff --check`:
+**PASS**. No source changes occurred between the two builds.
+The owned `jenan-risk-m4-check` container was stopped and removed; the unrelated
+existing `jenanbiz-postgres` container was left running and untouched.
+
+Development-only failures remain retained, not relabeled PASS:
+the first test fixture used uppercase environment literals and was corrected to
+the existing lowercase contract; two intermediate integration runs exposed
+misplaced test registration, not a production persistence failure. The first
+fully registered run passed **60/60**; the four added lineage/child recovery/
+policy-rights/license cases then passed a diagnostic **4 PASS / 60 deselected**
+run. Only the final **64/64, no skips** run above is the integration acceptance
+receipt. A later optional shell row-count query had a quoting error; it is not
+counted as a passing database gate or a fixture-cleanup receipt.
+
+Only targeted Risk and global-boundary tests were rerun. Historical full
+regression and the M2 accepted Data Center 46-case suite were not rerun or
+relabeled as new M4 results. No performance/load/concurrency or CodeQL claim is
+made in M4; these remain M5 acceptance work, not silently claimed PASS here.
+
+Frozen six-engine, Shared, Map, Data Center, Prisma and dependency paths remain
+unchanged relative to approved M3. Post-build types/diff-check are PASS. The
+final report records exact Local/origin/Desktop synchronization after push. The M4
+implementation SHA is the Risk-branch commit containing this checkpoint and is
+reported in full after push; no self-referencing substitute SHA or final tag.
+
+**REAL-DATA RISK & DECISION ACCEPTANCE = BLOCKED / NOT VERIFIED.**
+**Historical Full Regression = NOT CLAIMED PASS. Sonar = DEFERRED / PENDING.**
+No M4 CodeQL claim. Next.js dependency-security advisory remains independent
+final-campaign debt, not cleared by CodeQL or a successful build retry.
+**M4 awaiting owner review. STOP before M5. No Final Tag or main/integration merge.**

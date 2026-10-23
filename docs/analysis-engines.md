@@ -181,8 +181,17 @@ defers final Sonar acceptance and final tags until all seven technical baselines
    seven files, no skips; governed PostgreSQL 29/29 PASS (24 M2 + 5 M3);
    types / scoped zero-warning lint / unchanged production-build retry PASS,
    original advisory interruption preserved;
-   no Risk persistence/replay, prior runtimes or frozen-engine/Shared/Map/
-   Data Center/UI/schema/dependency changes; STOP before M4;
+   M3 owner-approved / CLOSED at `310c97a23b610898e0562a5ba039b4a63443f1fe`;
+   M4 implements atomic complete Run/Input/Output history on unchanged Shared
+   storage, exact current-authorized historical reads and separate immutable
+   Risk-only reinterpretation with original evaluation/policy/native pins and
+   explicit parent hashes; no substitution, silent migration or upstream runtime;
+   Risk M1-M4 449 + global 20 = 469/469 PASS, eight files, no skips;
+   PostgreSQL 64/64 PASS (29 accepted M2/M3 + 35 M4), no skips;
+   types / scoped zero-warning lint / unchanged production-build retry PASS;
+   original Next.js advisory interruption remains recorded separately;
+   no frozen-engine/Shared/Map/Data Center/UI/schema/dependency changes;
+   M4 checkpoint for owner review; STOP before M5;
    real-data acceptance BLOCKED / NOT VERIFIED; Sonar DEFERRED / PENDING)
 
 The first six engines produce **documented facts and measurements** from governed data;

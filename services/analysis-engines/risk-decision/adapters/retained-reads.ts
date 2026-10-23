@@ -127,12 +127,14 @@ async function readOne(pin: RiskRunPin, binding: RiskReadPolicy["runs"][number],
 }
 
 /** Internal server integration only. Principal comes from trusted authentication, never from request JSON. */
-async function withRiskRetainedOutputs<T>(rawRequest: unknown, evaluatedAt: string, actor: DataCenterActor, rawAccess: Access,
-  consume: (preparation: RiskPreparation, policy: RiskReadPolicy | null) => T) {
+export async function withRiskRetainedOutputs<T>(rawRequest: unknown, evaluatedAt: string, actor: DataCenterActor, rawAccess: Access,
+  consume: (preparation: RiskPreparation, policy: RiskReadPolicy | null,
+    source: Awaited<ReturnType<typeof readHistoricalDataCenterVersionContent>> | null) => T | Promise<T>, executor?: DbExecutor) {
   requireDataCenterPrincipal(actor);
   const request = normalizeRiskRequest(rawRequest, evaluatedAt); const access = accessSchema.parse(rawAccess);
-  return db.$transaction(async (tx) => {
-    const finish = (status: "AVAILABLE" | "PARTIAL" | "UNAVAILABLE" | "TAMPERED" | "INCOMPATIBLE", outcomes: Outcome[] = [], policy: RiskReadPolicy | null = null) => {
+  const perform = async (tx: DbExecutor) => {
+    const finish = (status: "AVAILABLE" | "PARTIAL" | "UNAVAILABLE" | "TAMPERED" | "INCOMPATIBLE", outcomes: Outcome[] = [], policy: RiskReadPolicy | null = null,
+      source: Awaited<ReturnType<typeof readHistoricalDataCenterVersionContent>> | null = null) => {
       const core = {
         contract: "jenan.risk-decision.preparation/v1", phase: "M2_EXACT_READS", status,
         decision: null, findings: [], conditionOutcomes: [], automaticAction: false, outcomes,
@@ -143,7 +145,7 @@ async function withRiskRetainedOutputs<T>(rawRequest: unknown, evaluatedAt: stri
       };
       const result = { ...core, determinism: { requestHash: request.requestHash, inputsHash: canonicalHash(outcomes), outputHash: canonicalHash(core) } };
       ensureRiskJsonSize(result);
-      return consume(riskPreparationSchema.parse(result), policy);
+      return consume(riskPreparationSchema.parse(result), policy, source);
     };
     const source = request.normalized.policySource;
     const read = await exactSource(source.sourceId, source.versionId, source.checksum, actor, access, tx);
@@ -175,8 +177,9 @@ async function withRiskRetainedOutputs<T>(rawRequest: unknown, evaluatedAt: stri
       outcomes.push(outcome);
     }
     return finish(outcomes.length > 0 && outcomes.every((outcome) => outcome.status === "AVAILABLE") && request.normalized.engineSlots.every((slot) => slot.state !== "MISSING")
-      ? "AVAILABLE" : "PARTIAL", outcomes, policy);
-  }, { isolationLevel: Prisma.TransactionIsolationLevel.RepeatableRead, timeout: 30_000 });
+      ? "AVAILABLE" : "PARTIAL", outcomes, policy, policySource);
+  };
+  return executor ? perform(executor) : db.$transaction(perform, { isolationLevel: Prisma.TransactionIsolationLevel.RepeatableRead, timeout: 30_000 });
 }
 
 export async function prepareRiskRetainedOutputs(rawRequest: unknown, evaluatedAt: string, actor: DataCenterActor, rawAccess: Access = {}) {

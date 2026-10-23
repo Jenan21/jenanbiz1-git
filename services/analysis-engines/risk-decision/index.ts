@@ -6,3 +6,4 @@ export * from "./contracts";
 export * from "./read-policy";
 export * from "./interpretation-policy";
 export * from "./interpretation";
+export * from "./history";

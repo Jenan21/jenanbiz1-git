@@ -7,7 +7,18 @@ vi.mock("@/lib/db", async (importOriginal) => {
   const original = await importOriginal<typeof import("@/lib/db")>(); context.actual = original.db;
   return { ...original, db: new Proxy(original.db, { get(target, key) {
     const tx = context.tx as Record<string | symbol, unknown> | null;
-    if (tx && key === "$transaction") return async (callback: (executor: unknown) => Promise<unknown>) => callback(tx);
+    if (tx && key === "$transaction") return async (callback: (executor: unknown) => Promise<unknown>) => {
+      const executor = context.tx as DbExecutor;
+      const savepoint = `risk_test_${randomUUID().replace(/-/g, "")}`;
+      await executor.$executeRawUnsafe(`SAVEPOINT ${savepoint}`);
+      try {
+        const value = await callback(tx);
+        await executor.$executeRawUnsafe(`RELEASE SAVEPOINT ${savepoint}`); return value;
+      } catch (error) {
+        await executor.$executeRawUnsafe(`ROLLBACK TO SAVEPOINT ${savepoint}`);
+        await executor.$executeRawUnsafe(`RELEASE SAVEPOINT ${savepoint}`); throw error;
+      }
+    };
     if (tx) { const value = tx[key]; return typeof value === "function" ? value.bind(tx) : value; }
     return Reflect.get(target, key);
   } }) };
@@ -15,6 +26,8 @@ vi.mock("@/lib/db", async (importOriginal) => {
 import { db } from "@/lib/db";
 import { Prisma } from "@/generated/prisma/client";
 import { interpretRiskRetainedOutputs, prepareRiskRetainedOutputs } from "@/services/analysis-engines/risk-decision/adapters/retained-reads";
+import { persistRiskDecision, readRiskDecision, reinterpretRiskDecision } from "@/services/analysis-engines/risk-decision/adapters/run-history";
+import { riskHistoryContextSchema, riskHistoryRecordHash, validateRiskHistoryRecord } from "@/services/analysis-engines/risk-decision/history";
 import { canonicalHash, canonicalize, omitKeys, sha256Hex } from "@/services/analysis-engines/shared/canonical";
 import { computeInputsHash, computeOutputHash, computeRequestHash, engineInputSchema } from "@/services/analysis-engines/shared/contracts";
 import { toRunInputRecord, type RunRecord } from "@/services/analysis-engines/shared/run-record";
@@ -222,6 +235,247 @@ describe.skipIf(!enabled)("Risk M2 governed exact retained reads on PostgreSQL",
       expect(await f.run()).toEqual(output);
     });
   });
+
+    const historyContext = (runId = `risk-m4-${randomUUID()}`) => ({
+      runId, environment: "test" as const, createdAt: evaluatedAt,
+      timing: { startedAt: evaluatedAt, finishedAt: evaluatedAt, durationMs: 0 },
+    });
+    describe.skipIf(!enabled)("Risk M4 atomic history and separate exact reinterpretation on PostgreSQL", { timeout: 80_000 }, () => {
+      it("protects duplicate run IDs and allows retry after a nested-input failure without orphan rows", async () => {
+        await isolated(async (tx, actor) => {
+          const f = await fixture(tx, actor, enableInterpretation); const context = historyContext();
+          const before = [await tx.analysisEngineRun.count(), await tx.analysisEngineRunInput.count()];
+          const create = tx.analysisEngineRun.create.bind(tx.analysisEngineRun);
+          const spy = vi.spyOn(tx.analysisEngineRun, "create").mockImplementationOnce((args) => create({
+            ...args, data: { ...args.data, inputs: { create: {
+              inputId: "bad-dc", roles: [], kind: "DATA_CENTER_VERSION", governance: "DC_PUBLISHED",
+              completeness: "INVENTORY", refSystem: "DATA_CENTER", refId: "invalid", snapshot: {},
+            } } },
+          }));
+          try { await expect(persistRiskDecision(f.request, evaluatedAt, context, actor)).rejects.toBeInstanceOf(Error); }
+          finally { spy.mockRestore(); }
+          expect([await tx.analysisEngineRun.count(), await tx.analysisEngineRunInput.count()]).toEqual(before);
+          expect(await tx.analysisEngineRun.findUnique({ where: { runId: context.runId } })).toBeNull();
+          const record = await persistRiskDecision(f.request, evaluatedAt, context, actor);
+          await expect(persistRiskDecision(f.request, evaluatedAt, context, actor)).rejects.toMatchObject({ code: "RISK_HISTORY_DUPLICATE" });
+          expect((await readRiskDecision(record.runId, actor)).record).toEqual(record);
+          expect([await tx.analysisEngineRun.count(), await tx.analysisEngineRunInput.count()]).toEqual([before[0] + 1, before[1] + 7]);
+          const childContext = historyContext();
+          await reinterpretRiskDecision(record.runId, childContext, actor);
+          await expect(reinterpretRiskDecision(record.runId, childContext, actor)).rejects.toMatchObject({ code: "RISK_HISTORY_DUPLICATE" });
+          expect([await tx.analysisEngineRun.count(), await tx.analysisEngineRunInput.count()]).toEqual([before[0] + 2, before[1] + 15]);
+        });
+      });
+      it.each(["run-update", "run-delete", "input-update", "input-delete"] as const)("enforces database append-only %s protection", async (operation) => {
+        await isolated(async (tx, actor) => {
+          const f = await fixture(tx, actor, enableInterpretation);
+          const record = await persistRiskDecision(f.request, evaluatedAt, historyContext(), actor);
+          await tx.$executeRawUnsafe("SAVEPOINT append_only_check");
+          const write = operation === "run-update" ? tx.analysisEngineRun.update({ where: { runId: record.runId }, data: { subject: "overwrite" } })
+            : operation === "run-delete" ? tx.analysisEngineRun.delete({ where: { runId: record.runId } })
+            : operation === "input-update" ? tx.analysisEngineRunInput.update({ where: { runId_inputId: { runId: record.runId, inputId: record.inputs[0]!.inputId } }, data: { refId: "overwrite" } })
+            : tx.analysisEngineRunInput.delete({ where: { runId_inputId: { runId: record.runId, inputId: record.inputs[0]!.inputId } } });
+          await expect(write).rejects.toBeInstanceOf(Error);
+          await tx.$executeRawUnsafe("ROLLBACK TO SAVEPOINT append_only_check");
+          expect((await readRiskDecision(record.runId, actor)).record).toEqual(record);
+        });
+      });
+      it("atomically saves the complete decision, exact inputs, versions, actor, project and independently verified hashes", async () => {
+        await isolated(async (tx, actor) => {
+          const f = await fixture(tx, actor, enableInterpretation); const expected = await f.interpret();
+          const before = await tx.analysisEngineRun.count();
+          const record = await persistRiskDecision(f.request, evaluatedAt, historyContext(), actor);
+          expect(record.result).toEqual(expected.result); expect(record.subject).toBe(f.request.scope.subject);
+          expect(record.actor).toEqual({ kind: "USER", id: actor.id });
+          expect(record.runtime).toMatchObject({ historyVersion: "1.0.0-m4", interpreterVersion: "1.0.0-m3",
+            parent: null, evaluatedAt, rounding: "NONE_PRESERVE_UPSTREAM" });
+          expect(record.outputHash).toBe(canonicalHash(record.result));
+          expect(record.runtime.recordHash).toBe(riskHistoryRecordHash(record));
+          expect(validateRiskHistoryRecord(record).record).toEqual(record);
+          expect(await tx.analysisEngineRun.count()).toBe(before + 1);
+          const rows = await tx.analysisEngineRunInput.findMany({ where: { runId: record.runId } });
+          expect(rows).toHaveLength(7);
+          expect(rows.find((row) => row.kind === "DATA_CENTER_VERSION")).toMatchObject({
+            dataCenterVersionId: f.request.policySource.versionId, dataCenterSourceId: f.request.policySource.sourceId,
+            contentHash: sha256Hex(f.governedPolicy.read.content),
+          });
+          expect(record.inputs.filter((row) => row.kind === "ENGINE_RUN").map((row) => row.refId).sort()).toEqual(f.stored.map((row) => row.pin.runId).sort());
+          expect(record.result?.claims).not.toContainEqual(expect.objectContaining({ id: "claim-spatial" }));
+        });
+      });
+      it("reads without writes and appends a deterministic child without changing parent or upstream records", async () => {
+        await isolated(async (tx, actor) => {
+          const f = await fixture(tx, actor, enableInterpretation);
+          const original = await persistRiskDecision(f.request, evaluatedAt, historyContext(), actor);
+          const counts = async () => [await tx.analysisEngineRun.count(), await tx.analysisEngineRunInput.count(),
+            await tx.auditLog.count(), await tx.dataCenterUsage.count()];
+          const before = await counts(); const originalRow = await tx.analysisEngineRun.findUnique({ where: { runId: original.runId } });
+          expect((await readRiskDecision(original.runId, actor)).record).toEqual(original);
+          expect(await counts()).toEqual(before);
+          const child = await reinterpretRiskDecision(original.runId, historyContext(), actor);
+          expect(child.runId).not.toBe(original.runId);
+          expect(child.runtime.parent).toEqual({ runId: original.runId, recordHash: original.runtime.recordHash, outputHash: original.outputHash });
+          expect(child.result).toEqual(original.result); expect(child.outputHash).toBe(original.outputHash);
+          expect(child.runtime.recordHash).not.toBe(original.runtime.recordHash);
+          expect(child.inputs).toHaveLength(8);
+          expect((await readRiskDecision(child.runId, actor)).record).toEqual(child);
+          expect(await tx.analysisEngineRun.findUnique({ where: { runId: original.runId } })).toEqual(originalRow);
+          expect(await counts()).toEqual([before[0] + 1, before[1] + 8, before[2], before[3]]);
+          const second = await reinterpretRiskDecision(original.runId, historyContext(), actor);
+          expect(second.result).toEqual(original.result); expect(second.runId).not.toBe(child.runId);
+        });
+      });
+      it.each(["read", "reinterpret"] as const)("reauthorizes %s before revealing tamper details; revoked and absent remain indistinguishable", async (operation) => {
+        await isolated(async (tx, actor) => {
+          const f = await fixture(tx, actor, enableInterpretation);
+          const original = await persistRiskDecision(f.request, evaluatedAt, historyContext(), actor);
+          await tamper(tx, () => tx.analysisEngineRun.update({ where: { runId: original.runId }, data: { outputHash: "f".repeat(64) } }));
+          await tx.dataCenterSource.update({ where: { id: f.source.id }, data: { allowRetrieval: false } });
+          const call = (id: string) => operation === "read" ? readRiskDecision(id, actor) : reinterpretRiskDecision(id, historyContext(), actor);
+          await expect(call(original.runId)).rejects.toMatchObject({ code: "RISK_HISTORY_UNAVAILABLE" });
+          await expect(call("absent-risk-run")).rejects.toMatchObject({ code: "RISK_HISTORY_UNAVAILABLE" });
+        });
+      });
+      it("hides another owner's history exactly like a nonexistent run", async () => {
+        await isolated(async (tx, actor) => {
+          const f = await fixture(tx, actor, enableInterpretation);
+          const original = await persistRiskDecision(f.request, evaluatedAt, historyContext(), actor);
+          const outsider = { ...actor, id: `other-${randomUUID()}`, systemRole: "USER" as const };
+          for (const id of [original.runId, "absent-risk-run"]) {
+            await expect(readRiskDecision(id, outsider)).rejects.toMatchObject({ code: "RISK_HISTORY_UNAVAILABLE" });
+          }
+        });
+      });
+      it("replays the original policy and sources after supersession, never the latest", async () => {
+        await isolated(async (tx, actor) => {
+          const f = await fixture(tx, actor, enableInterpretation);
+          const original = await persistRiskDecision(f.request, evaluatedAt, historyContext(), actor);
+          for (const item of [f.governedPolicy.item, f.stored.find((row) => row.pin.engineKey === "financial-feasibility")!.references.values().next().value!.item]) {
+            await createDataCenterVersion({ itemId: item.id, title: "New version must not substitute", content: "invalid-for-original-policy",
+              evidenceStatus: "ESTIMATED", reason: "Supersede" }, actor);
+            await publish(item.id, actor);
+          }
+          expect((await readRiskDecision(original.runId, actor)).record).toEqual(original);
+          const child = await reinterpretRiskDecision(original.runId, historyContext(), actor);
+          expect(child.result).toEqual(original.result); expect(child.request).toEqual(original.request);
+        });
+      });
+      it.each(["outputHash", "result", "runtime", "subject", "requestHash", "inputsHash", "gaps", "cost"] as const)("detects authorized stored %s tampering", async (field) => {
+        await isolated(async (tx, actor) => {
+          const f = await fixture(tx, actor, enableInterpretation);
+          const record = await persistRiskDecision(f.request, evaluatedAt, historyContext(), actor);
+          const data = field === "result" ? { result: { secret: "tamper" } }
+            : field === "runtime" ? { runtime: json({ ...record.runtime, recordHash: "b".repeat(64) }) }
+            : field === "subject" ? { subject: "other-project" }
+            : field === "gaps" ? { gaps: { BLOCKING: 999, WARNING: 0, INFO: 0 } }
+            : field === "cost" ? { costUnits: record.cost.costUnits + 1 } : { [field]: "b".repeat(64) };
+          await tamper(tx, () => tx.analysisEngineRun.update({ where: { runId: record.runId }, data }));
+          await expect(readRiskDecision(record.runId, actor)).rejects.toMatchObject({ code: "RISK_HISTORY_MISMATCH" });
+          await expect(reinterpretRiskDecision(record.runId, historyContext(), actor)).rejects.toMatchObject({ code: "RISK_HISTORY_MISMATCH" });
+        });
+      });
+      it.each(["snapshot", "contentHash", "provenance"] as const)("detects %s input tampering rather than silently migrating evidence", async (field) => {
+        await isolated(async (tx, actor) => {
+          const f = await fixture(tx, actor, enableInterpretation);
+          const record = await persistRiskDecision(f.request, evaluatedAt, historyContext(), actor);
+          await tx.$executeRawUnsafe('ALTER TABLE "AnalysisEngineRunInput" DISABLE TRIGGER "AnalysisEngineRunInput_append_only"');
+          try {
+            await tx.analysisEngineRunInput.update({ where: { runId_inputId: { runId: record.runId, inputId: f.request.policySource.inputId } },
+              data: field === "snapshot" ? { snapshot: {} } : field === "provenance" ? { provenance: { changed: true } } : { contentHash: "d".repeat(64) } });
+          } finally { await tx.$executeRawUnsafe('ALTER TABLE "AnalysisEngineRunInput" ENABLE TRIGGER "AnalysisEngineRunInput_append_only"'); }
+          await expect(readRiskDecision(record.runId, actor)).rejects.toMatchObject({ code: "RISK_HISTORY_MISMATCH" });
+        });
+      });
+      it("rejects an unsupported historical interpreter version without fallback or writes", async () => {
+        await isolated(async (tx, actor) => {
+          const f = await fixture(tx, actor, enableInterpretation);
+          const record = await persistRiskDecision(f.request, evaluatedAt, historyContext(), actor);
+          await tamper(tx, () => tx.analysisEngineRun.update({ where: { runId: record.runId }, data: { runtime: json({ ...record.runtime, interpreterVersion: "unknown" }) } }));
+          const before = await tx.analysisEngineRun.count();
+          await expect(reinterpretRiskDecision(record.runId, historyContext(), actor)).rejects.toMatchObject({ code: "RISK_HISTORY_NOT_SUPPORTED" });
+          expect(await tx.analysisEngineRun.count()).toBe(before);
+        });
+      });
+      it("rejects a tampered exact upstream output instead of rerunning it or selecting a substitute", async () => {
+        await isolated(async (tx, actor) => {
+          const f = await fixture(tx, actor, enableInterpretation);
+          const record = await persistRiskDecision(f.request, evaluatedAt, historyContext(), actor);
+          const native = f.stored.find((row) => row.pin.engineKey === "operational-feasibility")!;
+          await tamper(tx, () => tx.analysisEngineRun.update({ where: { runId: native.pin.runId }, data: { outputHash: "e".repeat(64) } }));
+          await expect(reinterpretRiskDecision(record.runId, historyContext(), actor)).rejects.toMatchObject({ code: "RISK_HISTORY_MISMATCH" });
+        });
+      });
+        it("returns NOT_SUPPORTED when previously used historical lineage becomes unprovable, without substitute evidence or a child", async () => {
+          await isolated(async (tx, actor) => {
+            const f = await fixture(tx, actor, enableInterpretation);
+            const record = await persistRiskDecision(f.request, evaluatedAt, historyContext(), actor);
+            const native = f.stored.find((row) => row.pin.engineKey === "financial-feasibility")!;
+            await tx.$executeRawUnsafe('ALTER TABLE "AnalysisEngineRunInput" DISABLE TRIGGER "AnalysisEngineRunInput_append_only"');
+            try {
+              await tx.analysisEngineRunInput.updateMany({ where: { runId: native.pin.runId }, data: { provenance: {} } });
+            } finally { await tx.$executeRawUnsafe('ALTER TABLE "AnalysisEngineRunInput" ENABLE TRIGGER "AnalysisEngineRunInput_append_only"'); }
+            const before = await tx.analysisEngineRun.count();
+            await expect(reinterpretRiskDecision(record.runId, historyContext(), actor)).rejects.toMatchObject({ code: "RISK_HISTORY_NOT_SUPPORTED" });
+            expect(await tx.analysisEngineRun.count()).toBe(before);
+          });
+        });
+        it("rolls back a failed child insert and allows the same child ID to be retried without changing the parent", async () => {
+          await isolated(async (tx, actor) => {
+            const f = await fixture(tx, actor, enableInterpretation);
+            const original = await persistRiskDecision(f.request, evaluatedAt, historyContext(), actor);
+            const before = [await tx.analysisEngineRun.count(), await tx.analysisEngineRunInput.count()];
+            const childContext = historyContext(); const forced = new Error("INJECTED_CHILD_INSERT_FAILURE");
+            const spy = vi.spyOn(tx.analysisEngineRun, "create").mockRejectedValueOnce(forced);
+            try { await expect(reinterpretRiskDecision(original.runId, childContext, actor)).rejects.toBe(forced); }
+            finally { spy.mockRestore(); }
+            expect([await tx.analysisEngineRun.count(), await tx.analysisEngineRunInput.count()]).toEqual(before);
+            expect((await readRiskDecision(original.runId, actor)).record).toEqual(original);
+            expect((await reinterpretRiskDecision(original.runId, childContext, actor)).result).toEqual(original.result);
+          });
+        });
+        it("checks current policy authorization on every read and never reveals a saved decision after policy retrieval is revoked", async () => {
+          await isolated(async (tx, actor) => {
+            const f = await fixture(tx, actor, enableInterpretation);
+            const record = await persistRiskDecision(f.request, evaluatedAt, historyContext(), actor);
+            await tx.dataCenterSource.update({ where: { id: f.request.policySource.sourceId }, data: { allowRetrieval: false } });
+            await expect(readRiskDecision(record.runId, actor)).rejects.toMatchObject({ code: "RISK_HISTORY_UNAVAILABLE" });
+            await expect(reinterpretRiskDecision(record.runId, historyContext(), actor)).rejects.toMatchObject({ code: "RISK_HISTORY_UNAVAILABLE" });
+          });
+        });
+        it("does not reinterpret original evidence under silently changed current licensing", async () => {
+          await isolated(async (tx, actor) => {
+            const f = await fixture(tx, actor, enableInterpretation);
+            const record = await persistRiskDecision(f.request, evaluatedAt, historyContext(), actor);
+            await tx.dataCenterSource.update({ where: { id: f.source.id }, data: { license: "Changed license" } });
+            await expect(readRiskDecision(record.runId, actor)).rejects.toMatchObject({ code: "RISK_HISTORY_UNAVAILABLE" });
+            await expect(reinterpretRiskDecision(record.runId, historyContext(), actor)).rejects.toMatchObject({ code: "RISK_HISTORY_UNAVAILABLE" });
+          });
+        });
+      it("rejects absent approved interpretation policy without any partial Risk persistence", async () => {
+        await isolated(async (tx, actor) => {
+          const f = await fixture(tx, actor); const before = await tx.analysisEngineRun.count();
+          await expect(persistRiskDecision(f.request, evaluatedAt, historyContext(), actor)).rejects.toMatchObject({ code: "RISK_HISTORY_NOT_SUPPORTED" });
+          expect(await tx.analysisEngineRun.count()).toBe(before);
+        });
+      });
+      it.each(["self", "earlier", "environment"] as const)("refuses invalid %s reinterpretation context before insertion", async (kind) => {
+        await isolated(async (tx, actor) => {
+          const f = await fixture(tx, actor, enableInterpretation);
+          const record = await persistRiskDecision(f.request, evaluatedAt, historyContext(), actor);
+          const next = historyContext(kind === "self" ? record.runId : undefined);
+          if (kind === "earlier") { next.createdAt = "2026-11-30T00:00:00.000Z"; next.timing.startedAt = next.createdAt; next.timing.finishedAt = next.createdAt; }
+          const context = kind === "environment" ? { ...next, environment: "production" as const } : next;
+          await expect(reinterpretRiskDecision(record.runId, context, actor)).rejects.toMatchObject({ code: kind === "self" ? "RISK_HISTORY_DUPLICATE" : "RISK_HISTORY_MISMATCH" });
+        });
+      });
+      it.each([
+        { timing: { startedAt: evaluatedAt, finishedAt: evaluatedAt, durationMs: 1 } },
+        { createdAt: "2026-11-30T00:00:00.000Z" },
+        { unexpected: true },
+      ])("rejects inconsistent or excess caller context %j", (changes) => {
+        expect(riskHistoryContextSchema.safeParse({ ...historyContext(), ...changes }).success).toBe(false);
+      });
+    });
   it.each(riskCompatibilityDimensions)("rejects approved-but-mismatching native %s coordinates without returning evidence", async (dimension) => {
     await isolated(async (tx, actor) => {
       const f = await fixture(tx, actor, (policy) => {

@@ -31,7 +31,7 @@ function violations(text: string, file = join(root, "probe.ts")) {
 }
 describe("Risk pure foundation and M2 read capability boundaries", () => {
   it("keeps pure modules separate from the single governed read adapter", () => {
-    expect(readdirSync(root)).toEqual(["adapters", "contracts.ts", "index.ts", "interpretation-policy.ts", "interpretation.ts", "policy.ts", "read-policy.ts", "request.ts", "semantics.ts", "snapshots.ts"]);
+    expect(readdirSync(root)).toEqual(["adapters", "contracts.ts", "history.ts", "index.ts", "interpretation-policy.ts", "interpretation.ts", "policy.ts", "read-policy.ts", "request.ts", "semantics.ts", "snapshots.ts"]);
     for (const name of readdirSync(root).filter((name) => name.endsWith(".ts"))) {
       const file = join(root, name); const text = readFileSync(file, "utf8");
       expect(violations(text, file), name).toEqual([]);
@@ -40,13 +40,22 @@ describe("Risk pure foundation and M2 read capability boundaries", () => {
   });
   it("allows no upstream import/runtime, writes, raw SQL, dynamic code or network in the retained-read adapter", () => {
     const directory = join(root, "adapters");
-    expect(readdirSync(directory)).toEqual(["retained-reads.ts"]);
+    expect(readdirSync(directory)).toEqual(["retained-reads.ts", "run-history.ts"]);
     const text = readFileSync(join(directory, "retained-reads.ts"), "utf8");
     expect(text).not.toMatch(/\.\/(?:spatial|market-demand|competitor-analysis|opportunity-gap|financial-feasibility|operational-feasibility)(?:["/])|\.(?:create|update|delete|upsert|createMany|updateMany|deleteMany)\s*\(|\$executeRaw|\$queryRaw|\b(?:fetch|require|eval)\s*\(|\bimport\s*\(/);
     const source = ts.createSourceFile("retained-reads.ts", text, ts.ScriptTarget.Latest, true);
     for (const node of source.statements) if (ts.isImportDeclaration(node) && ts.isStringLiteral(node.moduleSpecifier)) {
       expect(node.moduleSpecifier.text).toMatch(/^(?:zod|@\/(?:generated\/prisma\/client|lib\/db|services\/data-center\/(?:contracts|historical-version|map-contract|policy))|\.\.\/(?:\.\.\/shared\/|request$|read-policy$|snapshots$|interpretation$))/);
     }
+  });
+  it("limits Risk history to atomic creation and exact reads, never mutation, SQL or upstream runtimes", () => {
+    const text = readFileSync(join(root, "adapters", "run-history.ts"), "utf8");
+    expect(text).not.toMatch(/\.(?:update|delete|upsert|createMany|updateMany|deleteMany)\s*\(|\$executeRaw|\$queryRaw|\b(?:fetch|require|eval)\s*\(|\bimport\s*\(/);
+    const source = ts.createSourceFile("run-history.ts", text, ts.ScriptTarget.Latest, true);
+    for (const node of source.statements) if (ts.isImportDeclaration(node) && ts.isStringLiteral(node.moduleSpecifier)) {
+      expect(node.moduleSpecifier.text).toMatch(/^(?:zod|@\/(?:generated\/prisma\/client|lib\/db|services\/data-center\/(?:contracts|policy))|\.\.\/(?:\.\.\/shared\/|history$|interpretation$|request$|snapshots$)|\.\/retained-reads$)/);
+    }
+    expect(text.match(/executor\.analysisEngineRun\.create\s*\(/g)).toHaveLength(1);
   });
   it.each([
     'import "../spatial";', 'export * from "../market-demand";', 'import "../competitor-analysis";',
