@@ -93,6 +93,7 @@ describe("analysis engine boundaries", () => {
     const opportunityProviderPath = "opportunity-gap/adapters/data-center-provider.ts";
     const financialProviderPath = "financial-feasibility/adapters/data-center-provider.ts";
     const operationalProviderPath = "operational-feasibility/adapters/data-center-provider.ts";
+    const riskReadAdapterPath = "risk-decision/adapters/retained-reads.ts";
     const operationalHistoryAdapters = new Set([
       "operational-feasibility/adapters/run-persistence.ts", "operational-feasibility/adapters/run-service.ts",
       "operational-feasibility/adapters/replay-service.ts", "operational-feasibility/adapters/historical-data-center.ts",
@@ -120,12 +121,24 @@ describe("analysis engine boundaries", () => {
       "spatial/adapters/historical-data-center.ts",
     ]);
     const adapters = sources.filter((entry) => isAdapter(entry.path));
-    const databaseAdapters = adapters.filter((entry) => ![dataCenterProviderPath, marketProviderPath, competitorProviderPath, opportunityProviderPath, financialProviderPath, operationalProviderPath].includes(entry.path) && !m5Adapters.has(entry.path) && !marketHistoryAdapters.has(entry.path) && !competitorHistoryAdapters.has(entry.path) && !opportunityHistoryAdapters.has(entry.path) && !financialHistoryAdapters.has(entry.path) && !operationalHistoryAdapters.has(entry.path));
+    const databaseAdapters = adapters.filter((entry) => ![dataCenterProviderPath, marketProviderPath, competitorProviderPath, opportunityProviderPath, financialProviderPath, operationalProviderPath, riskReadAdapterPath].includes(entry.path) && !m5Adapters.has(entry.path) && !marketHistoryAdapters.has(entry.path) && !competitorHistoryAdapters.has(entry.path) && !opportunityHistoryAdapters.has(entry.path) && !financialHistoryAdapters.has(entry.path) && !operationalHistoryAdapters.has(entry.path));
     const allowedAdapterPackages = new Set(["pg", "zod"]);
 
     it("exist only in Spatial's directory or the exact Market/Competitor/Opportunity adapter allowlists", () => {
       expect(adapters.length).toBeGreaterThan(0);
-      for (const adapter of adapters) expect(adapter.path.startsWith("spatial/adapters/") || [marketProviderPath, competitorProviderPath, opportunityProviderPath, financialProviderPath, operationalProviderPath].includes(adapter.path) || marketHistoryAdapters.has(adapter.path) || competitorHistoryAdapters.has(adapter.path) || opportunityHistoryAdapters.has(adapter.path) || financialHistoryAdapters.has(adapter.path) || operationalHistoryAdapters.has(adapter.path), adapter.path).toBe(true);
+      for (const adapter of adapters) expect(adapter.path.startsWith("spatial/adapters/") || [marketProviderPath, competitorProviderPath, opportunityProviderPath, financialProviderPath, operationalProviderPath, riskReadAdapterPath].includes(adapter.path) || marketHistoryAdapters.has(adapter.path) || competitorHistoryAdapters.has(adapter.path) || opportunityHistoryAdapters.has(adapter.path) || financialHistoryAdapters.has(adapter.path) || operationalHistoryAdapters.has(adapter.path), adapter.path).toBe(true);
+    });
+    it("limits the Risk M2 adapter to governed historical reads with no prior-engine imports, writes or SQL", () => {
+      const adapter = adapters.find((entry) => entry.path === riskReadAdapterPath)!;
+      const allowed = new Set(["zod", "@/generated/prisma/client", "@/lib/db", "@/services/data-center/contracts",
+        "@/services/data-center/historical-version", "@/services/data-center/map-contract", "@/services/data-center/policy"]);
+      for (const specifier of specifiersOf(adapter.text)) {
+        if (specifier.startsWith(".")) {
+          const target = resolve(dirname(adapter.file), specifier);
+          expect(target.startsWith(join(root, "risk-decision")) || target.startsWith(join(root, "shared")), specifier).toBe(true);
+        } else expect(allowed.has(specifier), specifier).toBe(true);
+      }
+      expect(adapter.text).not.toMatch(/\$executeRaw|\$queryRaw|\.(?:create|createMany|update|updateMany|upsert|delete|deleteMany)\s*\(/);
     });
 
     it("import only pg, zod and the engine's own tree: never Prisma, the application's database layer, Projects, the Map's service, the Data Center or the framework", () => {
@@ -202,7 +215,7 @@ describe("analysis engine boundaries", () => {
 
       it("exists, and no other adapter imports anything of the Data Center", () => {
         expect(provider).toBeDefined();
-        for (const adapter of adapters.filter((entry) => ![dataCenterProviderPath, marketProviderPath, competitorProviderPath, opportunityProviderPath, financialProviderPath, operationalProviderPath].includes(entry.path) && !m5Adapters.has(entry.path) && !marketHistoryAdapters.has(entry.path) && !competitorHistoryAdapters.has(entry.path) && !opportunityHistoryAdapters.has(entry.path) && !financialHistoryAdapters.has(entry.path) && !operationalHistoryAdapters.has(entry.path))) {
+        for (const adapter of adapters.filter((entry) => ![dataCenterProviderPath, marketProviderPath, competitorProviderPath, opportunityProviderPath, financialProviderPath, operationalProviderPath, riskReadAdapterPath].includes(entry.path) && !m5Adapters.has(entry.path) && !marketHistoryAdapters.has(entry.path) && !competitorHistoryAdapters.has(entry.path) && !opportunityHistoryAdapters.has(entry.path) && !financialHistoryAdapters.has(entry.path) && !operationalHistoryAdapters.has(entry.path))) {
           expect(specifiersOf(adapter.text).filter((specifier) => specifier.startsWith("@/services/data-center")), adapter.path).toEqual([]);
         }
       });

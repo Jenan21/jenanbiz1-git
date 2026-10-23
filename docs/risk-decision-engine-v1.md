@@ -7,9 +7,10 @@
 M1 owner-approved / CLOSED on 2026-10-23; final tested implementation commit:
 `396095c1795a79d2f67bfb698d40c5ab09b26fdc`.
 M2 authorized for exact governed reads only; owner approved the narrow historical
-Data Center capability exception on 2026-10-23. That capability is implemented;
-the independent Map retained-content proof gate awaits an owner scope decision.
-No M2 adapter, live integration, upstream recalculation or risk interpretation.**
+Data Center capability exception on 2026-10-23. The owner subsequently approved
+fail-closed exclusion of unprovable Map lineage. M2 governed retained-read
+preparation is implemented for owner review; no upstream recalculation,
+risk interpretation or M3 work.**
 
 Six of seven engines are owner-approved as **TECHNICALLY COMPLETE — PENDING FINAL
 SONAR**. Engine seven starts on `jenan-engines/risk-decision` directly from the
@@ -29,7 +30,10 @@ Operational's **tested implementation / exact-SHA CodeQL** remains
 documentation-only closure SHA. Its branch and Desktop archive stay frozen.
 Financial's tested/scanned SHA likewise remains
 `66afdfea4fd8e118c0833232fd95f673e00d6a33`, separate from its closure child.
-Data Center remains frozen at `04d6148dfb875532404059adb55fcac8ee6913b2`.
+Data Center's accepted baseline remains
+`04d6148dfb875532404059adb55fcac8ee6913b2`, with only the owner-approved
+additive historical-read exception committed at
+`0aafb9b17b4f32fd222bf89035145ef9016ada46`.
 
 Historical Full Regression remains **NOT CLAIMED PASS**: the accepted Competitor
 timing debt and pre-Financial-M2 database failures are not reopened or relabeled.
@@ -723,17 +727,137 @@ No claim is made that historical Map evidence is always unauthorized; the
 missing capability is an independent reusable proof satisfying Risk's approved
 current-authorization and exact-lineage requirements without upstream execution.
 
-**STOP for the Map evidence scope decision before implementing Risk's M2 adapter.**
-The owner can choose fail-closed rejection of outputs with unprovable Map lineage,
-or separately authorize a narrowly designed immutable-release/layer proof path.
-Neither option may invent an original checksum, silently use current Map content,
-rerun Spatial, weaken access, or modify Map historical behavior by default.
+The owner resolved this stop by explicitly approving **fail-closed
+`NOT_SUPPORTED`** for every output whose historical Map lineage cannot be proved
+completely. The reader returns no native value, lineage, metadata or evidence for
+that outcome. It neither guesses a checksum nor reads current Map as a substitute.
+This is a recorded historical capability limitation, not a failure of Risk when
+excluded safely. No Map implementation or frozen engine was changed.
 
-**Risk M2 = BLOCKED / NOT COMPLETE.** Only the approved Data Center prerequisite
-has been implemented and tested. Six-engine governed reads, method/compatibility
-validation and Risk preparation have not been implemented or claimed PASS.
-No M2 risk evaluation, decision, persistence or replay exists. M1 remains closed
-at its separately recorded tested implementation SHA.
+## 17. M2 checkpoint: governed exact retained reads
+
+**Implemented for owner review, not owner-closed. STOP before M3.**
+M1 stays closed at its separately recorded tested SHA. The Data Center prerequisite
+SHA in section 1 is separate from the Risk M2 implementation commit.
+
+### Read-only integration and exact evidence preparation
+
+The internal server adapter
+[`prepareRiskRetainedOutputs`](../services/analysis-engines/risk-decision/adapters/retained-reads.ts)
+accepts a trusted authenticated Data Center principal, an explicit evaluation
+instant, the strict Risk request and bounded existing access context. It is not
+exported through the pure Risk entry point, nor wired to a new route or worker.
+
+It reads the exact approved policy source/version/checksum through the reusable
+historical capability, then exact retained run/output pins within one read-only
+repeatable-read transaction. It uses current Data Center permission predicates
+and existing owner/admin run visibility, with no unfiltered existence lookup.
+All retained Data Center sources are reauthorized before checking a run's
+integrity, compatibility or unsupported lineage. No source authorization cache,
+audit/usage write, native runtime call, upstream recalculation, latest fallback,
+substitute run, Risk persistence or replay is introduced.
+
+The strict, versioned
+[`jenan.risk-decision.read-policy/v1`](../services/analysis-engines/risk-decision/read-policy.ts)
+content binds the original Risk policy, subject/scope, exact native pins and full
+claim selectors to owner-reviewed native-coordinate checks and selected native
+content/method hashes. It is stored as a governed existing `dataset` item: no new
+Data Center type, Shared contract, schema or permission semantics are needed.
+Policy must be published, verified, non-AI, in force at the declared evaluation
+instant, and have declared licensing/usage; unproved upstream policy lineage is
+refused. A source being visible is not permission to replace its approved policy.
+
+Every run uses the M1 native manifest and original request/input/output/content
+hash recipes, without invoking the six engines. Original saved source/version/
+checksum/provenance must agree with authorized historical content and original
+input descriptors. Changed current ownership, rights or attribution cannot be
+silently replaced with stale retained rights. Unretained upstream version
+dependencies and non-Data-Center lineage have no complete proof path here and are
+excluded as `NOT_SUPPORTED`.
+
+Compatibility requires the persisted subject plus all nine explicit mappings:
+project, site, geography, sector, time, scenario, currency, unit and method.
+A dimension absent from a native contract needs an explicit approved
+`NOT_APPLICABLE` rationale, not guessed equivalence. Unit and methodology cannot
+be waived. Native site/variant/entity, unit, structured methodology and monetary
+currency/price/cash-flow basis, when present, must also match selected coordinates;
+there is no conversion or recalculation. The mapping policy is authoritative
+reviewed context, not automated taxonomy matching or real-data certification.
+
+Available evidence contains only validated native selections and their original
+lineage; selected key/method/content and native evidence references must match.
+Each failed outcome contains only the caller-pinned `runId`, a status and
+`evidence: null`. Hidden and nonexistent records share `UNAVAILABLE`; only
+authorized records can report `TAMPERED`, `INCOMPATIBLE` or `NOT_SUPPORTED`.
+Caller-declared `MISSING` slots remain separate and are not discovered by probing.
+
+The preparation contract is `jenan.risk-decision.preparation/v1`, phase
+`M2_EXACT_READS`: `decision = null`, empty findings/condition outcomes and
+`automaticAction = false`. Missing, unavailable or unsupported evidence is
+never evaluated as confirmed risk. Request/outcome/output hashes are deterministic;
+M1 JSON/depth/node/work limits remain, retained native bytes are capped at 8 MiB
+in aggregate, each lineage at 128 and the entire final preparation at 2 MiB.
+
+### Validation scope and truthful limitations
+
+Focused tests use actual native envelopes from all six calculators **in test
+fixtures only**, rebound to synthetic, governed PostgreSQL sources inside
+rolled-back transactions. Production Risk does not import or execute them.
+These tests certify retained-read/hash/access/mapping mechanics, not production
+data, real geography/taxonomy equivalence or the truth of original model inputs.
+Unprovable Spatial Map lineage stays `NOT_SUPPORTED`; other outputs without
+selectable, provable evidence are likewise not represented as available.
+
+No six-engine/Map/Shared source, schema, Auth, UI, dependency or workflow change.
+Global guards add only a named read-only Risk adapter allowlist; prior engine
+allowances are not broadened. No broad historical regression, CodeQL or Sonar
+claim is made in M2.
+
+### Saved M2 validation receipts
+
+- `risk-m2-focused-2.log`: **344/344 PASS**, six files, no skips:
+  **325 Risk M1/M2 + 19 global boundary cases**. The additional global case is
+  the exact read-only Risk adapter guard; no prior-engine gate was removed.
+  This is a test count, not a coverage-percentage claim.
+- `risk-m2-retained-validated.log`: **24/24 PASS**, one file, no skips,
+  **76.16 s**. Covers exact native envelopes, fail-closed Map exclusion, nine
+  compatibility dimensions, owner/absent indistinguishability, authorization
+  before corrupt-content disclosure, rights rechecks, claim/policy substitution,
+  missing slots, version/hash/subject mismatches, deterministic no-write
+  preparation and original policy access after supersession.
+- `risk-m2-postgres-final.log`: the unchanged Data Center file passed all
+  **46/46**, including eight historical and 38 published-reader cases. That
+  combined command is **not** labeled PASS: its Risk file had a test-registration
+  defect, fixed before the separate final 24-case run above.
+  Final scoped PostgreSQL receipts therefore total **70/70** across these two
+  successful file-level results, not a claimed successful combined command.
+- Dedicated migrated PostgreSQL **17.5**, PostGIS **3.5.2**, **78** completed
+  migrations; synthetic fixtures roll back. No production database was used,
+  reset or certified; no spatial calculations are performed by Risk.
+- Original unsuccessful fixture/check receipts remain saved: initial synthetic
+  policy exceeded the existing Data Center content limit; a later fixture lacked
+  mandatory `usageIntent`; the first boundary run lacked the narrow adapter
+  guard. None was bypassed by changing production constraints.
+- The first expanded suite accidentally nested test registration; corrected.
+  A subsequent build-concurrent run had transaction-acquisition/test timeouts
+  and follow-on fixture-context errors (**16 PASS / 8 FAIL**), retained as failed.
+  The test's former 20-second deadline could expire before its 60-second rollback
+  transaction: the fixture now surfaces original errors and has an 80-second
+  test deadline around a 60-second transaction / 10-second acquisition bound.
+  Production's 30-second preparation transaction is unchanged. The final
+  dedicated run above passed without weakening assertions.
+- TypeScript and scoped zero-warning ESLint passed. Production build's initial
+  `risk-m2-build-final.log` failed on the inherited Next.js dependency advisory;
+  **unchanged retry** `risk-m2-build-final-retry.log` passed. The failed first
+  attempt is not relabeled PASS or dependency remediation.
+- `risk-m2-typecheck-postbuild.log`: PASS after restoring only generated
+  declaration-path drift. Final scoped ESLint: PASS, zero warnings;
+  `git diff --check`: PASS. The owned disposable container was stopped/removed;
+  the unrelated PostgreSQL container was not changed.
+
+The M2 implementation SHA is the Risk-branch commit containing this checkpoint;
+the final owner report records its full hash and the verified Local/origin/
+Desktop archive match after push. No final tag or main/integration merge.
 
 **REAL-DATA RISK & DECISION ACCEPTANCE = BLOCKED / NOT VERIFIED.**
 **Historical Full Regression = NOT CLAIMED PASS. Sonar = DEFERRED / PENDING.**

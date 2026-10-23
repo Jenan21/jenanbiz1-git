@@ -29,13 +29,23 @@ function violations(text: string, file = join(root, "probe.ts")) {
   };
   visit(source); return errors;
 }
-describe("Risk M1 pure foundation capability boundaries", () => {
-  it("has exactly six pure modules, no adapters, no integration or calculator", () => {
-    expect(readdirSync(root)).toEqual(["contracts.ts", "index.ts", "policy.ts", "request.ts", "semantics.ts", "snapshots.ts"]);
-    for (const name of readdirSync(root)) {
+describe("Risk pure foundation and M2 read capability boundaries", () => {
+  it("keeps pure modules separate from the single governed read adapter", () => {
+    expect(readdirSync(root)).toEqual(["adapters", "contracts.ts", "index.ts", "policy.ts", "read-policy.ts", "request.ts", "semantics.ts", "snapshots.ts"]);
+    for (const name of readdirSync(root).filter((name) => name.endsWith(".ts"))) {
       const file = join(root, name); const text = readFileSync(file, "utf8");
       expect(violations(text, file), name).toEqual([]);
       expect(text).not.toMatch(/\$queryRaw|\$executeRaw|PrismaClient|async\s+function|\bnew\s+Date\s*\(/);
+    }
+  });
+  it("allows no upstream import/runtime, writes, raw SQL, dynamic code or network in the retained-read adapter", () => {
+    const directory = join(root, "adapters");
+    expect(readdirSync(directory)).toEqual(["retained-reads.ts"]);
+    const text = readFileSync(join(directory, "retained-reads.ts"), "utf8");
+    expect(text).not.toMatch(/\.\/(?:spatial|market-demand|competitor-analysis|opportunity-gap|financial-feasibility|operational-feasibility)(?:["/])|\.(?:create|update|delete|upsert|createMany|updateMany|deleteMany)\s*\(|\$executeRaw|\$queryRaw|\b(?:fetch|require|eval)\s*\(|\bimport\s*\(/);
+    const source = ts.createSourceFile("retained-reads.ts", text, ts.ScriptTarget.Latest, true);
+    for (const node of source.statements) if (ts.isImportDeclaration(node) && ts.isStringLiteral(node.moduleSpecifier)) {
+      expect(node.moduleSpecifier.text).toMatch(/^(?:zod|@\/(?:generated\/prisma\/client|lib\/db|services\/data-center\/(?:contracts|historical-version|map-contract|policy))|\.\.\/(?:\.\.\/shared\/|request$|read-policy$|snapshots$))/);
     }
   });
   it.each([

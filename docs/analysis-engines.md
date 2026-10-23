@@ -151,15 +151,24 @@ defers final Sonar acceptance and final tags until all seven technical baselines
    `396095c1795a79d2f67bfb698d40c5ab09b26fdc`;
    exactly six engine slots, native version/hash manifest, explicit unknowns,
    no default likelihood/severity or confidence-to-failure conversion;
-   decision null, empty findings/outcomes, no current authorization claimed;
+   M1 decision null, empty findings/outcomes, no M1 current authorization claimed;
    existing Shared ENGINE_RUN/Input storage compatibility, no frozen edits;
    300 Risk + 18 global cases PASS; related 1,136/1,136 PASS, 31 files, no skips;
    TypeScript / zero-warning scoped ESLint / unchanged production-build retry PASS;
    original test-only failures and inherited Next.js advisory build failure retained;
    owner-approved narrow Data Center historical-read capability implemented:
    eight new + 38 published-reader PostgreSQL cases = 46/46 PASS;
-   M2 blocked at independent Map retained-lineage proof scope decision;
-   no M2 adapter/live integration or UI/schema/dependency changes; M3 NOT STARTED;
+   owner approved Map fail-closed `NOT_SUPPORTED` with no output/evidence disclosure;
+   M2 exact read-only retained-output preparation implemented for owner review,
+   with current authorization, native version/hash verification, governed
+   subject/site/geography/sector/time/scenario/currency/unit/method mappings,
+   no latest/substitution, no prior runtime and no Risk writes/replay/decision;
+   only provable selections exposed, hidden/absent externally indistinguishable;
+   focused 325 Risk + 19 global = 344/344 PASS, no skips;
+   PostgreSQL 24 Risk retained-read + 46 Data Center = 70/70 file-level receipts,
+   not a relabeled combined-command PASS; inherited advisory build failure
+   and unchanged successful retry recorded separately;
+   no frozen-engine/Shared/Map/UI/schema/dependency changes; M3 NOT STARTED;
    real-data acceptance BLOCKED / NOT VERIFIED; Sonar DEFERRED / PENDING)
 
 The first six engines produce **documented facts and measurements** from governed data;

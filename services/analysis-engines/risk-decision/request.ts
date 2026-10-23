@@ -17,15 +17,16 @@ const slotSchema = z.discriminatedUnion("state", [
   z.object({ engineKey: z.enum(riskEngineKeys), state: z.literal("MISSING"), reason: identifierSchema }).strict(),
   z.object({ engineKey: z.enum(riskEngineKeys), state: z.literal("NOT_APPLICABLE"), approval: riskApprovalSchema }).strict(),
 ]);
+export const riskClaimSelectorSchema = z.object({
+  id: identifierSchema, runId: identifierSchema, pointer: pointerSchema,
+  nativeKey: identifierSchema, scope: riskScopeSchema, basis: riskBasisSchema,
+  variant: identifierSchema, entityId: identifierSchema,
+}).strict();
 export const riskRequestSchema = z.object({
   contract: z.literal("jenan.risk-decision.request/v1"), scope: riskScopeSchema,
   policySource: z.object({ inputId: identifierSchema, sourceId: identifierSchema, versionId: identifierSchema, checksum: sha256Schema }).strict(),
   policy: riskPolicySchema, engineSlots: z.array(slotSchema).length(6),
-  claims: z.array(z.object({
-    id: identifierSchema, runId: identifierSchema, pointer: pointerSchema,
-    nativeKey: identifierSchema, scope: riskScopeSchema, basis: riskBasisSchema,
-    variant: identifierSchema, entityId: identifierSchema,
-  }).strict()).max(1000),
+  claims: z.array(riskClaimSelectorSchema).max(1000),
   scenarios: z.array(z.object({
     id: identifierSchema, approval: riskApprovalSchema,
     mappings: z.array(z.object({ engineKey: z.enum(riskEngineKeys), runId: identifierSchema, variant: identifierSchema, assumptionIds: z.array(identifierSchema).max(200) }).strict()).max(6),
