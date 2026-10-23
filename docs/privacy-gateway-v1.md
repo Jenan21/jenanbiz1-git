@@ -2050,11 +2050,31 @@ the separate actual-process path honestly rejects incomplete real attestation.
 
 ### 21.5 Exact-SHA security gate and remaining limits
 
-All local gates above completed before candidate creation. The existing
-CodeQL workflow must analyze that exact candidate commit; its run ID/head SHA
-and final alert inventory will be recorded after completion. Pre-candidate
-open-alert inventory was zero, not a substitute for exact-SHA analysis.
-No finding may be dismissed merely to pass acceptance.
+All local gates above completed before candidate creation. Exact tested M5
+candidate: `68f149906f8ddc6a246c462e303a2bf88f4fe1a2`.
+The unchanged CodeQL workflow analyzed that same SHA in
+[run 39976513909](https://github.com/Jenan21/jenanbiz1-git/actions/runs/39976513909):
+completed/success, javascript-typescript and actions jobs both successful.
+Uploaded analysis IDs: 2014164471 (javascript-typescript) and 2014149386
+(actions), both on the candidate SHA with empty analysis error fields.
+Final repository-wide open alerts: zero. Privacy-branch open alerts: zero.
+New open Privacy Gateway alerts: zero. No alert was dismissed or modified
+during M5 acceptance.
+
+The JavaScript analysis reported five results, not zero findings: these are
+the existing previously dismissed alerts #14, #10, #9, #3 and #2, dated
+2026-10-14/19, in Map operator tooling/bootstrap/auth helpers, outside Privacy.
+Their historical disposition was inspected and left unchanged. Actions results
+were zero. A runner-image migration annotation is informational, not a code
+security finding. These distinctions must remain visible in the owner report.
+
+The exact tested/security-analyzed candidate is immutable above. This later
+documentation-only receipt does not change its tested source or dependency
+graph and is not presented as a separately CodeQL-tested SHA.
+The owned PostgreSQL acceptance container and its exact anonymous volume were
+removed after all local validation. Test teardown removed its synthetic
+directories; the production smoke server was stopped. No unrelated database,
+container or service was modified.
 
 Storage/key broker/scanner/signing/authorization adapters remain TEST_ONLY.
 Production KMS/storage/scanner and OS/native parser sandbox are NOT QUALIFIED.
