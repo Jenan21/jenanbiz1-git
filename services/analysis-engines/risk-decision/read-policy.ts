@@ -6,6 +6,7 @@ import { riskScopeSchema } from "./semantics";
 import { ensureRiskJsonSize, riskRunPinSchema } from "./snapshots";
 import type { RunRecord } from "../shared/run-record";
 import { riskClaimSelectorSchema } from "./request";
+import { riskInterpretationPolicySchema } from "./interpretation-policy";
 
 export const riskCompatibilityDimensions = ["project", "site", "geography", "sector", "time", "scenario", "currency", "unit", "method"] as const;
 const pointer = z.string().min(1).max(500).regex(/^(\/(?:[^~/]|~[01])*)+$/)
@@ -23,6 +24,7 @@ const checkSchema = z.discriminatedUnion("state", [
 export const riskReadPolicySchema = z.object({
   contract: z.literal("jenan.risk-decision.read-policy/v1"),
   policy: riskPolicySchema, scope: riskScopeSchema,
+  interpretation: riskInterpretationPolicySchema.optional(),
   runs: z.array(z.object({
     pin: riskRunPinSchema,
     checks: z.array(checkSchema).length(riskCompatibilityDimensions.length),

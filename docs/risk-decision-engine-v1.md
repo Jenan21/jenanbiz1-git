@@ -8,9 +8,10 @@ M1 owner-approved / CLOSED on 2026-10-23; final tested implementation commit:
 `396095c1795a79d2f67bfb698d40c5ab09b26fdc`.
 M2 authorized for exact governed reads only; owner approved the narrow historical
 Data Center capability exception on 2026-10-23. The owner subsequently approved
-fail-closed exclusion of unprovable Map lineage. M2 governed retained-read
-preparation is implemented for owner review; no upstream recalculation,
-risk interpretation or M3 work.**
+fail-closed exclusion of unprovable Map lineage. M2 owner-approved / CLOSED at
+`c71bf1f8bccb4dd8fc03cc225182d66a8acd48eb`, with Local/origin/Desktop matching.
+M3 interpretation is implemented for owner review only; no upstream recalculation,
+Risk persistence/replay or M4 work.**
 
 Six of seven engines are owner-approved as **TECHNICALLY COMPLETE — PENDING FINAL
 SONAR**. Engine seven starts on `jenan-engines/risk-decision` directly from the
@@ -734,7 +735,7 @@ that outcome. It neither guesses a checksum nor reads current Map as a substitut
 This is a recorded historical capability limitation, not a failure of Risk when
 excluded safely. No Map implementation or frozen engine was changed.
 
-## 17. M2 checkpoint: governed exact retained reads
+## 17. M2 checkpoint: governed exact retained reads (subsequently owner-closed)
 
 **Implemented for owner review, not owner-closed. STOP before M3.**
 M1 stays closed at its separately recorded tested SHA. The Data Center prerequisite
@@ -862,3 +863,225 @@ Desktop archive match after push. No final tag or main/integration merge.
 **REAL-DATA RISK & DECISION ACCEPTANCE = BLOCKED / NOT VERIFIED.**
 **Historical Full Regression = NOT CLAIMED PASS. Sonar = DEFERRED / PENDING.**
 **M3 NOT STARTED. No Final Tag or main/integration merge.**
+
+## 18. M3 checkpoint: interpretation and explainable conditional decision
+
+**JENAN RISK & DECISION ENGINE — M3 CHECKPOINT FOR OWNER REVIEW**
+
+The owner accepted and CLOSED M2 at
+`c71bf1f8bccb4dd8fc03cc225182d66a8acd48eb`, including its exact Local/origin/
+Desktop match, 325 Risk + 19 global = 344 focused cases, 24 Risk PostgreSQL
+and 46 Data Center file-level cases, types/lint/build-retry/diff gates.
+M2's rejected attempts are not relabeled. M3 alone is authorized here;
+**STOP before M4**. The earlier section 17 stop records the historical M2
+checkpoint, not the current milestone.
+
+### Governed interpretation, not caller-authenticated JSON
+
+The existing internal read-only adapter now also exposes
+[`interpretRiskRetainedOutputs`](../services/analysis-engines/risk-decision/adapters/retained-reads.ts).
+It repeats current authorization and the exact M2 reads on every invocation,
+and consumes the resulting selections and policy **inside the same repeatable-read
+transaction**. No second latest-policy lookup, caller-supplied prepared snapshot,
+upstream run/replay/calculator, source write, audit/usage write or Risk storage
+is introduced. No route, UI, worker, schema, dependency or permission change.
+
+The strict optional `interpretation` field in the existing governed read-policy
+contains
+[`jenan.risk-decision.interpretation-policy/v1`](../services/analysis-engines/risk-decision/interpretation-policy.ts):
+versioned method, exact engine applicability declarations, exact approved
+scenario declarations, bounded native projections, condition-linked finding
+templates, explicit same-measure conflict pairs and explicit scenario claim
+mappings. It is governed by the exact original Data Center policy version/hash,
+not a new caller assertion. Applicability waivers, scenario approvals, variants
+and assumption mappings cannot be changed by the caller without matching that
+governed policy. Approval/assessment evidence must resolve retained sources.
+The M2 preparation API remains preparation-only with `decision = null` and empty
+findings/outcomes; a policy without `interpretation` still works in M2.
+The M3 entry instead returns `NOT_SUPPORTED`, `decision = null`, `result = null`
+when that explicit approved interpretation policy is absent.
+
+The
+[`interpretRiskPreparation`](../services/analysis-engines/risk-decision/interpretation.ts)
+core is pure and verifies preparation/request/outcome/output hashes and exact
+pin sets. Its exported pure API is **not proof of authorization**: production
+server callers must use the adapter, not JSON received from an HTTP client.
+There is no new public endpoint. Rejected current authorization, tamper or scope/
+compatibility produces no final business decision; the server result is null.
+
+### Native projection, precision and quality
+
+Only selected, authorized native metric values are projected. Value field,
+kind and estimated-value treatment are explicit in the approved policy.
+Native status, interpretation, original reported/exact values, structured units/
+method/basis, confidence components, reasons and assumption IDs are retained.
+Evidence cites only the native metric's declared `evidence`/`inputRefs`, resolved
+to original retained input/version/checksum, not unrelated context sources.
+Selection record IDs bind exact run/pointer identities deterministically.
+
+Existing `exactValue` decimal strings may be compared with M1's bounded exact
+base-10 comparator. Financial/shared reported values remain `REPORTED_ONLY`:
+they are not promoted to missing exact values. Native JSON numbers retain the
+original number in the result, with a reported-only decimal display where it
+fits the declared decimal bounds; they may prove presence/state, not an exact
+threshold. Exponential/unsupported precision is refused, not rounded or rebuilt.
+No upstream formula, conversion, interpolation or binary-floating calculation.
+
+Missing, unavailable, unsupported, coverage-limited and non-computable values
+remain null/unknown. PARTIAL evidence does not establish an exact threshold.
+ESTIMATED evidence remains unknown unless the governed projection explicitly
+allows **conditional** interpretation; it never becomes an observed exposure.
+`PLAN_DERIVED`, assumption-based projections and upstream-derived quantities
+cannot establish an observed adverse event. `EVIDENCE_GAPS` remains a quality
+limitation, not a business exposure. Low confidence is not likelihood or failure
+probability. Native confidence is retained, with no invented cross-policy common
+band or averaged confidence; M1 confidence-mapping helpers remain unchanged.
+
+### Rules, findings, conflicts and dependencies
+
+The evaluator uses the M1 finite operators only: EQ/NE/GT/GTE/LT/LTE, IN, PRESENT,
+STATE and bounded acyclic ALL/ANY. There is no executable/script policy.
+Decimal operands require the exact declared basis and native exact precision.
+Presence or state rules establish only what they explicitly test: an absent
+output's failed completeness condition is an evidence gap, not a confirmed
+business risk.
+
+Findings use the approved categories and distinguish `EVIDENCED_EXPOSURE`,
+`CONDITIONAL_RISK`, `EVIDENCE_GAP`, `DATA_QUALITY_LIMITATION`,
+`CROSS_ENGINE_CONFLICT` and `DEPENDENCY_GAP`. Only failed evidenced conditions
+can instantiate a risk template. Observed exposures stay separate from
+plan/assumption-derived conditional risks, whose claim/assumption identities
+remain attached. Missing data is never zero or a new adverse event.
+
+Impact/likelihood are nullable. Only explicitly retained, approved same-event/
+scope/horizon assessments can support severity through the complete M1 approved
+lookup matrix. Missing assessments, absent matrix or unmapped bands remain
+`NOT_ASSESSABLE`, not LOW. Foreign/future assessments are rejected rather than
+repaired. No default likelihood, severity, project success probability or score.
+
+Cross-engine conflicts require an explicit approved same-measure pair from
+different engines, identical entity/scope/basis, **full native structured unit,
+method and basis**, definite native states and comparable exact values.
+HOUR/MINUTE, price-basis, method, horizon, interpretation or precision mismatches
+are `NOT_COMPARABLE`, not contradictions or implicit conversions. Both sides
+of a real contradiction and their evidence remain visible; affected conditions
+are UNKNOWN. There is no majority vote or automatic winner.
+
+Dependency gaps propagate only along the approved acyclic evidenced edges.
+An unresolved prerequisite can withdraw a dependent condition's assurance but
+cannot invent a downstream adverse event. A separately established failed
+condition remains visible and is not erased by another unknown prerequisite.
+
+### Scenarios, mitigations and decision
+
+Only existing exactly pinned, approved scenario mappings are evaluated.
+Scenario claim substitutions must preserve native measure/entity/basis/units/
+method and have an existing matching run/variant and approved scenario scope.
+Invariant reuse needs its own explicit rationale. Missing mappings remain
+unknown; a different run or unapproved scenario is never generated/substituted.
+Coverage is checked for the scenario's selected runs, not an accidental demand
+to reuse every base run as well. Output is side-by-side conditions, conflicts,
+findings, coverage and actions. No probability, expected value, ranking, default
+winner or newly computed scenario.
+
+Mitigation templates are the M1 approved actions only. Each retains condition
+IDs, evidence/policy reference, rationale, owner role and required verification.
+They are `PLANNED`, not implemented/verified, and have **no effect on the current
+decision**; new verified evidence and a new Risk evaluation are required.
+No supplier, staffing, pricing, deadline, efficacy or automatic action is invented.
+
+The result uses `jenan.risk-decision.result/v1`, phase `M3_INTERPRETATION`,
+engine version `1.0.0-m3`; M1's foundation builder/version remain unchanged.
+The server execution wrapper is `jenan.risk-decision.execution/v1`.
+It applies the accepted M1 decision precedence:
+
+1. `NOT_SUPPORTED`
+2. `DO_NOT_PROCEED_UNDER_CURRENT_PLAN`
+3. `DEFER_PENDING_EVIDENCE`
+4. `REVISE_PLAN`
+5. `PROCEED_UNDER_DECLARED_CONDITIONS`
+
+Every result retains the exact policy, native pins/source references, projected
+claims, original lineage/rights/attribution context, rule definitions/results,
+evidence, limitations, unresolved conditions, decision reasons and verification
+requirements. Human review is REQUIRED; automatic action is false. No supported
+Risk export is exposed; upstream permissions cannot grant policy-derived export
+rights implicitly.
+
+All six roles must be covered, except exactly governed evidenced non-applicability,
+before a positive conditional decision. Missing roles defer it. The accepted
+historical Map gap remains `NOT_SUPPORTED` without output/evidence or substitutes.
+Thus the real PostgreSQL fixture intentionally retains a final `NOT_SUPPORTED`
+when its Spatial output has unprovable Map lineage, while still reporting any
+independently supported Operational condition failure. Pure synthetic cases with
+six provable roles exercise all five decision states; they are not production
+Map or real-data certification.
+
+M1 JSON/depth/node bounds remain. M3 adds bounded interpretation work within
+20,000 units, aggregate findings at most 500, four scenarios, and a final 2 MiB
+result/execution-wrapper check. Over-limit evidence is rejected, not truncated
+into a deceptively positive report. Hashes bind request, governed preparation,
+policy and complete output; no new persistence or historical replay.
+
+### M3 validation and delivery
+
+Saved final receipts:
+
+| Gate | Result |
+| --- | --- |
+| New M3 interpretation cases | **89/89 PASS** |
+| Risk M1-M3 unit cases | **414/414 PASS** |
+| Unchanged global engine boundary cases | **19/19 PASS** |
+| Focused total, seven files | **433/433 PASS, no skips** |
+| Governed retained-read PostgreSQL, one file | **29/29 PASS, no skips** |
+| TypeScript | PASS |
+| Scoped ESLint | PASS, zero warnings |
+| Production Build | Initial inherited advisory failure retained; unchanged retry PASS |
+
+`risk-m3-focused-validated.log`: final 433 cases in **12.72 s**.
+`risk-m3-postgres-validated.log`: final 29 cases in **81.17 s**, consisting of
+the accepted 24 M2 cases plus five new M3 server integration cases. These prove
+actual governed reads, native Operational conditional threshold interpretation,
+Map exclusion, null result for absent interpretation policy/access withdrawal,
+original policy after supersession, deterministic output and unchanged
+Run/Input/Audit/Usage counts. PostgreSQL **17.5**, PostGIS **3.5.2**,
+**78 unchanged completed migrations**, isolated synthetic database with rolled-back
+fixtures; no real-data or native spatial-computation claim.
+
+`risk-m3-typecheck-validated.log` and `risk-m3-eslint-validated.log`: PASS.
+`risk-m3-build.log`: **FAIL**, inherited Next.js dependency-security interruption;
+`risk-m3-build-retry.log`: **PASS**, unchanged retry. No upgrade, advisory
+remediation or dependency clearance is claimed. Only generated declaration-path
+drift is restored before the sequential post-build typecheck.
+`risk-m3-typecheck-postbuild.log`: **PASS** after that restoration.
+Final `git diff --check`: **PASS**. The owned disposable M3 container was
+stopped/removed; the unrelated existing PostgreSQL container remained untouched.
+
+Earlier development failures remain saved, not labeled PASS: an identifier used
+a leading JSON-pointer slash; the global guard correctly rejected a type-import
+expression and a prohibited legacy product term even in a negative sentence;
+two fixture assertions used the wrong sorted claim/index or an unchanged digest.
+These were corrected without weakening existing global guards. The first
+PostgreSQL M3 run was **27 PASS / 2 FAIL**: the fixture lacked required version
+title, and its initial Operational assertion expected an estimate to be definite.
+The fixture title was supplied and estimated interpretation was made an explicit
+governed `ALLOW_CONDITIONAL` choice, with separate UNKNOWN/conditional unit tests.
+No native engine output or calculation was changed to satisfy the assertion.
+The diagnostic M3-only run passed five with 24 deselected; only the final
+29/29 run above is the no-skips integration acceptance receipt.
+
+Only focused Risk/unit/global-boundary and governed retained-read PostgreSQL tests
+were run; no broad historical regression, Sonar or exact-SHA CodeQL claim.
+The M2 Data Center 46-case receipt remains its accepted evidence, not a newly
+claimed M3 run.
+
+No six-engine, Shared, Map, Data Center source, Prisma, dependency or UI changes
+relative to the approved M2 SHA. The M3 implementation SHA is the Risk-branch
+commit containing this checkpoint; its full hash and final Local/origin/Desktop
+match are reported after push. No tag, deployment or main/integration merge.
+
+**REAL-DATA RISK & DECISION ACCEPTANCE = BLOCKED / NOT VERIFIED.**
+**Historical Full Regression = NOT CLAIMED PASS. Sonar = DEFERRED / PENDING.**
+Next.js dependency-security remediation remains independent final-campaign debt,
+not resolved by build retries or CodeQL.
+**M3 awaiting owner review. M4 NOT STARTED. No Final Tag or main/integration merge.**

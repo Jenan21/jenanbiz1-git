@@ -10,6 +10,7 @@ import { ENGINE_RUN_RECORD_CONTRACT, runRecordSchema } from "../../shared/run-re
 import { normalizeRiskRequest, riskBounds } from "../request";
 import { parseRiskReadPolicy, readRiskPointer, riskNativeCoordinatesMatch, riskReadCompatibility, type RiskReadPolicy } from "../read-policy";
 import { ensureRiskJsonSize, inspectRetainedRiskEnvelope, type RiskRunPin } from "../snapshots";
+import { interpretRiskPreparation, riskPreparationSchema, type RiskPreparation } from "../interpretation";
 
 const accessSchema = z.object({
   specialty: z.string().trim().min(1).max(80).optional(), missionContext: z.string().trim().min(1).max(80).optional(),
@@ -126,11 +127,12 @@ async function readOne(pin: RiskRunPin, binding: RiskReadPolicy["runs"][number],
 }
 
 /** Internal server integration only. Principal comes from trusted authentication, never from request JSON. */
-export async function prepareRiskRetainedOutputs(rawRequest: unknown, evaluatedAt: string, actor: DataCenterActor, rawAccess: Access = {}) {
+async function withRiskRetainedOutputs<T>(rawRequest: unknown, evaluatedAt: string, actor: DataCenterActor, rawAccess: Access,
+  consume: (preparation: RiskPreparation, policy: RiskReadPolicy | null) => T) {
   requireDataCenterPrincipal(actor);
   const request = normalizeRiskRequest(rawRequest, evaluatedAt); const access = accessSchema.parse(rawAccess);
   return db.$transaction(async (tx) => {
-    const finish = (status: "AVAILABLE" | "PARTIAL" | "UNAVAILABLE" | "TAMPERED" | "INCOMPATIBLE", outcomes: Outcome[] = []) => {
+    const finish = (status: "AVAILABLE" | "PARTIAL" | "UNAVAILABLE" | "TAMPERED" | "INCOMPATIBLE", outcomes: Outcome[] = [], policy: RiskReadPolicy | null = null) => {
       const core = {
         contract: "jenan.risk-decision.preparation/v1", phase: "M2_EXACT_READS", status,
         decision: null, findings: [], conditionOutcomes: [], automaticAction: false, outcomes,
@@ -141,7 +143,7 @@ export async function prepareRiskRetainedOutputs(rawRequest: unknown, evaluatedA
       };
       const result = { ...core, determinism: { requestHash: request.requestHash, inputsHash: canonicalHash(outcomes), outputHash: canonicalHash(core) } };
       ensureRiskJsonSize(result);
-      return result;
+      return consume(riskPreparationSchema.parse(result), policy);
     };
     const source = request.normalized.policySource;
     const read = await exactSource(source.sourceId, source.versionId, source.checksum, actor, access, tx);
@@ -173,6 +175,30 @@ export async function prepareRiskRetainedOutputs(rawRequest: unknown, evaluatedA
       outcomes.push(outcome);
     }
     return finish(outcomes.length > 0 && outcomes.every((outcome) => outcome.status === "AVAILABLE") && request.normalized.engineSlots.every((slot) => slot.state !== "MISSING")
-      ? "AVAILABLE" : "PARTIAL", outcomes);
+      ? "AVAILABLE" : "PARTIAL", outcomes, policy);
   }, { isolationLevel: Prisma.TransactionIsolationLevel.RepeatableRead, timeout: 30_000 });
+}
+
+export async function prepareRiskRetainedOutputs(rawRequest: unknown, evaluatedAt: string, actor: DataCenterActor, rawAccess: Access = {}) {
+  return withRiskRetainedOutputs(rawRequest, evaluatedAt, actor, rawAccess, (preparation) => preparation);
+}
+
+/** Reauthorize on every call and interpret only the policy and selections read inside this transaction. */
+export async function interpretRiskRetainedOutputs(rawRequest: unknown, evaluatedAt: string, actor: DataCenterActor, rawAccess: Access = {}) {
+  return withRiskRetainedOutputs(rawRequest, evaluatedAt, actor, rawAccess, (preparation, policy) => {
+    const rejected = !policy || ["UNAVAILABLE", "TAMPERED", "INCOMPATIBLE"].includes(preparation.status) ||
+      preparation.outcomes.some((outcome) => ["UNAVAILABLE", "TAMPERED", "INCOMPATIBLE"].includes(outcome.status));
+    const result = !rejected && policy?.interpretation
+      ? interpretRiskPreparation(rawRequest, preparation, policy.interpretation, evaluatedAt) : null;
+    const core = {
+      contract: "jenan.risk-decision.execution/v1", phase: "M3_INTERPRETATION",
+      status: rejected ? "REJECTED" : result === null ? "NOT_SUPPORTED" : result.status,
+      reason: rejected ? "AUTHORIZATION_INTEGRITY_OR_COMPATIBILITY_REJECTED" : result === null ? "APPROVED_INTERPRETATION_POLICY_REQUIRED" : "GOVERNED_INTERPRETATION",
+      decision: result?.decision ?? null, result, automaticAction: false, humanReview: "REQUIRED",
+      realDataAcceptance: "BLOCKED / NOT VERIFIED",
+    };
+    const output = { ...core, outputHash: canonicalHash(core) };
+    ensureRiskJsonSize(output);
+    return output;
+  });
 }

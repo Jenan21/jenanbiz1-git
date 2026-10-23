@@ -14,7 +14,7 @@ vi.mock("@/lib/db", async (importOriginal) => {
 });
 import { db } from "@/lib/db";
 import { Prisma } from "@/generated/prisma/client";
-import { prepareRiskRetainedOutputs } from "@/services/analysis-engines/risk-decision/adapters/retained-reads";
+import { interpretRiskRetainedOutputs, prepareRiskRetainedOutputs } from "@/services/analysis-engines/risk-decision/adapters/retained-reads";
 import { canonicalHash, canonicalize, omitKeys, sha256Hex } from "@/services/analysis-engines/shared/canonical";
 import { computeInputsHash, computeOutputHash, computeRequestHash, engineInputSchema } from "@/services/analysis-engines/shared/contracts";
 import { toRunInputRecord, type RunRecord } from "@/services/analysis-engines/shared/run-record";
@@ -182,7 +182,25 @@ async function fixture(tx: DbExecutor, actor: DataCenterActor, mutatePolicy?: (p
       }) },
     } });
   }
-  return { request, stored, source, governedPolicy, run: (principal = actor) => prepareRiskRetainedOutputs(request, evaluatedAt, principal) };
+  return { request, stored, source, governedPolicy,
+    run: (principal = actor) => prepareRiskRetainedOutputs(request, evaluatedAt, principal),
+    interpret: (principal = actor) => interpretRiskRetainedOutputs(request, evaluatedAt, principal) };
+}
+function enableInterpretation(policy: RiskReadPolicy) {
+  policy.interpretation = {
+    contract: "jenan.risk-decision.interpretation-policy/v1", method: { id: "synthetic-risk-interpretation", version: "1" },
+    engineSlots: policy.runs.map((run) => ({ engineKey: run.pin.engineKey, state: "PINNED", runs: [run.pin] })),
+    declaredScenarios: [],
+    projections: policy.runs.flatMap((run) => run.selections.map((selection) => ({
+      claimId: selection.id, kind: "DECIMAL" as const,
+      estimated: "ALLOW_CONDITIONAL" as const,
+      value: run.pin.engineKey === "operational-feasibility" ? "exactValue" as const : "value" as const,
+      rationale: "Explicit native fixture selection; no recalculation or precision promotion",
+    }))),
+    findings: [{ id: "adequacy", conditionId: "condition-1", category: "OPERATIONAL", impact: null, likelihood: null,
+      rationale: "Approved operational condition under the declared plan" }],
+    conflicts: [], scenarios: [],
+  };
 }
 async function tamper(tx: DbExecutor, work: () => Promise<unknown>) {
   await tx.$executeRawUnsafe('ALTER TABLE "AnalysisEngineRun" DISABLE TRIGGER "AnalysisEngineRun_append_only"');
@@ -298,6 +316,60 @@ describe.skipIf(!enabled)("Risk M2 governed exact retained reads on PostgreSQL",
       await createDataCenterVersion({ itemId: f.governedPolicy.item.id, title: "Changed", content: "not-the-pinned-policy", evidenceStatus: "ESTIMATED", reason: "Supersede" }, actor);
       await publish(f.governedPolicy.item.id, actor);
       expect(await f.run()).toEqual(original);
+    });
+  });
+  it("M3 interprets only governed selections, retains Map exclusion, and writes no run/input/audit/usage records", async () => {
+    await isolated(async (tx, actor) => {
+      const f = await fixture(tx, actor, enableInterpretation);
+      const counts = async () => [await tx.analysisEngineRun.count(), await tx.analysisEngineRunInput.count(),
+        await tx.auditLog.count(), await tx.dataCenterUsage.count()];
+      const before = await counts(); const preparation = await f.run(); const output = await f.interpret();
+      expect(preparation.decision).toBeNull(); expect(preparation.findings).toEqual([]);
+      expect(output.phase).toBe("M3_INTERPRETATION"); expect(output.decision).toBe("NOT_SUPPORTED");
+      expect(output.result?.conditionOutcomes[0]?.state).toBe("SATISFIED");
+      expect(output.result?.claims.some((claim) => claim.id === "claim-spatial")).toBe(false);
+      expect(output.result?.coverage.find((entry) => entry.engineKey === "spatial")?.state).toBe("NOT_SUPPORTED");
+      expect(output.automaticAction).toBe(false); expect(output.humanReview).toBe("REQUIRED");
+      expect(await f.interpret()).toEqual(output); expect(await counts()).toEqual(before);
+    });
+  });
+  it("M3 identifies an exact native Operational threshold failure as conditional, without inventing likelihood/severity", async () => {
+    await isolated(async (tx, actor) => {
+      const f = await fixture(tx, actor, (policy) => {
+        enableInterpretation(policy);
+        const claim = policy.runs.find((run) => run.pin.engineKey === "operational-feasibility")!.selections[0]!;
+        policy.policy.rules = [{ id: "rule-1", operator: "GTE", claimId: claim.id,
+          operand: { kind: "DECIMAL", value: "999999999999999999", basis: claim.basis }, rationale: "Explicit synthetic adequacy threshold" }];
+      });
+      const output = await f.interpret();
+      expect(output.result?.conditionOutcomes[0]?.state).toBe("NOT_SATISFIED");
+      expect(output.result?.findings[0]).toMatchObject({ kind: "CONDITIONAL_RISK", state: "CONDITIONAL",
+        impact: null, likelihood: null, severity: null, severityState: "NOT_ASSESSABLE" });
+      expect(output.result?.claims.find((claim) => claim.id === "claim-operational-feasibility")?.value?.kind).toBe("DECIMAL");
+      expect(output.decision).toBe("NOT_SUPPORTED");
+    });
+  });
+  it("M3 refuses a missing approved interpretation policy instead of inventing one", async () => {
+    await isolated(async (tx, actor) => {
+      const f = await fixture(tx, actor);
+      expect(await f.interpret()).toMatchObject({ status: "NOT_SUPPORTED", decision: null, result: null,
+        reason: "APPROVED_INTERPRETATION_POLICY_REQUIRED" });
+    });
+  });
+  it("M3 reauthorizes every call and returns no interpretation when current source access is withdrawn", async () => {
+    await isolated(async (tx, actor) => {
+      const f = await fixture(tx, actor, enableInterpretation); expect((await f.interpret()).result).not.toBeNull();
+      await tx.dataCenterSource.update({ where: { id: f.source.id }, data: { allowRetrieval: false } });
+      expect(await f.interpret()).toMatchObject({ status: "REJECTED", decision: null, result: null });
+    });
+  });
+  it("M3 continues using the original governed interpretation policy after supersession", async () => {
+    await isolated(async (tx, actor) => {
+      const f = await fixture(tx, actor, enableInterpretation); const original = await f.interpret();
+      await createDataCenterVersion({ itemId: f.governedPolicy.item.id, title: "Superseding interpretation policy", content: "not-an-interpretation-policy",
+        evidenceStatus: "ESTIMATED", reason: "Superseding fixture" }, actor);
+      await publish(f.governedPolicy.item.id, actor);
+      expect(await f.interpret()).toEqual(original);
     });
   });
 });

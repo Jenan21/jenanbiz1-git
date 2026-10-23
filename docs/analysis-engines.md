@@ -168,7 +168,21 @@ defers final Sonar acceptance and final tags until all seven technical baselines
    PostgreSQL 24 Risk retained-read + 46 Data Center = 70/70 file-level receipts,
    not a relabeled combined-command PASS; inherited advisory build failure
    and unchanged successful retry recorded separately;
-   no frozen-engine/Shared/Map/UI/schema/dependency changes; M3 NOT STARTED;
+   M2 owner-approved / CLOSED at `c71bf1f8bccb4dd8fc03cc225182d66a8acd48eb`;
+   M3 implemented for owner review: governed native projections, finite exact
+   rules, evidenced/conditional risks versus unknowns and quality gaps,
+   explicitly comparable cross-engine conflicts, dependency gaps, approved
+   existing scenarios, owner/condition/evidence-linked mitigation templates and
+   the M1 explainable conditional-decision truth table;
+   no default likelihood/severity, no score/success odds or automatic action;
+   exact original policy governs applicability and scenario declarations;
+   Map historical exclusion still prevents a positive full-coverage decision;
+   M3 89 new cases; Risk M1-M3 414 + unchanged global 19 = 433/433 PASS,
+   seven files, no skips; governed PostgreSQL 29/29 PASS (24 M2 + 5 M3);
+   types / scoped zero-warning lint / unchanged production-build retry PASS,
+   original advisory interruption preserved;
+   no Risk persistence/replay, prior runtimes or frozen-engine/Shared/Map/
+   Data Center/UI/schema/dependency changes; STOP before M4;
    real-data acceptance BLOCKED / NOT VERIFIED; Sonar DEFERRED / PENDING)
 
 The first six engines produce **documented facts and measurements** from governed data;
