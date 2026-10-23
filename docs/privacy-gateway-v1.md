@@ -860,3 +860,240 @@ not the subsequently authorized baseline preservation.
 Before M2, push this branch only, create the separate Desktop
 `JenanPRO/privacy-gateway` archive, and verify clean local/remote/archive HEADs.
 No main/integration merge or final tag is authorized.
+
+## 16. M2 secure intake checkpoint (not production activation)
+
+### 16.1 Preserved M1 baseline
+
+Approved M0/M1 source commit: `85c916ef38ffc24431ed3d0bfcbe5366459e6ad8`.
+Baseline documentation closure: `1158d6e15c2360fbe41f4d6f57f60a6fbc83fb47`.
+Before any M2 edit, that closure was pushed to **only**
+`origin/jenan-platform/privacy-gateway` and cloned to the independent Desktop
+`JenanPRO/privacy-gateway` archive. Local HEAD = remote Privacy branch HEAD =
+Desktop archive HEAD at that closure, with both working trees clean.
+The Risk archive and original IDE checkout were not changed.
+
+M2 is local working-tree implementation pending owner review; it is not
+included in the preserved M1 archive. No M2 commit/push, merge or tag is claimed.
+
+### 16.2 Exact M2 inventory
+
+Added:
+
+- `services/privacy-gateway/intake/contracts.ts`
+- `services/privacy-gateway/intake/formats.ts`
+- `services/privacy-gateway/intake/archive.ts`
+- `services/privacy-gateway/intake/staging.ts`
+- `tests/unit/privacy-intake.test.ts`
+- `tests/unit/privacy-intake-boundaries.test.ts`
+- `tests/unit/support/privacy-intake-fixtures.ts`
+
+Changed:
+
+- this document;
+- `tests/unit/privacy-gateway-boundaries.test.ts`: keep all M1 pure-module
+  capability checks; allow exactly the separate `intake` directory in inventory.
+
+The five M1 source modules are unchanged. No barrel export or production
+caller activates intake. No engine, Map, Data Center, Shared production
+contract, schema, dependency, existing ingestion, UI or worker is changed.
+
+### 16.3 Staging architecture and qualification
+
+`EphemeralIntake` is a non-activated reference coordinator. It has a bounded
+in-memory opaque control registry and **requires injected TEST_ONLY adapters**.
+There is deliberately no production storage/KMS/scanner implementation or
+automatic adapter/provider selection.
+
+Each object namespace uses only organization/client/job/attempt/artifact UUIDs.
+Attempt fence and full scope bind the ciphertext through authenticated
+additional data. Original filenames and original document paths never become
+storage keys, status fields, queue fields or audit values. The storage interface
+exposes no public URL or listing capability. The coordinator exposes only
+receive, authorized safe status, cancellation and trusted cleanup sweeping,
+not a RAW download API.
+
+The synthetic test broker actually uses AES-256-GCM, a fresh random 256-bit
+key per artifact, 96-bit nonce, authentication tag and exact AAD binding.
+Keys exist only in the test broker's private memory; stored values are
+ciphertext. Within-package dedup fingerprints use keyed HMAC and remain
+ephemeral/local to processing. No RAW equality hash is retained or exposed.
+Tests cover wrong-AAD and tampered-ciphertext rejection.
+
+**This is not a KMS or production key-security claim.** The test storage/broker
+maps are process memory, not qualified durable storage. No backup exclusion,
+snapshot exclusion, key rotation, broker least-privilege deployment,
+crypto-shredding or provider deletion guarantee has been proved.
+
+### 16.4 Format eligibility and parser resource limits
+
+Actual supported reference capability:
+
+- Strict UTF-8 CSV: bounded structural/quoting/column checks and aggregate
+  cell budget; no formulas are executed and no business values interpreted.
+- Strict non-encrypted ZIP using **Stored method 0 only**, containing only
+  eligible CSV or recursively eligible Stored ZIP.
+
+PDF, DOCX, XLSX, JPEG/PNG/WEBP and every other unqualified format fail closed.
+Legacy DOC/XLS explicitly return `UNSUPPORTED_FILE_TYPE`.
+Deflate and other ZIP compression methods also return `UNSUPPORTED_FILE_TYPE`;
+this is intentionally not advertised as general ZIP support.
+CSV has no unique magic signature: strict UTF-8/structure plus exact
+`csv`/`text/csv` eligibility is used, not a fabricated CSV magic-byte claim.
+ZIP requires `zip`/`application/zip`, matching signature and exact structure.
+Password/encryption flags are rejected. Unsupported encrypted document formats
+remain unsupported rather than being passed to an unqualified parser.
+
+Pinned, non-widenable initial M2 limits:
+
+| Limit | Ceiling/default |
+| --- | --- |
+| Package / cumulative expanded / entries / archive depth / ratio | 100 MiB / 500 MiB / 1,000 / 3 / 100:1 |
+| Individual file | 100 MiB |
+| Parser input / conservative parser allocation envelope | 8 MiB / 64 MiB |
+| Aggregate cells | 100,000 |
+| Pages / images / pixels per image | 1,000 / 100 / 40,000,000 |
+| Cooperative parser time / per-scan timeout | 5 seconds / 30 seconds |
+| Total attempt checkpoint deadline | parser time + scan time (35 seconds default) |
+| Coordinator staged-byte budget / admitted jobs / concurrent jobs | 128 MiB / 32 / 4 |
+
+These are initial technical policy defaults, not a production SLA.
+The narrower parser/admission envelopes are explicit additional limits;
+accepting a nominal 100 MiB package does not promise parser eligibility.
+The byte budget accounts for stored payload bytes, not a measured whole-process
+RSS bound or ciphertext overhead. Runtime copies/strings/allocator/GC overhead
+are not represented as proven OS memory isolation.
+
+Page/image/pixel caps are reserved policy ceilings: no page/image parser is
+qualified, so those formats are rejected before reaching such a parser.
+The original plus extracted artifacts must fit the existing M1 inventory cap
+of 1,000; the effective eligible leaf count can therefore be below 1,000.
+Policy hash includes exact limits and `strict-stored-zip-csv/1.0.0`.
+
+### 16.5 Archive and parser boundary
+
+Extraction validates central/local headers, regular-file mode, exact sizes,
+CRC32, nonoverlapping contiguous local records and exact central/end layout.
+No filesystem extraction occurs; eligible leaves remain RAW-tainted byte views.
+Original archive names are transient parser inputs and are not returned.
+
+Reject: traversal/absolute/drive/UNC/ADS paths; empty/dot components; Unicode
+ambiguity; Windows device names; trailing dots; duplicate/case/prefix collisions;
+symlink/hardlink-capable extra fields; nonregular/special entries; ZIP64/extra
+fields; descriptors; comments; encryption; excessive depth/count/individual or
+aggregate expansion/ratio; malformed/overlapping/trailing payloads.
+All names use a deliberately narrow portable ASCII grammar, not lossy
+normalization. No link or special-file object is ever created.
+
+Parser code is capability-free local TypeScript over supplied bytes: no
+filesystem/network/process/environment/provider imports, no dynamic execution,
+no document macros, no external OCR/AI and no Data Center credentials.
+AST import/capability tests include negative probes and preserve the M1
+transitive dependency boundary. This demonstrates **code-level capability
+restriction**, not an OS/container/VM sandbox, forced egress denial, hard
+wall-clock interruption, RSS measurement or malicious-native-parser containment.
+No general/native parser has been introduced. A qualified production parser
+enclave and deployment proof remain activation blockers.
+
+### 16.6 Scanning, authorization and lifecycle
+
+The bounded path ends at:
+`RECEIVING -> INTAKE_VALIDATING -> MALWARE_SCANNING -> RAW_READY`.
+Both original package and every eligible leaf require independent CLEAN
+responses. `SCAN_PENDING`, `SCAN_CLEAN`, `SCAN_REJECTED` and
+`MALWARE_SCAN_UNAVAILABLE` are explicit safe metadata.
+Missing provider, exception, timeout, UNAVAILABLE, ERROR, UNKNOWN or invalid
+non-CLEAN verdict prevents RAW_READY. There is no bypass or network fallback.
+Scan timeout aborts its signal and clears the coordinator-owned scan copy;
+it does not prove a misbehaving scanner has dropped its own copies.
+
+Every public job operation uses the current-authorization adapter with exact
+scope/actor and M1 INTAKE plus KEY_ACCESS guards. Authorization is re-evaluated
+after asynchronous steps and before RAW_READY. The adapter is synthetic in
+tests, not a live RBAC integration. Attempt/fence mismatches are rejected;
+scope denial and absent jobs use the same safe authorization error.
+
+TTL cleanup is scheduled with opaque metadata **before any RAW storage**;
+scheduling failure blocks intake. TTL and revocation block further processing.
+Cancellation, rejection, malformed input, scan/parser/key/storage failure,
+timeout, expired TTL and abandoned intake all lead to revoked staging access,
+key revocation/deletion attempts and cleanup scheduling. Retryable cleanup
+failures remain explicit `CLEANUP_PENDING`; one failed job does not starve other
+jobs' cleanup sweeps. Late key creation/storage writes after cancellation are
+cleaned again after in-flight operations settle.
+
+The M2 staging cleanup lifecycle does not fabricate M1 destruction receipts.
+It never claims `RAW_DESTROYED`. Worker/key/cache/backup/provider evidence
+required by M1 remains unproved; deletion acknowledgment is insufficient.
+Owned plaintext byte copies are cleared best-effort; immutable strings,
+provider copies and GC/runtime residue are not claimed irrecoverable.
+
+The control registry, duplicate claim and admission fence are process-local,
+not durable distributed CAS/idempotency or crash recovery. It never evicts a
+live historical entry to admit another job. Bounded capacity exhaustion fails
+explicitly. Production requires approved durable metadata, startup janitor,
+qualified storage/key TTL enforcement and scheduled cleanup execution.
+The existing bypass inventory is unchanged and activation remains blocked.
+
+### 16.7 Validation receipts
+
+Only synthetic/adversarial fixtures were used; no real client documents.
+`privacy-m2-focused-final.log`: **486/486 PASS, five files, no skips**
+(12.45 seconds on this run):
+
+| Suite | Result |
+| --- | --- |
+| M2 intake/format/archive/staging units | 119/119 PASS |
+| M2 parser/activation architecture | 14/14 PASS |
+| M2 subtotal | 133/133 PASS |
+| M1 foundation | 299/299 PASS |
+| M1 pure-module boundaries | 34/34 PASS |
+| Privacy M1 + M2 | 466/466 PASS |
+| Global engine boundaries | 20/20 PASS |
+| Total | 486/486 PASS, zero failures, no skips |
+
+The corpus includes extension/MIME/signature mismatch; malformed/truncated/
+CRC/header/tail archives; package/expanded/count/depth/ratio overflow; traversal;
+symlink/hardlink/special files; Unicode/case/prefix collisions; encrypted ZIP;
+legacy/unqualified formats; absent/failed/timed-out scanners; leaf scan failure;
+parser/TTL cleanup; stale attempt/fence; per-operation authorization revocation;
+cross-job/organization isolation; concurrent duplicate admission; late-key/
+late-write cancellation races; capacity/deadline limits; failed cleanup and
+retry; AEAD tamper rejection; safe errors/queues and forbidden parser capability
+negative probes.
+
+`privacy-m2-typecheck-final.log`: PASS.
+`privacy-m2-eslint-final.log`: PASS, zero warnings.
+`privacy-m2-build-preliminary.log`: FAIL with the inherited Next.js dependency
+advisory. This was an earlier source revision and is not final-source build
+acceptance. After the final lifecycle/authorization refinements and final
+486-case/type/lint checks, `privacy-m2-build-final.log`: **PASS**.
+No dependency change or advisory remediation was performed.
+`privacy-m2-typecheck-postbuild-final.log`: **PASS**, sequentially after that
+build and restoration of generated Next declaration-path drift.
+`git diff --check` and explicit whitespace checks on every added/changed file:
+**PASS**. All frozen production tracked files, including the five M1 source
+modules and generated declarations, are unchanged from the preserved baseline.
+Only the exact nine M2 paths listed above are added/changed.
+
+Preserved HEADs rechecked after validation:
+local HEAD = remote Privacy branch HEAD = Desktop archive HEAD =
+`1158d6e15c2360fbe41f4d6f57f60a6fbc83fb47`.
+The Desktop baseline archive remains clean. The implementation working tree
+now contains the explicitly listed uncommitted M2 changes; it is not claimed
+clean or included in the remote/archive baseline.
+
+No sanitization/redaction/tokenization engine, independent verifier,
+Data Center publication, AI/LLM, external OCR, UI or platform bypass enforcement
+is activated. No production security/deletion/real-data qualification is claimed.
+Next.js dependency advisory remains independent security debt; no dependency
+change, Sonar, merge, deployment or final tag. STOP before M3.
+
+### 16.8 Owner closure
+
+M2 APPROVED / CLOSED by owner on 2026-10-23. The accepted M2 inventory is
+seven added files and two modified files from section 16.2. Approved baseline
+for M1 remains `1158d6e15c2360fbe41f4d6f57f60a6fbc83fb47`;
+`85c916ef38ffc24431ed3d0bfcbe5366459e6ad8` is its parent/source reference only.
+Owner authorized preserving this exact M2 implementation on the Privacy
+branch, then starting M3 only after clean local/remote/Desktop equality.

@@ -32,9 +32,9 @@ function violations(text: string, file = join(root, "probe.ts")) {
   visit(source); return found;
 }
 describe("Privacy M1 foundation capability boundaries", () => {
-  it("contains only the five approved pure modules and no adapters", () => {
-    expect(readdirSync(root).sort()).toEqual(["audit.ts", "contracts.ts", "index.ts", "policy.ts", "states.ts"]);
-    for (const name of readdirSync(root)) {
+  it("preserves the five approved pure modules alongside the isolated M2 intake directory", () => {
+    expect(readdirSync(root).sort()).toEqual(["audit.ts", "contracts.ts", "index.ts", "intake", "policy.ts", "states.ts"]);
+    for (const name of readdirSync(root).filter((name) => name.endsWith(".ts"))) {
       const file = join(root, name); const text = readFileSync(file, "utf8");
       expect(violations(text, file), name).toEqual([]);
       expect(text).not.toMatch(/\basync\b|\bPrisma\b|\$queryRaw|\$executeRaw|\.env\b/);
