@@ -1097,3 +1097,246 @@ for M1 remains `1158d6e15c2360fbe41f4d6f57f60a6fbc83fb47`;
 `85c916ef38ffc24431ed3d0bfcbe5366459e6ad8` is its parent/source reference only.
 Owner authorized preserving this exact M2 implementation on the Privacy
 branch, then starting M3 only after clean local/remote/Desktop equality.
+
+## 17. M3 detection, sanitization and independent verification checkpoint
+
+### 17.1 Baseline preservation and exact inventory
+
+**M2 approved baseline:** `0611b414676ed9c5c59087fa6a4ef3be7b159863`.
+Before any M3 source change, the approved nine-file M2 inventory and owner
+closure were committed on `jenan-platform/privacy-gateway`, pushed to that
+branch only, and fast-forwarded in the separate Desktop Privacy archive.
+Local HEAD = remote Privacy HEAD = Desktop archive HEAD at this SHA and both
+working trees were clean. M1 closure remains
+`1158d6e15c2360fbe41f4d6f57f60a6fbc83fb47`; its parent/source reference is
+`85c916ef38ffc24431ed3d0bfcbe5366459e6ad8`, not an alternative baseline.
+
+M3 added:
+
+- `services/privacy-gateway/sanitization/contracts.ts`: strict dataset/mapping/
+  evidence/audit contracts, analytical/sensitive enums, bounded CSV profile,
+  trusted runtime and TEST_ONLY signing interface.
+- `services/privacy-gateway/sanitization/classification.ts`: explicit header
+  classification, pattern detection, contextual analytical validators and
+  bounded CSV table parsing.
+- `services/privacy-gateway/sanitization/transform.ts`: allowlist transform and
+  package-local random tokens; no verification authority.
+- `services/privacy-gateway/sanitization/verifier.ts`: independent reconstruction,
+  output re-scan, exact preservation/coverage and conservative residual checks.
+- `services/privacy-gateway/sanitization/service.ts`: current authorization,
+  per-job/package claims, immutable internal candidate, guarded M1 transitions,
+  encrypted mapping handoff and independent receipt signing/verification.
+- `tests/unit/privacy-sanitization.test.ts`.
+- `tests/unit/privacy-sanitization-boundaries.test.ts`.
+- `tests/unit/support/privacy-sanitization-fixtures.ts`: synthetic documents,
+  scoped authorization/audit/scheduling doubles and actual test Ed25519 signing.
+
+M3 changed:
+
+- `services/privacy-gateway/intake/staging.ts`: authorized internal RAW_READY
+  read callbacks over decrypted copies, exact intake-policy reference, and
+  SANITIZER-only encrypted token-mapping staging in the same RAW inventory.
+  Mapping objects are excluded from eligible CSV leaves; original M2 receive/
+  scan/extract/TTL semantics and no-production activation are preserved.
+- `tests/unit/privacy-gateway-boundaries.test.ts`: permit the separate M3
+  directory while retaining all five M1 pure-module capability checks.
+- this document.
+
+Total: **eight added files and three changed files**. No M3 commit/push or
+Desktop update is claimed. The source working tree contains these local M3
+changes, not a clean M3 closure. No main/integration merge, tag or deployment.
+
+### 17.2 Supported classification and detection
+
+M3 processes only the qualified CSV leaves retained by M2, including CSV leaves
+inside qualified Stored ZIP. There is no new PDF/Office/image parser, OCR,
+general visual detector or natural-language named-entity recognition.
+
+Field classification reports type, sensitivity, analytical necessity,
+KEEP/REMOVE/TOKENIZE/REVIEW action and EXACT_SCHEMA/AMBIGUOUS confidence.
+Confidence is an explicit schema status, not a statistical accuracy claim.
+Known analytical headers retain their exact string values. Known person,
+owner, delegate, signatory and account/user reference headers receive tokens
+when linking is supported. Explicit national ID/iqama, phone, email, IBAN,
+bank account/card, signature/stamp, QR/barcode, exact-address, metadata,
+embedded-identifier and unnecessary business-ID fields are removed completely.
+Selected explicit Arabic header aliases are supported.
+
+Pattern detection covers email, phone-like, national-ID/iqama-like,
+IBAN-like/card-like forms and embedded/URL/formula/control representations.
+It does not validate every national registry/account/card checksum or detect
+arbitrary names/addresses in unrestricted text. Names and the signature/stamp/
+QR/barcode/metadata categories are covered as **declared CSV representations**;
+no visual signature/stamp/barcode decoding or hidden OOXML/PDF detection is
+claimed. Unknown headers, semantic duplicate headers and unsupported free text
+fail closed. Invisible/control payloads or identity-shaped ambiguous required
+values require review rather than numeric distortion.
+
+Supported hidden/embedded coverage is the entire strict CSV cell/header
+surface, including explicitly classified metadata/embedded fields. RAW-ready
+provenance and complete leaf inventory come from the trusted M2 boundary.
+M3 does not prove coverage outside that format/capability boundary.
+
+### 17.3 Strict structured candidate and analytical preservation
+
+The candidate is a strict `ALLOWLIST_STRUCTURED_DATA` dataset, `anonymous=false`.
+It contains only exact scope/attempt/fence/pins/profile metadata, opaque
+artifact IDs, row ordinals, approved analytical keys and opaque linkage tokens.
+Unknown RAW keys cannot be attached to dataset, rows or value objects.
+No original filename, source header, source sensitive value, RAW object/key
+handle, rendered original or reverse mapping is included.
+
+Required amounts, dates, revenue/expense/payroll/rent/tax, liabilities,
+installments, cash flow, categories, quantities/prices/operational metric,
+units/currencies and periods remain **strings**: no rounding, number parsing,
+currency conversion, sign stripping, date rewriting or row reordering.
+Source artifact/row association and token-field association remain explicit.
+Supported dates/periods are strict ISO forms; categories/units/currencies
+use a small fixed vocabulary. Unsupported formats or ambiguous identifier-like
+values are reviewed, not coerced. These conservative limits can reject valid
+business data; there is no silent expansion of the profile.
+The numeric grammar permits at most nine integer digits and twelve fractional
+digits; unseparated integers of nine or more digits are conservatively treated
+as ambiguous identifiers. Scientific notation, thousands separators and
+whitespace-normalized numbers are unsupported. Exact decimal strings remain
+unchanged even when the residual-risk gate subsequently requires review.
+
+The profile limits aggregate sources to 128 KiB, 1,000 rows and 10,000 cells;
+headers/cell lengths and admitted packages are bounded. These are additional
+reference-profile ceilings, not an OS memory/time sandbox guarantee.
+Schema/version hashes and profile policy are pinned. Exact active M2 intake
+policy reference must match the declared extraction reference; no historical
+pin substitution, policy migration, provider fallback or latest lookup occurs.
+
+### 17.4 Tokenization and RAW mapping lifecycle
+
+Tokens carry 256 cryptographically random bits from the local crypto runtime,
+exceeding M1's 128-bit minimum; they are not UUID-v4 values or global hashes of
+identity. Exact repeated `(sensitive kind, original string)` pairs in one
+package share the same token across eligible artifacts. No lossy name/value
+normalization or fuzzy identity inference occurs. Distinct packages/clients
+receive independently random tokens; semantic aliases cannot create duplicate
+ambiguous linkage columns.
+
+The package is bound to one processing job/attempt in this reference service.
+A second job for an already claimed package is rejected rather than silently
+reusing/migrating mappings. Retry/durable multi-job package linkage is not
+implemented. Random token values and their content hashes are intentionally
+not deterministic between independently created packages.
+
+Mappings remain RAW-tainted. They are serialized only into the M2 test
+encryption/storage boundary under opaque scoped keys, with authenticated
+attempt/scope/object binding. They join the same RAW key/object inventory
+and are covered by cancellation/expiry/retry cleanup; no independent permanent
+reverse vault or mapping download API exists. A mapping-cleanup metadata
+schedule must succeed before staging; no plaintext fallback is available.
+Owned byte buffers are cleared best-effort and transient mapping arrays are
+released. GC/string/provider residue is not certified destroyed.
+
+### 17.5 Independent verifier and authorization
+
+The sanitizer creates a candidate, never an approval. The verifier independently
+loads retained encrypted eligible leaves and mapping through a current-role
+M2 read boundary, reconstructs expected analytical values/links without invoking
+the sanitizer or token generator, and checks exact source rows, order, types,
+mapping one-to-one consistency and inventory coverage. It re-scans the output,
+rejects undeclared fields/RAW reference leakage, and checks policy/version,
+scope/job/package/attempt/fence, candidate content/schema/lineage hashes and
+exact active extraction policy. Candidate and RAW storage cannot be written
+through the verifier API. Read callbacks see copies; mutation of a copy does
+not mutate encrypted retained RAW. Returned verified objects are deep copies.
+
+Current SANITIZER/VERIFIER plus KEY_ACCESS authorization is required at reads
+and rechecked around asynchronous work and before final state commit. A caller
+cannot extend retained TTL by supplying a different job lifetime.
+Sanitizer principal, previous processors and original job owner cannot approve,
+including after changing their current role. There is no publisher role/path
+in M3. Concurrent duplicate sanitize/verify calls are fenced locally; scoped
+parallel package processing and cross-organization denial are tested.
+
+No live RBAC adapter or durable distributed CAS exists. These are internal
+reference APIs, never request-supplied callbacks/adapters. Qualification and
+deployment isolation remain subject to later stages.
+
+### 17.6 Receipts, residual risk, review and safe audit
+
+Successful independent verification generates the M1 receipt with exact
+job/client/package, attempt/fence, artifact/schema/lineage hashes, all policy
+pins, verifier principal, time/expiry and opaque audit reference.
+A separate strict verification-evidence envelope records eligible artifact IDs,
+counts, rows, preserved cell count, coverage and supported-profile residual
+assessment; it contains no RAW digest/snippet or sensitive values.
+The Ed25519 signing payload binds **both** receipt and evidence. Signature
+verification must succeed before the M1 SANITIZATION_VERIFIED transition.
+Actual test Ed25519 signing verifies tampering of either envelope fails;
+this is not production signing-key/KMS qualification.
+
+Residual checks conservatively require at least three rows per exact released
+analytical combination/link-kind group, and at least three uses of each token.
+Rare tokens, unique/quasi-identifying combinations, free text, overly precise
+unsupported location fields and ambiguous required values require manual
+review. This is a small explicit reference rule, **not population k-anonymity,
+universal identity detection or proof of anonymity**. Even exact-preserved
+analytical data can remain restricted and require review. Sanitized != Anonymous.
+
+Before a candidate exists, uncertainty records explicit
+SANITIZATION_UNCERTAIN / MANUAL_PRIVACY_REVIEW_REQUIRED result plus a safe
+reason while leaving the M1 processing state at its last legal step.
+It does not fabricate a candidate or weaken M1 transitions to enter review.
+Verifier uncertainty transitions from SANITIZATION_VERIFICATION to the existing
+MANUAL_PRIVACY_REVIEW_REQUIRED state. No manual approval/retry shortcut is
+implemented. Every review path blocks verified-data access.
+
+M3 audit has a strict content-free schema: opaque event/job/actor/receipt IDs,
+timestamp, fixed stage/result/reason enums, bounded counts and profile/policy
+hashes only. The receipt audit reference resolves to the matching check event,
+and that event carries the exact receipt ID. No free metadata,
+names, original values, mapping/tokens, addresses, filenames or snippets.
+Pre-commit successful check events use CANDIDATE, not a premature VERIFIED
+claim. Audit failure, signing failure, revocation or encrypted RAW tampering
+cannot commit verified output. Provider/parser details are not returned.
+Verification receipt/evidence are available only through currently authorized
+independent-verifier access after successful final commit.
+
+### 17.7 Validation and explicit remaining limits
+
+Final synthetic/adversarial regression:
+
+| Suite | Result |
+| --- | --- |
+| M3 classification/sanitization/tokenization/verification units | 147/147 PASS |
+| M3 architecture/negative capabilities | 19/19 PASS |
+| M3 subtotal | 166/166 PASS |
+| M1/M2 Privacy regression | 466/466 PASS |
+| Privacy M1-M3 total | 632/632 PASS |
+| Global boundaries | 20/20 PASS |
+| Focused total, seven files | 652/652 PASS, zero failures, no skips |
+
+`privacy-m3-focused-final.log`: PASS, 4.71 seconds on this run; includes
+the final 256-bit token implementation and exact receipt/audit-event linkage.
+`privacy-m3-typecheck-final.log`: PASS.
+`privacy-m3-eslint-final.log`: PASS, zero warnings.
+`privacy-m3-build-final.log`: FAIL with the inherited Next.js security advisory.
+`privacy-m3-build-final-retry.log`: PASS, identical unchanged source retry.
+No dependency changes or advisory remediation; Next.js debt remains independent.
+`privacy-m3-typecheck-postbuild-final.log`: PASS sequentially after the final
+unchanged build retry and restoration of generated Next declaration-path drift.
+`git diff --check` and explicit whitespace checks across every new/changed M3
+file: PASS. Exact final inventory: the eleven paths in section 17.1 only.
+Frozen production tracked-file diff: UNCHANGED, including engines 1-7, Map,
+Data Center semantics, Shared production contracts, schema/dependencies,
+existing production ingress and UI. Five M1 source modules remain unchanged.
+Preserved local HEAD = remote Privacy branch HEAD = clean Desktop archive HEAD
+at `0611b414676ed9c5c59087fa6a4ef3be7b159863`; M3 files are local/uncommitted.
+Earlier pre-final/pre-entropy build logs are retained separately and are not
+substituted for the final-source test/type/lint/build/post-build receipts.
+
+No real client documents, production KMS/signing provider/scanner/storage,
+durable orchestration, native document sandbox, external OCR or AI/LLM.
+No sanitization/detection capability is claimed for unsupported visual/native
+formats. No final RAW destruction certification. The bypass inventory remains
+an activation blocker, not silently closed. No Data Center publication, Projects/
+Admin/Payments/UI integration, frozen engine/Map/Data Center/Shared change,
+schema/dependency change, Sonar, merge, tag or deployment.
+
+**M3 checkpoint for owner review. STOP before M4.**

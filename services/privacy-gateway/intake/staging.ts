@@ -12,7 +12,7 @@ import {
 import { mediaOf, type IntakeDescriptor } from "./formats";
 
 type RecordEntry = {
-  job: PrivacyJob; binding: Attempt; keys: string[]; objects: string[];
+  job: PrivacyJob; binding: Attempt; keys: string[]; objects: string[]; leafCount: number;
   actorId: string; revoked: boolean; busy: boolean; started: number; reservedBytes: number; cleanupScheduled: boolean; summary: IntakeSummary;
 };
 const encode = (value: unknown) => new TextEncoder().encode(JSON.stringify(value));
@@ -34,11 +34,11 @@ export class EphemeralIntake {
     }
   }
   private now() { return this.runtime.now(); }
-  private async authorize(job: PrivacyJob, actorId: string): Promise<IntakeContext> {
+  private async authorize(job: PrivacyJob, actorId: string, role: "INTAKE" | "SANITIZER" | "VERIFIER" = "INTAKE"): Promise<IntakeContext> {
     try {
       const context = await this.runtime.currentAuthorization(structuredClone(job), checkedId(actorId));
       if (context.actor.id !== actorId) throw new IntakeError("AUTHORIZATION_DENIED");
-      assertPrivacyRole(context.actor, context.grants, "INTAKE", job.scope, this.now());
+      assertPrivacyRole(context.actor, context.grants, role, job.scope, this.now());
       assertJobRawAccess(job, context.actor, context.grants, this.now());
       return context;
     } catch { throw new IntakeError("AUTHORIZATION_DENIED"); }
@@ -48,8 +48,8 @@ export class EphemeralIntake {
     if (this.now() >= entry.job.rawExpiresAt) throw new IntakeError("EXPIRED");
     if (Date.parse(this.now()) - entry.started >= this.limits.processingMs + this.limits.scanMs) throw new IntakeError("PARSER_LIMIT_EXCEEDED");
   }
-  private async checkpoint(entry: RecordEntry) {
-    this.assertLive(entry); const context = await this.authorize(entry.job, entry.actorId); this.assertLive(entry);
+  private async checkpoint(entry: RecordEntry, actorId = entry.actorId, role: "INTAKE" | "SANITIZER" = "INTAKE") {
+    this.assertLive(entry); const context = await this.authorize(entry.job, actorId, role); this.assertLive(entry);
     return context;
   }
   private move(entry: RecordEntry, target: "RECEIVING" | "INTAKE_VALIDATING" | "MALWARE_SCANNING" | "RAW_READY",
@@ -63,24 +63,24 @@ export class EphemeralIntake {
     const { organizationId, clientId, jobId } = entry.job.scope;
     return [organizationId, clientId, jobId, entry.job.attemptId, checkedId(this.runtime.id())].join("/");
   }
-  private async store(entry: RecordEntry, bytes: Uint8Array) {
-    await this.checkpoint(entry);
+  private async store(entry: RecordEntry, bytes: Uint8Array, actorId = entry.actorId, role: "INTAKE" | "SANITIZER" = "INTAKE") {
+    await this.checkpoint(entry, actorId, role);
     if (entry.objects.length >= 1000) throw new IntakeError("ARCHIVE_LIMIT_EXCEEDED");
     if (this.stagedBytes + bytes.length > this.limits.stagedBytes) throw new IntakeError("PARSER_LIMIT_EXCEEDED");
     this.stagedBytes += bytes.length; entry.reservedBytes += bytes.length;
     let handle: string;
     try { handle = checkedId(await this.keys.create(entry.binding)); } catch { throw new IntakeError("KEY_UNAVAILABLE"); }
     entry.keys.push(handle);
-    await this.checkpoint(entry);
+    await this.checkpoint(entry, actorId, role);
     const object = this.objectKey(entry);
     entry.objects.push(object);
     try {
       const binding = encode({ ...entry.binding, object });
       const cipher = await this.keys.seal(handle, bytes, binding);
-      await this.checkpoint(entry);
+      await this.checkpoint(entry, actorId, role);
       if (cipher.nonce.length !== 12 || cipher.tag.length !== 16 || cipher.body.length !== bytes.length) throw new IntakeError("KEY_UNAVAILABLE");
       await this.storage.putOpaque(object, cipher);
-      await this.checkpoint(entry);
+      await this.checkpoint(entry, actorId, role);
     } catch (error) {
       if (error instanceof IntakeError) throw error;
       throw new IntakeError("STORAGE_UNAVAILABLE");
@@ -134,7 +134,7 @@ export class EphemeralIntake {
     }
     const entry: RecordEntry = {
       job: structuredClone(job), binding: { scope: structuredClone(job.scope), attemptId: job.attemptId, fence: job.fence },
-      keys: [], objects: [], actorId, revoked: false, busy: true, started: Date.parse(this.now()), reservedBytes: 0, cleanupScheduled: false,
+      keys: [], objects: [], leafCount: 0, actorId, revoked: false, busy: true, started: Date.parse(this.now()), reservedBytes: 0, cleanupScheduled: false,
       summary: { jobId: job.scope.jobId, attemptId: job.attemptId, fence: job.fence,
         scan: "SCAN_PENDING", stage: "RECEIVING", bytes: 0, entries: 0, policyHash: intakePolicyHash(this.limits) },
     };
@@ -174,6 +174,7 @@ export class EphemeralIntake {
         }
         await this.store(entry, artifact.bytes);
       }
+      entry.leafCount = extracted.length;
       entry.job.rawInventoryCount = entry.objects.length;
       entry.job.rawInventoryHash = privacyHash(entry.objects.map((object, i) => ({ object, key: entry.keys[i] })));
       this.move(entry, "RAW_READY", await this.checkpoint(entry));
@@ -196,6 +197,67 @@ export class EphemeralIntake {
     if (!entry || !samePrivacyValue(entry.binding.scope, job.scope)) throw new IntakeError("AUTHORIZATION_DENIED");
     if (entry.binding.attemptId !== job.attemptId || entry.binding.fence !== job.fence) throw new IntakeError("STALE_ATTEMPT");
     return entry;
+  }
+  /** Trusted internal consumer boundary; never wire reader callbacks to transport input. */
+  async withReadyRaw<T>(job: PrivacyJob, actorId: string, role: "SANITIZER" | "VERIFIER",
+    reader: (snapshot: { job: PrivacyJob; artifacts: { id: string; bytes: Uint8Array }[];
+      tokenMappings: { id: string; bytes: Uint8Array }[]; intakePolicyHash: string }) => Promise<T>): Promise<T> {
+    const entry = this.records.get(job.scope.jobId);
+    const check = async () => {
+      try {
+        if (!entry || !samePrivacyValue(entry.binding.scope, job.scope) ||
+          entry.binding.attemptId !== job.attemptId || entry.binding.fence !== job.fence ||
+          entry.revoked || entry.busy || entry.job.processing !== "RAW_READY") throw new IntakeError("AUTHORIZATION_DENIED");
+        const current = await this.runtime.currentAuthorization(structuredClone(entry.job), checkedId(actorId));
+        if (current.actor.id !== actorId) throw new IntakeError("AUTHORIZATION_DENIED");
+        assertPrivacyRole(current.actor, current.grants, role, entry.job.scope, this.now());
+        assertJobRawAccess(entry.job, current.actor, current.grants, this.now());
+      } catch { throw new IntakeError("AUTHORIZATION_DENIED"); }
+    };
+    await check();
+    if (!entry) throw new IntakeError("AUTHORIZATION_DENIED");
+    const artifacts: { id: string; bytes: Uint8Array }[] = [];
+    const tokenMappings: { id: string; bytes: Uint8Array }[] = [];
+    try {
+      for (let i = 1; i < entry.objects.length; i++) {
+        await check();
+        const object = entry.objects[i];
+        let bytes: Uint8Array;
+        try {
+          const cipher = await this.storage.getOpaque(object);
+          await check();
+          bytes = await this.keys.open(entry.keys[i], cipher, encode({ ...entry.binding, object }));
+        } catch (error) {
+          if (error instanceof IntakeError) throw error;
+          throw new IntakeError("STORAGE_UNAVAILABLE");
+        }
+        (i <= entry.leafCount ? artifacts : tokenMappings).push({ id: object.slice(object.lastIndexOf("/") + 1), bytes });
+        await check();
+      }
+      const result = await reader({ job: structuredClone(entry.job), artifacts, tokenMappings, intakePolicyHash: intakePolicyHash(this.limits) });
+      await check();
+      return result;
+    } finally { for (const artifact of [...artifacts, ...tokenMappings]) artifact.bytes.fill(0); }
+  }
+  async stageTokenMapping(job: PrivacyJob, actorId: string, bytes: Uint8Array): Promise<PrivacyJob> {
+    await this.authorize(job, actorId, "SANITIZER");
+    const entry = this.records.get(job.scope.jobId);
+    if (!entry || !samePrivacyValue(entry.binding.scope, job.scope) || entry.binding.attemptId !== job.attemptId ||
+      entry.binding.fence !== job.fence || entry.busy || entry.revoked || entry.job.processing !== "RAW_READY" ||
+      entry.objects.length !== entry.leafCount + 1 || bytes.length > 128 * 1024) throw new IntakeError("AUTHORIZATION_DENIED");
+    entry.busy = true; entry.started = Date.parse(this.now());
+    try {
+      await this.store(entry, bytes, actorId, "SANITIZER");
+      entry.job.rawInventoryCount = entry.objects.length;
+      entry.job.rawInventoryHash = privacyHash(entry.objects.map((object, i) => ({ object, key: entry.keys[i] })));
+      return structuredClone(entry.job);
+    } catch {
+      await this.cleanup(entry, "PARSER_FAILED");
+      throw new IntakeError("CLEANUP_PENDING");
+    } finally {
+      entry.busy = false;
+      if (entry.revoked) await this.cleanup(entry, entry.summary.failure ?? "CLEANUP_PENDING");
+    }
   }
   async status(job: PrivacyJob, actorId: string): Promise<IntakeSummary> {
     const entry = await this.find(job, actorId);
